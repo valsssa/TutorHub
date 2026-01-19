@@ -1,0 +1,62 @@
+
+# High-Level System Overview: EduConnect
+
+## 1. App Type
+*   **Architecture:** Single Page Application (SPA).
+*   **Framework:** React 19 with TypeScript.
+*   **Rendering Strategy:** Client-Side Rendering (CSR).
+*   **Platform:** Web (Responsive Design for Desktop/Tablet/Mobile).
+
+## 2. User Roles
+The application serves a three-sided marketplace model:
+
+### A. Student
+*   Seekers of knowledge looking for personalized 1-on-1 tutoring.
+*   **Key Needs:** Discovery, Trust/Verification, Easy Booking, Seamless Learning Environment.
+
+### B. Tutor
+*   Educators offering their expertise and time.
+*   **Key Needs:** Student Management (CRM), Schedule Control, Earnings Visibility, Profile Building.
+
+### C. Admin
+*   Platform operators ensuring quality and safety.
+*   **Key Needs:** Verification Oversight, Financial Reporting, Dispute Resolution (Implied).
+
+## 3. Core User Flows
+
+### Student Journey
+1.  **Discovery:** Search for tutors using filters (Subject, Price, Country) or AI-powered smart search.
+2.  **Evaluation:** View tutor profiles, read reviews, check verification badges, and watch video intros.
+3.  **Booking:** Select a time slot from the tutor's calendar and complete payment (Card/PayPal/Digital Wallet).
+4.  **Learning:** Join the virtual classroom (video + whiteboard) at the scheduled time.
+5.  **Feedback:** Leave a rating and review after the session.
+
+### Tutor Journey
+1.  **Onboarding:** Create a profile and upload verification documents (Degree/Certificates).
+2.  **Management:** Set weekly availability and manage time-off.
+3.  **Operation:** Accept or decline booking requests (if manual confirmation is enabled).
+4.  **Delivery:** Conduct lessons via the integrated classroom.
+5.  **Growth:** Track earnings and view student analytics.
+
+### Admin Journey
+1.  **Moderation:** Review and approve/reject pending tutor verification requests.
+2.  **Oversight:** Monitor platform-wide revenue and user growth metrics.
+
+## 4. Current Frontend-Only State vs. Future Full System
+
+### Current State (High-Fidelity Prototype)
+*   **Data Source:** Service Layer (`services/api.ts`) abstracting in-memory mock data (`services/mockData.ts`). State resets on refresh.
+*   **Authentication:** Simulated login/signup flows via API service.
+*   **Video/Audio:** Simulated "Classroom" interface. No real WebRTC connection.
+*   **AI:** Live integration with Google Gemini API for search parsing.
+*   **Payments:** UI demonstration only. No actual payment processing.
+*   **Persistence:** None.
+
+### Future Full System (Production Target)
+*   **Backend:** Node.js/Express or Python/Django REST API.
+*   **Database:** PostgreSQL (Relational data for Users, Bookings, Transactions) + Redis (Caching).
+*   **Authentication:** Integration with Auth0, Firebase Auth, or Cognito.
+*   **Video:** Integration with Daily.co, Twilio Video, or Agora for real-time WebRTC.
+*   **Payments:** Stripe Connect integration for marketplace split payments (Platform fee + Tutor payout).
+*   **Storage:** AWS S3 or Google Cloud Storage for user avatars and verification documents.
+*   **Search:** Elasticsearch or Algolia for advanced tutor indexing.

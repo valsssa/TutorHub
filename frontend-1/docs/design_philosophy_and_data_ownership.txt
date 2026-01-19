@@ -1,0 +1,36 @@
+
+# Design Philosophy & Data Ownership
+
+## 1. Single Source of Truth
+*   **Ideal State (Production):** The Backend Database (PostgreSQL) is the absolute single source of truth.
+*   **Current State (Prototype):** The `App.tsx` component serves as the temporary "Backend" and single source of truth.
+    *   It initializes state from `constants.ts`.
+    *   All domain data (`tutors`, `sessions`, `users`) flows down from `App.tsx`.
+    *   Child components **never** duplicate domain state; they only receive props or dispatch actions to update the root state.
+
+## 2. Computation Responsibility
+*   **Backend Responsibility (Must come from source):**
+    *   User identity and roles.
+    *   Financial transactions and balances.
+    *   Verification status of tutors.
+    *   Historical session records.
+*   **Frontend Responsibility (Can be computed):**
+    *   Filtering and sorting of lists (e.g., searching tutors by price).
+    *   Formatted dates and times (e.g., "In 2 hours", "Today").
+    *   UI state (isModalOpen, activeTab).
+    *   Derived statistics for dashboard widgets (e.g., calculating total earnings from the session list).
+
+## 3. Immutable vs. Mutable Data
+*   **Immutability:** All state updates in React must treat data as immutable.
+    *   Arrays are updated via `filter`, `map`, or spread syntax `[...prev, newItem]`.
+    *   Objects are updated via spread `...prev`.
+    *   This ensures React's reconciliation process works correctly and prevents side effects.
+*   **Mutable:** Only local temporary variables within functions or `useRef` values (like form inputs before submission or scroll positions) are treated as mutable.
+
+## 4. Optimistic UI Rules
+*   **Definition:** Updating the UI immediately upon user action, assuming the backend request will succeed.
+*   **Applied Scenarios:**
+    *   **"Save Tutor" (Heart Icon):** The UI toggles the heart instantly.
+    *   **Messaging:** New messages appear in the chat stream immediately while "sending".
+    *   **Booking:** The slot appears "booked" immediately after confirmation.
+*   **Rollback Strategy:** If the (hypothetical) API call fails, the state must be reverted, and a toast notification should inform the user of the error. In the current prototype, this is simulated via `setTimeout` success callbacks.

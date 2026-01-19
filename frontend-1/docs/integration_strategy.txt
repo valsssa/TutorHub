@@ -1,0 +1,102 @@
+
+# Integration Strategy: Frontend to Backend
+
+This document outlines the phased approach for connecting the EduConnect frontend prototype to a live backend, ensuring stability and allowing for parallel development.
+
+## 1. Feature-by-Feature Hookup Plan
+
+We will adopt a **vertical slice** integration strategy, enabling full functionality for one domain before moving to the next.
+
+### **Phase 1: Authentication & Identity (The Foundation)**
+*   **Goal:** Replace simulated login with real JWT exchange.
+*   **Endpoints:** `POST /auth/login`, `POST /auth/signup`, `GET /auth/me`.
+*   **Impact:**
+    *   Remove `setTimeout` in `services/api.ts` (currently simulating latency).
+    *   Store JWT in memory/HttpOnly cookie.
+    *   Replace `currentUser` state initialization in `App.tsx` with `null` -> `api.auth.getCurrentUser()`.
+
+### **Phase 2: Marketplace (Read-Only Data)**
+*   **Goal:** Populate the search grid with real tutor data.
+*   **Endpoints:** `GET /tutors`, `GET /tutors/:id`.
+*   **Impact:**
+    *   Update `api.tutors.getAll` to call the real API.
+    *   Update `MarketplacePage` to handle loading states and server-side filtering via the API service.
+    *   **Note:** Keep "Book" buttons disabled or pointing to a "Coming Soon" toast until Phase 3.
+
+### **Phase 3: Transactions & Scheduling (Write Operations)**
+*   **Goal:** Enable real booking and persistence.
+*   **Endpoints:** `POST /bookings`, `GET /users/sessions`.
+*   **Impact:**
+    *   Update `BookingModal` to send `studentId`, `tutorId`, and `slot` to the backend via `api.sessions.create`.
+    *   Handle Stripe Payment Intents in `PaymentPage`.
+    *   Update `api.sessions.getAll` to fetch from backend.
+
+### **Phase 4: Real-Time Features (Complex)**
+*   **Goal:** Live chat and video via WebSockets/WebRTC.
+*   **Endpoints:** `WS /chat`, `POST /video/token`.
+*   **Impact:**
+    *   Replace `MessagingSystem` local state with a WebSocket listener.
+    *   Integrate Daily.co/Agora SDK in `Classroom.tsx` using backend-generated tokens.
+
+---
+
+## 2. Configuration & Toggles
+
+We will use **Environment Variables** to control the data source. This allows the frontend to be built for "Demo Mode" (Mock) or "Production Mode" (Real) without code changes.
+
+### **Environment Variables**
+*   `REACT_APP_API_BASE_URL`: e.g., `https://api.educonnect.com/v1`
+*   `REACT_APP_USE_MOCK_DATA`: `true` | `false`
+
+### **Implementation Strategy: The Service Layer**
+A service abstraction layer has been implemented (`services/api.ts`) to decouple UI components from data sources.
+
+**`services/api.ts`**
+```typescript
+import * as mock from './mockData';
+
+// Example structure
+export const api = {
+  tutors: {
+    getAll: async () => {
+       // Check env var here to decide between mock or real fetch
+       return [...mock.MOCK_TUTORS]; 
+    }
+  }
+}
+```
+
+---
+
+## 3. Parallel Mock + Real Data Mode
+
+During the transition, we may need a hybrid state where some features are real and others are mock.
+
+### **Hybrid Configuration**
+Instead of a global boolean, use granular flags:
+
+```json
+{
+  "features": {
+    "useRealAuth": true,
+    "useRealMarketplace": true,
+    "useRealBooking": false, // Still in development
+    "useRealChat": false
+  }
+}
+```
+
+### **Fallback Strategy**
+1.  Attempt to fetch data from the API.
+2.  If the API returns `503 Service Unavailable` or times out:
+    *   **Dev Environment:** Fallback to Mock Data (seamless dev experience).
+    *   **Prod Environment:** Show Error Toast (don't show mock data to real users).
+
+---
+
+## 4. Migration Checklist
+
+1.  [x] Create `services/api` folder and move all `constants.ts` access behind service functions.
+2.  [ ] Implement `AuthProvider` context to manage Token state globally.
+3.  [ ] Replace `useState` data loading with `useQuery` (TanStack Query) to handle caching and loading states automatically.
+4.  [ ] Verify `User` types match backend DTOs exactly.

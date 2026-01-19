@@ -1,0 +1,67 @@
+
+# Routes & Navigation Map
+
+EduConnect uses a custom internal routing system managed by `NavigationContext` and `AppRouter`. The application state `currentView` determines which page component is rendered.
+
+## ViewState Definition
+Defined in `domain/types.ts`.
+
+| ViewState | Page Component | Description |
+| :--- | :--- | :--- |
+| `home` | `MarketplacePage` | The main landing page and tutor search grid. |
+| `login` | `LoginPage` | Authentication forms (Login/Signup). |
+| `tutor-profile` | `TutorProfilePage` | Public profile details for a specific tutor. |
+| `payment` | `PaymentPage` | Checkout flow for booking a lesson. |
+| `classroom` | `Classroom` | The video lesson interface. |
+| `settings` | `SettingsPage` | User account configuration. |
+| `referral` | `ReferralPage` | "Refer a Friend" promotional page. |
+
+### Student Views
+| ViewState | Page Component | Description |
+| :--- | :--- | :--- |
+| `student-lessons` | `StudentLessonsPage` | List of upcoming and past sessions. |
+| `student-saved-tutors` | `SavedTutorsPage` | Bookmarked tutors list. |
+| `student-dashboard` | `StudentDashboard` | (Deprecated/Merged) Main hub. |
+
+### Tutor Views
+| ViewState | Page Component | Description |
+| :--- | :--- | :--- |
+| `tutor-dashboard` | `TutorDashboard` | Main tutor hub with stats and schedule. |
+| `tutor-students` | `TutorStudentsPage` | CRM list of students. |
+| `tutor-earnings` | `TutorEarningsPage` | Financial history and analytics. |
+| `tutor-profile-editor` | `TutorProfileEditor` | Form to update public profile. |
+
+### Admin Views
+| ViewState | Page Component | Description |
+| :--- | :--- | :--- |
+| `admin-dashboard` | `AdminDashboard` | Overview stats and quick actions. |
+| `admin-revenue` | `AdminRevenuePage` | Detailed financial reports. |
+| `admin-verifications` | `AdminVerificationsPage` | Queue of pending document reviews. |
+| `admin-sessions` | `AdminSessionsPage` | Global session history. |
+| `admin-tutors` | `AdminTutorsPage` | Master list of all registered tutors. |
+| `admin-manage` | `AdminManagePage` | Management of admin user accounts. |
+
+### Static & Support Views
+| ViewState | Page Component | Description |
+| :--- | :--- | :--- |
+| `pricing` | `PricingPage` | Pricing tiers info. |
+| `mobile-app` | `MobileAppPage` | App download landing page. |
+| `become-tutor` | `BecomeTutorPage` | Tutor recruitment landing page. |
+| `success-stories` | `SuccessStoriesPage` | User testimonials. |
+| `affiliate-program` | `AffiliateProgramPage` | Partner program info. |
+| `tutor-rules` | `TutorRulesPage` | Code of conduct. |
+| `cancellation-policy` | `CancellationPolicyPage` | Policy document. |
+| `support` | `SupportPage` | Help center and FAQ. |
+| `legal-compliance` | `LegalPage` | Compliance logs and docs hub. |
+| `terms` | `TermsPage` | Terms of Service. |
+| `privacy` | `PrivacyPage` | Privacy Policy. |
+| `cookie-policy` | `CookiePolicyPage` | Cookie usage info. |
+
+## Navigation Actions
+Exposed via `useNavigation()` hook.
+
+*   `navigate(view: ViewState)`: Switch to a specific page.
+*   `goToProfile(tutor: Tutor)`: Open `tutor-profile` and set `activeTutor`.
+*   `goToBooking(tutor: Tutor, slot?: string)`: Open `payment` flow.
+*   `startSession(session: Session)`: Open `classroom` view.
+*   `endSession(redirectView: ViewState)`: Close classroom and return to dashboard.

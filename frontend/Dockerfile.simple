@@ -1,0 +1,25 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Configure npm for corporate proxy
+RUN npm config set registry https://nexus.in.lazarev.cloud/repository/npm-group/
+
+# Copy package files and install only production dependencies
+COPY package.json ./
+RUN npm install --production --prefer-offline --no-audit
+
+# Copy pre-built files
+COPY .next ./.next
+COPY public ./public
+COPY next.config.js ./
+
+# Environment variables
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Expose port
+EXPOSE 3000
+
+# Start the application
+CMD ["npm", "start"]

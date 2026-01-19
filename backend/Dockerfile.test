@@ -1,0 +1,33 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Configure Debian proxy
+RUN echo "deb https://nexus.in.lazarev.cloud/repository/debian-proxy/ bookworm main" > /etc/apt/sources.list && \
+    echo "deb https://nexus.in.lazarev.cloud/repository/debian-proxy/ bookworm-updates main" >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configure pip proxy
+RUN pip config set global.index-url https://nexus.in.lazarev.cloud/repository/pypi-proxy/simple && \
+    pip config set global.trusted-host nexus.in.lazarev.cloud
+
+# Install linting and formatting tools via pip
+RUN pip install --no-cache-dir flake8 black isort
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN echo "Checking installed versions..." && \
+    python3 --version && \
+    pip3 --version && \
+    python3 -m flake8 --version && \
+    black --version && \
+    isort --version && \
+    pytest --version
+
+COPY . .
+
+CMD ["pytest", "-v"]

@@ -1,0 +1,46 @@
+FROM python:3.12-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+WORKDIR /app
+
+# Configure Debian proxy
+RUN echo "deb https://nexus.in.lazarev.cloud/repository/debian-proxy/ bookworm main" > /etc/apt/sources.list && \
+    echo "deb https://nexus.in.lazarev.cloud/repository/debian-proxy/ bookworm-updates main" >> /etc/apt/sources.list
+
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        postgresql-client \
+        wait-for-it \
+        gcc \
+        libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configure pip proxy
+RUN pip config set global.index-url https://nexus.in.lazarev.cloud/repository/pypi-proxy/simple && \
+    pip config set global.trusted-host nexus.in.lazarev.cloud
+
+# Install Python dependencies for E2E testing
+RUN pip install --no-cache-dir \
+    requests \
+    pytest \
+    psycopg2-binary
+
+# Copy test files
+COPY backend/tests/ ./backend/tests/
+COPY backend/requirements.txt .
+
+# Install additional test dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create non-root user
+RUN adduser --disabled-password --gecos '' testuser
+RUN chown -R testuser:testuser /app
+USER testuser
+
+# Default command - run integration tests
+CMD ["python", "-m", "pytest", "backend/tests/", "-v", "--tb=short"]

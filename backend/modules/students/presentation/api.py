@@ -1,0 +1,100 @@
+"""Students API routes."""
+
+import logging
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from sqlalchemy.orm import Session
+
+from core.dependencies import get_current_student_user
+from database import get_db
+from models import StudentProfile, User
+from schemas import StudentProfileResponse, StudentProfileUpdate
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
+
+router = APIRouter(prefix="/api/profile/student", tags=["students"])
+limiter = Limiter(key_func=get_remote_address)
+
+
+@router.get("/me", response_model=StudentProfileResponse)
+@limiter.limit("20/minute")
+async def get_student_profile(
+    request: Request,
+    current_user: User = Depends(get_current_student_user),
+    db: Session = Depends(get_db),
+):
+    """Get current student's profile."""
+    try:
+        logger.debug(f"Fetching student profile for user: {current_user.id}")
+        profile = (
+            db.query(StudentProfile)
+            .filter(StudentProfile.user_id == current_user.id)
+            .first()
+        )
+        if not profile:
+            logger.info(f"Creating new student profile for user: {current_user.id}")
+            profile = StudentProfile(user_id=current_user.id)
+            db.add(profile)
+            db.commit()
+            db.refresh(profile)
+        return profile
+    except Exception as e:
+        logger.error(
+            f"Error fetching student profile for user {current_user.id}: {str(e)}",
+            exc_info=True,
+        )
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve student profile",
+        )
+
+
+@router.patch("/me", response_model=StudentProfileResponse)
+@limiter.limit("10/minute")
+async def update_student_profile(
+    request: Request,
+    update_data: StudentProfileUpdate,
+    current_user: User = Depends(get_current_student_user),
+    db: Session = Depends(get_db),
+):
+    """Update student profile."""
+    try:
+        logger.info(f"Updating student profile for user: {current_user.id}")
+        profile = (
+            db.query(StudentProfile)
+            .filter(StudentProfile.user_id == current_user.id)
+            .first()
+        )
+        if not profile:
+            logger.info(f"Creating new student profile for user: {current_user.id}")
+            profile = StudentProfile(user_id=current_user.id)
+            db.add(profile)
+
+        # Update only provided fields (sanitization handled by Pydantic)
+        for field, value in update_data.model_dump(exclude_unset=True).items():
+            setattr(profile, field, value)
+
+        # Update timestamp in application code (no DB triggers)
+        from datetime import datetime, timezone
+        profile.updated_at = datetime.now(timezone.utc)
+
+        db.commit()
+        db.refresh(profile)
+        logger.info(f"Student profile updated successfully for user: {current_user.id}")
+        return profile
+    except Exception as e:
+        logger.error(
+            f"Error updating student profile for user {current_user.id}: {str(e)}",
+            exc_info=True,
+        )
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update student profile",
+        )

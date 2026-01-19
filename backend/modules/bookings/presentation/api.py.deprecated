@@ -1,0 +1,501 @@
+"""Bookings API routes."""
+
+import logging
+from decimal import Decimal
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from sqlalchemy.orm import Session
+
+from core.audit import AuditLogger
+from core.currency import calculate_platform_fee
+from core.dependencies import get_current_student_user, get_current_user
+from core.sanitization import sanitize_text_input, sanitize_url
+from database import get_db
+from models import Booking, TutorProfile, User
+from schemas import BookingCreate, BookingResponse, BookingStatusUpdate
+
+logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
+
+router = APIRouter(prefix="/api/bookings", tags=["bookings"])
+
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+
+def _determine_lesson_type(booking: Booking) -> str:
+    """Determine lesson type from booking - extracted to prevent duplication."""
+    if booking.pricing_option_id:
+        return "package"
+    elif booking.pricing_type == "trial":
+        return "trial"
+    else:
+        return "regular"
+
+
+@router.get("", response_model=List[BookingResponse])
+@limiter.limit("100/minute")  # Increased rate limit
+async def list_my_bookings(
+    request: Request,
+    page: int = 1,
+    page_size: int = 50,  # Increased default for better UX
+    status: Optional[str] = Query(None, description="Filter by status"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get current user's bookings with pagination and filtering."""
+    # Build query based on role
+    if current_user.role == "student":
+        query = db.query(Booking).filter(Booking.student_id == current_user.id)
+    elif current_user.role == "tutor":
+        profile = (
+            db.query(TutorProfile)
+            .filter(TutorProfile.user_id == current_user.id)
+            .first()
+        )
+        if not profile:
+            return []
+        query = db.query(Booking).filter(Booking.tutor_profile_id == profile.id)
+    else:  # admin
+        query = db.query(Booking)
+
+    # Apply status filter if provided
+    if status:
+        query = query.filter(Booking.status == status)
+
+    # Order by start_time descending (most recent first)
+    query = query.order_by(Booking.start_time.desc())
+
+    # Apply pagination
+    offset = (page - 1) * page_size
+    bookings = query.offset(offset).limit(page_size).all()
+
+    # Enrich booking data for tutors and students
+    enriched_bookings = []
+    for booking in bookings:
+        booking_dict = BookingResponse.model_validate(booking).model_dump()
+
+        # Add tutor-specific fields
+        if current_user.role == "tutor":
+            student = db.query(User).filter(User.id == booking.student_id).first()
+            if student:
+                booking_dict["student_avatar_url"] = None
+                booking_dict["student_language_level"] = getattr(
+                    student, "learning_goal", None
+                )
+                booking_dict["student_timezone"] = student.timezone
+
+            # Calculate tutor earnings using centralized fee calculation
+            total_cents = int(booking.total_amount * 100)
+            _, tutor_earnings_cents = calculate_platform_fee(
+                total_cents, Decimal("20.0")
+            )
+            booking_dict["tutor_earnings"] = Decimal(tutor_earnings_cents) / 100
+
+            # Determine lesson type (using shared helper)
+            booking_dict["lesson_type"] = _determine_lesson_type(booking)
+
+        # Add student-specific fields
+        elif current_user.role == "student":
+            tutor_profile = (
+                db.query(TutorProfile)
+                .filter(TutorProfile.id == booking.tutor_profile_id)
+                .first()
+            )
+            if tutor_profile:
+                booking_dict["tutor_photo_url"] = None
+                booking_dict["tutor_rating"] = (
+                    float(tutor_profile.average_rating)
+                    if tutor_profile.average_rating
+                    else None
+                )
+                booking_dict["tutor_language"] = (
+                    tutor_profile.languages[0] if tutor_profile.languages else None
+                )
+                booking_dict["tutor_total_lessons"] = tutor_profile.total_sessions
+
+            # Determine lesson type (using shared helper)
+            booking_dict["lesson_type"] = _determine_lesson_type(booking)
+
+        enriched_bookings.append(BookingResponse(**booking_dict))
+
+    return enriched_bookings
+
+
+@router.post("", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/minute")
+async def create_booking(
+    request: Request,
+    booking_data: BookingCreate,
+    current_user: User = Depends(get_current_student_user),
+    db: Session = Depends(get_db),
+):
+    """Create new booking request."""
+    # Verify tutor exists and is approved
+    tutor = (
+        db.query(TutorProfile)
+        .filter(
+            TutorProfile.id == booking_data.tutor_profile_id,
+            TutorProfile.is_approved.is_(True),
+        )
+        .first()
+    )
+    if not tutor:
+        raise HTTPException(status_code=404, detail="Tutor not found or not approved")
+
+    # Calculate duration and amount
+    duration_hours = (
+        booking_data.end_time - booking_data.start_time
+    ).total_seconds() / 3600
+    if duration_hours <= 0:
+        raise HTTPException(status_code=400, detail="Invalid booking duration")
+    if duration_hours > 8:
+        raise HTTPException(status_code=400, detail="Booking cannot exceed 8 hours")
+
+    # Check for booking conflicts (same tutor, overlapping time)
+    conflicting_bookings = (
+        db.query(Booking)
+        .filter(
+            Booking.tutor_profile_id == booking_data.tutor_profile_id,
+            Booking.status.in_(["pending", "confirmed"]),
+            Booking.start_time < booking_data.end_time,
+            Booking.end_time > booking_data.start_time,
+        )
+        .first()
+    )
+    if conflicting_bookings:
+        raise HTTPException(
+            status_code=409, detail="Tutor is not available at this time"
+        )
+
+    total_amount = tutor.hourly_rate * Decimal(str(duration_hours))
+
+    # Sanitize user inputs
+    topic = (
+        sanitize_text_input(booking_data.topic, max_length=255)
+        if booking_data.topic
+        else None
+    )
+    notes = (
+        sanitize_text_input(booking_data.notes, max_length=2000)
+        if booking_data.notes
+        else None
+    )
+
+    try:
+        # Create booking
+        booking = Booking(
+            tutor_profile_id=booking_data.tutor_profile_id,
+            student_id=current_user.id,
+            subject_id=booking_data.subject_id,
+            start_time=booking_data.start_time,
+            end_time=booking_data.end_time,
+            topic=topic,
+            notes=notes,
+            hourly_rate=tutor.hourly_rate,
+            total_amount=total_amount,
+            status="pending",
+        )
+
+        db.add(booking)
+        db.flush()  # Get booking ID before logging
+
+        # Log booking creation decision
+        AuditLogger.log_action(
+            db=db,
+            table_name="bookings",
+            record_id=booking.id,
+            action="INSERT",
+            new_data={
+                "tutor_profile_id": booking_data.tutor_profile_id,
+                "subject_id": booking_data.subject_id,
+                "start_time": booking_data.start_time.isoformat(),
+                "end_time": booking_data.end_time.isoformat(),
+                "hourly_rate": float(tutor.hourly_rate),
+                "total_amount": float(total_amount),
+                "status": "pending",
+            },
+            changed_by=current_user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+        db.commit()
+        db.refresh(booking)
+
+        logger.info(
+            f"Booking created: ID {booking.id} by student {current_user.email} "
+            f"for tutor {tutor.id} - Decision logged"
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating booking: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create booking")
+
+    return booking
+
+
+@router.patch("/{booking_id}", response_model=BookingResponse)
+@limiter.limit("30/minute")
+async def update_booking_status(
+    request: Request,
+    booking_id: int,
+    status_update: BookingStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update booking status with proper authorization and validation."""
+    from datetime import datetime as dt
+
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Check permissions
+    if current_user.role == "tutor":
+        profile = (
+            db.query(TutorProfile)
+            .filter(TutorProfile.user_id == current_user.id)
+            .first()
+        )
+        if not profile or booking.tutor_profile_id != profile.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif current_user.role == "student":
+        if booking.student_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        # Students can only cancel bookings
+        if status_update.status not in ["cancelled"]:
+            raise HTTPException(
+                status_code=403, detail="Students can only cancel bookings"
+            )
+        # Prevent canceling already completed/no-show bookings
+        if booking.status in ["completed", "no_show"]:
+            raise HTTPException(
+                status_code=400, detail="Cannot cancel completed or no-show bookings"
+            )
+    # Admin can update any booking
+
+    # Validate status transitions
+    valid_transitions = {
+        "pending": ["confirmed", "cancelled"],
+        "confirmed": ["completed", "cancelled", "no_show"],
+        "cancelled": [],  # Cannot change from cancelled
+        "completed": [],  # Cannot change from completed
+        "no_show": [],  # Cannot change from no_show
+    }
+
+    if booking.status in valid_transitions:
+        if status_update.status not in valid_transitions[booking.status]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status transition from {booking.status} to {status_update.status}",
+            )
+
+    # Sanitize meeting URL
+    meeting_url = None
+    if status_update.meeting_url:
+        meeting_url = sanitize_url(status_update.meeting_url)
+        if not meeting_url:
+            raise HTTPException(status_code=400, detail="Invalid meeting URL")
+
+    # Sanitize cancellation reason
+    cancellation_reason = None
+    if status_update.cancellation_reason:
+        cancellation_reason = sanitize_text_input(
+            status_update.cancellation_reason, max_length=500
+        )
+
+    try:
+        old_status = booking.status
+        booking.status = status_update.status
+
+        # Track decision: confirmed
+        if status_update.status == "confirmed" and old_status == "pending":
+            booking.confirmed_at = dt.utcnow()
+            booking.confirmed_by = current_user.id
+            booking.is_instant_booking = status_update.is_instant_booking or False
+
+        # Track decision: cancelled
+        if status_update.status == "cancelled":
+            booking.cancelled_at = dt.utcnow()
+            booking.cancellation_reason = cancellation_reason or "No reason provided"
+
+        if meeting_url:
+            booking.meeting_url = meeting_url
+
+        # Log the decision to audit trail
+        AuditLogger.log_booking_decision(
+            db=db,
+            booking_id=booking_id,
+            action="UPDATE",
+            user_id=current_user.id,
+            old_status=old_status,
+            new_status=status_update.status,
+            reason=cancellation_reason,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+        db.commit()
+        db.refresh(booking)
+
+        logger.info(
+            f"Booking {booking_id} status updated to {status_update.status} "
+            f"by {current_user.role} {current_user.email}"
+            f" - Decision tracked at {dt.utcnow()}"
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating booking status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update booking")
+
+    return booking
+
+
+@router.post(
+    "/{booking_id}/rebook",
+    response_model=BookingResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("10/minute")
+async def rebook_session(
+    request: Request,
+    booking_id: int,
+    booking_data: BookingCreate,
+    current_user: User = Depends(get_current_student_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Rebook a completed session with the same tutor.
+
+    Decision tracking: Records that student CHOSE to book the same tutor again,
+    which is a strong signal of tutor quality and student satisfaction.
+    """
+    from datetime import datetime as dt
+
+    # Get original booking
+    original_booking = (
+        db.query(Booking)
+        .filter(Booking.id == booking_id, Booking.student_id == current_user.id)
+        .first()
+    )
+
+    if not original_booking:
+        raise HTTPException(status_code=404, detail="Original booking not found")
+
+    # Verify original booking is completed
+    if original_booking.status != "completed":
+        raise HTTPException(
+            status_code=400, detail="Can only rebook completed sessions"
+        )
+
+    # Verify tutor exists and is approved
+    tutor = (
+        db.query(TutorProfile)
+        .filter(
+            TutorProfile.id == booking_data.tutor_profile_id,
+            TutorProfile.is_approved.is_(True),
+        )
+        .first()
+    )
+    if not tutor:
+        raise HTTPException(status_code=404, detail="Tutor not found or not approved")
+
+    # Calculate duration and amount
+    duration_hours = (
+        booking_data.end_time - booking_data.start_time
+    ).total_seconds() / 3600
+    if duration_hours <= 0:
+        raise HTTPException(status_code=400, detail="Invalid booking duration")
+    if duration_hours > 8:
+        raise HTTPException(status_code=400, detail="Booking cannot exceed 8 hours")
+
+    # Check for booking conflicts
+    conflicting_bookings = (
+        db.query(Booking)
+        .filter(
+            Booking.tutor_profile_id == booking_data.tutor_profile_id,
+            Booking.status.in_(["pending", "confirmed"]),
+            Booking.start_time < booking_data.end_time,
+            Booking.end_time > booking_data.start_time,
+        )
+        .first()
+    )
+    if conflicting_bookings:
+        raise HTTPException(
+            status_code=409, detail="Tutor is not available at this time"
+        )
+
+    total_amount = tutor.hourly_rate * Decimal(str(duration_hours))
+
+    # Sanitize user inputs
+    topic = (
+        sanitize_text_input(booking_data.topic, max_length=255)
+        if booking_data.topic
+        else None
+    )
+    notes = (
+        sanitize_text_input(booking_data.notes, max_length=2000)
+        if booking_data.notes
+        else None
+    )
+
+    try:
+        # Create new booking with rebooking flag
+        booking = Booking(
+            tutor_profile_id=booking_data.tutor_profile_id,
+            student_id=current_user.id,
+            subject_id=booking_data.subject_id,
+            start_time=booking_data.start_time,
+            end_time=booking_data.end_time,
+            topic=topic,
+            notes=notes,
+            hourly_rate=tutor.hourly_rate,
+            total_amount=total_amount,
+            status="pending",
+            is_rebooked=True,
+            original_booking_id=booking_id,
+        )
+
+        db.add(booking)
+        db.flush()
+
+        # Track the rebooking decision in audit log
+        AuditLogger.log_action(
+            db=db,
+            table_name="bookings",
+            record_id=booking.id,
+            action="REBOOK",
+            new_data={
+                "original_booking_id": booking_id,
+                "tutor_profile_id": booking_data.tutor_profile_id,
+                "rebooked_at": dt.utcnow().isoformat(),
+                "decision": "student_chose_same_tutor",
+            },
+            changed_by=current_user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+        # Mark original booking as rebooked (decision breadcrumb)
+        original_booking.is_rebooked = True
+
+        db.commit()
+        db.refresh(booking)
+
+        logger.info(
+            f"Rebooked session: Original {booking_id} -> New {booking.id} "
+            f"by student {current_user.email} - Retention decision tracked"
+        )
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error rebooking session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to rebook session")
+
+    return booking

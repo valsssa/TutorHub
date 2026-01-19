@@ -1,0 +1,656 @@
+"""
+Enhanced Bookings API routes integrating booking_detail.md spec.
+Combines existing functionality with new policy-based booking system.
+"""
+
+import logging
+from datetime import datetime, timedelta
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from sqlalchemy.orm import Session, joinedload
+
+from core.audit import AuditLogger
+from core.dependencies import get_current_tutor_profile, get_current_user
+from database import get_db
+from models import Booking, TutorProfile, User
+from modules.bookings.policy_engine import ReschedulePolicy
+from modules.bookings.schemas import (
+    BookingCancelRequest,
+    BookingConfirmRequest,
+    BookingCreateRequest,
+    BookingDeclineRequest,
+    BookingDTO,
+    BookingListResponse,
+    BookingRescheduleRequest,
+    MarkNoShowRequest,
+)
+from modules.bookings.service import BookingService
+
+# Also import legacy schemas for backward compatibility
+
+logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
+
+router = APIRouter(prefix="/api/bookings", tags=["bookings"])
+
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+
+# DEPRECATED: Use booking_to_dto from service.py instead
+# Kept as alias for backward compatibility
+def _booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
+    """Convert booking model to DTO - delegates to shared utility."""
+    from modules.bookings.service import booking_to_dto
+
+    return booking_to_dto(booking, db)
+
+
+def require_role(allowed_roles: List[str]):
+    """Dependency factory to check user role."""
+
+    def _check_role(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Only {', '.join(allowed_roles)} can access this endpoint",
+            )
+        return current_user
+
+    return _check_role
+
+
+# ============================================================================
+# Student Booking Endpoints
+# ============================================================================
+
+
+@router.post("", response_model=BookingDTO, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+async def create_booking(
+    request_data: BookingCreateRequest,
+    req: Request,
+    current_user: User = Depends(require_role(["student"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Create a new booking (student only).
+
+    - Validates tutor availability
+    - Checks for conflicts
+    - Calculates pricing with platform fee
+    - Auto-confirms if tutor has auto_confirm enabled
+    """
+    service = BookingService(db)
+
+    try:
+        booking = service.create_booking(
+            student_id=current_user.id,
+            tutor_id=request_data.tutor_id,
+            start_at=request_data.start_at,
+            duration_minutes=request_data.duration_minutes,
+            lesson_type=request_data.lesson_type,
+            subject_id=request_data.subject_id,
+            notes_student=request_data.notes_student,
+            package_id=request_data.use_package_id,
+        )
+
+        db.commit()
+        db.refresh(booking)
+
+        # Audit log
+        AuditLogger.log_action(
+            db=db,
+            user_id=current_user.id,
+            action="BOOKING_CREATED",
+            object_type="booking",
+            object_id=booking.id,
+            ip_address=req.client.host if req.client else None,
+        )
+
+        return _booking_to_dto(booking, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create booking: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create booking: {str(e)}",
+        )
+
+
+@router.get("", response_model=BookingListResponse)
+@limiter.limit("100/minute")
+async def list_bookings(
+    req: Request,
+    status_filter: Optional[str] = Query(None, alias="status"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    List bookings for current user.
+
+    - Students see their bookings
+    - Tutors see their bookings
+    - Filter by status (upcoming, pending, completed, cancelled)
+    """
+    query = db.query(Booking).options(
+        joinedload(Booking.tutor_profile)
+        .joinedload(TutorProfile.user)
+        .joinedload(User.profile),
+        joinedload(Booking.student).joinedload(User.profile),
+        joinedload(Booking.subject),
+    )
+
+    # Filter by user role
+    if current_user.role == "student":
+        query = query.filter(Booking.student_id == current_user.id)
+    elif current_user.role == "tutor":
+        tutor_profile = (
+            db.query(TutorProfile)
+            .filter(TutorProfile.user_id == current_user.id)
+            .first()
+        )
+        if not tutor_profile:
+            return BookingListResponse(
+                bookings=[], total=0, page=page, page_size=page_size
+            )
+        query = query.filter(Booking.tutor_profile_id == tutor_profile.id)
+
+    # Filter by status
+    if status_filter:
+        if status_filter.lower() == "upcoming":
+            query = query.filter(
+                Booking.status.in_(["PENDING", "CONFIRMED", "pending", "confirmed"]),
+                Booking.start_time >= datetime.utcnow(),
+            )
+        elif status_filter.lower() == "pending":
+            query = query.filter(Booking.status.in_(["PENDING", "pending"]))
+        elif status_filter.lower() == "completed":
+            query = query.filter(Booking.status.in_(["COMPLETED", "completed"]))
+        elif status_filter.lower() == "cancelled":
+            query = query.filter(
+                Booking.status.in_(
+                    [
+                        "CANCELLED_BY_STUDENT",
+                        "CANCELLED_BY_TUTOR",
+                        "cancelled",
+                        "NO_SHOW_STUDENT",
+                        "NO_SHOW_TUTOR",
+                    ]
+                )
+            )
+
+    # Get total count
+    total = query.count()
+
+    # Order by start time descending
+    query = query.order_by(Booking.start_time.desc())
+
+    # Paginate
+    offset = (page - 1) * page_size
+    bookings = query.offset(offset).limit(page_size).all()
+
+    # Convert to DTOs
+    booking_dtos = [_booking_to_dto(booking, db) for booking in bookings]
+
+    return BookingListResponse(
+        bookings=booking_dtos,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/{booking_id}", response_model=BookingDTO)
+@limiter.limit("100/minute")
+async def get_booking_details(
+    booking_id: int,
+    req: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get detailed booking information."""
+    booking = (
+        db.query(Booking)
+        .options(
+            joinedload(Booking.tutor_profile)
+            .joinedload(TutorProfile.user)
+            .joinedload(User.profile),
+            joinedload(Booking.student).joinedload(User.profile),
+            joinedload(Booking.subject),
+        )
+        .filter(Booking.id == booking_id)
+        .first()
+    )
+
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Booking not found",
+        )
+
+    # Check authorization
+    if current_user.role == "student" and booking.student_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this booking",
+        )
+    elif current_user.role == "tutor":
+        tutor_profile = (
+            db.query(TutorProfile)
+            .filter(TutorProfile.user_id == current_user.id)
+            .first()
+        )
+        if not tutor_profile or booking.tutor_profile_id != tutor_profile.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this booking",
+            )
+
+    return _booking_to_dto(booking, db)
+
+
+@router.post("/{booking_id}/cancel", response_model=BookingDTO)
+@limiter.limit("20/minute")
+async def cancel_booking(
+    booking_id: int,
+    request_data: BookingCancelRequest,
+    req: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Cancel a booking with policy enforcement.
+
+    - Students can cancel their bookings
+    - Tutors can cancel bookings assigned to them
+    - Applies refund policy based on timing
+    - >= 12h before: full refund
+    - < 12h before: no refund (or penalty for tutor)
+    """
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Booking not found",
+        )
+
+    # Check ownership
+    if current_user.role == "student" and booking.student_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to cancel this booking",
+        )
+    elif current_user.role == "tutor":
+        tutor_profile = (
+            db.query(TutorProfile)
+            .filter(TutorProfile.user_id == current_user.id)
+            .first()
+        )
+        if not tutor_profile or booking.tutor_profile_id != tutor_profile.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to cancel this booking",
+            )
+
+    try:
+        service = BookingService(db)
+        cancelled_booking = service.cancel_booking(
+            booking=booking,
+            cancelled_by_role=current_user.role.upper(),
+            reason=request_data.reason,
+        )
+
+        db.commit()
+        db.refresh(cancelled_booking)
+
+        # Audit log
+        AuditLogger.log_action(
+            db=db,
+            user_id=current_user.id,
+            action=f"BOOKING_CANCELLED_BY_{current_user.role.upper()}",
+            object_type="booking",
+            object_id=booking.id,
+            ip_address=req.client.host if req.client else None,
+        )
+
+        return _booking_to_dto(cancelled_booking, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to cancel booking: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to cancel booking: {str(e)}",
+        )
+
+
+@router.post("/{booking_id}/reschedule", response_model=BookingDTO)
+@limiter.limit("20/minute")
+async def reschedule_booking(
+    booking_id: int,
+    request_data: BookingRescheduleRequest,
+    req: Request,
+    current_user: User = Depends(require_role(["student"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Reschedule a booking (student only).
+
+    - Must be >= 12h before original time
+    - Checks new time for conflicts
+    """
+    booking = (
+        db.query(Booking)
+        .filter(
+            Booking.id == booking_id,
+            Booking.student_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Booking not found",
+        )
+
+    try:
+        service = BookingService(db)
+
+        # Validate reschedule is allowed
+        decision = ReschedulePolicy.evaluate_reschedule(
+            booking_start_at=booking.start_time,
+            now=datetime.utcnow(),
+            new_start_at=request_data.new_start_at,
+        )
+
+        if not decision.allow:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=decision.message,
+            )
+
+        # Calculate new end time
+        duration = (booking.end_time - booking.start_time).total_seconds() / 60
+        new_end_at = request_data.new_start_at + timedelta(minutes=duration)
+
+        # Check for conflicts at new time
+        tutor_user = booking.tutor_profile.user if booking.tutor_profile else None
+        if tutor_user:
+            conflicts = service.check_conflicts(
+                tutor_id=tutor_user.id,
+                start_at=request_data.new_start_at,
+                end_at=new_end_at,
+                exclude_booking_id=booking.id,
+            )
+            if conflicts:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Tutor not available at new time: {conflicts}",
+                )
+
+        # Update booking
+        booking.start_time = request_data.new_start_at
+        booking.end_time = new_end_at
+        booking.notes = (
+            booking.notes or ""
+        ) + f"\n[Rescheduled at {datetime.utcnow()}]"
+
+        db.commit()
+        db.refresh(booking)
+
+        # Audit log
+        AuditLogger.log_action(
+            db=db,
+            user_id=current_user.id,
+            action="BOOKING_RESCHEDULED",
+            object_type="booking",
+            object_id=booking.id,
+            ip_address=req.client.host if req.client else None,
+        )
+
+        return _booking_to_dto(booking, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to reschedule booking: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reschedule booking: {str(e)}",
+        )
+
+
+# ============================================================================
+# Tutor Booking Endpoints
+# ============================================================================
+
+
+@router.post("/{booking_id}/confirm", response_model=BookingDTO)
+@limiter.limit("20/minute")
+async def confirm_booking(
+    booking_id: int,
+    request_data: BookingConfirmRequest,
+    req: Request,
+    tutor_profile: TutorProfile = Depends(get_current_tutor_profile),
+    db: Session = Depends(get_db),
+):
+    """
+    Confirm a pending booking (tutor only).
+
+    - Changes status from PENDING to CONFIRMED
+    - Generates join URL
+    """
+    booking = (
+        db.query(Booking)
+        .filter(
+            Booking.id == booking_id,
+            Booking.tutor_profile_id == tutor_profile.id,
+        )
+        .first()
+    )
+
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Booking not found",
+        )
+
+    if booking.status.upper() not in ["PENDING"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot confirm booking with status {booking.status}",
+        )
+
+    try:
+        booking.status = "CONFIRMED"
+
+        # Generate join URL
+        service = BookingService(db)
+        booking.join_url = service._generate_join_url(booking.id)
+
+        # Add tutor notes
+        if request_data.notes_tutor:
+            booking.notes_tutor = request_data.notes_tutor
+
+        db.commit()
+        db.refresh(booking)
+
+        # Audit log
+        AuditLogger.log_action(
+            db=db,
+            user_id=tutor_profile.user_id,
+            action="BOOKING_CONFIRMED",
+            object_type="booking",
+            object_id=booking.id,
+            ip_address=req.client.host if req.client else None,
+        )
+
+        return _booking_to_dto(booking, db)
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to confirm booking: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to confirm booking: {str(e)}",
+        )
+
+
+@router.post("/{booking_id}/decline", response_model=BookingDTO)
+@limiter.limit("20/minute")
+async def decline_booking(
+    booking_id: int,
+    request_data: BookingDeclineRequest,
+    req: Request,
+    tutor_profile: TutorProfile = Depends(get_current_tutor_profile),
+    db: Session = Depends(get_db),
+):
+    """
+    Decline a pending booking (tutor only).
+
+    - Changes status to CANCELLED_BY_TUTOR
+    - Refunds student automatically
+    """
+    booking = (
+        db.query(Booking)
+        .filter(
+            Booking.id == booking_id,
+            Booking.tutor_profile_id == tutor_profile.id,
+        )
+        .first()
+    )
+
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Booking not found",
+        )
+
+    try:
+        service = BookingService(db)
+        declined_booking = service.cancel_booking(
+            booking=booking,
+            cancelled_by_role="TUTOR",
+            reason=request_data.reason,
+        )
+
+        db.commit()
+        db.refresh(declined_booking)
+
+        # Audit log
+        AuditLogger.log_action(
+            db=db,
+            user_id=tutor_profile.user_id,
+            action="BOOKING_DECLINED",
+            object_type="booking",
+            object_id=booking.id,
+            ip_address=req.client.host if req.client else None,
+        )
+
+        return _booking_to_dto(declined_booking, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to decline booking: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to decline booking: {str(e)}",
+        )
+
+
+@router.post("/{booking_id}/mark-no-show", response_model=BookingDTO)
+@limiter.limit("20/minute")
+async def mark_no_show(
+    booking_id: int,
+    request_data: MarkNoShowRequest,
+    req: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Mark no-show (student or tutor can report).
+
+    - Tutor marks student no-show: tutor earns, student loses credit
+    - Student marks tutor no-show: student refunded, tutor penalized
+    - Can only be marked 10+ minutes after start time
+    - Must be within 24h of start time
+    """
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Booking not found",
+        )
+
+    # Check ownership
+    is_tutor = False
+    if current_user.role == "student" and booking.student_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized",
+        )
+    elif current_user.role == "tutor":
+        tutor_profile = (
+            db.query(TutorProfile)
+            .filter(TutorProfile.user_id == current_user.id)
+            .first()
+        )
+        if not tutor_profile or booking.tutor_profile_id != tutor_profile.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized",
+            )
+        is_tutor = True
+
+    try:
+        service = BookingService(db)
+        reporter_role = "TUTOR" if is_tutor else "STUDENT"
+
+        no_show_booking = service.mark_no_show(
+            booking=booking,
+            reporter_role=reporter_role,
+            notes=request_data.notes,
+        )
+
+        db.commit()
+        db.refresh(no_show_booking)
+
+        # Audit log
+        AuditLogger.log_action(
+            db=db,
+            user_id=current_user.id,
+            action=f"NO_SHOW_MARKED_BY_{reporter_role}",
+            object_type="booking",
+            object_id=booking.id,
+            ip_address=req.client.host if req.client else None,
+        )
+
+        return _booking_to_dto(no_show_booking, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to mark no-show: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to mark no-show: {str(e)}",
+        )

@@ -1,0 +1,134 @@
+
+# API Expectations (Frontend Perspective)
+
+This document outlines the contract expectations for backend endpoints required to support the current UI implementation.
+
+## 1. Authentication & User Profile
+
+### **Login / Signup**
+*   **Intent:** Authenticate a user and retrieve their identity and role.
+*   **Required Data:** `email`, `password` (payload).
+*   **Optional Data:** `name` (signup), `role` (signup).
+*   **Response:** JWT/Session Token, full `User` object.
+*   **Latency Tolerance:** Low (< 500ms).
+*   **Pagination/Sorting:** N/A.
+
+### **Get Current User**
+*   **Intent:** Re-hydrate session on page reload.
+*   **Required Data:** Session Token (Header).
+*   **Response:** `User` object including `balance` (Student) or `earnings` (Tutor).
+*   **Latency Tolerance:** Critical (< 100ms).
+
+---
+
+## 2. Marketplace & Discovery
+
+### **Search Tutors**
+*   **Intent:** Retrieve a list of tutors matching user filters.
+*   **Required Data:** `page` or `cursor`, `limit`.
+*   **Optional Data:** `searchQuery` (text), `subject` (enum/string), `maxPrice` (int), `minRating` (float), `country`, `availability` (day/time), `nativeSpeaker` (bool).
+*   **Response:** Array of `Tutor` summaries, `totalCount` (for pagination).
+*   **Latency Tolerance:** Low (< 200ms).
+*   **Pagination:** Required (Infinite scroll or numbered pages).
+*   **Sorting:** Support for `price_asc`, `price_desc`, `rating_desc`, `popularity`.
+
+### **Get Tutor Details**
+*   **Intent:** Load the full profile page for a specific tutor.
+*   **Required Data:** `tutorId`.
+*   **Response:** Full `Tutor` object, including `bio`, `education`, `availability` (next 7-30 days), and `reviewsList` (subset).
+*   **Latency Tolerance:** Low (< 200ms).
+
+### **Smart Search (AI Proxy)**
+*   **Intent:** Convert natural language query into structured filters.
+*   **Required Data:** `query` (string).
+*   **Response:** JSON object matching `FilterState` structure.
+*   **Latency Tolerance:** Medium (< 2s). UI shows loading state.
+
+---
+
+## 3. Booking & Sessions
+
+### **Create Booking**
+*   **Intent:** Reserve a slot and process transaction.
+*   **Required Data:** `tutorId`, `studentId`, `slot` (ISO Date), `duration` (mins), `paymentMethodId`.
+*   **Response:** `Session` object with `status: 'upcoming'`.
+*   **Latency Tolerance:** Medium (< 2s). Transactional integrity required.
+
+### **Get User Sessions**
+*   **Intent:** List schedule for dashboard (Student or Tutor).
+*   **Required Data:** `userId`.
+*   **Optional Data:** `status` (upcoming/completed/cancelled), `dateRange` (start/end).
+*   **Response:** Array of `Session` objects.
+*   **Latency Tolerance:** Low (< 300ms).
+*   **Pagination:** Required for "Past Lessons", optional for "Upcoming".
+*   **Sorting:** Date ascending (upcoming), Date descending (history).
+
+### **Submit Review**
+*   **Intent:** Rate a completed session.
+*   **Required Data:** `sessionId`, `rating` (1-5), `comment`.
+*   **Response:** Updated `Session` object, Updated `Review` object.
+*   **Latency Tolerance:** Medium.
+
+---
+
+## 4. Messaging
+
+### **Get Conversations**
+*   **Intent:** List active chat threads.
+*   **Required Data:** `userId`.
+*   **Response:** Array of `ChatThread` summaries (last message, unread count).
+*   **Latency Tolerance:** Low (< 200ms).
+*   **Pagination:** Lazy load on scroll.
+*   **Sorting:** Last updated descending.
+
+### **Get Messages (Thread)**
+*   **Intent:** Load message history for a specific chat.
+*   **Required Data:** `threadId`.
+*   **Optional Data:** `cursor` (for loading older messages).
+*   **Response:** Array of `ChatMessage`.
+*   **Latency Tolerance:** Low (< 100ms).
+
+### **Send Message**
+*   **Intent:** Post a new message.
+*   **Required Data:** `threadId` (or `recipientId`), `text`.
+*   **Response:** Created `ChatMessage`.
+*   **Latency Tolerance:** Very Low (UI is Optimistic).
+
+---
+
+## 5. Tutor Management
+
+### **Update Schedule**
+*   **Intent:** Modify available time slots.
+*   **Required Data:** `tutorId`, `availability` (Array of ISO Dates) OR `recurrenceRules`.
+*   **Response:** Success confirmation.
+*   **Latency Tolerance:** Low (< 500ms).
+
+### **Get Students (CRM)**
+*   **Intent:** Tutor views their student list.
+*   **Required Data:** `tutorId`.
+*   **Optional Data:** `filter` (active/archived).
+*   **Response:** Array of `StudentRow` view models.
+*   **Latency Tolerance:** Low.
+
+### **Verification Upload**
+*   **Intent:** Submit proof of credentials.
+*   **Required Data:** `tutorId`, `files` (Multipart/Form-data).
+*   **Response:** `VerificationRequest` object status.
+*   **Latency Tolerance:** High (dependent on file size).
+
+---
+
+## 6. Admin
+
+### **Get Verification Queue**
+*   **Intent:** List pending tutor approvals.
+*   **Required Data:** `status: 'pending'`.
+*   **Response:** Array of `VerificationRequest`.
+*   **Latency Tolerance:** Low.
+
+### **Review Verification**
+*   **Intent:** Approve or reject a request.
+*   **Required Data:** `requestId`, `status` ('approved' | 'rejected').
+*   **Response:** Updated Request status.
+*   **Latency Tolerance:** Low.

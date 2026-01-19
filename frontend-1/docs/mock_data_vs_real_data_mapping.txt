@@ -1,0 +1,64 @@
+
+# Mock Data vs Real Data Mapping
+
+This document serves as a "translation dictionary" for backend engineers to understand how the frontend's current mock data (`services/mockData.ts`) maps to the expected production schema.
+
+## 1. Mock Field → Real Field Mapping
+
+| Entity | Frontend Mock Field | Type (Mock) | Production Expectation | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| **User** | `id` | string ("u1") | UUID / Int | Frontend handles IDs as strings; backend should prefer UUIDv4. |
+| **User** | `balance` | number | Decimal(10,2) | currently stored on User; should be computed from `Transactions` table or Stripe Balance. |
+| **Tutor** | `rating` | number (4.9) | Decimal(3,1) | Computed aggregate from `Reviews` table. Do not store static unless cached. |
+| **Tutor** | `availability` | string[] | Relation | Currently a flat array of ISO strings. Production needs a `TimeSlots` table or RRule (Recurrence Rule) support. |
+| **Tutor** | `reviewsList` | Review[] | API Endpoint | Currently embedded. Must be moved to `GET /tutors/:id/reviews` with pagination. |
+| **Session**| `price` | number | Integer (cents) | Store currency as smallest unit (cents) to avoid floating point errors. |
+| **Session**| `status` | string | Enum | Map 'upcoming' -> `CONFIRMED`, 'completed' -> `COMPLETED`, 'cancelled' -> `CANCELLED`. |
+
+---
+
+## 2. Mock-Only Logic (To Be Replaced)
+
+The following logic exists solely for the prototype and must be replaced by backend logic:
+
+### **A. Authentication**
+*   **Current:** `api.auth.login` in `services/api.ts` simulates authentication with a timeout.
+*   **Real:**
+    *   Frontend sends credentials to `POST /auth/login`.
+    *   Backend validates hash.
+    *   Backend returns JWT (Access) and sets HttpOnly Cookie (Refresh).
+    *   Frontend stores User context.
+
+### **B. Booking Process**
+*   **Current:** `createSession` in `App.tsx` pushes a new object to the `sessions` array and decrements `currentUser.balance` locally.
+*   **Real:**
+    *   Atomic Transaction required.
+    *   1. Check slot availability (locking).
+    *   2. Create Payment Intent (Stripe).
+    *   3. Create Booking Record.
+    *   4. Webhook confirms payment -> Updates Booking Status.
+
+### **C. Search & Filtering**
+*   **Current:** `filteredTutors` in `App.tsx` performs `array.filter()` on the client side.
+*   **Real:**
+    *   Query parameters sent to API: `GET /tutors?subject=Math&max_price=50`.
+    *   Backend executes SQL `WHERE` clauses or queries Search Engine (Elasticsearch).
+
+### **D. Video Classroom**
+*   **Current:** `Classroom.tsx` displays static images and simulated chat messages.
+*   **Real:**
+    *   Integration with WebRTC provider (Daily.co / Agora / Twilio).
+    *   Backend generates a specific `room_token` for the session.
+
+---
+
+## 3. Planned Removals
+
+As the backend integration progresses, the following files and code blocks should be deleted:
+
+1.  **`services/mockData.ts`**: The entire file containing `MOCK_TUTORS`, `MOCK_SESSIONS`, etc.
+2.  **`App.tsx` State Initialization**:
+    *   Remove: `const [tutors, setTutors] = useState<Tutor[]>([]);` and the `useEffect` that calls `api.tutors.getAll()`.
+    *   Replace with: `const { data: tutors } = useQuery('tutors', api.tutors.getAll);` (using a real data fetching library).
+3.  **Simulated Latency**:
+    *   Remove all `delay()` calls in `services/api.ts` used to fake loading states.

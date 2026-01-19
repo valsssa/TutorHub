@@ -1,0 +1,512 @@
+# Auth Template - LLM Development Rules
+
+## Project Overview
+This is a production-ready authentication template with role-based access control (user/admin).
+- **Backend**: Python 3.12 + FastAPI + SQLAlchemy + PostgreSQL
+- **Frontend**: Next.js 15 + TypeScript + Tailwind CSS
+- **Infrastructure**: Docker + Docker Compose + Nginx
+
+## Core Development Rules
+
+### 1. Always Use Docker
+- **NEVER** run services directly (no `python main.py`, `npm run dev`, etc.)
+- **ALWAYS** use Docker containers: `docker-compose up --build -d`
+- For testing: `docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit`
+- For production: `docker-compose -f docker-compose.prod.yml up -d`
+
+### 2. Authentication System
+- All new user registrations default to "user" role
+- Three user roles: "user", "admin", "student"
+- Only backend/admin can assign "admin" and "student" roles (security constraint)
+- JWT tokens expire in 30 minutes (configurable)
+- Password hashing uses bcrypt with 12 rounds
+
+### 3. Code Structure
+
+#### Backend (FastAPI)
+```
+backend/
+├── main.py                # API routes, FastAPI app, startup logic
+├── auth.py                # JWT, password hashing, role validation
+├── models.py              # SQLAlchemy database models
+├── schemas.py             # Pydantic request/response schemas
+├── database.py            # Database connection and session management
+├── requirements.txt       # Python dependencies
+├── pyproject.toml         # Python project configuration
+├── env_backend_example.txt # Environment template
+├── init_db.py             # Database initialization
+├── Dockerfile             # Container definition
+├── Dockerfile.test        # Test container
+└── tests/                 # Backend tests
+    ├── __init__.py
+    └── test_admin.py
+```
+
+#### Frontend (Next.js)
+```
+frontend/
+├── app/                   # Next.js 15 app directory
+│   ├── page.tsx           # Protected dashboard
+│   ├── login/page.tsx     # Login page
+│   ├── register/page.tsx  # Registration page
+│   ├── admin/page.tsx     # Admin panel (admin only)
+│   ├── unauthorized/page.tsx # Access denied page
+│   └── layout.tsx         # Root layout with ToastProvider
+├── components/            # Reusable React components
+│   ├── Toast.tsx          # Individual toast notification
+│   ├── ToastContainer.tsx # Toast context and provider
+│   └── ProtectedRoute.tsx # Route protection HOC
+├── lib/                   # Utility functions
+│   └── auth.ts            # Authentication helpers
+├── __tests__/             # Frontend tests (Jest + React Testing Library)
+│   ├── login.test.tsx     # Login tests
+│   ├── register.test.tsx  # Register tests
+│   └── admin.test.tsx     # Admin tests
+├── package.json           # Node dependencies
+├── tsconfig.json          # TypeScript configuration
+├── next.config.js         # Next.js configuration
+├── tailwind.config.js     # Tailwind CSS configuration
+├── jest.config.js         # Jest configuration
+├── env_frontend_example.txt # Environment template
+├── Dockerfile             # Container definition
+├── Dockerfile.test        # Test container
+└── public/                # Static assets
+```
+
+#### Documentation
+```
+docs/
+├── INDEX.md               # Master documentation index
+├── QUICK_START.md         # 3-minute setup guide
+├── SETUP_GUIDE.md         # Environment configuration
+├── IMPLEMENTATION_SUMMARY.md # Technical implementation details
+├── API.md                 # Complete API reference
+├── ADMIN_FEATURES.md      # Admin user management guide
+├── FEATURES.md            # Feature overview
+├── DEVELOPMENT.md         # Development workflow
+├── TESTING.md             # Testing guide
+├── DEPLOYMENT.md          # Production deployment
+├── PRODUCTION_CHECKLIST.md # Pre-deployment verification
+├── DOCKER_WORKFLOWS.md    # Docker commands reference
+├── DOCKER_SUMMARY.md      # Docker overview
+├── PROJECT_STRUCTURE.md   # Codebase architecture
+├── TESTING_SUMMARY.md     # Test coverage results
+├── KNOWN_ISSUES.md        # Issues and solutions
+└── FINAL_STATUS.md        # Project completion status
+```
+
+#### Infrastructure
+```
+├── database/
+│   └── init.sql           # Database schema and initial data
+├── tests/                 # End-to-end tests
+│   ├── conftest.py        # Test configuration
+│   ├── test_auth.py       # Authentication tests
+│   ├── test_e2e_admin.py  # Admin workflow tests
+│   └── test_e2e_real.py   # Real E2E tests
+├── docker/                # Docker configurations
+│   └── Dockerfile.e2e     # E2E test container
+├── nginx/                 # Reverse proxy
+│   └── nginx.conf         # Nginx configuration
+├── docker-compose.yml     # Development environment
+├── docker-compose.test.yml # Testing environment
+├── docker-compose.prod.yml # Production environment
+└── .cursorrules           # This file - LLM development guidelines
+```
+
+### 4. API Endpoints
+
+#### Public Endpoints
+- `POST /register` - Create new user account (always role: "user")
+- `POST /token` - Login with email/password, returns JWT
+- `GET  /health` - Health check with database status
+
+#### Protected Endpoints (Require Authentication)
+- `GET /users/me` - Get current user information
+
+#### Admin-Only Endpoints
+- `GET /admin/users` - List all users (requires admin role)
+
+### 5. Adding New Features
+
+#### New API Endpoint
+```python
+# backend/main.py
+from auth import get_current_user, get_current_admin_user
+
+# Protected endpoint (any authenticated user)
+@app.get("/api/feature")
+async def new_feature(current_user: User = Depends(get_current_user)):
+    return {"data": "your feature"}
+
+# Admin-only endpoint
+@app.get("/api/admin/feature")
+async def admin_feature(current_user: User = Depends(get_current_admin_user)):
+    return {"admin_data": "sensitive"}
+```
+
+#### New Frontend Page
+```typescript
+// frontend/app/new-page/page.tsx
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Cookies from 'js-cookie'
+import axios from 'axios'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+export default function NewPage() {
+  // Your page logic
+}
+```
+
+#### New Database Model
+```python
+# 1. Update backend/models.py
+class NewModel(Base):
+    __tablename__ = "new_table"
+    id = Column(Integer, primary_key=True, index=True)
+    # ... fields
+
+# 2. Update database/init.sql for production
+CREATE TABLE IF NOT EXISTS new_table (...);
+
+# 3. In development, Docker will recreate the database
+docker-compose down -v
+docker-compose up --build -d
+```
+
+### 6. Testing Requirements
+
+#### Before Committing Changes
+```bash
+# Run all tests
+docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
+
+# Run specific test suite
+docker-compose -f docker-compose.test.yml up --build backend-tests --abort-on-container-exit
+docker-compose -f docker-compose.test.yml up --build frontend-tests --abort-on-container-exit
+docker-compose -f docker-compose.test.yml up --build e2e-tests --abort-on-container-exit
+```
+
+#### Writing Tests
+- Backend: pytest in `backend/tests/`
+- Frontend: Jest + React Testing Library in `frontend/__tests__/`
+- E2E: pytest + httpx in `tests/`
+
+### 7. Environment Variables
+
+#### Backend (.env)
+```bash
+DATABASE_URL=postgresql://postgres:postgres@db:5432/authapp
+SECRET_KEY=your-secret-key-change-in-production
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+BCRYPT_ROUNDS=12
+CORS_ORIGINS=http://localhost:3000
+RATE_LIMIT_PER_MINUTE=60
+ENVIRONMENT=production
+LOG_LEVEL=INFO
+DEFAULT_ADMIN_EMAIL=admin@example.com
+DEFAULT_ADMIN_PASSWORD=admin123
+DEFAULT_USER_EMAIL=user@example.com
+DEFAULT_USER_PASSWORD=user123
+DEFAULT_STUDENT_EMAIL=student@example.com
+DEFAULT_STUDENT_PASSWORD=student123
+```
+
+#### Frontend (.env.local)
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NODE_ENV=production
+```
+
+### 8. Security Best Practices
+
+#### Authentication
+- Passwords hashed with bcrypt (12 rounds minimum)
+- JWT tokens stored in HTTP-only cookies (frontend uses js-cookie)
+- Token validation on every protected endpoint
+- Role-based access control enforced server-side
+
+#### CORS
+- Configured per environment in docker-compose files
+- Production should restrict to specific domains
+
+#### Rate Limiting
+- Enabled via slowapi in production
+- Default: 60 requests per minute per IP
+
+#### Dependency Security
+- **CRITICAL**: Keep all dependencies updated to latest secure versions
+- Regularly check for security vulnerabilities: `docker-compose exec backend pip-audit`
+- Update requirements.txt with patched versions immediately when vulnerabilities are found
+- Example: Updated python-jose from 3.3.0 to 3.4.0 to fix CVE-2022-29217 and CVE-2024-21319
+
+### 9. Common Patterns
+
+#### Toast Notifications
+```typescript
+import { useToast } from '../../components/ToastContainer'
+
+function MyComponent() {
+  const { showSuccess, showError } = useToast()
+  
+  try {
+    // ... operation
+    showSuccess('Operation successful!')
+  } catch (error) {
+    showError('Operation failed')
+  }
+}
+```
+
+#### Protected Routes
+```typescript
+import { useRouter } from 'next/navigation'
+import Cookies from 'js-cookie'
+import axios from 'axios'
+
+useEffect(() => {
+  const checkAuth = async () => {
+    const token = Cookies.get('token')
+    if (!token) {
+      router.replace('/login')
+      return
+    }
+    
+    try {
+      const response = await axios.get(`${API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setUser(response.data)
+    } catch (error) {
+      Cookies.remove('token')
+      router.replace('/login')
+    }
+  }
+  
+  checkAuth()
+}, [])
+```
+
+#### Database Queries
+```python
+from sqlalchemy.orm import Session
+from models import User
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(User).filter(User.email == email).first()
+
+def get_all_users(db: Session):
+    return db.query(User).all()
+```
+
+### 10. Debugging
+
+#### View Logs
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f db
+```
+
+#### Access Container Shell
+```bash
+docker-compose exec backend bash
+docker-compose exec frontend sh
+docker-compose exec db psql -U postgres -d authapp
+```
+
+#### Database Operations
+```bash
+# Connect to database
+docker-compose exec db psql -U postgres -d authapp
+
+# View users
+SELECT * FROM users;
+
+# Manually create admin
+INSERT INTO users (email, hashed_password, role) 
+VALUES ('admin@test.com', 'hashed_password_here', 'admin');
+```
+
+### 11. Code Quality
+
+#### Python (Backend)
+- Use type hints: `def function(param: str) -> dict:`
+- Follow PEP 8 style guide
+- Use async/await for FastAPI routes
+- Handle exceptions properly with try/except
+- Log important events using the logger
+
+#### TypeScript (Frontend)
+- Use TypeScript strictly (no `any` unless necessary)
+- Follow React hooks best practices
+- Use proper error handling
+- Clean up useEffect hooks
+- Memoize expensive calculations
+
+### 12. Documentation
+
+#### Documentation Structure
+All documentation is organized in the `docs/` folder for better organization:
+- `docs/INDEX.md` - Master documentation index and navigation
+- `docs/API.md` - Complete API reference and endpoints
+- `docs/SETUP_GUIDE.md` - Environment configuration guide
+- `docs/IMPLEMENTATION_SUMMARY.md` - Technical implementation details
+- `docs/ADMIN_FEATURES.md` - Admin user management guide
+- `docs/FEATURES.md` - Feature overview and capabilities
+- `docs/DEVELOPMENT.md` - Development workflow guide
+- `docs/TESTING.md` - Testing strategies and procedures
+- `docs/DEPLOYMENT.md` - Production deployment instructions
+- `docs/PRODUCTION_CHECKLIST.md` - Pre-deployment verification
+- `docs/KNOWN_ISSUES.md` - Issues, warnings, and solutions
+
+#### When Adding Features
+1. Update API documentation in `docs/API.md`
+2. Update README.md if it's a major feature
+3. Add inline code comments for complex logic
+4. Update `docs/FEATURES.md` with new capabilities
+
+#### Code Comments
+- Explain "why", not "what"
+- Document complex business logic
+- Add TODO comments for future improvements
+
+### 13. Git Workflow
+
+#### Commit Messages
+- Use descriptive messages
+- Format: `feat: add user profile page`
+- Types: feat, fix, docs, style, refactor, test, chore
+
+#### Before Pushing
+1. Run all tests: `docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit`
+2. Ensure Docker builds: `docker-compose build`
+3. Check for security issues in dependencies
+4. Update documentation if needed
+
+### 14. Deployment Checklist
+
+Before deploying to production:
+- [ ] Update SECRET_KEY to a strong random value
+- [ ] Configure CORS_ORIGINS for your domain
+- [ ] Set strong DEFAULT_ADMIN_PASSWORD
+- [ ] Enable HTTPS with valid SSL certificates
+- [ ] Review and set appropriate rate limits
+- [ ] Configure database backups
+- [ ] Set up monitoring and logging
+- [ ] Test all authentication flows
+- [ ] Run security scan on containers
+
+### 15. Troubleshooting
+
+#### Port Already in Use
+```bash
+docker-compose down
+# Or kill specific process on port
+lsof -ti:8000 | xargs kill -9  # Backend
+lsof -ti:3000 | xargs kill -9  # Frontend
+lsof -ti:5432 | xargs kill -9  # Database
+```
+
+#### Database Connection Issues
+```bash
+# Reset database
+docker-compose down -v
+docker-compose up --build
+```
+
+#### Frontend Can't Connect to Backend
+- Check NEXT_PUBLIC_API_URL is set correctly
+- Ensure backend is running: `docker-compose ps`
+- Check CORS configuration in backend/main.py
+- Verify network connectivity: `docker-compose exec frontend ping backend`
+
+## File Templates
+
+### New Backend Route
+```python
+@app.post("/api/endpoint", response_model=ResponseSchema)
+async def endpoint_name(
+    data: RequestSchema,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Endpoint description."""
+    try:
+        logger.info("Action by user: %s", current_user.email)
+        # Your logic here
+        return response_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error: %s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Operation failed"
+        ) from e
+```
+
+### New Frontend Component
+```typescript
+'use client'
+
+import { useState, useEffect } from 'react'
+
+interface ComponentProps {
+  // Props type definition
+}
+
+export default function Component({ }: ComponentProps) {
+  const [state, setState] = useState<Type>(initialValue)
+
+  useEffect(() => {
+    // Side effects
+    return () => {
+      // Cleanup
+    }
+  }, [dependencies])
+
+  return (
+    <div className="container">
+      {/* Component JSX */}
+    </div>
+  )
+}
+```
+
+## Quick Reference Commands
+
+```bash
+# Development
+docker-compose up --build              # Start dev environment
+docker-compose down -v                 # Clean reset
+docker-compose logs -f backend         # View backend logs
+
+# Testing
+docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
+
+# Production
+docker-compose -f docker-compose.prod.yml up -d     # Deploy
+docker-compose -f docker-compose.prod.yml logs -f   # Monitor
+
+# Database
+docker-compose exec db psql -U postgres -d authapp  # Connect
+docker-compose exec -T db pg_dump -U postgres authapp > backup.sql  # Backup
+```
+
+## Remember
+- Security first: validate all inputs, enforce roles server-side
+- Test everything: unit, integration, and E2E tests
+- Document changes: keep README and docs updated
+- Docker always: never run services directly
+- Clean code: readable, maintainable, well-commented
+

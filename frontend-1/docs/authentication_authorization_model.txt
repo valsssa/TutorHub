@@ -1,0 +1,102 @@
+
+# Authentication & Authorization Model
+
+This document defines the security architecture, role-based access control (RBAC), and session management strategy for EduConnect.
+
+## 1. User Roles
+
+The system recognizes four distinct actors:
+
+### **Guest (Unauthenticated)**
+*   **Definition:** A visitor who has not logged in.
+*   **Capabilities:**
+    *   View Landing Page.
+    *   Search for tutors (Marketplace).
+    *   View Tutor Profiles (Read-only, price obscured or "Sign up to book").
+    *   Login / Signup.
+
+### **Student**
+*   **Definition:** A registered user seeking education.
+*   **Capabilities:**
+    *   **Write:** Book sessions, process payments, write reviews, send messages.
+    *   **Read:** Own profile, own lesson history, full tutor details.
+    *   **State:** Holds a `balance` (wallet).
+
+### **Tutor**
+*   **Definition:** A registered user providing education.
+*   **Capabilities:**
+    *   **Write:** Update profile, set availability, accept/decline requests, upload verification docs.
+    *   **Read:** Own earnings, student list (CRM), own analytics.
+    *   **State:** Has `isVerified` status and `earnings`.
+
+### **Admin**
+*   **Definition:** Platform operator.
+*   **Capabilities:**
+    *   **Write:** Approve/Reject verification requests, refund transactions, ban users.
+    *   **Read:** Platform-wide financials, all user profiles (PII restricted).
+    *   **Restriction:** Cannot access Billing or Organization deletion.
+
+### **Owner**
+*   **Definition:** Full platform ownership (Superset of Admin).
+*   **Capabilities:**
+    *   **Everything in Admin.**
+    *   **Write:** Assign/Remove Admins, Delete Organization, Update Billing Information.
+    *   **Read:** Full Billing History, Contracts, Legal Data.
+
+---
+
+## 2. Access Rules (RBAC Matrix)
+
+| Resource / Action | Guest | Student | Tutor | Admin | Owner |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Search Marketplace** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **View Tutor Profile** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Book Session** | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Join Classroom** | ❌ | ✅ (Own) | ✅ (Own) | ✅ (Audit) | ✅ (Audit) |
+| **Edit Profile** | ❌ | ✅ (Own) | ✅ (Own) | ❌ | ❌ |
+| **Manage Schedule** | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Upload Credentials**| ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Review Documents** | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **View Financials** | ❌ | ❌ | ✅ (Own) | ✅ (Platform) | ✅ (Platform) |
+| **Send Message** | ❌ | ✅ | ✅ | ✅ | ✅ |
+| **Manage Admins** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **View Billing Info** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Delete Org** | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+---
+
+## 3. Token Storage Assumptions
+
+While the current prototype uses React State for session management, the production system assumes a **Stateless Authentication** model using JWTs.
+
+### **Access Token (JWT)**
+*   **Purpose:** Authenticate API requests.
+*   **Payload:** `userId`, `role`, `exp` (Expiration).
+*   **Storage (Frontend):** In-memory (JavaScript variable) or `sessionStorage`.
+    *   *Note:* Storing in `localStorage` is discouraged due to XSS vulnerability risks.
+*   **Transmission:** `Authorization: Bearer <token>` header.
+
+### **Refresh Token**
+*   **Purpose:** Obtain new Access Tokens without re-entering credentials.
+*   **Storage (Frontend):** **HttpOnly, Secure, SameSite Cookie**.
+    *   The frontend code cannot read this token; it is handled automatically by the browser during the `/refresh-token` endpoint call.
+
+---
+
+## 4. Session Lifetime & Lifecycle
+
+### **Lifetimes**
+*   **Access Token:** Short-lived (**15 minutes**).
+    *   *Reasoning:* Minimizes the window of opportunity if a token is stolen.
+*   **Refresh Token:** Long-lived (**7 days**, rolling window).
+    *   *Reasoning:* Provides a "Remember Me" experience.
+
+### **Lifecycle Events**
+1.  **Login:** Server returns Access Token (JSON) + Refresh Token (Cookie).
+2.  **Active Session:** Client silently refreshes Access Token every 14 minutes using the Refresh Token.
+3.  **Logout:**
+    *   Client discards Access Token.
+    *   Client requests `/logout` endpoint.
+    *   Server clears the Refresh Token cookie.
+4.  **Password Reset:** Invalidates all active Refresh Tokens for that user (Security requirement).
+5.  **Role Change:** (e.g., Tutor becomes Verified): Forces a token refresh to update the JWT payload claims.

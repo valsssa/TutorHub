@@ -1,0 +1,192 @@
+services:
+  # Test database - separate from main db
+  test-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-authapp}_test
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  test-minio:
+    image: minio/minio:RELEASE.2024-07-26T20-48-21Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - test_minio_data:/data
+
+  # Backend for testing
+  test-backend:
+    build: ./backend
+    ports:
+      - "8001:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@test-db:5432/${POSTGRES_DB:-authapp}_test
+      SECRET_KEY: ${SECRET_KEY:-test-secret-key-for-testing-only}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://edustreamtest.valsa.solutions}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      REGISTRATION_RATE_LIMIT_PER_MINUTE: ${REGISTRATION_RATE_LIMIT_PER_MINUTE:-1000}
+      LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-1000}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@example.com}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
+      DEFAULT_TUTOR_EMAIL: ${DEFAULT_TUTOR_EMAIL:-tutor@example.com}
+      DEFAULT_TUTOR_PASSWORD: ${DEFAULT_TUTOR_PASSWORD:-tutor123}
+      DEFAULT_STUDENT_EMAIL: ${DEFAULT_STUDENT_EMAIL:-student@example.com}
+      DEFAULT_STUDENT_PASSWORD: ${DEFAULT_STUDENT_PASSWORD:-student123}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-https://miniotest.valsa.solutions}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-tutor-assets-test}
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-https://miniotest.valsa.solutions}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      AVATAR_STORAGE_ENDPOINT: ${AVATAR_STORAGE_ENDPOINT:-http://test-minio:9000}
+      AVATAR_STORAGE_ACCESS_KEY: ${AVATAR_STORAGE_ACCESS_KEY:-minioadmin}
+      AVATAR_STORAGE_SECRET_KEY: ${AVATAR_STORAGE_SECRET_KEY:-minioadmin123}
+      AVATAR_STORAGE_BUCKET: ${AVATAR_STORAGE_BUCKET:-user-avatars-test}
+      AVATAR_STORAGE_REGION: ${AVATAR_STORAGE_REGION:-}
+      AVATAR_STORAGE_PUBLIC_ENDPOINT: ${AVATAR_STORAGE_PUBLIC_ENDPOINT:-http://localhost:9002}
+      AVATAR_STORAGE_USE_SSL: ${AVATAR_STORAGE_USE_SSL:-false}
+      AVATAR_STORAGE_URL_TTL_SECONDS: ${AVATAR_STORAGE_URL_TTL_SECONDS:-300}
+      AVATAR_STORAGE_DEFAULT_URL: ${AVATAR_STORAGE_DEFAULT_URL:-https://placehold.co/300x300?text=Avatar}
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Frontend for testing
+  test-frontend:
+    build: ./frontend
+    ports:
+      - "3001:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://apitest.valsa.solutions}
+      NODE_ENV: ${NODE_ENV:-development}
+    depends_on:
+      - test-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Backend linting and unit tests
+  backend-tests:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@test-db:5432/${POSTGRES_DB:-authapp}_test
+      SECRET_KEY: ${SECRET_KEY:-test-secret-key-for-testing-only}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://edustreamtest.valsa.solutions}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      REGISTRATION_RATE_LIMIT_PER_MINUTE: ${REGISTRATION_RATE_LIMIT_PER_MINUTE:-1000}
+      LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-1000}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@example.com}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
+      DEFAULT_TUTOR_EMAIL: ${DEFAULT_TUTOR_EMAIL:-tutor@example.com}
+      DEFAULT_TUTOR_PASSWORD: ${DEFAULT_TUTOR_PASSWORD:-tutor123}
+      DEFAULT_STUDENT_EMAIL: ${DEFAULT_STUDENT_EMAIL:-student@example.com}
+      DEFAULT_STUDENT_PASSWORD: ${DEFAULT_STUDENT_PASSWORD:-student123}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-https://miniotest.valsa.solutions}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-tutor-assets-test}
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-https://miniotest.valsa.solutions}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      AVATAR_STORAGE_ENDPOINT: ${AVATAR_STORAGE_ENDPOINT:-http://test-minio:9000}
+      AVATAR_STORAGE_ACCESS_KEY: ${AVATAR_STORAGE_ACCESS_KEY:-minioadmin}
+      AVATAR_STORAGE_SECRET_KEY: ${AVATAR_STORAGE_SECRET_KEY:-minioadmin123}
+      AVATAR_STORAGE_BUCKET: ${AVATAR_STORAGE_BUCKET:-user-avatars-test}
+      AVATAR_STORAGE_REGION: ${AVATAR_STORAGE_REGION:-}
+      AVATAR_STORAGE_PUBLIC_ENDPOINT: ${AVATAR_STORAGE_PUBLIC_ENDPOINT:-http://localhost:9002}
+      AVATAR_STORAGE_USE_SSL: ${AVATAR_STORAGE_USE_SSL:-false}
+      AVATAR_STORAGE_URL_TTL_SECONDS: ${AVATAR_STORAGE_URL_TTL_SECONDS:-300}
+      AVATAR_STORAGE_DEFAULT_URL: ${AVATAR_STORAGE_DEFAULT_URL:-https://placehold.co/300x300?text=Avatar}
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-minio:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "
+        echo '🔍 Running backend linting and tests...' &&
+        python3 -m flake8 . --max-line-length=88 --extend-ignore=E203,W503 &&
+        python3 -m black --check . &&
+        python3 -m isort . --check-only &&
+        python -m pytest tests/ -v --tb=short
+      "
+
+  # Frontend linting and unit tests
+  frontend-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: >
+      sh -c "
+        echo '🔍 Running frontend linting and tests...' &&
+        npm run lint &&
+        npm run test -- --watchAll=false --coverage
+      "
+
+  # End-to-end integration tests
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.e2e
+    environment:
+      API_BASE_URL: https://apitest.valsa.solutions
+      FRONTEND_BASE_URL: https://edustreamtest.valsa.solutions
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@test-db:5432/${POSTGRES_DB:-authapp}_test
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-backend:
+        condition: service_healthy
+      test-frontend:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '🚀 Running end-to-end integration tests...' &&
+        curl -f http://test-backend:8000/health &&
+        curl -f http://test-frontend:3000 &&
+        echo '✅ All services are healthy and accessible'
+      "
+
+volumes:
+  test_postgres_data:
+  test_minio_data:

@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Configure npm proxy with fallback to official registry
+RUN npm config set registry https://nexus.in.lazarev.cloud/repository/npm-group/ || \
+    npm config set registry https://registry.npmjs.org/
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm install || (npm config set registry https://registry.npmjs.org/ && rm -f package-lock.json && npm install)
+
+# Copy application
+COPY . .
+
+# Default command (can be overridden by docker-compose)
+CMD ["npm", "test", "--", "--watchAll=false"]

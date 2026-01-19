@@ -1,0 +1,1 @@
+"""User currency management module."""

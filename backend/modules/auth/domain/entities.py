@@ -1,0 +1,45 @@
+"""Auth domain entities."""
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
+
+
+@dataclass
+class UserEntity:
+    """User domain entity."""
+
+    id: Optional[int]
+    email: str
+    hashed_password: str
+    role: str
+    is_active: bool = True
+    is_verified: bool = False
+    timezone: str = "UTC"
+    currency: str = "USD"
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    def is_admin(self) -> bool:
+        """Check if user is admin."""
+        return self.role == "admin"
+
+    def is_tutor(self) -> bool:
+        """Check if user is tutor."""
+        return self.role == "tutor"
+
+    def is_student(self) -> bool:
+        """Check if user is student."""
+        return self.role == "student"
+
+    def can_access_admin(self) -> bool:
+        """Check if user can access admin resources."""
+        return self.is_admin()
+
+    def can_create_bookings(self) -> bool:
+        """Check if user can create bookings."""
+        return self.is_student()
+
+    def can_accept_bookings(self) -> bool:
+        """Check if user can accept bookings."""
+        return self.is_tutor()

@@ -1,0 +1,94 @@
+
+# EduConnect Project Structure
+
+This document outlines the file organization and architectural structure of the EduConnect frontend application.
+
+## 1. Root Directory
+*   `index.html`: The main HTML entry point. Loads Tailwind CSS via CDN and sets up the React root.
+*   `index.tsx`: The JavaScript entry point. Mounts the React application into the DOM.
+*   `App.tsx`: The root React component. It sets up global Context Providers (Auth, Data, Navigation, Theme) and initializes the main app layout.
+*   `metadata.json`: Configuration for project permissions (e.g., camera/microphone access).
+
+## 2. Domain (`/domain`)
+Contains the core business definitions that are shared across the application.
+*   `types.ts`: TypeScript interfaces defining the data models (`User`, `Tutor`, `Session`, `TutorStudent`, etc.).
+*   `constants.ts`: Static configuration data, lookup lists (Subjects, Countries), and mock data seeds (if not in services).
+
+## 3. Services (`/services`)
+Handles communication with external systems and data retrieval.
+*   `api.ts`: The Service Layer abstraction. Contains methods for Auth, Tutors, Sessions, etc.
+*   `mockData.ts`: Static JSON data used to simulate a backend database for the prototype.
+*   `geminiService.ts`: Integration with Google's Gemini API for AI-powered smart search parsing.
+
+## 4. Contexts (`/contexts`)
+React Context Providers for global state management.
+*   `AuthContext.tsx`: Manages the current logged-in user and authentication methods.
+*   `DataContext.tsx`: Holds shared domain data (Tutors list, Sessions list, Chats, Admin/CRM data).
+*   `NavigationContext.tsx`: Manages the internal routing state (`currentView`) and navigation actions.
+*   `ThemeContext.tsx`: Manages Light/Dark mode toggling.
+
+## 5. Pages (`/pages`)
+Top-level view components representing distinct screens in the application.
+*   **Auth:** `LoginPage.tsx`
+*   **Public/Marketplace:** 
+    *   `MarketplacePage.tsx`
+    *   `TutorProfilePage.tsx`
+*   **Student Dashboard:**
+    *   `StudentDashboard.tsx`
+    *   `StudentLessonsPage.tsx`
+    *   `SavedTutorsPage.tsx`
+*   **Tutor Dashboard:**
+    *   `TutorDashboard.tsx`
+    *   `TutorStudentsPage.tsx`
+    *   `TutorEarningsPage.tsx`
+*   **Admin:**
+    *   `AdminDashboard.tsx`
+    *   `AdminRevenuePage.tsx`
+    *   `AdminVerificationsPage.tsx`
+    *   `AdminSessionsPage.tsx`
+    *   `AdminTutorsPage.tsx`
+    *   `AdminManagePage.tsx`
+*   **Shared/Utility:**
+    *   `SettingsPage.tsx`
+    *   `PaymentPage.tsx`
+    *   `ReferralPage.tsx`
+*   **Marketing & Static Content:**
+    *   `PricingPage.tsx`, `MobileAppPage.tsx`, `BecomeTutorPage.tsx`
+    *   `SuccessStoriesPage.tsx`, `AffiliateProgramPage.tsx`
+    *   `SupportPage.tsx`, `LegalPage.tsx`, `TermsPage.tsx`, `PrivacyPage.tsx`
+    *   `CookiePolicyPage.tsx`, `CancellationPolicyPage.tsx`, `TutorRulesPage.tsx`
+
+## 6. Components (`/components`)
+Reusable UI building blocks.
+
+### Layout (`/components/layout`)
+*   `Navbar.tsx`: Top navigation bar.
+*   `Footer.tsx`: Site footer.
+*   `AppRouter.tsx`: The internal router component switching `currentView`.
+
+### Shared (`/components/shared`)
+*   `UI.tsx`: Generic components (Modals, Badges).
+*   `VisualCalendar.tsx`: Interactive calendar grid.
+*   `ReviewModal.tsx`: Star rating modal.
+*   `CookieBanner.tsx`: GDPR consent popup.
+
+### Dashboard (`/components/dashboard`)
+*   `TutorProfileEditor.tsx`: Form for editing tutor details.
+*   `TutorScheduleManager.tsx`: Availability setup tool.
+*   `TutorLessonScheduler.tsx`: Quick-add lesson tool.
+*   `VerificationManager.tsx`: Document upload UI.
+
+### Classroom (`/components/classroom`)
+*   `Classroom.tsx`: Simulated video call interface.
+
+### Messaging (`/components/messaging`)
+*   `MessagingSystem.tsx`: Global slide-out chat overlay.
+
+### Tutor (`/components/tutor`)
+*   `TutorCard.tsx`: Summary card for marketplace grid.
+
+### Booking (`/components/booking`)
+*   `BookingModal.tsx`: Booking wizard.
+
+## 7. Documentation (`/docs`)
+Comprehensive project documentation including data models, API contracts, and guides.

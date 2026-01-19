@@ -1,0 +1,389 @@
+import React, { useState, useEffect } from 'react';
+import { X, MessageSquare, Calendar, FileText, MoreHorizontal, User as UserIcon, SlidersHorizontal, ChevronLeft, Check, Clock, ChevronDown } from 'lucide-react';
+import { TutorStudent } from '../domain/types';
+
+interface TutorStudentsPageProps {
+    students: TutorStudent[];
+    onMessage: (studentId: string, name: string) => void;
+    onSchedule: (studentId: string) => void;
+    onViewProfile: (studentId: string) => void;
+    onViewHistory: (studentId: string) => void;
+    onArchive: (studentId: string) => void;
+    onNotes: (studentId: string) => void;
+    onBack: () => void;
+}
+
+export const TutorStudentsPage: React.FC<TutorStudentsPageProps> = ({ 
+    students,
+    onMessage, 
+    onSchedule, 
+    onViewProfile, 
+    onViewHistory, 
+    onArchive,
+    onNotes,
+    onBack
+}) => {
+    const [filterType, setFilterType] = useState<'All' | 'Subscription' | 'Trial' | 'Cancelled'>('All');
+    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    const filteredStudents = students.filter(student => {
+        if (filterType === 'All') return true;
+        return student.type === filterType;
+    });
+
+    const handleFilterClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsFilterMenuOpen(!isFilterMenuOpen);
+    };
+
+    const handleSelectFilter = (type: 'All' | 'Subscription' | 'Trial' | 'Cancelled') => {
+        setFilterType(type);
+        setIsFilterMenuOpen(false);
+    };
+
+    const toggleMenu = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setOpenMenuId(openMenuId === id ? null : id);
+    };
+
+    // Close menus when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            setOpenMenuId(null);
+            setIsFilterMenuOpen(false);
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+    const formatDate = (isoString?: string) => {
+        if (!isoString) return '-';
+        const date = new Date(isoString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    return (
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+            <button 
+                onClick={onBack}
+                className="flex items-center gap-2 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium mb-6 group"
+            >
+                <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform"/> 
+                Back to Dashboard
+            </button>
+
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-6">My students</h1>
+
+            {/* Filter Toolbar */}
+            <div className="flex items-center gap-3 mb-6 relative z-20">
+                <div className="relative">
+                    <button 
+                        onClick={handleFilterClick}
+                        className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-bold transition-all active:scale-95 ${isFilterMenuOpen ? 'bg-slate-100 dark:bg-slate-800 border-slate-400 dark:border-slate-500 text-slate-900 dark:text-white' : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                    >
+                        <SlidersHorizontal size={16} />
+                        Filters
+                    </button>
+
+                    {isFilterMenuOpen && (
+                        <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Filter by Type</div>
+                            {['All', 'Subscription', 'Trial', 'Cancelled'].map((type) => (
+                                <button
+                                    key={type}
+                                    onClick={(e) => { e.stopPropagation(); handleSelectFilter(type as any); }}
+                                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                                        filterType === type 
+                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-medium' 
+                                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                                >
+                                    {type}
+                                    {filterType === type && <Check size={16} className="text-emerald-600 dark:text-emerald-400" />}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                
+                {filterType !== 'All' && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/50 animate-in fade-in zoom-in-95 duration-200">
+                        <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Type: {filterType}</span>
+                        <button 
+                            onClick={() => setFilterType('All')}
+                            className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-200 p-0.5 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-800/50 transition-colors"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-visible shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-800">
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Name</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Type</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Lessons</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Next lesson</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Suggested action</th>
+                                <th className="px-6 py-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {filteredStudents.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                                        No students found matching your filter.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredStudents.map((student) => (
+                                    <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                        <td className="px-6 py-4 cursor-pointer" onClick={() => onViewProfile(student.id)}>
+                                            <div className="flex items-center gap-3">
+                                                {student.avatar ? (
+                                                    <img src={student.avatar} alt={student.name} className="w-9 h-9 rounded-md object-cover bg-slate-200" />
+                                                ) : (
+                                                    <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                                                        <UserIcon size={16} />
+                                                    </div>
+                                                )}
+                                                <span className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">{student.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-bold ${
+                                                student.type === 'Subscription' 
+                                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                    : student.type === 'Trial'
+                                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                                    : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                                            }`}>
+                                                {student.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {student.lessonsTotal !== undefined ? (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className="h-full bg-slate-900 dark:bg-white rounded-full" 
+                                                            style={{ width: `${(student.lessonsCompleted! / student.lessonsTotal) * 100}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                                        {student.lessonsCompleted}/{student.lessonsTotal}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-slate-400 text-sm">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                                            {formatDate(student.nextLessonAt)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {student.suggestedAction ? (
+                                                <button 
+                                                    onClick={() => onMessage(student.id, student.name)}
+                                                    className="text-sm font-bold text-slate-900 dark:text-white underline decoration-slate-300 dark:decoration-slate-600 hover:decoration-slate-900 dark:hover:decoration-white underline-offset-2 transition-all"
+                                                >
+                                                    {student.suggestedAction}
+                                                </button>
+                                            ) : (
+                                                <span className="text-slate-400 text-sm">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 relative">
+                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => onMessage(student.id, student.name)}
+                                                    className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                                    title="Message"
+                                                >
+                                                    <MessageSquare size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => onSchedule(student.id)}
+                                                    className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                                    title="Schedule Lesson"
+                                                >
+                                                    <Calendar size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => onNotes(student.id)}
+                                                    className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                                    title="Notes"
+                                                >
+                                                    <FileText size={18} />
+                                                </button>
+                                                <div className="relative">
+                                                    <button 
+                                                        onClick={(e) => toggleMenu(student.id, e)}
+                                                        className={`p-2 rounded-lg transition-colors ${openMenuId === student.id ? 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                                                    >
+                                                        <MoreHorizontal size={18} />
+                                                    </button>
+                                                    {openMenuId === student.id && (
+                                                        <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); onViewProfile(student.id); setOpenMenuId(null); }}
+                                                                className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                                            >
+                                                                View Profile
+                                                            </button>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); onViewHistory(student.id); setOpenMenuId(null); }}
+                                                                className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                                            >
+                                                                History
+                                                            </button>
+                                                            <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); onArchive(student.id); setOpenMenuId(null); }}
+                                                                className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                                                            >
+                                                                Archive Student
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+                {filteredStudents.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                        No students found matching your filter.
+                    </div>
+                ) : (
+                    filteredStudents.map(student => (
+                        <div key={student.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-3" onClick={() => onViewProfile(student.id)}>
+                                    {student.avatar ? (
+                                        <img src={student.avatar} alt={student.name} className="w-10 h-10 rounded-full object-cover bg-slate-200" />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                                            <UserIcon size={20} />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div className="font-bold text-slate-900 dark:text-white text-base">{student.name}</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                                            {formatDate(student.nextLessonAt)}
+                                            {student.nextLessonAt && <span className="w-1 h-1 rounded-full bg-slate-300"></span>}
+                                            {student.nextLessonAt && "Next Lesson"}
+                                        </div>
+                                    </div>
+                                </div>
+                                <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-bold ${
+                                    student.type === 'Subscription' 
+                                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                        : student.type === 'Trial'
+                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                        : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                                }`}>
+                                    {student.type}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <div>
+                                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Lessons</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden max-w-[60px]">
+                                            <div 
+                                                className="h-full bg-slate-900 dark:bg-white rounded-full" 
+                                                style={{ width: student.lessonsTotal ? `${(student.lessonsCompleted! / student.lessonsTotal) * 100}%` : '0%' }}
+                                            ></div>
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                            {student.lessonsCompleted || 0}/{student.lessonsTotal || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Action</div>
+                                    {student.suggestedAction ? (
+                                        <button 
+                                            onClick={() => onMessage(student.id, student.name)}
+                                            className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+                                        >
+                                            {student.suggestedAction}
+                                        </button>
+                                    ) : (
+                                        <span className="text-xs text-slate-500 italic">None</span>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-2 pt-2">
+                                <button 
+                                    onClick={() => onMessage(student.id, student.name)}
+                                    className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <MessageSquare size={16} /> Message
+                                </button>
+                                <button 
+                                    onClick={() => onSchedule(student.id)}
+                                    className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-500 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Calendar size={16} /> Schedule
+                                </button>
+                                <button 
+                                    onClick={(e) => toggleMenu(student.id, e)}
+                                    className="p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                >
+                                    <MoreHorizontal size={20} />
+                                </button>
+                            </div>
+
+                            {openMenuId === student.id && (
+                                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2 mt-2 space-y-1 animate-in slide-in-from-top-2">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onViewProfile(student.id); setOpenMenuId(null); }}
+                                        className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 rounded hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                                    >
+                                        View Profile
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onViewHistory(student.id); setOpenMenuId(null); }}
+                                        className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 rounded hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                                    >
+                                        History
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onNotes(student.id); setOpenMenuId(null); }}
+                                        className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 rounded hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                                    >
+                                        Notes
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onArchive(student.id); setOpenMenuId(null); }}
+                                        className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                    >
+                                        Archive Student
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};

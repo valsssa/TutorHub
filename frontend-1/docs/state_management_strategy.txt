@@ -1,0 +1,84 @@
+
+# State Management Strategy
+
+## 1. Global vs. Local State
+
+### **Global State**
+State that is shared across multiple unrelated components or persists during navigation changes.
+*   **Location:** Managed in the root `App.tsx` component.
+*   **Mechanism:** Lifted State (passed down via props).
+*   **Entities:**
+    *   `currentUser`: Authentication status and user profile.
+    *   `tutors`: The master list of marketplace listings.
+    *   `sessions`: All booking records.
+    *   `chatThreads`: Messaging history.
+    *   `verificationRequests`: Admin queue data.
+    *   `theme`: Visual preference (dark/light).
+
+### **Local State**
+State that is ephemeral and relevant only to a specific component or its immediate children.
+*   **Location:** Managed within individual components using `useState` or `useReducer`.
+*   **Entities:**
+    *   **Form Inputs:** `searchQuery` in `MarketplacePage`, form fields in `SettingsPage`.
+    *   **UI Toggles:** `isModalOpen`, `isDropdownOpen`, `activeTab`.
+    *   **Ephemeral Interactions:** `hover` states in charts, `micOn`/`cameraOn` in `Classroom`.
+
+## 2. Server State vs. UI State
+
+### **Server State (Simulated)**
+Data that effectively belongs to the backend database. In this prototype, it is initialized from `constants.ts` into `App.tsx` state.
+*   **Characteristics:** Asynchronous (simulated via `setTimeout`), shared ownership (multiple users would view this), persistent.
+*   **Examples:** `Tutor` details, `Session` history, `Chat` messages.
+
+### **UI State**
+Data that controls the interactive experience but is not persisted to the database.
+*   **Characteristics:** Synchronous, client-only ownership, resets on reload.
+*   **Examples:**
+    *   `currentView`: The active "page" being rendered.
+    *   `bookingStep`: Progress through the booking wizard.
+    *   `filters`: Active search criteria (Subject, Price, Rating).
+
+## 3. Cache Rules
+
+### **Current Prototype Strategy**
+Since the application uses in-memory state in `App.tsx`, the "Cache" is the React State itself.
+*   **Rule:** Data is loaded once on mount (from `constants.ts`).
+*   **Lifetime:** Persists until the browser tab is refreshed.
+*   **De-duplication:** Not applicable as data is passed down; components do not fetch their own data independently.
+
+### **Production Strategy (Future)**
+When moving to a real API, we will adopt a library like **TanStack Query**.
+*   **Stale-While-Revalidate:** UI shows cached data immediately while fetching updates in the background.
+*   **Time-to-Live (TTL):**
+    *   *Tutor Profiles:* 5 minutes (rarely changes).
+    *   *Session Status:* 30 seconds (frequent updates).
+    *   *Chat:* Real-time (Socket) or short polling (5s).
+
+## 4. Invalidation & Update Rules
+
+In the current architecture, "Invalidation" is handled by direct state mutation functions passed down from `App.tsx`.
+
+### **Optimistic Updates**
+We update the UI state immediately assuming success, then simulate the API delay.
+
+1.  **Booking a Session:**
+    *   **Action:** User confirms booking.
+    *   **Update:**
+        1.  Add new object to global `sessions` array.
+        2.  Deduct price from `currentUser.balance`.
+        3.  (Ideally) Remove slot from `tutor.availability` (Mock logic).
+
+2.  **Sending a Message:**
+    *   **Action:** User hits send.
+    *   **Update:** Push message to the specific `chatThread.messages` array immediately.
+
+3.  **Verification Approval (Admin):**
+    *   **Action:** Admin clicks "Approve".
+    *   **Update:**
+        1.  Update `verificationRequests` status to 'approved'.
+        2.  Find target `tutor` in `tutors` array and set `isVerified = true`.
+        3.  *Trigger:* This instantly reflects on the Marketplace card (Badge appears).
+
+4.  **Tutor Profile Edit:**
+    *   **Action:** Tutor saves changes.
+    *   **Update:** Map over `tutors` array, replace the object matching `currentUser.id` with the new data.
