@@ -2,20 +2,15 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import {
-  FiBook,
   FiCalendar,
-  FiUsers,
+  FiClock,
+  FiVideo,
   FiStar,
-  FiAward,
-  FiTarget,
+  FiSearch,
 } from "react-icons/fi";
 import { User } from "@/types";
 import { BookingDTO } from "@/types/booking";
-import Button from "@/components/Button";
-import StatCard from "@/components/StatCard";
-import ProgressBar from "@/components/ProgressBar";
 import AppShell from "@/components/AppShell";
 
 interface StudentDashboardProps {
@@ -24,221 +19,260 @@ interface StudentDashboardProps {
   onAvatarChange: (url: string | null) => void;
 }
 
+// Subject icon helper
+function getSubjectIcon(subjectName?: string | null): string {
+  if (!subjectName) return "📚";
+  const lower = subjectName.toLowerCase();
+  if (lower.includes("math")) return "∫";
+  if (lower.includes("physics")) return "⚛";
+  if (lower.includes("chemistry")) return "🧪";
+  if (lower.includes("programming") || lower.includes("code") || lower.includes("computer"))
+    return "💻";
+  if (lower.includes("english") || lower.includes("language")) return "📝";
+  if (lower.includes("music")) return "🎵";
+  if (lower.includes("art")) return "🎨";
+  if (lower.includes("history")) return "📜";
+  if (lower.includes("biology")) return "🧬";
+  return "📚";
+}
+
 export default function StudentDashboard({
   user,
   bookings,
-  onAvatarChange,
 }: StudentDashboardProps) {
   const router = useRouter();
 
-  // Memoize filtered bookings to prevent unnecessary recalculations
-  const upcomingBookings = useMemo(() => bookings.filter((b) => b.status === "CONFIRMED" || b.status === "confirmed"), [bookings]);
-  const pendingBookings = useMemo(() => bookings.filter((b) => b.status === "PENDING" || b.status === "pending"), [bookings]);
-  const completedBookings = useMemo(() => bookings.filter((b) => b.status === "COMPLETED" || b.status === "completed"), [bookings]);
+  // Filter bookings by status
+  const upcomingBookings = useMemo(
+    () =>
+      bookings.filter(
+        (b) =>
+          b.status === "CONFIRMED" ||
+          b.status === "confirmed" ||
+          b.status === "PENDING" ||
+          b.status === "pending"
+      ),
+    [bookings]
+  );
 
-  // Calculate learning streak (mock for now)
-  const learningStreak = 3
-  const profileCompletion = user.avatar_url ? 80 : 60
+  const completedBookings = useMemo(
+    () =>
+      bookings.filter(
+        (b) => b.status === "COMPLETED" || b.status === "completed"
+      ),
+    [bookings]
+  );
 
-  const getTimeGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return '☀️ Good morning'
-    if (hour < 18) return '👋 Good afternoon'
-    return '🌙 Good evening'
-  }
+  // Check if a session is joinable (within 15 minutes of start time)
+  const isJoinable = (startAt: string): boolean => {
+    const now = new Date();
+    const start = new Date(startAt);
+    const diff = start.getTime() - now.getTime();
+    // Joinable if within 15 minutes before or during the session
+    return diff <= 15 * 60 * 1000 && diff >= -60 * 60 * 1000;
+  };
+
+  const getUserDisplayName = (): string => {
+    if (user.first_name) {
+      return user.first_name;
+    }
+    return user.email.split("@")[0];
+  };
 
   return (
     <AppShell user={user}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Hero Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-brand-rose via-pink-500 to-purple-500 rounded-2xl shadow-warm p-6 md:p-8 text-white"
-        >
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                {getTimeGreeting()}! Ready to learn? 🚀
-              </h1>
-              <p className="text-white/90 text-sm md:text-base">
-                {upcomingBookings.length > 0
-                  ? `You have ${upcomingBookings.length} upcoming ${upcomingBookings.length === 1 ? 'session' : 'sessions'} 📚`
-                  : "Find an amazing tutor to start your journey 🌱"}
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header */}
+        <h1 className="text-3xl font-bold mb-2 text-slate-900 dark:text-white">
+          Student Dashboard
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400 mb-8">
+          Welcome back, {getUserDisplayName()}
+        </p>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <button
+            onClick={() => router.push("/tutors")}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex items-center gap-4 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all hover:shadow-lg group"
+          >
+            <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <FiSearch size={24} />
+            </div>
+            <div className="text-left">
+              <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                Find a Tutor
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Browse expert tutors and book sessions
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push("/bookings")}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex items-center gap-4 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all hover:shadow-lg group"
+          >
+            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <FiCalendar size={24} />
+            </div>
+            <div className="text-left">
+              <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                View All Sessions
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Manage your upcoming and past sessions
+              </p>
+            </div>
+          </button>
+        </div>
+
+        {/* Sessions Section */}
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+          <FiCalendar size={20} /> Your Sessions
+        </h2>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+          {bookings.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiCalendar size={28} className="text-slate-400" />
+              </div>
+              <p className="mb-4">No sessions booked yet.</p>
+              <button
+                onClick={() => router.push("/tutors")}
+                className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 font-medium hover:underline transition-all"
+              >
+                Find a tutor to get started →
+              </button>
+            </div>
+          ) : (
+            bookings.map((booking, idx) => {
+              const isUpcoming =
+                booking.status === "CONFIRMED" ||
+                booking.status === "confirmed" ||
+                booking.status === "PENDING" ||
+                booking.status === "pending";
+              const isCompleted =
+                booking.status === "COMPLETED" || booking.status === "completed";
+              const canJoin =
+                isUpcoming &&
+                (booking.status === "CONFIRMED" || booking.status === "confirmed") &&
+                isJoinable(booking.start_at);
+
+              return (
+                <div
+                  key={booking.id}
+                  className={`p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                    idx !== bookings.length - 1
+                      ? "border-b border-slate-200 dark:border-slate-800"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Subject Icon */}
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 text-lg">
+                      {getSubjectIcon(booking.subject_name)}
+                    </div>
+                    {/* Session Info */}
+                    <div>
+                      <h4 className="font-semibold text-slate-900 dark:text-white">
+                        {booking.subject_name || booking.topic || "Session"} with{" "}
+                        {booking.tutor?.name || "Tutor"}
+                      </h4>
+                      <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        <span className="flex items-center gap-1">
+                          <FiCalendar size={14} />
+                          {new Date(booking.start_at).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FiClock size={14} />
+                          {new Date(booking.start_at).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    {canJoin && booking.join_url ? (
+                      <a
+                        href={booking.join_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(5,150,105,0.4)] hover:-translate-y-0.5"
+                      >
+                        <FiVideo size={18} /> Join Classroom
+                      </a>
+                    ) : isCompleted ? (
+                      <button
+                        onClick={() =>
+                          router.push(`/bookings/${booking.id}/review`)
+                        }
+                        className="w-full md:w-auto border border-emerald-500/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                      >
+                        <FiStar size={18} /> Rate & Review
+                      </button>
+                    ) : (
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                          booking.status === "CONFIRMED" ||
+                          booking.status === "confirmed"
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                            : booking.status === "PENDING" ||
+                              booking.status === "pending"
+                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                            : booking.status === "COMPLETED" ||
+                              booking.status === "completed"
+                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                        }`}
+                      >
+                        {booking.status.charAt(0).toUpperCase() +
+                          booking.status.slice(1).toLowerCase()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Stats Summary */}
+        {bookings.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                {upcomingBookings.length}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Upcoming Sessions
+              </p>
+            </div>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                {completedBookings.length}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Completed Lessons
+              </p>
+            </div>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center col-span-2 md:col-span-1">
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {bookings.length}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Total Sessions
               </p>
             </div>
           </div>
-        </motion.div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard
-            label="Upcoming Sessions"
-            value={upcomingBookings.length}
-            icon={FiCalendar}
-            color="blue"
-            onClick={() => router.push('/bookings')}
-          />
-          <StatCard
-            label="Completed Lessons"
-            value={completedBookings.length}
-            icon={FiStar}
-            color="green"
-            delta={completedBookings.length > 0 ? { value: '+2 this week', trend: 'up' } : undefined}
-          />
-          <StatCard
-            label="Learning Streak 🔥"
-            value={`${learningStreak} days`}
-            icon={FiAward}
-            color="amber"
-          />
-        </div>
-
-        {/* Progress Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl shadow-soft p-6"
-        >
-          <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-            <FiTarget className="text-brand-rose" />
-            Your Progress
-          </h2>
-
-          <div className="space-y-4">
-            <ProgressBar
-              value={profileCompletion}
-              label="Profile Completion"
-              color="rose"
-              icon="👤"
-            />
-
-            {completedBookings.length > 0 && (
-              <div className="pt-4 border-t border-gray-100">
-                <p className="text-sm text-text-secondary mb-2">
-                  💪 Keep it up! Students who practice 3× a week improve 2× faster
-                </p>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-brand-rose to-pink-600 rounded-2xl shadow-floating p-6 text-white cursor-pointer hover:scale-105 transition-transform"
-            onClick={() => router.push("/tutors")}
-          >
-            <FiUsers className="w-12 h-12 mb-4 opacity-90" />
-            <h3 className="text-2xl font-bold mb-2">Find Your Tutor 🎯</h3>
-            <p className="mb-4 opacity-90 text-sm">
-              Browse expert tutors and book your perfect match
-            </p>
-            <div className="inline-flex items-center gap-2 text-sm font-semibold">
-              Explore now →
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-sky-500 to-blue-600 rounded-2xl shadow-floating p-6 text-white cursor-pointer hover:scale-105 transition-transform"
-            onClick={() => router.push("/bookings")}
-          >
-            <FiCalendar className="w-12 h-12 mb-4 opacity-90" />
-            <h3 className="text-2xl font-bold mb-2">Your Sessions 📅</h3>
-            <p className="mb-4 opacity-90 text-sm">
-              Manage upcoming and past learning sessions
-            </p>
-            <div className="inline-flex items-center gap-2 text-sm font-semibold">
-              View bookings →
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Recent Bookings */}
-        {bookings.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl shadow-soft p-6"
-          >
-            <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-              <FiBook className="text-brand-rose" />
-              Recent Activity
-            </h2>
-            <div className="space-y-3">
-              {bookings.slice(0, 5).map((booking, index) => (
-                <motion.div
-                  key={booking.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + index * 0.05 }}
-                  className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:border-brand-rose hover:shadow-md transition-all cursor-pointer"
-                  onClick={() => router.push('/bookings')}
-                >
-                  <div className="flex-1">
-                    <p className="font-semibold text-text-primary">
-                      {booking.topic || "Session"}
-                    </p>
-                    <p className="text-sm text-text-secondary mt-1">
-                      {new Date(booking.start_at).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric'
-                      })} at {new Date(booking.start_at).toLocaleTimeString('en-US', {
-                        hour: 'numeric', minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      booking.status === "confirmed"
-                        ? "bg-green-100 text-green-700"
-                        : booking.status === "pending"
-                          ? "bg-amber-100 text-amber-700"
-                          : booking.status === "completed"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    {booking.status}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Empty State */}
-        {bookings.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl shadow-soft p-12 text-center border-2 border-rose-100"
-          >
-            <div className="w-20 h-20 bg-gradient-to-br from-rose-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FiBook className="w-10 h-10 text-brand-rose" />
-            </div>
-            <h3 className="text-2xl font-bold text-text-primary mb-3">
-              No sessions yet 🌱
-            </h3>
-            <p className="text-text-secondary mb-6 max-w-md mx-auto">
-              Start your learning adventure by finding the perfect tutor for your goals
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => router.push("/tutors")}
-              className="bg-brand-rose hover:bg-primary-600 shadow-warm"
-            >
-              Find Your First Tutor →
-            </Button>
-          </motion.div>
         )}
       </div>
     </AppShell>
