@@ -1,7 +1,7 @@
 """Tutor availability API routes."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -80,8 +80,15 @@ async def get_available_slots(
     current_date = start_dt.date()
     end_date_obj = end_dt.date()
 
+    # Log availability configuration for debugging
+    logger.debug(
+        f"Tutor {tutor_id} has {len(availabilities)} availability rules: "
+        f"{[(av.day_of_week, av.start_time, av.end_time) for av in availabilities]}"
+    )
+
     while current_date <= end_date_obj:
         # Convert Python weekday (Mon=0, Sun=6) to JS convention (Sun=0, Sat=6)
+        # This matches the frontend where Sunday=0, Monday=1, ..., Saturday=6
         python_weekday = current_date.weekday()  # Monday=0, Sunday=6
         day_of_week = (python_weekday + 1) % 7  # Convert to Sunday=0, Saturday=6
 
@@ -89,6 +96,13 @@ async def get_available_slots(
         day_availabilities = [
             av for av in availabilities if av.day_of_week == day_of_week
         ]
+        
+        if day_availabilities:
+            logger.debug(
+                f"Date {current_date} ({current_date.strftime('%A')}) -> "
+                f"Python weekday={python_weekday}, JS day_of_week={day_of_week}, "
+                f"found {len(day_availabilities)} matching rules"
+            )
 
         for availability in day_availabilities:
             # Generate 30-minute slots within availability window
@@ -102,8 +116,9 @@ async def get_available_slots(
             while current_slot + timedelta(minutes=30) <= end_boundary:
                 slot_end = current_slot + timedelta(minutes=30)
 
-                # Skip past slots
-                if current_slot < datetime.now():
+                # Skip past slots (use UTC for comparison)
+                now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+                if current_slot < now_utc:
                     current_slot = slot_end
                     continue
 

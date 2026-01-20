@@ -25,8 +25,12 @@ export default function RescheduleBookingModal({
   useEffect(() => {
     if (isOpen && booking) {
       // Pre-fill with current booking date/time
+      // Use local date components to avoid timezone conversion issues
       const currentStart = new Date(booking.start_at);
-      const dateStr = currentStart.toISOString().split("T")[0];
+      const year = currentStart.getFullYear();
+      const month = String(currentStart.getMonth() + 1).padStart(2, '0');
+      const day = String(currentStart.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       const timeStr = currentStart.toTimeString().slice(0, 5);
       setSelectedDate(dateStr);
       setSelectedTime(timeStr);
@@ -58,10 +62,14 @@ export default function RescheduleBookingModal({
   const currentEnd = new Date(booking.end_at);
   const duration = Math.round((currentEnd.getTime() - currentStart.getTime()) / 60000);
 
-  // Calculate minimum date (tomorrow)
+  // Calculate minimum date (tomorrow) using local date components
+  // to avoid timezone conversion issues with toISOString()
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split("T")[0];
+  const minYear = tomorrow.getFullYear();
+  const minMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const minDay = String(tomorrow.getDate()).padStart(2, '0');
+  const minDate = `${minYear}-${minMonth}-${minDay}`;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

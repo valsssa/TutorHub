@@ -78,7 +78,11 @@ export default function TimeSlotPicker({
       return;
     }
 
-    const dateKey = selectedDate.toISOString().split("T")[0];
+    // Use local date components for cache key to match the API query dates
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
 
     // Check cache first
     if (slotsCache[dateKey]) {
@@ -89,10 +93,16 @@ export default function TimeSlotPicker({
     const fetchSlots = async () => {
       setLoading(true);
       try {
-        const startDate = new Date(selectedDate);
-        startDate.setHours(0, 0, 0, 0);
-        const endDate = new Date(selectedDate);
-        endDate.setHours(23, 59, 59, 999);
+        // Use UTC dates to avoid timezone issues
+        // The backend expects dates in ISO format and processes them in UTC
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth();
+        const day = selectedDate.getDate();
+        
+        // Create dates in local timezone but format as the intended date
+        // This ensures we query for the correct calendar day regardless of timezone
+        const startDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00`;
+        const endDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T23:59:59`;
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
         if (!API_URL) {
@@ -105,7 +115,7 @@ export default function TimeSlotPicker({
           ?.split("=")[1];
 
         const response = await fetch(
-          `${API_URL}/api/tutors/${tutorId}/available-slots?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`,
+          `${API_URL}/api/tutors/${tutorId}/available-slots?start_date=${startDateStr}&end_date=${endDateStr}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
