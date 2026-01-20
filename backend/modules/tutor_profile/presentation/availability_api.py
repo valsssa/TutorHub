@@ -81,7 +81,9 @@ async def get_available_slots(
     end_date_obj = end_dt.date()
 
     while current_date <= end_date_obj:
-        day_of_week = current_date.weekday()  # Monday=0, Sunday=6
+        # Convert Python weekday (Mon=0, Sun=6) to JS convention (Sun=0, Sat=6)
+        python_weekday = current_date.weekday()  # Monday=0, Sunday=6
+        day_of_week = (python_weekday + 1) % 7  # Convert to Sunday=0, Saturday=6
 
         # Find availability rules for this day
         day_availabilities = [

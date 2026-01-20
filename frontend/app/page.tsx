@@ -12,6 +12,7 @@ import TutorCard from "@/components/TutorCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Button from "@/components/Button";
 import PublicHeader from "@/components/PublicHeader";
+import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export default function HomePage() {
@@ -67,8 +68,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200 flex flex-col">
-      {/* Public Header for non-authenticated users */}
-      {!currentUser && <PublicHeader />}
+      {/* Navigation Header */}
+      {currentUser ? <Navbar user={currentUser} /> : <PublicHeader />}
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
