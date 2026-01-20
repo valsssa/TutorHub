@@ -7,7 +7,7 @@ export default function Footer() {
   return (
     <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pt-16 pb-8 transition-colors duration-200 mt-auto">
       <div className="container mx-auto px-4 max-w-7xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-16">
           {/* Brand Column */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2 cursor-pointer">
@@ -33,13 +33,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/register" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                  Become a Tutor
+                <Link href="/referral" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                  Refer a friend
                 </Link>
               </li>
               <li>
-                <Link href="/packages" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                  Pricing
+                <Link href="/affiliate-program" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                  Affiliate Program
                 </Link>
               </li>
             </ul>
@@ -50,18 +50,20 @@ export default function Footer() {
             <h4 className="font-bold text-slate-900 dark:text-white mb-6">Support</h4>
             <ul className="space-y-3 text-sm">
               <li>
-                <Link href="/settings/help" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                <Link href="/support" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                   Help Center
                 </Link>
               </li>
+            </ul>
+          </div>
+
+          {/* For Tutors */}
+          <div>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-6">For Tutors</h4>
+            <ul className="space-y-3 text-sm">
               <li>
-                <Link href="/settings" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                  Settings
-                </Link>
-              </li>
-              <li>
-                <Link href="/messages" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                  Contact Us
+                <Link href="/tutor/onboarding" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                  Become a Tutor
                 </Link>
               </li>
             </ul>
@@ -77,12 +79,12 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/settings/privacy" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                <Link href="/terms" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/settings/privacy" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                <Link href="/cookie-policy" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                   Cookie Policy
                 </Link>
               </li>
@@ -99,10 +101,10 @@ export default function Footer() {
             <Link href="/settings/privacy" className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
               Privacy
             </Link>
-            <Link href="/settings/privacy" className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+            <Link href="/terms" className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
               Terms
             </Link>
-            <Link href="/settings/privacy" className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+            <Link href="/cookie-policy" className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
               Cookies
             </Link>
           </div>

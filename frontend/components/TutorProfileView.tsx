@@ -29,7 +29,7 @@ interface TutorProfileViewProps {
   tutor: TutorProfile;
   reviews: Review[];
   subjects: Subject[];
-  onBook: () => void;
+  onBookSlot: (slotIso: string) => void;
   onMessage: () => void;
   isOwnProfile?: boolean;
   onEdit?: () => void;
@@ -68,7 +68,7 @@ export default function TutorProfileView({
   tutor,
   reviews,
   subjects,
-  onBook,
+  onBookSlot,
   onMessage,
   isOwnProfile = false,
   onEdit,
@@ -254,7 +254,8 @@ export default function TutorProfileView({
     });
 
     if (slot) {
-      onBook();
+      // Navigate to booking page with selected slot
+      onBookSlot(slot.start_time);
     }
   };
 
@@ -964,7 +965,7 @@ export default function TutorProfileView({
               </p>
             </div>
             <button
-              onClick={onBook}
+              onClick={scrollToSchedule}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 py-3 rounded-lg shadow-sm border border-emerald-700 active:scale-95 transition-all"
             >
               Book Now

@@ -3,15 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import {
-  tutors,
-  subjects as subjectsApi,
-  auth,
-} from "@/lib/api";
+import { tutors, subjects as subjectsApi, auth } from "@/lib/api";
 import { authUtils } from "@/lib/auth";
 import type { TutorProfile, User, Subject, Review } from "@/types";
 import { useToast } from "@/components/ToastContainer";
-import ModernBookingModal from "@/components/ModernBookingModal";
 import { TutorProfileSkeleton } from "@/components/SkeletonLoader";
 import TutorProfileView from "@/components/TutorProfileView";
 
@@ -30,7 +25,6 @@ function TutorDetailContent() {
   const [tutor, setTutor] = useState<TutorProfile | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showBookingModal, setShowBookingModal] = useState(false);
   const [subjectsList, setSubjectsList] = useState<Subject[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isSaved, setIsSaved] = useState(false);
@@ -82,42 +76,45 @@ function TutorDetailContent() {
     }
   };
 
+  // When a time slot is selected, navigate to the booking page
+  const handleBookSlot = (slotIso: string) => {
+    if (!tutorId) return;
+
+    // Only students can book
+    if (!user || !authUtils.isStudent(user)) {
+      showError("Only students can book lessons");
+      return;
+    }
+
+    // Navigate to booking page with selected slot
+    const encodedSlot = encodeURIComponent(slotIso);
+    router.push(`/tutors/${tutorId}/book?slot=${encodedSlot}`);
+  };
+
   if (loading || !tutor) {
     return <TutorProfileSkeleton />;
   }
 
   const canBook = user && authUtils.isStudent(user);
-  const isOwnProfile = !!(user && authUtils.isTutor(user) && tutor.user_id === user.id);
+  const isOwnProfile = !!(
+    user &&
+    authUtils.isTutor(user) &&
+    tutor.user_id === user.id
+  );
 
   return (
-    <>
-      <TutorProfileView
-        tutor={tutor}
-        reviews={reviews}
-        subjects={subjectsList}
-        onBook={() => canBook && setShowBookingModal(true)}
-        onMessage={handleMessage}
-        isOwnProfile={isOwnProfile}
-        onEdit={() => router.push("/tutor/profile")}
-        onToggleSave={canBook ? handleToggleSave : undefined}
-        isSaved={isSaved}
-        backHref="/tutors"
-        backLabel="Back to Marketplace"
-      />
-
-      {/* Booking Modal */}
-      {showBookingModal && canBook && (
-        <ModernBookingModal
-          tutor={tutor}
-          subjects={subjectsList}
-          onClose={() => setShowBookingModal(false)}
-          onSuccess={() => {
-            setShowBookingModal(false);
-            showSuccess("Booking request submitted successfully");
-            router.push("/bookings");
-          }}
-        />
-      )}
-    </>
+    <TutorProfileView
+      tutor={tutor}
+      reviews={reviews}
+      subjects={subjectsList}
+      onBookSlot={handleBookSlot}
+      onMessage={handleMessage}
+      isOwnProfile={isOwnProfile}
+      onEdit={() => router.push("/tutor/profile")}
+      onToggleSave={canBook ? handleToggleSave : undefined}
+      isSaved={isSaved}
+      backHref="/tutors"
+      backLabel="Back to Marketplace"
+    />
   );
 }

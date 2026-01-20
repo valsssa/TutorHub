@@ -1,8 +1,0 @@
-{
-  "name": "EduConnect",
-  "description": "A premium marketplace connecting students with elite educators for personalized 1-on-1 learning.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ]
-}
