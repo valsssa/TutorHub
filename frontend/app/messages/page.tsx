@@ -139,12 +139,11 @@ function MessagesContent() {
     [showError, setMessages, clearMessages]
   );
 
-  // Handle tutor/user parameter from URL for starting new conversation
+  // Handle user parameter from URL for starting new conversation
   useEffect(() => {
-    const tutorParam = searchParams?.get("tutor");
     const userParam = searchParams?.get("user");
-    const targetUserId = tutorParam ? parseInt(tutorParam) : userParam ? parseInt(userParam) : null;
-    
+    const targetUserId = userParam ? parseInt(userParam) : null;
+
     if (targetUserId && currentUser && threads.length >= 0) {
       // Check if we already have a thread with this user
       const existingThread = threads.find((t) => t.other_user_id === targetUserId);
@@ -153,55 +152,22 @@ function MessagesContent() {
         // Select existing thread
         selectThread(existingThread);
       } else {
-        // For tutors, try to load profile info. For other users, load basic user info
-        if (tutorParam) {
-          tutors
-            .get(targetUserId)
-            .then((tutor) => {
-              const displayName = tutor.title || `Tutor #${targetUserId}`;
-
-              // Create a temporary thread-like object
-              const tempThread: MessageThread = {
-                other_user_id: targetUserId,
-                other_user_email: displayName,
-                other_user_role: "tutor",
-                booking_id: undefined,
-                last_message: "Start a new conversation",
-                last_message_time: new Date().toISOString(),
-                total_messages: 0,
-                unread_count: 0,
-              };
-              setSelectedThread(tempThread);
-              setMessages([]);
-            })
-            .catch(() => {
-              showError("Failed to load tutor information");
-            });
-        } else if (userParam) {
-          // Load basic user info for admin messaging any user
-          auth.getCurrentUser()
-            .then(() => {
-              // Create a temporary thread for any user type
-              const tempThread: MessageThread = {
-                other_user_id: targetUserId,
-                other_user_email: `User #${targetUserId}`,
-                other_user_role: "student", // Will be updated when messages load
-                booking_id: undefined,
-                last_message: "Start a new conversation",
-                last_message_time: new Date().toISOString(),
-                total_messages: 0,
-                unread_count: 0,
-              };
-              setSelectedThread(tempThread);
-              setMessages([]);
-            })
-            .catch(() => {
-              showError("Failed to start conversation");
-            });
-        }
+        // Create a new thread with this user (works for all roles: tutor, student, admin)
+        const tempThread: MessageThread = {
+          other_user_id: targetUserId,
+          other_user_email: `User #${targetUserId}`,
+          other_user_role: "student", // Will be updated when first message is sent/received
+          booking_id: undefined,
+          last_message: "Start a new conversation",
+          last_message_time: new Date().toISOString(),
+          total_messages: 0,
+          unread_count: 0,
+        };
+        setSelectedThread(tempThread);
+        setMessages([]);
       }
     }
-  }, [searchParams, currentUser, threads, selectThread, showError, setMessages]);
+  }, [searchParams, currentUser, threads, selectThread, setMessages]);
 
   const sendMessage = useCallback(
     async (messageText: string) => {

@@ -71,8 +71,8 @@ function TutorDetailContent() {
   };
 
   const handleMessage = () => {
-    if (tutorId) {
-      router.push(`/messages?tutor=${tutorId}`);
+    if (tutor?.user_id) {
+      router.push(`/messages?user=${tutor.user_id}`);
     }
   };
 
