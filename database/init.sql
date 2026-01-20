@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(254) UNIQUE NOT NULL,
     hashed_password VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
     role VARCHAR(20) NOT NULL DEFAULT 'student',
     is_active BOOLEAN DEFAULT TRUE NOT NULL,
     is_verified BOOLEAN DEFAULT FALSE NOT NULL,
@@ -48,6 +50,9 @@ CREATE INDEX IF NOT EXISTS idx_users_timezone ON users(timezone);
 CREATE INDEX IF NOT EXISTS idx_users_language ON users(preferred_language);
 CREATE INDEX IF NOT EXISTS idx_users_locale ON users(locale);
 CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_users_first_name ON users(first_name);
+CREATE INDEX IF NOT EXISTS idx_users_last_name ON users(last_name);
+CREATE INDEX IF NOT EXISTS idx_users_full_name ON users(first_name, last_name);
 
 -- Extended user profiles (avatar_url removed - using users.avatar_key)
 CREATE TABLE IF NOT EXISTS user_profiles (

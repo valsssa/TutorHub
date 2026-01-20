@@ -70,8 +70,21 @@ async def update_student_profile(
             db.add(profile)
 
         # Update only provided fields (sanitization handled by Pydantic)
-        for field, value in update_data.model_dump(exclude_unset=True).items():
+        update_fields = update_data.model_dump(exclude_unset=True)
+        for field, value in update_fields.items():
             setattr(profile, field, value)
+
+        # Sync first_name and last_name to User table for display in tutor cards and messages
+        if "first_name" in update_fields or "last_name" in update_fields:
+            user = db.query(User).filter(User.id == current_user.id).first()
+            if user:
+                if "first_name" in update_fields:
+                    user.first_name = update_fields["first_name"]
+                if "last_name" in update_fields:
+                    user.last_name = update_fields["last_name"]
+
+                from datetime import datetime
+                user.updated_at = datetime.now(UTC)
 
         # Update timestamp in application code (no DB triggers)
         from datetime import datetime

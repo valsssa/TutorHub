@@ -29,6 +29,10 @@ export default function TutorCard({
 }: TutorCardProps) {
   const router = useRouter();
 
+  const displayName = tutor.first_name && tutor.last_name
+    ? `${tutor.first_name} ${tutor.last_name}`
+    : tutor.title;
+
   const getRatingStars = (rating: number) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
@@ -62,7 +66,7 @@ export default function TutorCard({
           {tutor.profile_photo_url && (
             <Image
               src={resolveAssetUrl(tutor.profile_photo_url)}
-              alt={tutor.title}
+              alt={displayName}
               width={64}
               height={64}
               className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700"
@@ -70,7 +74,7 @@ export default function TutorCard({
             />
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-slate-900 dark:text-white truncate">{tutor.title}</h3>
+            <h3 className="font-bold text-slate-900 dark:text-white truncate">{displayName}</h3>
             {tutor.headline && (
               <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{tutor.headline}</p>
             )}
@@ -109,7 +113,7 @@ export default function TutorCard({
             {tutor.profile_photo_url && (
               <Image
                 src={resolveAssetUrl(tutor.profile_photo_url)}
-                alt={tutor.title}
+                alt={displayName}
                 width={80}
                 height={80}
                 className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-slate-800 shadow-md"
@@ -118,7 +122,7 @@ export default function TutorCard({
             )}
             <div className="flex-1">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-                {tutor.title}
+                {displayName}
               </h3>
               {tutor.headline && (
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
@@ -229,7 +233,7 @@ export default function TutorCard({
           {tutor.profile_photo_url && (
             <Image
               src={resolveAssetUrl(tutor.profile_photo_url)}
-              alt={tutor.title}
+              alt={displayName}
               width={64}
               height={64}
               className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 hover:scale-105 transition-transform duration-200"
@@ -238,7 +242,7 @@ export default function TutorCard({
           )}
           <div>
             <h3 className="font-bold text-lg text-slate-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
-              {tutor.title}
+              {displayName}
             </h3>
             {tutor.headline && (
               <p className="text-slate-500 dark:text-slate-400 text-xs line-clamp-1 mb-1">

@@ -54,6 +54,8 @@ class MessageThreadResponse(BaseModel):
 
     other_user_id: int
     other_user_email: str
+    other_user_first_name: str | None = None
+    other_user_last_name: str | None = None
     other_user_role: str
     booking_id: int | None = None
     last_message: str

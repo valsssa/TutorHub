@@ -12,6 +12,8 @@ import Input from "@/components/Input";
 import Button from "@/components/Button";
 
 interface RegisterFormValues {
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -33,12 +35,36 @@ export default function RegisterPage() {
   const { values, errors, touched, handleChange, handleBlur, handleSubmit } =
     useFormValidation<RegisterFormValues>(
       {
+        firstName: "",
+        lastName: "",
         email: "",
         password: "",
         confirmPassword: "",
         isTutor: false,
       },
       {
+        firstName: {
+          required: "First name is required",
+          minLength: {
+            value: 1,
+            message: "First name is required",
+          },
+          maxLength: {
+            value: 100,
+            message: "First name must not exceed 100 characters",
+          },
+        },
+        lastName: {
+          required: "Last name is required",
+          minLength: {
+            value: 1,
+            message: "Last name is required",
+          },
+          maxLength: {
+            value: 100,
+            message: "Last name must not exceed 100 characters",
+          },
+        },
         email: {
           required: "Email is required",
           pattern: {
@@ -78,8 +104,10 @@ export default function RegisterPage() {
 
     try {
       const user = await auth.register(
-        formValues.email, 
-        formValues.password, 
+        formValues.email,
+        formValues.password,
+        formValues.firstName,
+        formValues.lastName,
         formValues.isTutor ? "tutor" : "student",
         detectedPrefs.timezone,
         detectedPrefs.currency
@@ -186,6 +214,27 @@ export default function RegisterPage() {
 
           {/* Registration Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                type="text"
+                label="First Name"
+                placeholder="John"
+                value={values.firstName}
+                onChange={(e) => handleChange("firstName", e.target.value)}
+                onBlur={() => handleBlur("firstName")}
+                error={touched.firstName ? errors.firstName : undefined}
+              />
+              <Input
+                type="text"
+                label="Last Name"
+                placeholder="Doe"
+                value={values.lastName}
+                onChange={(e) => handleChange("lastName", e.target.value)}
+                onBlur={() => handleBlur("lastName")}
+                error={touched.lastName ? errors.lastName : undefined}
+              />
+            </div>
+
             <Input
               type="email"
               label="Email Address"

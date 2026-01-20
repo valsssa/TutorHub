@@ -222,14 +222,14 @@ class MessageService:
             )
 
             # Main query: Get thread details with latest message
+            # Select User object directly for reliable attribute access
             threads_query = (
                 self.db.query(
                     latest_msg_subquery.c.other_user_id,
-                    User.email.label("other_user_email"),
-                    User.role.label("other_user_role"),
+                    User,  # Select entire User object
                     latest_msg_subquery.c.booking_id,
-                    Message.sender_id.label("last_sender_id"),
-                    Message.message.label("last_message"),
+                    Message.sender_id,
+                    Message.message,
                     latest_msg_subquery.c.last_time,
                 )
                 .select_from(latest_msg_subquery)
@@ -266,35 +266,42 @@ class MessageService:
             # Calculate unread count per thread separately (more accurate)
             threads = []
             for t in threads_query:
+                # t[0] = other_user_id, t[2] = booking_id
+                booking_id = t[2]
                 unread_count = (
                     self.db.query(func.count(Message.id))
                     .filter(
                         Message.deleted_at.is_(None),
                         Message.recipient_id == user_id,
-                        Message.sender_id == t.other_user_id,
+                        Message.sender_id == t[0],  # other_user_id
                         Message.is_read.is_(False),
                         or_(
-                            Message.booking_id == t.booking_id,
+                            Message.booking_id == booking_id,
                             and_(
-                                t.booking_id.is_(None) if t.booking_id is None else False,
+                                booking_id.is_(None) if booking_id is None else False,
                                 Message.booking_id.is_(None),
                             ),
                         )
-                        if t.booking_id is not None
+                        if booking_id is not None
                         else Message.booking_id.is_(None),
                     )
                     .scalar()
                 ) or 0
 
+                # Access by index with User object
+                # Query columns order: other_user_id, User, booking_id, sender_id, message, last_time
+                user_obj = t[1]  # User object
                 threads.append(
                     {
-                        "other_user_id": t.other_user_id,
-                        "other_user_email": t.other_user_email,
-                        "other_user_role": t.other_user_role,
-                        "booking_id": t.booking_id,
-                        "last_message": t.last_message,
-                        "last_message_time": t.last_time,
-                        "last_sender_id": t.last_sender_id,
+                        "other_user_id": t[0],  # other_user_id
+                        "other_user_email": user_obj.email,
+                        "other_user_first_name": user_obj.first_name,
+                        "other_user_last_name": user_obj.last_name,
+                        "other_user_role": user_obj.role,
+                        "booking_id": t[2],  # booking_id
+                        "last_sender_id": t[3],  # sender_id
+                        "last_message": t[4],  # message
+                        "last_message_time": t[5],  # last_time
                         "unread_count": unread_count,
                     }
                 )

@@ -73,13 +73,15 @@ class TutorProfileAggregate:
 
     id: int
     user_id: int
-    title: str | None
-    headline: str | None
-    bio: str | None
-    description: str | None
-    hourly_rate: Decimal
-    experience_years: int
-    education: str | None
+    first_name: str | None = None
+    last_name: str | None = None
+    title: str | None = None
+    headline: str | None = None
+    bio: str | None = None
+    description: str | None = None
+    hourly_rate: Decimal = Decimal("0.00")
+    experience_years: int = 0
+    education: str | None = None
     languages: list[str] = field(default_factory=list)
     video_url: str | None = None
     is_approved: bool = False

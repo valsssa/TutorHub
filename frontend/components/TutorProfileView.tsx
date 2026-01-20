@@ -260,8 +260,10 @@ export default function TutorProfileView({
   };
 
   // Tutor display info
-  const displayName = tutor.title;
-  const firstName = tutor.title.split(" ")[0];
+  const displayName = tutor.first_name && tutor.last_name
+    ? `${tutor.first_name} ${tutor.last_name}`
+    : tutor.title;
+  const firstName = tutor.first_name || tutor.title.split(" ")[0];
   const isVerified = tutor.is_approved;
   const averageRating = Number(tutor.average_rating);
   const totalReviews = tutor.total_reviews || reviews.length;
@@ -325,7 +327,7 @@ export default function TutorProfileView({
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                    {tutor.title}
+                    {displayName}
                   </h1>
                   {isVerified && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wide border border-emerald-200 dark:border-emerald-800">
@@ -410,7 +412,7 @@ export default function TutorProfileView({
           {tutor.bio && (
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
-                About Me
+                About {firstName}
               </h2>
               <div
                 className={`prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 relative transition-all duration-500 ease-in-out ${isBioExpanded ? "" : "max-h-[140px] overflow-hidden"}`}

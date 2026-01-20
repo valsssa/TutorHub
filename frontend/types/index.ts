@@ -68,6 +68,8 @@ export interface TutorPricingOption {
 export interface TutorProfile {
   id: number;
   user_id: number;
+  first_name?: string | null;
+  last_name?: string | null;
   title: string;
   headline?: string;
   bio?: string;
@@ -105,6 +107,8 @@ export interface PaginatedResponse<T> {
 
 export interface TutorPublicSummary {
   id: number;
+  first_name?: string | null;
+  last_name?: string | null;
   title: string;
   headline?: string;
   bio?: string;
@@ -245,6 +249,8 @@ export interface Message {
 export interface MessageThread {
   other_user_id: number;
   other_user_email: string;
+  other_user_first_name?: string | null;
+  other_user_last_name?: string | null;
   other_user_role?: string;
   booking_id?: number;
   last_message: string;

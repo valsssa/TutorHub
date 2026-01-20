@@ -109,6 +109,8 @@ def register(
     user_entity = service.register_user(
         email=user.email,
         password=user.password,
+        first_name=user.first_name,
+        last_name=user.last_name,
         role=user.role or "student",
         timezone=user.timezone or "UTC",
         currency=user.currency or "USD",
@@ -118,6 +120,8 @@ def register(
     return UserResponse(
         id=user_entity.id,
         email=user_entity.email,
+        first_name=user_entity.first_name,
+        last_name=user_entity.last_name,
         role=user_entity.role,
         is_active=user_entity.is_active,
         is_verified=user_entity.is_verified,
@@ -275,6 +279,8 @@ async def get_me(
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
+        first_name=getattr(current_user, "first_name", None),
+        last_name=getattr(current_user, "last_name", None),
         role=current_user.role,
         is_active=current_user.is_active,
         is_verified=current_user.is_verified,

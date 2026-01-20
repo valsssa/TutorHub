@@ -19,6 +19,8 @@ class UserRepository:
             id=user.id,
             email=user.email,
             hashed_password=user.hashed_password,
+            first_name=getattr(user, "first_name", None),
+            last_name=getattr(user, "last_name", None),
             role=user.role,
             is_active=user.is_active,
             is_verified=user.is_verified,
@@ -51,6 +53,8 @@ class UserRepository:
         user = User(
             email=entity.email.lower(),
             hashed_password=entity.hashed_password,
+            first_name=entity.first_name,
+            last_name=entity.last_name,
             role=entity.role,
             is_active=entity.is_active,
             is_verified=entity.is_verified,
@@ -70,6 +74,8 @@ class UserRepository:
 
         user.email = entity.email.lower()
         user.hashed_password = entity.hashed_password
+        user.first_name = entity.first_name
+        user.last_name = entity.last_name
         user.role = entity.role
         user.is_active = entity.is_active
         user.is_verified = entity.is_verified

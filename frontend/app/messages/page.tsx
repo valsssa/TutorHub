@@ -44,6 +44,13 @@ function MessagesContent() {
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
 
+  const getThreadDisplayName = (thread: MessageThread): string => {
+    if (thread.other_user_first_name && thread.other_user_last_name) {
+      return `${thread.other_user_first_name} ${thread.other_user_last_name}`;
+    }
+    return thread.other_user_email;
+  };
+
   const {
     messages: threadMessages,
     setMessages,
@@ -335,7 +342,7 @@ function MessagesContent() {
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <p className="font-medium text-gray-900 truncate text-sm">
-                            {thread.other_user_email}
+                            {getThreadDisplayName(thread)}
                           </p>
                           {thread.other_user_role && (
                             <span
@@ -387,7 +394,7 @@ function MessagesContent() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-gray-900">
-                          {selectedThread.other_user_email}
+                          {getThreadDisplayName(selectedThread)}
                         </p>
                         {selectedThread.other_user_role && (
                           <span

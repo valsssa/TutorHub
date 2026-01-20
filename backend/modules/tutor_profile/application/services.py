@@ -81,6 +81,8 @@ class TutorProfileService:
         aggregate = self.repository.update_about(
             db,
             user_id,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
             title=payload.title,
             headline=payload.headline,
             bio=payload.bio,

@@ -19,6 +19,8 @@ class UserCreate(BaseModel):
 
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=128)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
     role: str | None = Field(default="student")
     timezone: str | None = Field(default="UTC")
     currency: str | None = Field(default="USD")
@@ -96,6 +98,8 @@ class UserResponse(BaseModel):
 
     id: int
     email: str
+    first_name: str | None = None
+    last_name: str | None = None
     role: str
     is_active: bool
     is_verified: bool
@@ -347,6 +351,8 @@ class TutorPricingOptionResponse(TutorPricingOptionInput):
 class TutorAboutUpdate(BaseModel):
     """Tutor about section."""
 
+    first_name: str | None = Field(None, min_length=1, max_length=100)
+    last_name: str | None = Field(None, min_length=1, max_length=100)
     title: str = Field(..., min_length=5, max_length=200)
     headline: str | None = Field(None, max_length=255)
     bio: str | None = None
@@ -421,6 +427,8 @@ class TutorProfileResponse(BaseModel):
 
     id: int
     user_id: int
+    first_name: str | None = None
+    last_name: str | None = None
     title: str
     headline: str | None
     bio: str | None
@@ -452,6 +460,8 @@ class TutorPublicProfile(BaseModel):
     """Public tutor profile (for listings)."""
 
     id: int
+    first_name: str | None = None
+    last_name: str | None = None
     title: str
     headline: str | None
     bio: str | None

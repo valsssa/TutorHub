@@ -11,6 +11,8 @@ class UserEntity:
     id: int | None
     email: str
     hashed_password: str
+    first_name: str | None
+    last_name: str | None
     role: str
     is_active: bool = True
     is_verified: bool = False

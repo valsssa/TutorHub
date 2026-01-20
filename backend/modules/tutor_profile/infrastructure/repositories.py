@@ -157,18 +157,34 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         db: Session,
         user_id: int,
         *,
+        first_name: str | None,
+        last_name: str | None,
         title: str,
         headline: str | None,
         bio: str | None,
         experience_years: int,
         languages: list[str] | None,
     ) -> TutorProfileAggregate:
+        from datetime import datetime
+
         profile = self._ensure_profile(db, user_id)
         profile.title = title
         profile.headline = headline
         profile.bio = bio
         profile.experience_years = experience_years
         profile.languages = languages or []
+
+        # Sync first_name and last_name to User table for display in tutor cards and messages
+        if first_name is not None or last_name is not None:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                if first_name is not None:
+                    user.first_name = first_name.strip()
+                if last_name is not None:
+                    user.last_name = last_name.strip()
+                user.updated_at = datetime.now(UTC)
+
+        profile.updated_at = datetime.now(UTC)
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
@@ -490,9 +506,17 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             for item in profile.pricing_options
         ]
 
+        first_name = None
+        last_name = None
+        if profile.user:
+            first_name = getattr(profile.user, "first_name", None)
+            last_name = getattr(profile.user, "last_name", None)
+
         return TutorProfileAggregate(
             id=profile.id,
             user_id=profile.user_id,
+            first_name=first_name,
+            last_name=last_name,
             title=profile.title or "",
             headline=profile.headline,
             bio=profile.bio,

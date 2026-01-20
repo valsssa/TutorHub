@@ -96,6 +96,8 @@ def aggregate_to_profile_response(
     data = {
         "id": aggregate.id,
         "user_id": aggregate.user_id,
+        "first_name": aggregate.first_name,
+        "last_name": aggregate.last_name,
         "title": aggregate.title or "",
         "headline": aggregate.headline,
         "bio": aggregate.bio,
@@ -128,6 +130,8 @@ def aggregate_to_public_profile(aggregate: TutorProfileAggregate) -> TutorPublic
     subjects: list[str] = [subject.subject_name or "" for subject in aggregate.subjects]
     data = {
         "id": aggregate.id,
+        "first_name": aggregate.first_name,
+        "last_name": aggregate.last_name,
         "title": aggregate.title or "",
         "headline": aggregate.headline,
         "bio": aggregate.bio,

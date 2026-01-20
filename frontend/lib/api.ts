@@ -352,6 +352,8 @@ export const auth = {
   async register(
     email: string,
     password: string,
+    first_name: string,
+    last_name: string,
     role: string = "student",
     timezone?: string,
     currency?: string,
@@ -361,6 +363,8 @@ export const auth = {
       const { data } = await api.post<User>("/api/auth/register", {
         email,
         password,
+        first_name,
+        last_name,
         role,
         timezone: timezone || "UTC",
         currency: currency || "USD",
