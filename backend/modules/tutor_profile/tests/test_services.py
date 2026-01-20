@@ -4,15 +4,11 @@ Tutor Profile Service Tests
 Tests for tutor profile creation, updates, approval workflow, and business logic.
 """
 
-import pytest
 from decimal import Decimal
-from datetime import datetime, timezone
 
+import pytest
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 
-from backend.models.tutors import TutorProfile, TutorSubject, TutorCertification, TutorEducation
-from backend.models.subjects import Subject
 from backend.modules.tutor_profile.application.services import TutorProfileService
 
 
@@ -26,7 +22,7 @@ def tutor_profile_data():
         "hourly_rate": Decimal("50.00"),
         "experience_years": 10,
         "languages": ["en", "es"],
-        "video_url": "https://youtube.com/watch?v=example"
+        "video_url": "https://youtube.com/watch?v=example",
     }
 
 
@@ -35,7 +31,7 @@ def subject_data():
     """Sample subject assignment data"""
     return [
         {"subject_id": 1, "proficiency_level": "C2", "years_experience": 5},
-        {"subject_id": 2, "proficiency_level": "B2", "years_experience": 3}
+        {"subject_id": 2, "proficiency_level": "B2", "years_experience": 3},
     ]
 
 
@@ -49,7 +45,7 @@ def education_data():
             "field_of_study": "Mathematics",
             "start_year": 2015,
             "end_year": 2019,
-            "description": "Focus on applied mathematics"
+            "description": "Focus on applied mathematics",
         }
     ]
 
@@ -62,7 +58,7 @@ def certification_data():
             "name": "Teaching Certificate",
             "issuing_organization": "State Board of Education",
             "issue_date": "2020-01-15",
-            "credential_id": "CERT-12345"
+            "credential_id": "CERT-12345",
         }
     ]
 
@@ -84,7 +80,7 @@ class TestTutorProfileCreation:
         assert profile.hourly_rate == Decimal("50.00")
         assert profile.experience_years == 10
         assert profile.profile_status == "incomplete"
-        assert profile.is_approved == False
+        assert not profile.is_approved
 
     def test_create_profile_auto_initialization(self, db: Session, test_tutor_user_no_profile):
         """Test lazy profile creation on first access"""
@@ -121,11 +117,7 @@ class TestTutorProfileUpdates:
     def test_update_about_section(self, db: Session, test_tutor_profile):
         """Test updating about/title/headline"""
         # Given
-        updates = {
-            "title": "Senior Math Tutor",
-            "headline": "15 years of excellence",
-            "bio": "Updated bio text"
-        }
+        updates = {"title": "Senior Math Tutor", "headline": "15 years of excellence", "bio": "Updated bio text"}
 
         # When
         updated = TutorProfileService.update_about(db, test_tutor_profile.id, updates)
@@ -142,11 +134,7 @@ class TestTutorProfileUpdates:
         new_rate = Decimal("75.00")
 
         # When
-        updated = TutorProfileService.update_pricing(
-            db,
-            test_tutor_profile.id,
-            {"hourly_rate": new_rate}
-        )
+        updated = TutorProfileService.update_pricing(db, test_tutor_profile.id, {"hourly_rate": new_rate})
 
         # Then
         assert updated.hourly_rate == new_rate
@@ -155,11 +143,7 @@ class TestTutorProfileUpdates:
         """Test error on invalid hourly rate"""
         # When/Then
         with pytest.raises(ValueError, match="Invalid hourly rate"):
-            TutorProfileService.update_pricing(
-                db,
-                test_tutor_profile.id,
-                {"hourly_rate": Decimal("-10.00")}
-            )
+            TutorProfileService.update_pricing(db, test_tutor_profile.id, {"hourly_rate": Decimal("-10.00")})
 
     def test_update_description(self, db: Session, test_tutor_profile):
         """Test updating full description"""
@@ -167,11 +151,7 @@ class TestTutorProfileUpdates:
         new_description = "I have been teaching mathematics for over 15 years..."
 
         # When
-        updated = TutorProfileService.update_description(
-            db,
-            test_tutor_profile.id,
-            new_description
-        )
+        updated = TutorProfileService.update_description(db, test_tutor_profile.id, new_description)
 
         # Then
         assert updated.description == new_description
@@ -191,11 +171,7 @@ class TestTutorProfileUpdates:
         """Test error on invalid video URL"""
         # When/Then
         with pytest.raises(ValueError, match="Invalid video URL"):
-            TutorProfileService.update_video(
-                db,
-                test_tutor_profile.id,
-                "not-a-valid-url"
-            )
+            TutorProfileService.update_video(db, test_tutor_profile.id, "not-a-valid-url")
 
 
 class TestTutorSubjects:
@@ -204,11 +180,7 @@ class TestTutorSubjects:
     def test_update_subjects(self, db: Session, test_tutor_profile, subject_data):
         """Test updating tutor subjects"""
         # When
-        updated = TutorProfileService.update_subjects(
-            db,
-            test_tutor_profile.id,
-            subject_data
-        )
+        updated = TutorProfileService.update_subjects(db, test_tutor_profile.id, subject_data)
 
         # Then
         assert len(updated.subjects) == 2
@@ -223,11 +195,7 @@ class TestTutorSubjects:
 
         # When - update with 1 subject
         new_subjects = [{"subject_id": 3, "proficiency_level": "C1", "years_experience": 2}]
-        updated = TutorProfileService.update_subjects(
-            db,
-            test_tutor_profile_with_subjects.id,
-            new_subjects
-        )
+        updated = TutorProfileService.update_subjects(db, test_tutor_profile_with_subjects.id, new_subjects)
 
         # Then
         assert len(updated.subjects) == 1
@@ -258,11 +226,7 @@ class TestTutorEducation:
     def test_add_education(self, db: Session, test_tutor_profile, education_data):
         """Test adding education entry"""
         # When
-        updated = TutorProfileService.replace_education(
-            db,
-            test_tutor_profile.id,
-            education_data
-        )
+        updated = TutorProfileService.replace_education(db, test_tutor_profile.id, education_data)
 
         # Then
         assert len(updated.educations) == 1
@@ -280,15 +244,15 @@ class TestTutorEducation:
                 "school": "MIT",
                 "field_of_study": "Mathematics",
                 "start_year": 2015,
-                "end_year": 2019
+                "end_year": 2019,
             },
             {
                 "degree": "Master of Science",
                 "school": "Stanford",
                 "field_of_study": "Applied Mathematics",
                 "start_year": 2019,
-                "end_year": 2021
-            }
+                "end_year": 2021,
+            },
         ]
 
         # When
@@ -300,13 +264,15 @@ class TestTutorEducation:
     def test_education_year_validation(self, db: Session, test_tutor_profile):
         """Test validation that end_year >= start_year"""
         # Given
-        invalid_education = [{
-            "degree": "BS",
-            "school": "University",
-            "field_of_study": "Math",
-            "start_year": 2020,
-            "end_year": 2018  # Invalid: before start year
-        }]
+        invalid_education = [
+            {
+                "degree": "BS",
+                "school": "University",
+                "field_of_study": "Math",
+                "start_year": 2020,
+                "end_year": 2018,  # Invalid: before start year
+            }
+        ]
 
         # When/Then
         with pytest.raises(ValueError, match="End year must be after start year"):
@@ -319,11 +285,7 @@ class TestTutorCertifications:
     def test_add_certification(self, db: Session, test_tutor_profile, certification_data):
         """Test adding certification"""
         # When
-        updated = TutorProfileService.replace_certifications(
-            db,
-            test_tutor_profile.id,
-            certification_data
-        )
+        updated = TutorProfileService.replace_certifications(db, test_tutor_profile.id, certification_data)
 
         # Then
         assert len(updated.certifications) == 1
@@ -334,19 +296,17 @@ class TestTutorCertifications:
     def test_certification_with_expiration(self, db: Session, test_tutor_profile):
         """Test certification with expiration date"""
         # Given
-        cert_with_expiry = [{
-            "name": "CPR Certification",
-            "issuing_organization": "Red Cross",
-            "issue_date": "2024-01-01",
-            "expiration_date": "2026-01-01"
-        }]
+        cert_with_expiry = [
+            {
+                "name": "CPR Certification",
+                "issuing_organization": "Red Cross",
+                "issue_date": "2024-01-01",
+                "expiration_date": "2026-01-01",
+            }
+        ]
 
         # When
-        updated = TutorProfileService.replace_certifications(
-            db,
-            test_tutor_profile.id,
-            cert_with_expiry
-        )
+        updated = TutorProfileService.replace_certifications(db, test_tutor_profile.id, cert_with_expiry)
 
         # Then
         cert = updated.certifications[0]
@@ -355,20 +315,18 @@ class TestTutorCertifications:
     def test_certification_expiration_validation(self, db: Session, test_tutor_profile):
         """Test that expiration must be after issue date"""
         # Given
-        invalid_cert = [{
-            "name": "Certificate",
-            "issuing_organization": "Org",
-            "issue_date": "2025-01-01",
-            "expiration_date": "2024-01-01"  # Before issue date
-        }]
+        invalid_cert = [
+            {
+                "name": "Certificate",
+                "issuing_organization": "Org",
+                "issue_date": "2025-01-01",
+                "expiration_date": "2024-01-01",  # Before issue date
+            }
+        ]
 
         # When/Then
         with pytest.raises(ValueError, match="Expiration date must be after issue date"):
-            TutorProfileService.replace_certifications(
-                db,
-                test_tutor_profile.id,
-                invalid_cert
-            )
+            TutorProfileService.replace_certifications(db, test_tutor_profile.id, invalid_cert)
 
 
 class TestProfileCompletion:
@@ -383,10 +341,7 @@ class TestProfileCompletion:
         db.commit()
 
         # When
-        completion = TutorProfileService.calculate_completion_percentage(
-            db,
-            test_tutor_profile.id
-        )
+        completion = TutorProfileService.calculate_completion_percentage(db, test_tutor_profile.id)
 
         # Then
         assert completion < 30  # Should be low
@@ -400,26 +355,16 @@ class TestProfileCompletion:
         db.commit()
 
         # When
-        completion = TutorProfileService.calculate_completion_percentage(
-            db,
-            test_tutor_profile.id
-        )
+        completion = TutorProfileService.calculate_completion_percentage(db, test_tutor_profile.id)
 
         # Then
         assert 30 < completion < 70
 
-    def test_calculate_completion_full_profile(
-        self,
-        db: Session,
-        test_tutor_profile_complete
-    ):
+    def test_calculate_completion_full_profile(self, db: Session, test_tutor_profile_complete):
         """Test completion for fully filled profile"""
         # Given - profile with all sections completed
         # When
-        completion = TutorProfileService.calculate_completion_percentage(
-            db,
-            test_tutor_profile_complete.id
-        )
+        completion = TutorProfileService.calculate_completion_percentage(db, test_tutor_profile_complete.id)
 
         # Then
         assert completion >= 90
@@ -434,10 +379,7 @@ class TestProfileApproval:
         assert test_tutor_profile_ready.profile_status == "incomplete"
 
         # When
-        result = TutorProfileService.submit_for_approval(
-            db,
-            test_tutor_profile_ready.id
-        )
+        result = TutorProfileService.submit_for_approval(db, test_tutor_profile_ready.id)
 
         # Then
         assert result.profile_status == "pending_approval"
@@ -458,14 +400,10 @@ class TestProfileApproval:
         assert test_tutor_profile_pending.profile_status == "pending_approval"
 
         # When
-        approved = TutorProfileService.approve_profile(
-            db,
-            test_tutor_profile_pending.id,
-            test_admin_user.id
-        )
+        approved = TutorProfileService.approve_profile(db, test_tutor_profile_pending.id, test_admin_user.id)
 
         # Then
-        assert approved.is_approved == True
+        assert approved.is_approved
         assert approved.profile_status == "approved"
         assert approved.approved_by == test_admin_user.id
         assert approved.approved_at is not None
@@ -478,29 +416,19 @@ class TestProfileApproval:
         reason = "Certifications not verified"
 
         # When
-        rejected = TutorProfileService.reject_profile(
-            db,
-            test_tutor_profile_pending.id,
-            test_admin_user.id,
-            reason
-        )
+        rejected = TutorProfileService.reject_profile(db, test_tutor_profile_pending.id, test_admin_user.id, reason)
 
         # Then
         assert rejected.profile_status == "rejected"
         assert rejected.rejection_reason == reason
-        assert rejected.is_approved == False
+        assert not rejected.is_approved
         # Notification sent to tutor with reason
 
     def test_reject_profile_without_reason(self, db: Session, test_admin_user, test_tutor_profile_pending):
         """Test that rejection requires a reason"""
         # When/Then
         with pytest.raises(ValueError, match="Rejection reason required"):
-            TutorProfileService.reject_profile(
-                db,
-                test_tutor_profile_pending.id,
-                test_admin_user.id,
-                ""
-            )
+            TutorProfileService.reject_profile(db, test_tutor_profile_pending.id, test_admin_user.id, "")
 
     def test_resubmit_after_rejection(self, db: Session, test_tutor_profile_rejected):
         """Test tutor can resubmit after fixing issues"""
@@ -509,10 +437,7 @@ class TestProfileApproval:
 
         # When - tutor fixes issues and resubmits
         test_tutor_profile_rejected.rejection_reason = None  # Clear old reason
-        resubmitted = TutorProfileService.submit_for_approval(
-            db,
-            test_tutor_profile_rejected.id
-        )
+        resubmitted = TutorProfileService.submit_for_approval(db, test_tutor_profile_rejected.id)
 
         # Then
         assert resubmitted.profile_status == "pending_approval"
@@ -525,14 +450,11 @@ class TestProfileVisibility:
         """Test that only approved profiles appear in search"""
         # Given - mix of profiles with different statuses
         # When
-        public_profiles = TutorProfileService.get_public_profiles(
-            db,
-            filters={}
-        )
+        public_profiles = TutorProfileService.get_public_profiles(db, filters={})
 
         # Then
         for profile in public_profiles:
-            assert profile.is_approved == True
+            assert profile.is_approved
             assert profile.profile_status == "approved"
 
     def test_inactive_users_excluded_from_search(self, db: Session):
@@ -543,7 +465,7 @@ class TestProfileVisibility:
 
         # Then
         for profile in public_profiles:
-            assert profile.user.is_active == True
+            assert profile.user.is_active
 
 
 # Additional test scenarios to implement:

@@ -136,18 +136,14 @@ def student_user(db_session):
 @pytest.fixture
 def admin_token(client, admin_user):
     """Get admin auth token."""
-    response = client.post(
-        "/api/auth/login", data={"username": admin_user.email, "password": "admin123"}
-    )
+    response = client.post("/api/auth/login", data={"username": admin_user.email, "password": "admin123"})
     return response.json()["access_token"]
 
 
 @pytest.fixture
 def tutor_token(client, tutor_user):
     """Get tutor auth token."""
-    response = client.post(
-        "/api/auth/login", data={"username": tutor_user.email, "password": "tutor123"}
-    )
+    response = client.post("/api/auth/login", data={"username": tutor_user.email, "password": "tutor123"})
     return response.json()["access_token"]
 
 
@@ -166,9 +162,7 @@ def test_subject(db_session):
     """Create test subject."""
     from models import Subject
 
-    subject = Subject(
-        name="Mathematics", description="Math tutoring", category="STEM", is_active=True
-    )
+    subject = Subject(name="Mathematics", description="Math tutoring", category="STEM", is_active=True)
     db_session.add(subject)
     db_session.commit()
     db_session.refresh(subject)

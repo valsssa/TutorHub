@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from io import BytesIO
-from typing import Dict
+from typing import Any
 
 import pytest
 from PIL import Image
@@ -16,7 +16,7 @@ class FakeAvatarStorage:
     """In-memory storage stub used for avatar tests."""
 
     def __init__(self) -> None:
-        self.objects: Dict[str, bytes] = {}
+        self.objects: dict[str, bytes] = {}
         self.deleted: set[str] = set()
         self.ttl = 300
 
@@ -42,9 +42,7 @@ def _read_bytes(path: str) -> bytes:
         return file_obj.read()
 
 
-def _create_png_bytes(
-    size: tuple[int, int] = (256, 256), color: tuple[int, int, int] = (10, 20, 200)
-) -> bytes:
+def _create_png_bytes(size: tuple[int, int] = (256, 256), color: tuple[int, int, int] = (10, 20, 200)) -> bytes:
     image = Image.new("RGB", size, color)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
@@ -60,9 +58,7 @@ def fake_avatar_storage(monkeypatch) -> FakeAvatarStorage:
     return storage
 
 
-def test_upload_avatar_success(
-    client, student_token, db_session, fake_avatar_storage: FakeAvatarStorage
-):
+def test_upload_avatar_success(client, student_token, db_session, fake_avatar_storage: FakeAvatarStorage):
     image_bytes = _create_png_bytes()
 
     response = client.post(
@@ -73,9 +69,7 @@ def test_upload_avatar_success(
 
     assert response.status_code == 201
     payload = response.json()
-    assert "avatar_url" in payload and payload["avatar_url"].startswith(
-        "https://example.com/"
-    )
+    assert "avatar_url" in payload and payload["avatar_url"].startswith("https://example.com/")
     assert payload["expires_at"]
 
     # Ensure avatar stored and metadata persisted
@@ -85,9 +79,7 @@ def test_upload_avatar_success(
     assert stored_user.avatar_key in fake_avatar_storage.objects
 
 
-def test_upload_avatar_rejects_large_file(
-    client, student_token, fake_avatar_storage: FakeAvatarStorage
-):
+def test_upload_avatar_rejects_large_file(client, student_token, fake_avatar_storage: FakeAvatarStorage):
     oversized_bytes = b"x" * (2_000_001)
 
     response = client.post(
@@ -100,9 +92,7 @@ def test_upload_avatar_rejects_large_file(
     assert response.json()["detail"] == "Avatar exceeds 2 MB limit"
 
 
-def test_upload_avatar_rejects_corrupt_image(
-    client, student_token, fake_avatar_storage: FakeAvatarStorage
-):
+def test_upload_avatar_rejects_corrupt_image(client, student_token, fake_avatar_storage: FakeAvatarStorage):
     corrupt_bytes = b"not-an-image"
 
     response = client.post(

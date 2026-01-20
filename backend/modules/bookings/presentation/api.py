@@ -3,8 +3,7 @@ Clean booking API endpoints following presentation layer pattern.
 Consolidates all booking routes with shared error handling and authorization.
 """
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
@@ -33,9 +32,7 @@ router = APIRouter(prefix="/api", tags=["bookings"])
 # ============================================================================
 
 
-def _verify_booking_ownership(
-    booking: Booking, current_user: User, db: Session
-) -> None:
+def _verify_booking_ownership(booking: Booking, current_user: User, db: Session) -> None:
     """Verify user has access to booking (student or tutor)."""
     if current_user.role == "student":
         if booking.student_id != current_user.id:
@@ -44,11 +41,7 @@ def _verify_booking_ownership(
                 detail="Not authorized to access this booking",
             )
     elif current_user.role == "tutor":
-        tutor_profile = (
-            db.query(TutorProfile)
-            .filter(TutorProfile.user_id == current_user.id)
-            .first()
-        )
+        tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == current_user.id).first()
         if not tutor_profile or booking.tutor_profile_id != tutor_profile.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -60,16 +53,14 @@ def _get_booking_or_404(
     booking_id: int,
     db: Session,
     *,
-    current_user: Optional[User] = None,
+    current_user: User | None = None,
     verify_ownership: bool = True,
 ) -> Booking:
     """Get booking by ID with optional ownership check."""
     booking = (
         db.query(Booking)
         .options(
-            joinedload(Booking.tutor_profile)
-            .joinedload(TutorProfile.user)
-            .joinedload(User.profile),
+            joinedload(Booking.tutor_profile).joinedload(TutorProfile.user).joinedload(User.profile),
             joinedload(Booking.student).joinedload(User.profile),
             joinedload(Booking.subject),
         )
@@ -154,8 +145,8 @@ async def create_booking(
 
 @router.get("/bookings", response_model=BookingListResponse)
 async def list_bookings(
-    status_filter: Optional[str] = Query(None, alias="status"),
-    role: Optional[str] = Query("student", pattern="^(student|tutor)$"),
+    status_filter: str | None = Query(None, alias="status"),
+    role: str | None = Query("student", pattern="^(student|tutor)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -169,9 +160,7 @@ async def list_bookings(
     - Filter by status: upcoming, pending, completed, cancelled
     """
     query = db.query(Booking).options(
-        joinedload(Booking.tutor_profile)
-        .joinedload(TutorProfile.user)
-        .joinedload(User.profile),
+        joinedload(Booking.tutor_profile).joinedload(TutorProfile.user).joinedload(User.profile),
         joinedload(Booking.student).joinedload(User.profile),
         joinedload(Booking.subject),
     )
@@ -180,15 +169,9 @@ async def list_bookings(
     if current_user.role == "student" or role == "student":
         query = query.filter(Booking.student_id == current_user.id)
     elif current_user.role == "tutor" or role == "tutor":
-        tutor_profile = (
-            db.query(TutorProfile)
-            .filter(TutorProfile.user_id == current_user.id)
-            .first()
-        )
+        tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == current_user.id).first()
         if not tutor_profile:
-            return BookingListResponse(
-                bookings=[], total=0, page=page, page_size=page_size
-            )
+            return BookingListResponse(bookings=[], total=0, page=page, page_size=page_size)
         query = query.filter(Booking.tutor_profile_id == tutor_profile.id)
 
     # Apply status filter
@@ -216,12 +199,7 @@ async def list_bookings(
 
     # Pagination
     total = query.count()
-    bookings = (
-        query.order_by(Booking.start_time.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
+    bookings = query.order_by(Booking.start_time.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
     booking_dtos = [booking_to_dto(booking, db) for booking in bookings]
 
@@ -240,9 +218,7 @@ async def get_booking(
     db: Session = Depends(get_db),
 ):
     """Get detailed booking information with authorization check."""
-    booking = _get_booking_or_404(
-        booking_id, db, current_user=current_user, verify_ownership=True
-    )
+    booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
     return booking_to_dto(booking, db)
 
 
@@ -260,9 +236,7 @@ async def cancel_booking(
     - Refund policy: >= 12h before = full refund, < 12h = no refund
     - Restores package credit if applicable
     """
-    booking = _get_booking_or_404(
-        booking_id, db, current_user=current_user, verify_ownership=True
-    )
+    booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
 
     try:
         service = BookingService(db)
@@ -355,9 +329,7 @@ async def reschedule_booking(
         # Update booking
         booking.start_time = request.new_start_at
         booking.end_time = new_end_at
-        booking.notes = (
-            booking.notes or ""
-        ) + f"\n[Rescheduled at {datetime.utcnow()}]"
+        booking.notes = (booking.notes or "") + f"\n[Rescheduled at {datetime.utcnow()}]"
 
         db.commit()
         db.refresh(booking)
@@ -414,7 +386,8 @@ async def confirm_booking(
         )
 
     try:
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         booking.status = "CONFIRMED"
 
         # Generate join URL
@@ -426,7 +399,7 @@ async def confirm_booking(
             booking.notes_tutor = request.notes_tutor
 
         # Update timestamp in application code (no DB triggers)
-        booking.updated_at = datetime.now(timezone.utc)
+        booking.updated_at = datetime.now(UTC)
 
         db.commit()
         db.refresh(booking)
@@ -492,9 +465,7 @@ async def decline_booking(
         )
 
 
-@router.post(
-    "/tutor/bookings/{booking_id}/mark-no-show-student", response_model=BookingDTO
-)
+@router.post("/tutor/bookings/{booking_id}/mark-no-show-student", response_model=BookingDTO)
 async def mark_student_no_show(
     booking_id: int,
     request: MarkNoShowRequest,
@@ -545,9 +516,7 @@ async def mark_student_no_show(
         )
 
 
-@router.post(
-    "/tutor/bookings/{booking_id}/mark-no-show-tutor", response_model=BookingDTO
-)
+@router.post("/tutor/bookings/{booking_id}/mark-no-show-tutor", response_model=BookingDTO)
 async def mark_tutor_no_show(
     booking_id: int,
     request: MarkNoShowRequest,

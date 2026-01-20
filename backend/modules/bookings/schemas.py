@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -36,9 +36,9 @@ class TutorInfoDTO(BaseModel):
 
     id: int
     name: str
-    avatar_url: Optional[str] = None
+    avatar_url: str | None = None
     rating_avg: Decimal = Field(default=Decimal("0.00"))
-    title: Optional[str] = None
+    title: str | None = None
 
 
 class StudentInfoDTO(BaseModel):
@@ -46,8 +46,8 @@ class StudentInfoDTO(BaseModel):
 
     id: int
     name: str
-    avatar_url: Optional[str] = None
-    level: Optional[str] = None
+    avatar_url: str | None = None
+    level: str | None = None
 
 
 # ============================================================================
@@ -62,9 +62,9 @@ class BookingCreateRequest(BaseModel):
     start_at: datetime
     duration_minutes: int = Field(..., ge=15, le=180)
     lesson_type: LessonType = "REGULAR"
-    subject_id: Optional[int] = None
-    notes_student: Optional[str] = Field(None, max_length=2000)
-    use_package_id: Optional[int] = None
+    subject_id: int | None = None
+    notes_student: str | None = Field(None, max_length=2000)
+    use_package_id: int | None = None
 
     @field_validator("duration_minutes")
     @classmethod
@@ -79,7 +79,7 @@ class BookingCreateRequest(BaseModel):
 class BookingCancelRequest(BaseModel):
     """Cancel booking request."""
 
-    reason: Optional[str] = Field(None, max_length=500)
+    reason: str | None = Field(None, max_length=500)
 
 
 class BookingRescheduleRequest(BaseModel):
@@ -91,19 +91,19 @@ class BookingRescheduleRequest(BaseModel):
 class BookingConfirmRequest(BaseModel):
     """Tutor confirms booking."""
 
-    notes_tutor: Optional[str] = Field(None, max_length=2000)
+    notes_tutor: str | None = Field(None, max_length=2000)
 
 
 class BookingDeclineRequest(BaseModel):
     """Tutor declines booking."""
 
-    reason: Optional[str] = Field(None, max_length=500)
+    reason: str | None = Field(None, max_length=500)
 
 
 class MarkNoShowRequest(BaseModel):
     """Mark no-show (tutor or student)."""
 
-    notes: Optional[str] = Field(None, max_length=500)
+    notes: str | None = Field(None, max_length=500)
 
 
 # ============================================================================
@@ -126,13 +126,13 @@ class BookingDTO(BaseModel):
     platform_fee_pct: Decimal
     platform_fee_cents: int
     tutor_earnings_cents: int
-    join_url: Optional[str] = None
-    notes_student: Optional[str] = None
-    notes_tutor: Optional[str] = None
+    join_url: str | None = None
+    notes_student: str | None = None
+    notes_tutor: str | None = None
     tutor: TutorInfoDTO
     student: StudentInfoDTO
-    subject_name: Optional[str] = None
-    topic: Optional[str] = None
+    subject_name: str | None = None
+    topic: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -174,7 +174,7 @@ class AvailabilityUpdateRequest(BaseModel):
 
     windows: list[AvailabilityWindowCreate]
     effective_from: datetime
-    effective_to: Optional[datetime] = None
+    effective_to: datetime | None = None
 
 
 class BlackoutCreateRequest(BaseModel):
@@ -182,7 +182,7 @@ class BlackoutCreateRequest(BaseModel):
 
     start_at: datetime
     end_at: datetime
-    reason: Optional[str] = Field(None, max_length=500)
+    reason: str | None = Field(None, max_length=500)
 
     @field_validator("end_at")
     @classmethod
@@ -215,7 +215,7 @@ class AvailabilityQueryResponse(BaseModel):
 class PaymentIntentRequest(BaseModel):
     """Create payment intent before booking."""
 
-    booking_id: Optional[int] = None
+    booking_id: int | None = None
     amount_cents: int = Field(..., gt=0)
     currency: str = Field(default="USD", pattern="^[A-Z]{3}$")
 

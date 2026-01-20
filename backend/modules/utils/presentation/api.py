@@ -1,7 +1,5 @@
 """Utilities API routes for constants and validators."""
 
-from typing import Dict, List
-
 from fastapi import APIRouter, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -16,30 +14,30 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 @cache_with_ttl(ttl_seconds=3600)  # Cache for 1 hour (constants rarely change)
-def _get_countries() -> List[Dict[str, str]]:
+def _get_countries() -> list[dict[str, str]]:
     """Get countries list with caching."""
     return COUNTRIES
 
 
 @cache_with_ttl(ttl_seconds=3600)
-def _get_languages() -> List[Dict[str, str]]:
+def _get_languages() -> list[dict[str, str]]:
     """Get languages list with caching."""
     return LANGUAGES
 
 
 @cache_with_ttl(ttl_seconds=3600)
-def _get_proficiency_levels() -> List[str]:
+def _get_proficiency_levels() -> list[str]:
     """Get proficiency levels with caching."""
     return PROFICIENCY_LEVELS
 
 
 @cache_with_ttl(ttl_seconds=3600)
-def _get_phone_codes() -> List[Dict[str, str]]:
+def _get_phone_codes() -> list[dict[str, str]]:
     """Get phone country codes with caching."""
     return PHONE_COUNTRY_CODES
 
 
-@router.get("/countries", response_model=List[Dict[str, str]])
+@router.get("/countries", response_model=list[dict[str, str]])
 @limiter.limit("60/minute")
 def get_countries(request: Request):
     """
@@ -51,7 +49,7 @@ def get_countries(request: Request):
     return _get_countries()
 
 
-@router.get("/languages", response_model=List[Dict[str, str]])
+@router.get("/languages", response_model=list[dict[str, str]])
 @limiter.limit("60/minute")
 def get_languages(request: Request):
     """
@@ -63,7 +61,7 @@ def get_languages(request: Request):
     return _get_languages()
 
 
-@router.get("/proficiency-levels", response_model=List[str])
+@router.get("/proficiency-levels", response_model=list[str])
 @limiter.limit("60/minute")
 def get_proficiency_levels(request: Request):
     """
@@ -75,7 +73,7 @@ def get_proficiency_levels(request: Request):
     return _get_proficiency_levels()
 
 
-@router.get("/phone-codes", response_model=List[Dict[str, str]])
+@router.get("/phone-codes", response_model=list[dict[str, str]])
 @limiter.limit("60/minute")
 def get_phone_codes(request: Request):
     """

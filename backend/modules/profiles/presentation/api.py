@@ -1,6 +1,7 @@
 """User profiles API routes."""
 
 import logging
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
@@ -28,9 +29,7 @@ async def get_my_profile(
 ):
     """Get current user's profile."""
     try:
-        profile = (
-            db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-        )
+        profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
         if not profile:
             # Create empty profile
             profile = UserProfile(user_id=current_user.id)
@@ -54,9 +53,7 @@ async def update_my_profile(
 ):
     """Update current user's profile."""
     try:
-        profile = (
-            db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-        )
+        profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
         if not profile:
             profile = UserProfile(user_id=current_user.id)
             db.add(profile)
@@ -66,34 +63,27 @@ async def update_my_profile(
 
         # Sanitize text fields
         if "first_name" in update_data and update_data["first_name"]:
-            update_data["first_name"] = sanitize_text_input(
-                update_data["first_name"], max_length=100
-            )
+            update_data["first_name"] = sanitize_text_input(update_data["first_name"], max_length=100)
 
         if "last_name" in update_data and update_data["last_name"]:
-            update_data["last_name"] = sanitize_text_input(
-                update_data["last_name"], max_length=100
-            )
+            update_data["last_name"] = sanitize_text_input(update_data["last_name"], max_length=100)
 
         if "bio" in update_data and update_data["bio"]:
-            update_data["bio"] = sanitize_text_input(
-                update_data["bio"], max_length=1000
-            )
+            update_data["bio"] = sanitize_text_input(update_data["bio"], max_length=1000)
 
         # Apply updates
         for field, value in update_data.items():
             setattr(profile, field, value)
 
         # Update timestamp in application code (no DB triggers)
-        from datetime import datetime, timezone
-        profile.updated_at = datetime.now(timezone.utc)
+        from datetime import datetime
+
+        profile.updated_at = datetime.now(UTC)
 
         db.commit()
         db.refresh(profile)
 
-        logger.info(
-            f"User {current_user.email} updated profile: {list(update_data.keys())}"
-        )
+        logger.info(f"User {current_user.email} updated profile: {list(update_data.keys())}")
         return profile
     except Exception as e:
         db.rollback()

@@ -1,19 +1,18 @@
 """Admin and audit models."""
 
 from sqlalchemy import (
-    Boolean,
+    TIMESTAMP,
     CheckConstraint,
     Column,
     ForeignKey,
     Integer,
     String,
     Text,
-    TIMESTAMP,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from .base import Base, JSONEncodedArray
+from .base import Base
 
 
 class Report(Base):
@@ -46,8 +45,6 @@ class Report(Base):
 # Add to models.py after existing classes
 
 
-
-
 class AuditLog(Base):
     """Audit trail for all data changes."""
 
@@ -73,5 +70,3 @@ class AuditLog(Base):
             name="valid_audit_action",
         ),
     )
-
-

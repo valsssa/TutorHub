@@ -16,9 +16,7 @@ def _make_image_bytes(size: tuple[int, int], *, format: str = "PNG") -> bytes:
 def test_process_image_upscales_small_assets():
     """Images smaller than the minimum dimension should be upscaled automatically."""
     original = _make_image_bytes((120, 200))
-    processed, content_type, extension = storage._process_image(
-        original, original_content_type="image/png"
-    )
+    processed, content_type, extension = storage._process_image(original, original_content_type="image/png")
 
     with Image.open(BytesIO(processed)) as image:
         width, height = image.size
@@ -32,9 +30,7 @@ def test_process_image_upscales_small_assets():
 def test_process_image_downscales_large_assets():
     """Images exceeding the maximum dimension should be reduced while keeping aspect ratio."""
     original = _make_image_bytes((8000, 5000))
-    processed, content_type, extension = storage._process_image(
-        original, original_content_type="image/jpeg"
-    )
+    processed, content_type, extension = storage._process_image(original, original_content_type="image/jpeg")
 
     with Image.open(BytesIO(processed)) as image:
         width, height = image.size

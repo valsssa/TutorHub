@@ -34,20 +34,13 @@ class TestTutorAvailabilitySchema:
 
     def test_required_columns_exist(self, db_inspector):
         """Verify all required columns exist in database."""
-        columns = {
-            col["name"]: col["type"]
-            for col in db_inspector.get_columns("tutor_availabilities")
-        }
+        columns = {col["name"]: col["type"] for col in db_inspector.get_columns("tutor_availabilities")}
 
         # Check required columns
         assert "id" in columns
-        assert (
-            "tutor_profile_id" in columns
-        ), "Column should be tutor_profile_id, not tutor_id"
+        assert "tutor_profile_id" in columns, "Column should be tutor_profile_id, not tutor_id"
         assert "day_of_week" in columns, "Column should be day_of_week, not weekday"
-        assert (
-            "start_time" in columns
-        ), "Column should be start_time (TIME), not start_minute"
+        assert "start_time" in columns, "Column should be start_time (TIME), not start_minute"
         assert "end_time" in columns, "Column should be end_time (TIME), not end_minute"
         assert "is_recurring" in columns, "Missing is_recurring boolean column"
         assert "created_at" in columns
@@ -60,26 +53,22 @@ class TestTutorAvailabilitySchema:
         tutor_profile_fks = [
             fk
             for fk in foreign_keys
-            if fk["referred_table"] == "tutor_profiles"
-            and "tutor_profile_id" in fk["constrained_columns"]
+            if fk["referred_table"] == "tutor_profiles" and "tutor_profile_id" in fk["constrained_columns"]
         ]
 
         assert len(tutor_profile_fks) == 1, (
-            "tutor_availabilities should have FK to tutor_profiles(id) "
-            "via tutor_profile_id column"
+            "tutor_availabilities should have FK to tutor_profiles(id) via tutor_profile_id column"
         )
 
     def test_model_has_correct_relationship(self):
         """Verify model has relationship to TutorProfile."""
-        assert hasattr(
-            TutorAvailability, "tutor_profile"
-        ), "TutorAvailability model should have 'tutor_profile' relationship"
+        assert hasattr(TutorAvailability, "tutor_profile"), (
+            "TutorAvailability model should have 'tutor_profile' relationship"
+        )
 
     def test_tutor_profile_has_availabilities_relationship(self):
         """Verify TutorProfile has back_populates relationship."""
-        assert hasattr(
-            TutorProfile, "availabilities"
-        ), "TutorProfile model should have 'availabilities' relationship"
+        assert hasattr(TutorProfile, "availabilities"), "TutorProfile model should have 'availabilities' relationship"
 
     def test_model_columns_match_database(self, db_inspector):
         """Verify model column names match database."""
@@ -162,14 +151,9 @@ class TestDatabaseSchemaConsistency:
     def test_no_orphaned_relationships(self):
         """Verify all relationships have valid back_populates."""
         # Check TutorAvailability relationship
-        availability_rel = TutorAvailability.__mapper__.relationships.get(
-            "tutor_profile"
-        )
+        availability_rel = TutorAvailability.__mapper__.relationships.get("tutor_profile")
         assert availability_rel is not None
-        assert (
-            availability_rel.back_populates == "availabilities"
-            or availability_rel.backref is not None
-        )
+        assert availability_rel.back_populates == "availabilities" or availability_rel.backref is not None
 
         # Check TutorProfile relationship
         profile_rel = TutorProfile.__mapper__.relationships.get("availabilities")

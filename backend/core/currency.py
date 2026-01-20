@@ -2,7 +2,6 @@
 
 import logging
 from decimal import Decimal
-from typing import List, Optional
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -21,14 +20,14 @@ class CurrencyOption(BaseModel):
     decimal_places: int
 
 
-DEFAULT_CURRENCIES: List[CurrencyOption] = [
+DEFAULT_CURRENCIES: list[CurrencyOption] = [
     CurrencyOption(code="USD", name="US Dollar", symbol="$", decimal_places=2),
     CurrencyOption(code="EUR", name="Euro", symbol="€", decimal_places=2),
     CurrencyOption(code="GBP", name="British Pound", symbol="£", decimal_places=2),
 ]
 
 
-def load_supported_currencies(db: Session) -> List[CurrencyOption]:
+def load_supported_currencies(db: Session) -> list[CurrencyOption]:
     """Load active currencies from database, fallback to defaults."""
     records = (
         db.query(SupportedCurrency)
@@ -50,7 +49,7 @@ def load_supported_currencies(db: Session) -> List[CurrencyOption]:
     ]
 
 
-def validate_currency_code(currency: str, db: Session) -> tuple[bool, Optional[str]]:
+def validate_currency_code(currency: str, db: Session) -> tuple[bool, str | None]:
     """
     Validate currency code against supported currencies.
 
@@ -72,7 +71,7 @@ def validate_currency_code(currency: str, db: Session) -> tuple[bool, Optional[s
     return True, None
 
 
-def validate_price(price: float, min_price: float = 0) -> tuple[bool, Optional[str]]:
+def validate_price(price: float, min_price: float = 0) -> tuple[bool, str | None]:
     """Validate price value."""
     if price < min_price:
         return False, f"Price must be at least {min_price}"
@@ -117,9 +116,7 @@ def decimal_to_cents(amount: Decimal, decimal_places: int = 2) -> int:
     return int(amount * Decimal(multiplier))
 
 
-def calculate_platform_fee(
-    amount_cents: int, fee_percentage: Decimal = Decimal("3.0")
-) -> tuple[int, int]:
+def calculate_platform_fee(amount_cents: int, fee_percentage: Decimal = Decimal("3.0")) -> tuple[int, int]:
     """
     Calculate platform fee and tutor earnings.
 

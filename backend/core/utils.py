@@ -1,7 +1,7 @@
 """Common utility functions."""
 
 from datetime import datetime, timedelta
-from typing import Generic, List, Optional, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -58,9 +58,7 @@ class ValidationUtils:
     """Common validation utilities."""
 
     @staticmethod
-    def validate_time_range(
-        start: datetime, end: datetime, max_hours: Optional[int] = None
-    ) -> tuple[bool, Optional[str]]:
+    def validate_time_range(start: datetime, end: datetime, max_hours: int | None = None) -> tuple[bool, str | None]:
         """Validate time range."""
         if start >= end:
             return False, "End time must be after start time"
@@ -76,10 +74,10 @@ class ValidationUtils:
         return True, None
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Paginated response schema."""
 
-    items: List[T]
+    items: list[T]
     total: int
     page: int
     page_size: int

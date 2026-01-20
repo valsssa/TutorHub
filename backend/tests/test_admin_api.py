@@ -6,20 +6,14 @@ from fastapi import status
 class TestAdminUserManagement:
     """Test admin user management endpoints."""
 
-    def test_list_users_excludes_unapproved_tutors(
-        self, client, admin_token, test_db_session
-    ):
+    def test_list_users_excludes_unapproved_tutors(self, client, admin_token, test_db_session):
         """Test that non-approved tutors don't appear in user management."""
         from models import TutorProfile, User
 
         # Create users
         student = User(email="student@test.com", hashed_password="hash", role="student")
-        tutor_approved = User(
-            email="tutor_approved@test.com", hashed_password="hash", role="tutor"
-        )
-        tutor_pending = User(
-            email="tutor_pending@test.com", hashed_password="hash", role="tutor"
-        )
+        tutor_approved = User(email="tutor_approved@test.com", hashed_password="hash", role="tutor")
+        tutor_pending = User(email="tutor_pending@test.com", hashed_password="hash", role="tutor")
         test_db_session.add_all([student, tutor_approved, tutor_pending])
         test_db_session.commit()
 
@@ -41,9 +35,7 @@ class TestAdminUserManagement:
         test_db_session.add_all([profile_approved, profile_pending])
         test_db_session.commit()
 
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -58,9 +50,7 @@ class TestAdminUserManagement:
 
     def test_list_users_requires_admin(self, client, student_token):
         """Test that non-admins cannot list users."""
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_user(self, client, admin_token, test_db_session):
@@ -183,11 +173,7 @@ class TestAdminTutorApprovals:
         # Verify notification created
         from models import Notification
 
-        notification = (
-            test_db_session.query(Notification)
-            .filter(Notification.user_id == user.id)
-            .first()
-        )
+        notification = test_db_session.query(Notification).filter(Notification.user_id == user.id).first()
         assert notification is not None
         assert notification.type == "profile_approved"
 
@@ -224,11 +210,7 @@ class TestAdminTutorApprovals:
         # Verify notification created
         from models import Notification
 
-        notification = (
-            test_db_session.query(Notification)
-            .filter(Notification.user_id == user.id)
-            .first()
-        )
+        notification = test_db_session.query(Notification).filter(Notification.user_id == user.id).first()
         assert notification is not None
         assert notification.type == "profile_rejected"
 

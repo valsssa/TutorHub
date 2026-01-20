@@ -1,13 +1,13 @@
 """Notification models."""
 
 from sqlalchemy import (
+    TIMESTAMP,
     Boolean,
     Column,
     ForeignKey,
     Integer,
     String,
     Text,
-    TIMESTAMP,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -31,5 +31,3 @@ class Notification(Base):
 
     # Relationships
     user = relationship("User", back_populates="notifications")
-
-

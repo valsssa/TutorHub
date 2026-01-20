@@ -6,7 +6,7 @@ import os
 # Configure logging to stderr
 import sys
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -83,9 +83,7 @@ async def create_default_users():
         if not db.query(User).filter(User.email == admin_email).first():
             admin = User(
                 email=admin_email,
-                hashed_password=get_password_hash(
-                    os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")
-                ),
+                hashed_password=get_password_hash(os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")),
                 role="admin",
                 is_verified=True,
             )
@@ -100,9 +98,7 @@ async def create_default_users():
         if not db.query(User).filter(User.email == student_email).first():
             student = User(
                 email=student_email,
-                hashed_password=get_password_hash(
-                    os.getenv("DEFAULT_STUDENT_PASSWORD", "student123")
-                ),
+                hashed_password=get_password_hash(os.getenv("DEFAULT_STUDENT_PASSWORD", "student123")),
                 role="student",
                 is_verified=True,
             )
@@ -122,40 +118,37 @@ async def create_default_users():
             # Create user first with student role (will be changed to tutor)
             tutor = User(
                 email=tutor_email,
-                hashed_password=get_password_hash(
-                    os.getenv("DEFAULT_TUTOR_PASSWORD", "tutor123")
-                ),
+                hashed_password=get_password_hash(os.getenv("DEFAULT_TUTOR_PASSWORD", "tutor123")),
                 role="student",  # Start as student, then change to tutor
                 is_verified=True,
             )
             db.add(tutor)
             db.flush()  # Get user ID
-            
+
             # Now change role to tutor using DDD event handler (creates profile) and update with demo data
+            from datetime import datetime
+
             from modules.users.domain.events import UserRoleChanged
             from modules.users.domain.handlers import RoleChangeEventHandler
-            from datetime import datetime, timezone as tz
-            
+
             event = UserRoleChanged(
                 user_id=tutor.id,
                 old_role="student",
                 new_role="tutor",
                 changed_by=tutor.id,  # Self-registration
             )
-            
+
             handler = RoleChangeEventHandler()
             handler.handle(db, event)
-            
+
             # Update user role
             tutor.role = "tutor"
-            tutor.updated_at = datetime.now(tz.utc)
-            
+            tutor.updated_at = datetime.now(UTC)
+
             db.flush()
-            
+
             # Now update the created profile with demo data
-            tutor_profile = (
-                db.query(TutorProfile).filter(TutorProfile.user_id == tutor.id).first()
-            )
+            tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == tutor.id).first()
             if tutor_profile:
                 tutor_profile.title = "Experienced Math and Science Tutor"
                 tutor_profile.headline = "10+ years teaching experience"
@@ -166,8 +159,8 @@ async def create_default_users():
                 tutor_profile.languages = ["English", "Spanish"]
                 tutor_profile.is_approved = True
                 tutor_profile.profile_status = "approved"
-                tutor_profile.updated_at = datetime.now(tz.utc)
-                
+                tutor_profile.updated_at = datetime.now(UTC)
+
             db.commit()
             logger.info(f"Created default tutor with approved profile: {tutor_email}")
         else:
@@ -186,16 +179,17 @@ async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
     logger.info("=== Application Startup ===")
-    
+
     # 1. Run database migrations (auto-apply schema changes)
     from core.migrations import run_startup_migrations
     from database import engine
+
     db = Session(bind=engine)
     try:
         run_startup_migrations(db)
     finally:
         db.close()
-    
+
     # 2. Create default users
     await create_default_users()
 
@@ -372,11 +366,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS configuration
 raw_cors_origins = os.getenv("CORS_ORIGINS")
 if raw_cors_origins:
-    CORS_ORIGINS = [
-        origin.strip().rstrip("/")
-        for origin in raw_cors_origins.split(",")
-        if origin.strip()
-    ]
+    CORS_ORIGINS = [origin.strip().rstrip("/") for origin in raw_cors_origins.split(",") if origin.strip()]
 else:
     CORS_ORIGINS = [origin.rstrip("/") for origin in settings.CORS_ORIGINS]
 
@@ -499,7 +489,7 @@ def health_check(db: Session = Depends(get_db)):
         logger.debug("Database connection successful")
         return {
             "status": "healthy",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "database": "connected",
         }
     except Exception as e:
@@ -508,7 +498,7 @@ def health_check(db: Session = Depends(get_db)):
             status_code=503,
             content={
                 "status": "unhealthy",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "database": "disconnected",
             },
         )
@@ -561,15 +551,11 @@ Validates database consistency between user roles and profile tables:
         },
         401: {
             "description": "Not authenticated - missing or invalid JWT token",
-            "content": {
-                "application/json": {"example": {"detail": "Not authenticated"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Not authenticated"}}},
         },
         403: {
             "description": "Forbidden - requires admin role",
-            "content": {
-                "application/json": {"example": {"detail": "Admin access required"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Admin access required"}}},
         },
     },
 )

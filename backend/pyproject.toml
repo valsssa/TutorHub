@@ -1,0 +1,100 @@
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "env",
+    ".venv",
+]
+
+# Same as Black.
+line-length = 120
+indent-width = 4
+
+# Assume Python 3.12+
+target-version = "py312"
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+# Additional rule categories that make sense for this project:
+# - `W` for pycodestyle warnings
+# - `I` for isort (import sorting)
+# - `N` for pep8-naming
+# - `UP` for pyupgrade
+# - `B` for flake8-bugbear
+# - `SIM` for flake8-simplify
+# - `C4` for flake8-comprehensions
+# - `T10` for flake8-debugger
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "C4",  # flake8-comprehensions
+    "T10", # flake8-debugger
+    "T20", # flake8-print (catches print statements)
+]
+
+# Ignore the same rules as the original flake8 config
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # function-call-in-default-argument (allowed for FastAPI Depends)
+    "B904", # raise-without-from-inside-except (not critical for production)
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+# Allow unused imports in __init__.py files
+"__init__.py" = ["F401"]
+# Allow print statements and unused imports in test files
+"tests/**/*" = ["T20", "F401", "B017"]
+# Allow camelCase in Pydantic models for API compatibility
+"modules/admin/presentation/api.py" = ["N815"]
+# Allow AppException naming (it's a base exception class)
+"core/exceptions.py" = ["N818"]
+
+[tool.ruff.lint.isort]
+# Same settings as the original isort config
+known-first-party = ["backend", "core", "modules", "models", "schemas"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"

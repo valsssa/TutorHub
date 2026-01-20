@@ -8,22 +8,14 @@ from fastapi import status
 class TestTutorListing:
     """Test tutor listing endpoints."""
 
-    def test_list_tutors_returns_only_approved(
-        self, client, test_db_session, student_token
-    ):
+    def test_list_tutors_returns_only_approved(self, client, test_db_session, student_token):
         """Test that only approved tutors are returned."""
         from models import TutorProfile, User
 
         # Create tutors with different statuses
-        tutor_approved = User(
-            email="approved@test.com", hashed_password="hash", role="tutor"
-        )
-        tutor_pending = User(
-            email="pending@test.com", hashed_password="hash", role="tutor"
-        )
-        tutor_rejected = User(
-            email="rejected@test.com", hashed_password="hash", role="tutor"
-        )
+        tutor_approved = User(email="approved@test.com", hashed_password="hash", role="tutor")
+        tutor_pending = User(email="pending@test.com", hashed_password="hash", role="tutor")
+        tutor_rejected = User(email="rejected@test.com", hashed_password="hash", role="tutor")
         test_db_session.add_all([tutor_approved, tutor_pending, tutor_rejected])
         test_db_session.commit()
 
@@ -75,9 +67,7 @@ class TestTutorListing:
 
         # Create multiple approved tutors
         for i in range(25):
-            user = User(
-                email=f"tutor{i}@test.com", hashed_password="hash", role="tutor"
-            )
+            user = User(email=f"tutor{i}@test.com", hashed_password="hash", role="tutor")
             test_db_session.add(user)
             test_db_session.commit()
 
@@ -112,9 +102,7 @@ class TestTutorListing:
         assert len(data["items"]) == 10
         assert data["page"] == 2
 
-    def test_list_tutors_filter_by_subject(
-        self, client, test_db_session, student_token
-    ):
+    def test_list_tutors_filter_by_subject(self, client, test_db_session, student_token):
         """Test filtering tutors by subject."""
         from models import Subject, TutorProfile, TutorSubject, User
 
@@ -126,9 +114,7 @@ class TestTutorListing:
 
         # Create tutors
         tutor1 = User(email="math_tutor@test.com", hashed_password="hash", role="tutor")
-        tutor2 = User(
-            email="english_tutor@test.com", hashed_password="hash", role="tutor"
-        )
+        tutor2 = User(email="english_tutor@test.com", hashed_password="hash", role="tutor")
         test_db_session.add_all([tutor1, tutor2])
         test_db_session.commit()
 
@@ -182,12 +168,8 @@ class TestTutorListing:
 
         # Create tutors with different rates
         cheap_user = User(email="cheap@test.com", hashed_password="hash", role="tutor")
-        medium_user = User(
-            email="medium@test.com", hashed_password="hash", role="tutor"
-        )
-        expensive_user = User(
-            email="expensive@test.com", hashed_password="hash", role="tutor"
-        )
+        medium_user = User(email="medium@test.com", hashed_password="hash", role="tutor")
+        expensive_user = User(email="expensive@test.com", hashed_password="hash", role="tutor")
         test_db_session.add_all([cheap_user, medium_user, expensive_user])
         test_db_session.commit()
 
@@ -273,9 +255,7 @@ class TestTutorListing:
 
         # Create tutors
         math_tutor = User(email="math@test.com", hashed_password="hash", role="tutor")
-        science_tutor = User(
-            email="science@test.com", hashed_password="hash", role="tutor"
-        )
+        science_tutor = User(email="science@test.com", hashed_password="hash", role="tutor")
         test_db_session.add_all([math_tutor, science_tutor])
         test_db_session.commit()
 
@@ -316,9 +296,7 @@ class TestTutorListing:
         # Create tutors
         users = []
         for i in range(3):
-            user = User(
-                email=f"tutor{i}@test.com", hashed_password="hash", role="tutor"
-            )
+            user = User(email=f"tutor{i}@test.com", hashed_password="hash", role="tutor")
             test_db_session.add(user)
             test_db_session.commit()
             users.append(user)
@@ -404,9 +382,7 @@ class TestTutorListing:
         assert data["title"] == "Test Tutor"
         assert data["headline"] == "Great teacher"
 
-    def test_get_non_approved_tutor_returns_404(
-        self, client, test_db_session, student_token
-    ):
+    def test_get_non_approved_tutor_returns_404(self, client, test_db_session, student_token):
         """Test that non-approved tutors return 404."""
         from models import TutorProfile, User
 

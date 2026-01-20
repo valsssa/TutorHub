@@ -152,9 +152,7 @@ class TestLogin:
 
     def test_login_empty_password(self, client, student_user):
         """Test login with empty password."""
-        response = client.post(
-            "/api/auth/login", data={"username": student_user.email, "password": ""}
-        )
+        response = client.post("/api/auth/login", data={"username": student_user.email, "password": ""})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -163,9 +161,7 @@ class TestGetCurrentUser:
 
     def test_get_me_success(self, client, student_token, student_user):
         """Test successful get current user."""
-        response = client.get(
-            "/api/auth/me", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["email"] == student_user.email
@@ -179,9 +175,7 @@ class TestGetCurrentUser:
 
     def test_get_me_invalid_token(self, client):
         """Test get current user with invalid token."""
-        response = client.get(
-            "/api/auth/me", headers={"Authorization": "Bearer invalid_token"}
-        )
+        response = client.get("/api/auth/me", headers={"Authorization": "Bearer invalid_token"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -190,23 +184,17 @@ class TestRoleBasedAccess:
 
     def test_student_cannot_access_admin_endpoint(self, client, student_token):
         """Test student cannot access admin endpoints."""
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_tutor_cannot_access_admin_endpoint(self, client, tutor_token):
         """Test tutor cannot access admin endpoints."""
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {tutor_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {tutor_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_admin_can_access_admin_endpoint(self, client, admin_token):
         """Test admin can access admin endpoints."""
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == status.HTTP_200_OK
 
     def test_student_cannot_create_tutor_profile(self, client, student_token):

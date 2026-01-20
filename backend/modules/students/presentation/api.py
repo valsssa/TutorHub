@@ -2,6 +2,7 @@
 
 import logging
 import os
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
@@ -31,11 +32,7 @@ async def get_student_profile(
     """Get current student's profile."""
     try:
         logger.debug(f"Fetching student profile for user: {current_user.id}")
-        profile = (
-            db.query(StudentProfile)
-            .filter(StudentProfile.user_id == current_user.id)
-            .first()
-        )
+        profile = db.query(StudentProfile).filter(StudentProfile.user_id == current_user.id).first()
         if not profile:
             logger.info(f"Creating new student profile for user: {current_user.id}")
             profile = StudentProfile(user_id=current_user.id)
@@ -66,11 +63,7 @@ async def update_student_profile(
     """Update student profile."""
     try:
         logger.info(f"Updating student profile for user: {current_user.id}")
-        profile = (
-            db.query(StudentProfile)
-            .filter(StudentProfile.user_id == current_user.id)
-            .first()
-        )
+        profile = db.query(StudentProfile).filter(StudentProfile.user_id == current_user.id).first()
         if not profile:
             logger.info(f"Creating new student profile for user: {current_user.id}")
             profile = StudentProfile(user_id=current_user.id)
@@ -81,8 +74,9 @@ async def update_student_profile(
             setattr(profile, field, value)
 
         # Update timestamp in application code (no DB triggers)
-        from datetime import datetime, timezone
-        profile.updated_at = datetime.now(timezone.utc)
+        from datetime import datetime
+
+        profile.updated_at = datetime.now(UTC)
 
         db.commit()
         db.refresh(profile)

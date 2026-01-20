@@ -4,10 +4,10 @@ Availability Service Tests
 Tests for tutor availability management, scheduling, conflict detection, and timezone handling.
 """
 
-import pytest
-from datetime import datetime, date, time, timedelta, timezone as dt_timezone
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
 from sqlalchemy.orm import Session
 
 from backend.models.tutors import TutorAvailability, TutorBlackout
@@ -20,7 +20,7 @@ def availability_monday_9to5():
     return {
         "day_of_week": 1,  # Monday
         "start_time": time(9, 0),
-        "end_time": time(17, 0)
+        "end_time": time(17, 0),
     }
 
 
@@ -28,9 +28,9 @@ def availability_monday_9to5():
 def blackout_holiday_week():
     """Holiday week blackout"""
     return {
-        "start_time": datetime(2025, 12, 20, 0, 0, 0, tzinfo=dt_timezone.utc),
-        "end_time": datetime(2025, 12, 27, 23, 59, 59, tzinfo=dt_timezone.utc),
-        "reason": "Holiday vacation"
+        "start_time": datetime(2025, 12, 20, 0, 0, 0, tzinfo=UTC),
+        "end_time": datetime(2025, 12, 27, 23, 59, 59, tzinfo=UTC),
+        "reason": "Holiday vacation",
     }
 
 
@@ -43,7 +43,7 @@ class TestAvailabilityCreation:
         slot = {
             "day_of_week": 1,  # Monday
             "start_time": time(9, 0),
-            "end_time": time(17, 0)
+            "end_time": time(17, 0),
         }
 
         # When
@@ -61,15 +61,11 @@ class TestAvailabilityCreation:
         slots = [
             {"day_of_week": 1, "start_time": time(9, 0), "end_time": time(17, 0)},  # Mon
             {"day_of_week": 3, "start_time": time(10, 0), "end_time": time(16, 0)},  # Wed
-            {"day_of_week": 5, "start_time": time(14, 0), "end_time": time(20, 0)}   # Fri
+            {"day_of_week": 5, "start_time": time(14, 0), "end_time": time(20, 0)},  # Fri
         ]
 
         # When
-        created_slots = AvailabilityService.set_availability(
-            db,
-            test_tutor_profile.id,
-            slots
-        )
+        created_slots = AvailabilityService.set_availability(db, test_tutor_profile.id, slots)
 
         # Then
         assert len(created_slots) == 3
@@ -86,11 +82,7 @@ class TestAvailabilityCreation:
         ]
 
         # When
-        created_slots = AvailabilityService.set_availability(
-            db,
-            test_tutor_profile.id,
-            slots
-        )
+        created_slots = AvailabilityService.set_availability(db, test_tutor_profile.id, slots)
 
         # Then
         assert len(created_slots) == 5
@@ -106,10 +98,7 @@ class TestAvailabilityValidation:
         """Test error on overlapping slots on same day"""
         # Given - existing slot Mon 9am-5pm
         existing = TutorAvailability(
-            tutor_profile_id=test_tutor_profile.id,
-            day_of_week=1,
-            start_time=time(9, 0),
-            end_time=time(17, 0)
+            tutor_profile_id=test_tutor_profile.id, day_of_week=1, start_time=time(9, 0), end_time=time(17, 0)
         )
         db.add(existing)
         db.commit()
@@ -117,28 +106,21 @@ class TestAvailabilityValidation:
         # When - try to add Mon 3pm-7pm (overlaps)
         with pytest.raises(ValueError, match="Overlapping availability"):
             AvailabilityService.add_slot(
-                db,
-                test_tutor_profile.id,
-                {"day_of_week": 1, "start_time": time(15, 0), "end_time": time(19, 0)}
+                db, test_tutor_profile.id, {"day_of_week": 1, "start_time": time(15, 0), "end_time": time(19, 0)}
             )
 
     def test_availability_adjacent_slots_allowed(self, db: Session, test_tutor_profile):
         """Test that adjacent slots (no overlap) are allowed"""
         # Given - existing slot Mon 9am-1pm
         existing = TutorAvailability(
-            tutor_profile_id=test_tutor_profile.id,
-            day_of_week=1,
-            start_time=time(9, 0),
-            end_time=time(13, 0)
+            tutor_profile_id=test_tutor_profile.id, day_of_week=1, start_time=time(9, 0), end_time=time(13, 0)
         )
         db.add(existing)
         db.commit()
 
         # When - add Mon 1pm-5pm (exactly adjacent, no overlap)
         created = AvailabilityService.add_slot(
-            db,
-            test_tutor_profile.id,
-            {"day_of_week": 1, "start_time": time(13, 0), "end_time": time(17, 0)}
+            db, test_tutor_profile.id, {"day_of_week": 1, "start_time": time(13, 0), "end_time": time(17, 0)}
         )
 
         # Then - should succeed
@@ -149,9 +131,7 @@ class TestAvailabilityValidation:
         # When/Then
         with pytest.raises(ValueError, match="End time must be after start time"):
             AvailabilityService.add_slot(
-                db,
-                test_tutor_profile.id,
-                {"day_of_week": 1, "start_time": time(17, 0), "end_time": time(9, 0)}
+                db, test_tutor_profile.id, {"day_of_week": 1, "start_time": time(17, 0), "end_time": time(9, 0)}
             )
 
     def test_availability_invalid_day_of_week(self, db: Session, test_tutor_profile):
@@ -159,9 +139,7 @@ class TestAvailabilityValidation:
         # When/Then
         with pytest.raises(ValueError, match="Invalid day of week"):
             AvailabilityService.add_slot(
-                db,
-                test_tutor_profile.id,
-                {"day_of_week": 8, "start_time": time(9, 0), "end_time": time(17, 0)}
+                db, test_tutor_profile.id, {"day_of_week": 8, "start_time": time(9, 0), "end_time": time(17, 0)}
             )
 
     def test_availability_minimum_duration(self, db: Session, test_tutor_profile):
@@ -169,9 +147,7 @@ class TestAvailabilityValidation:
         # When/Then - try 15 minute slot
         with pytest.raises(ValueError, match="Minimum duration"):
             AvailabilityService.add_slot(
-                db,
-                test_tutor_profile.id,
-                {"day_of_week": 1, "start_time": time(9, 0), "end_time": time(9, 15)}
+                db, test_tutor_profile.id, {"day_of_week": 1, "start_time": time(9, 0), "end_time": time(9, 15)}
             )
 
 
@@ -184,11 +160,7 @@ class TestAvailabilityUpdates:
         slot_id = test_tutor_availability.id
 
         # When - change to 10am-4pm
-        updated = AvailabilityService.update_slot(
-            db,
-            slot_id,
-            {"start_time": time(10, 0), "end_time": time(16, 0)}
-        )
+        updated = AvailabilityService.update_slot(db, slot_id, {"start_time": time(10, 0), "end_time": time(16, 0)})
 
         # Then
         assert updated.start_time == time(10, 0)
@@ -207,10 +179,7 @@ class TestAvailabilityUpdates:
         assert deleted_slot is None
 
     def test_delete_availability_with_future_bookings_error(
-        self,
-        db: Session,
-        test_tutor_availability,
-        test_booking_confirmed
+        self, db: Session, test_tutor_availability, test_booking_confirmed
     ):
         """Test error when deleting slot with confirmed future bookings"""
         # Given - availability slot with future confirmed booking
@@ -229,7 +198,7 @@ class TestAvailabilityUpdates:
         # When - replace with new schedule
         new_schedule = [
             {"day_of_week": 2, "start_time": time(13, 0), "end_time": time(18, 0)},  # Tue
-            {"day_of_week": 4, "start_time": time(10, 0), "end_time": time(15, 0)}   # Thu
+            {"day_of_week": 4, "start_time": time(10, 0), "end_time": time(15, 0)},  # Thu
         ]
         result = AvailabilityService.set_availability(db, profile_id, new_schedule)
 
@@ -245,11 +214,7 @@ class TestBlackoutPeriods:
     def test_create_blackout_period(self, db: Session, test_tutor_profile, blackout_holiday_week):
         """Test creating blackout period"""
         # When
-        created = AvailabilityService.create_blackout(
-            db,
-            test_tutor_profile.id,
-            blackout_holiday_week
-        )
+        created = AvailabilityService.create_blackout(db, test_tutor_profile.id, blackout_holiday_week)
 
         # Then
         assert created.tutor_profile_id == test_tutor_profile.id
@@ -261,14 +226,14 @@ class TestBlackoutPeriods:
         """Test creating multiple non-overlapping blackout periods"""
         # Given
         blackout1 = {
-            "start_time": datetime(2025, 7, 1, tzinfo=dt_timezone.utc),
-            "end_time": datetime(2025, 7, 7, tzinfo=dt_timezone.utc),
-            "reason": "Summer break"
+            "start_time": datetime(2025, 7, 1, tzinfo=UTC),
+            "end_time": datetime(2025, 7, 7, tzinfo=UTC),
+            "reason": "Summer break",
         }
         blackout2 = {
-            "start_time": datetime(2025, 12, 20, tzinfo=dt_timezone.utc),
-            "end_time": datetime(2025, 12, 27, tzinfo=dt_timezone.utc),
-            "reason": "Winter holidays"
+            "start_time": datetime(2025, 12, 20, tzinfo=UTC),
+            "end_time": datetime(2025, 12, 27, tzinfo=UTC),
+            "reason": "Winter holidays",
         }
 
         # When
@@ -284,9 +249,9 @@ class TestBlackoutPeriods:
         # Given - existing blackout Dec 20-27
         existing = TutorBlackout(
             tutor_profile_id=test_tutor_profile.id,
-            start_time=datetime(2025, 12, 20, tzinfo=dt_timezone.utc),
-            end_time=datetime(2025, 12, 27, tzinfo=dt_timezone.utc),
-            reason="Existing"
+            start_time=datetime(2025, 12, 20, tzinfo=UTC),
+            end_time=datetime(2025, 12, 27, tzinfo=UTC),
+            reason="Existing",
         )
         db.add(existing)
         db.commit()
@@ -297,10 +262,10 @@ class TestBlackoutPeriods:
                 db,
                 test_tutor_profile.id,
                 {
-                    "start_time": datetime(2025, 12, 23, tzinfo=dt_timezone.utc),
-                    "end_time": datetime(2025, 12, 30, tzinfo=dt_timezone.utc),
-                    "reason": "New"
-                }
+                    "start_time": datetime(2025, 12, 23, tzinfo=UTC),
+                    "end_time": datetime(2025, 12, 30, tzinfo=UTC),
+                    "reason": "New",
+                },
             )
 
     def test_delete_blackout(self, db: Session, test_tutor_blackout):
@@ -319,21 +284,14 @@ class TestBlackoutPeriods:
 class TestAvailableSlotRetrieval:
     """Test retrieving available time slots for booking"""
 
-    def test_get_available_slots_for_date(
-        self,
-        db: Session,
-        test_tutor_profile_with_availability
-    ):
+    def test_get_available_slots_for_date(self, db: Session, test_tutor_profile_with_availability):
         """Test retrieving available slots for a specific date"""
         # Given - Monday with 9am-5pm availability
         monday = date(2025, 2, 3)  # A Monday
 
         # When
         slots = AvailabilityService.get_available_slots(
-            db,
-            test_tutor_profile_with_availability.id,
-            monday,
-            duration_minutes=60
+            db, test_tutor_profile_with_availability.id, monday, duration_minutes=60
         )
 
         # Then
@@ -342,55 +300,33 @@ class TestAvailableSlotRetrieval:
         assert any(slot["start_time"].hour == 9 for slot in slots)
         assert any(slot["start_time"].hour == 16 for slot in slots)
 
-    def test_available_slots_exclude_booked_times(
-        self,
-        db: Session,
-        test_tutor_profile,
-        test_booking_confirmed
-    ):
+    def test_available_slots_exclude_booked_times(self, db: Session, test_tutor_profile, test_booking_confirmed):
         """Test that booked slots are excluded from available slots"""
         # Given - confirmed booking on a specific date/time
         booking_date = test_booking_confirmed.start_time.date()
         booking_hour = test_booking_confirmed.start_time.hour
 
         # When
-        slots = AvailabilityService.get_available_slots(
-            db,
-            test_tutor_profile.id,
-            booking_date,
-            duration_minutes=60
-        )
+        slots = AvailabilityService.get_available_slots(db, test_tutor_profile.id, booking_date, duration_minutes=60)
 
         # Then - booked hour should not be in available slots
         available_hours = [slot["start_time"].hour for slot in slots]
         assert booking_hour not in available_hours
 
-    def test_available_slots_exclude_blackout_dates(
-        self,
-        db: Session,
-        test_tutor_profile_with_blackout
-    ):
+    def test_available_slots_exclude_blackout_dates(self, db: Session, test_tutor_profile_with_blackout):
         """Test that blackout dates have no available slots"""
         # Given - blackout period Dec 20-27
         blackout_date = date(2025, 12, 23)  # Within blackout
 
         # When
         slots = AvailabilityService.get_available_slots(
-            db,
-            test_tutor_profile_with_blackout.id,
-            blackout_date,
-            duration_minutes=60
+            db, test_tutor_profile_with_blackout.id, blackout_date, duration_minutes=60
         )
 
         # Then
         assert len(slots) == 0
 
-    def test_available_slots_with_buffer_time(
-        self,
-        db: Session,
-        test_tutor_profile,
-        test_booking_confirmed
-    ):
+    def test_available_slots_with_buffer_time(self, db: Session, test_tutor_profile, test_booking_confirmed):
         """Test that buffer time (5 min) is enforced around bookings"""
         # Given - booking from 10:00-11:00
         # Buffer means 9:55-11:05 is blocked
@@ -398,11 +334,7 @@ class TestAvailableSlotRetrieval:
 
         # When
         slots = AvailabilityService.get_available_slots(
-            db,
-            test_tutor_profile.id,
-            booking_date,
-            duration_minutes=60,
-            buffer_minutes=5
+            db, test_tutor_profile.id, booking_date, duration_minutes=60, buffer_minutes=5
         )
 
         # Then - 9:00-10:00 and 11:00-12:00 slots should not be available
@@ -413,26 +345,16 @@ class TestAvailableSlotRetrieval:
             booking_end_with_buffer = test_booking_confirmed.end_time + timedelta(minutes=5)
 
             # Slot should not overlap with buffered booking time
-            assert not (
-                slot["start_time"] < booking_end_with_buffer and
-                slot_end > booking_start_with_buffer
-            )
+            assert not (slot["start_time"] < booking_end_with_buffer and slot_end > booking_start_with_buffer)
 
-    def test_no_slots_for_day_without_availability(
-        self,
-        db: Session,
-        test_tutor_profile_with_availability
-    ):
+    def test_no_slots_for_day_without_availability(self, db: Session, test_tutor_profile_with_availability):
         """Test that days without set availability return no slots"""
         # Given - availability only on Monday
         # When - query for Tuesday (no availability)
         tuesday = date(2025, 2, 4)  # A Tuesday
 
         slots = AvailabilityService.get_available_slots(
-            db,
-            test_tutor_profile_with_availability.id,
-            tuesday,
-            duration_minutes=60
+            db, test_tutor_profile_with_availability.id, tuesday, duration_minutes=60
         )
 
         # Then
@@ -450,9 +372,7 @@ class TestTimezoneHandling:
 
         # When - set availability 9am-5pm (in tutor's local time)
         slot = AvailabilityService.add_slot(
-            db,
-            test_tutor_profile.id,
-            {"day_of_week": 1, "start_time": time(9, 0), "end_time": time(17, 0)}
+            db, test_tutor_profile.id, {"day_of_week": 1, "start_time": time(9, 0), "end_time": time(17, 0)}
         )
 
         # Then - stored as naive time (will be interpreted in tutor's TZ)
@@ -471,7 +391,7 @@ class TestTimezoneHandling:
             tutor_profile_id=test_tutor_profile.id,
             day_of_week=1,  # Monday
             start_time=time(9, 0),
-            end_time=time(17, 0)
+            end_time=time(17, 0),
         )
         db.add(slot)
         db.commit()
@@ -491,44 +411,31 @@ class TestTimezoneHandling:
 
         # Then - student sees 2pm-10pm GMT
         assert student_start.hour == 14  # 2pm
-        assert student_end.hour == 22    # 10pm
+        assert student_end.hour == 22  # 10pm
 
     def test_booking_stored_in_utc(self, db: Session, test_booking_confirmed):
         """Test that bookings are always stored in UTC"""
         # Then
-        assert test_booking_confirmed.start_time.tzinfo == dt_timezone.utc
-        assert test_booking_confirmed.end_time.tzinfo == dt_timezone.utc
+        assert test_booking_confirmed.start_time.tzinfo == UTC
+        assert test_booking_confirmed.end_time.tzinfo == UTC
 
 
 class TestAvailabilityConflictDetection:
     """Test conflict detection for booking attempts"""
 
-    def test_detect_booking_conflict_same_time(
-        self,
-        db: Session,
-        test_tutor_profile,
-        test_booking_confirmed
-    ):
+    def test_detect_booking_conflict_same_time(self, db: Session, test_tutor_profile, test_booking_confirmed):
         """Test detecting conflict with existing booking at exact same time"""
         # Given - booking from 10:00-11:00
 
         # When - check if 10:00-11:00 is available
         conflicts = AvailabilityService.check_booking_conflicts(
-            db,
-            test_tutor_profile.id,
-            test_booking_confirmed.start_time,
-            test_booking_confirmed.end_time
+            db, test_tutor_profile.id, test_booking_confirmed.start_time, test_booking_confirmed.end_time
         )
 
         # Then
         assert len(conflicts) > 0
 
-    def test_detect_booking_conflict_partial_overlap(
-        self,
-        db: Session,
-        test_tutor_profile,
-        test_booking_confirmed
-    ):
+    def test_detect_booking_conflict_partial_overlap(self, db: Session, test_tutor_profile, test_booking_confirmed):
         """Test detecting conflict with partial time overlap"""
         # Given - existing booking 10:00-11:00
 
@@ -536,22 +443,12 @@ class TestAvailabilityConflictDetection:
         conflict_start = test_booking_confirmed.start_time + timedelta(minutes=30)
         conflict_end = test_booking_confirmed.end_time + timedelta(minutes=30)
 
-        conflicts = AvailabilityService.check_booking_conflicts(
-            db,
-            test_tutor_profile.id,
-            conflict_start,
-            conflict_end
-        )
+        conflicts = AvailabilityService.check_booking_conflicts(db, test_tutor_profile.id, conflict_start, conflict_end)
 
         # Then
         assert len(conflicts) > 0
 
-    def test_no_conflict_adjacent_bookings(
-        self,
-        db: Session,
-        test_tutor_profile,
-        test_booking_confirmed
-    ):
+    def test_no_conflict_adjacent_bookings(self, db: Session, test_tutor_profile, test_booking_confirmed):
         """Test no conflict when bookings are back-to-back (with buffer)"""
         # Given - existing booking 10:00-11:00
 
@@ -560,11 +457,7 @@ class TestAvailabilityConflictDetection:
         new_end = new_start + timedelta(hours=1)
 
         conflicts = AvailabilityService.check_booking_conflicts(
-            db,
-            test_tutor_profile.id,
-            new_start,
-            new_end,
-            buffer_minutes=5
+            db, test_tutor_profile.id, new_start, new_end, buffer_minutes=5
         )
 
         # Then

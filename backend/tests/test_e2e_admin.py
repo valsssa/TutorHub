@@ -4,7 +4,7 @@ Tests complete user journeys using actual HTTP requests.
 """
 
 import os
-from typing import Dict
+from typing import Any
 
 import pytest
 import requests
@@ -44,7 +44,7 @@ class TestAdminWorkflows:
 
         # Cleanup is handled by database reset between test runs
 
-    def get_headers(self, token: str) -> Dict[str, str]:
+    def get_headers(self, token: str) -> dict[str, str]:
         """Get authorization headers with token."""
         return {"Authorization": f"Bearer {token}"}
 
@@ -64,9 +64,7 @@ class TestAdminWorkflows:
         assert new_user["is_active"] is True
 
         # Step 2: Admin lists all users and finds the new user
-        response = requests.get(
-            f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token)
-        )
+        response = requests.get(f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token))
         assert response.status_code == 200
         users = response.json()
         new_user_found = any(u["id"] == new_user_id for u in users)
@@ -135,9 +133,7 @@ class TestAdminWorkflows:
                 "password": "testpassword123",
             },
         )
-        assert (
-            response.status_code == 401
-        ), "Deactivated user should not be able to login"
+        assert response.status_code == 401, "Deactivated user should not be able to login"
 
         # Step 9: Admin reactivates the user
         reactivate_data = {"is_active": True}
@@ -164,9 +160,7 @@ class TestAdminWorkflows:
             f"{self.api_url}/token",
             data={"username": "updatedemail@example.com", "password": new_password},
         )
-        assert (
-            response.status_code == 200
-        ), "User should be able to login with new password"
+        assert response.status_code == 200, "User should be able to login with new password"
 
         # Step 12: Admin deletes the user
         response = requests.delete(
@@ -176,9 +170,7 @@ class TestAdminWorkflows:
         assert response.status_code == 200
 
         # Step 12: Verify user is deleted
-        response = requests.get(
-            f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token)
-        )
+        response = requests.get(f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token))
         assert response.status_code == 200
         users = response.json()
         deleted_user_found = any(u["id"] == new_user_id for u in users)
@@ -189,9 +181,7 @@ class TestAdminWorkflows:
         Test that admin cannot perform dangerous operations on themselves.
         """
         # Get current admin user details
-        response = requests.get(
-            f"{self.api_url}/users/me", headers=self.get_headers(self.admin_token)
-        )
+        response = requests.get(f"{self.api_url}/users/me", headers=self.get_headers(self.admin_token))
         assert response.status_code == 200
         admin_user = response.json()
         admin_id = admin_user["id"]
@@ -224,9 +214,7 @@ class TestAdminWorkflows:
         assert "cannot delete yourself" in response.json()["detail"].lower()
 
         # Verify admin is still active and has admin role
-        response = requests.get(
-            f"{self.api_url}/users/me", headers=self.get_headers(self.admin_token)
-        )
+        response = requests.get(f"{self.api_url}/users/me", headers=self.get_headers(self.admin_token))
         assert response.status_code == 200
         admin_user = response.json()
         assert admin_user["role"] == "admin"
@@ -237,19 +225,13 @@ class TestAdminWorkflows:
         Test that regular users are denied access to admin endpoints.
         """
         # Get a user ID to test with
-        response = requests.get(
-            f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token)
-        )
+        response = requests.get(f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token))
         assert response.status_code == 200
         users = response.json()
-        target_user_id = next(
-            u["id"] for u in users if u["role"] in ("student", "tutor")
-        )
+        target_user_id = next(u["id"] for u in users if u["role"] in ("student", "tutor"))
 
         # Attempt 1: Regular user tries to list all users
-        response = requests.get(
-            f"{self.api_url}/admin/users", headers=self.get_headers(self.student_token)
-        )
+        response = requests.get(f"{self.api_url}/admin/users", headers=self.get_headers(self.student_token))
         assert response.status_code == 403
 
         # Attempt 2: Regular user tries to update another user
@@ -303,9 +285,7 @@ class TestAdminWorkflows:
         Test that invalid inputs are properly rejected.
         """
         # Get a test user
-        response = requests.get(
-            f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token)
-        )
+        response = requests.get(f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token))
         users = response.json()
         test_user_id = next(u["id"] for u in users if u["role"] in ("student", "tutor"))
 
@@ -365,15 +345,9 @@ class TestAdminWorkflows:
         assert "email already registered" in response.json()["detail"].lower()
 
         # Try to update a different user to use the same email
-        response = requests.get(
-            f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token)
-        )
+        response = requests.get(f"{self.api_url}/admin/users", headers=self.get_headers(self.admin_token))
         users = response.json()
-        other_user = next(
-            u
-            for u in users
-            if u["id"] != new_user["id"] and u["role"] in ("student", "tutor")
-        )
+        other_user = next(u for u in users if u["id"] != new_user["id"] and u["role"] in ("student", "tutor"))
 
         response = requests.put(
             f"{self.api_url}/admin/users/{other_user['id']}",

@@ -1,15 +1,15 @@
 """Booking and session models."""
 
 from sqlalchemy import (
+    DECIMAL,
+    TIMESTAMP,
     Boolean,
     CheckConstraint,
     Column,
-    DECIMAL,
     ForeignKey,
     Integer,
     String,
     Text,
-    TIMESTAMP,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -23,9 +23,7 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="SET NULL"))
     # package_id - Not in production DB (requires migration 017)
@@ -54,22 +52,17 @@ class Booking(Base):
     # Instant booking fields (production schema)
     is_instant_booking = Column(Boolean, default=False)
     confirmed_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    confirmed_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    confirmed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     cancellation_reason = Column(Text, nullable=True)
     cancelled_at = Column(TIMESTAMP(timezone=True), nullable=True)
     is_rebooked = Column(Boolean, default=False)
-    original_booking_id = Column(
-        Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True
-    )
+    original_booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    deleted_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 
@@ -124,5 +117,3 @@ class SessionMaterial(Base):
     # Relationships
     booking = relationship("Booking", back_populates="materials")
     uploader = relationship("User", foreign_keys=[uploaded_by])
-
-

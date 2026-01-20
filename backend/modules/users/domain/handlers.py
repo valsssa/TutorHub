@@ -1,6 +1,7 @@
 """Event handlers for user domain events."""
 
 import logging
+from datetime import UTC
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -42,22 +43,19 @@ class RoleChangeEventHandler:
         Creates a new incomplete tutor profile if one doesn't exist.
         If an archived profile exists, it will be reactivated.
         """
-        existing = (
-            db.query(TutorProfile).filter(TutorProfile.user_id == event.user_id).first()
-        )
+        existing = db.query(TutorProfile).filter(TutorProfile.user_id == event.user_id).first()
 
-        from datetime import datetime, timezone
-        
+        from datetime import datetime
+
         if existing:
             # Reactivate archived profile
             if existing.profile_status == "archived":
                 existing.profile_status = "incomplete"
                 existing.is_approved = False
-                existing.updated_at = datetime.now(timezone.utc)  # Update timestamp in code
+                existing.updated_at = datetime.now(UTC)  # Update timestamp in code
                 db.flush()
                 logger.info(
-                    "Reactivated archived tutor_profiles for user %s "
-                    "(role change by admin %s)",
+                    "Reactivated archived tutor_profiles for user %s (role change by admin %s)",
                     event.user_id,
                     event.changed_by,
                 )
@@ -81,7 +79,7 @@ class RoleChangeEventHandler:
             db.add(profile)
             db.flush()
             logger.info(
-                "Auto-created tutor_profiles for user %s " "(role change by admin %s)",
+                "Auto-created tutor_profiles for user %s (role change by admin %s)",
                 event.user_id,
                 event.changed_by,
             )
@@ -97,14 +95,11 @@ class RoleChangeEventHandler:
 
         The profile becomes invisible in public listings and cannot be edited.
         """
-        profile = (
-            db.query(TutorProfile).filter(TutorProfile.user_id == event.user_id).first()
-        )
+        profile = db.query(TutorProfile).filter(TutorProfile.user_id == event.user_id).first()
 
         if not profile:
             logger.warning(
-                "No tutor_profiles found to archive for user %s "
-                "(role changed from tutor to %s)",
+                "No tutor_profiles found to archive for user %s (role changed from tutor to %s)",
                 event.user_id,
                 event.new_role,
             )
@@ -118,11 +113,12 @@ class RoleChangeEventHandler:
             return
 
         # Always soft-delete to preserve relationships
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         old_status = profile.profile_status
         profile.is_approved = False
         profile.profile_status = "archived"
-        profile.updated_at = datetime.now(timezone.utc)  # Update timestamp in code
+        profile.updated_at = datetime.now(UTC)  # Update timestamp in code
         db.flush()
 
         logger.info(
@@ -139,10 +135,4 @@ class RoleChangeEventHandler:
     @staticmethod
     def _has_bookings(db: Session, tutor_profile_id: int) -> bool:
         """Check if a tutor profile has any associated bookings."""
-        return (
-            db.query(Booking)
-            .filter(Booking.tutor_profile_id == tutor_profile_id)
-            .limit(1)
-            .first()
-            is not None
-        )
+        return db.query(Booking).filter(Booking.tutor_profile_id == tutor_profile_id).limit(1).first() is not None

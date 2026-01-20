@@ -3,8 +3,9 @@ Messages REST API - Clean, Fast, Production-Ready
 DDD + KISS: Simple endpoints with comprehensive features + File Attachments.
 """
 
+import contextlib
 import logging
-from typing import List, Optional
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
@@ -19,10 +20,10 @@ from core.message_storage import (
     store_message_attachment,
 )
 from database import get_db
-from models import Message, MessageAttachment, User
+from models import Message, MessageAttachment
 from modules.messages.service import MessageService
 from modules.messages.websocket import manager
-from schemas import MessageAttachmentResponse, MessageResponse
+from schemas import MessageResponse
 
 logger = logging.getLogger(__name__)
 
@@ -38,28 +39,14 @@ class SendMessageRequest(BaseModel):
     """Request to send a message."""
 
     recipient_id: int = Field(..., gt=0, description="ID of the message recipient")
-    message: str = Field(
-        ...,
-        min_length=1,
-        max_length=2000,
-        description="Message content (1-2000 characters)"
-    )
-    booking_id: Optional[int] = Field(
-        None,
-        gt=0,
-        description="Optional booking context for the message"
-    )
+    message: str = Field(..., min_length=1, max_length=2000, description="Message content (1-2000 characters)")
+    booking_id: int | None = Field(None, gt=0, description="Optional booking context for the message")
 
 
 class EditMessageRequest(BaseModel):
     """Request to edit a message (within 15 minutes)."""
 
-    message: str = Field(
-        ...,
-        min_length=1,
-        max_length=2000,
-        description="Updated message content"
-    )
+    message: str = Field(..., min_length=1, max_length=2000, description="Updated message content")
 
 
 class MessageThreadResponse(BaseModel):
@@ -68,7 +55,7 @@ class MessageThreadResponse(BaseModel):
     other_user_id: int
     other_user_email: str
     other_user_role: str
-    booking_id: Optional[int] = None
+    booking_id: int | None = None
     last_message: str
     last_message_time: str
     last_sender_id: int
@@ -78,7 +65,7 @@ class MessageThreadResponse(BaseModel):
 class MessageSearchResponse(BaseModel):
     """Search results for messages."""
 
-    messages: List[MessageResponse]
+    messages: list[MessageResponse]
     total: int
     page: int
     page_size: int
@@ -88,7 +75,7 @@ class MessageSearchResponse(BaseModel):
 class PaginatedMessagesResponse(BaseModel):
     """Paginated message list."""
 
-    messages: List[MessageResponse]
+    messages: list[MessageResponse]
     total: int
     page: int
     page_size: int
@@ -98,10 +85,7 @@ class UnreadCountResponse(BaseModel):
     """Unread message counts."""
 
     total: int
-    by_sender: dict[int, int] = Field(
-        default_factory=dict,
-        description="Unread count per sender user ID"
-    )
+    by_sender: dict[int, int] = Field(default_factory=dict, description="Unread count per sender user ID")
 
 
 # ============================================================================
@@ -127,13 +111,13 @@ async def send_message(
 ):
     """
     Send a message to another user.
-    
+
     **Business Rules:**
     - Message length: 1-2000 characters
     - PII (email, phone, external links) automatically masked in pre-booking chats
     - Real-time delivery via WebSocket to online recipients
     - Sender cannot message themselves
-    
+
     **Returns:** Created message with ID and timestamp
     """
     try:
@@ -176,11 +160,8 @@ async def send_message(
             current_user.id,
         )
 
-        logger.info(
-            f"Message sent successfully: id={message.id}, "
-            f"from={current_user.id}, to={request.recipient_id}"
-        )
-        
+        logger.info(f"Message sent successfully: id={message.id}, from={current_user.id}, to={request.recipient_id}")
+
         return message
 
     except ValidationError as e:
@@ -190,14 +171,14 @@ async def send_message(
     except Exception as e:
         logger.error(f"Unexpected error sending message: {e}", exc_info=True)
         # Return the actual error in development for debugging
-        error_detail = str(e) if hasattr(e, '__str__') else "Failed to send message"
+        error_detail = str(e) if hasattr(e, "__str__") else "Failed to send message"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail,
-        )
+        ) from e
 
 
-@router.get("/threads", response_model=List[MessageThreadResponse])
+@router.get("/threads", response_model=list[MessageThreadResponse])
 async def list_threads(
     limit: int = Query(100, ge=1, le=200, description="Maximum threads to return"),
     current_user: CurrentUser = None,
@@ -205,20 +186,20 @@ async def list_threads(
 ):
     """
     Get all conversation threads for current user.
-    
+
     **Returns:**
     - Threads sorted by most recent activity
     - Unread count per thread
     - Last message preview
     - Sender of last message
     - Other user's role (student/tutor/admin)
-    
+
     **Use Cases:**
     - Inbox/message list view
     - Unread notification counts
     - Quick conversation access
     - Thread organization
-    
+
     **Performance:**
     - Optimized query with proper indexing
     - Limited to 200 threads max
@@ -226,7 +207,7 @@ async def list_threads(
     """
     try:
         threads = service.get_user_threads(current_user.id, limit=limit)
-        
+
         return [
             MessageThreadResponse(
                 other_user_id=t["other_user_id"],
@@ -245,13 +226,13 @@ async def list_threads(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load conversations",
-        )
+        ) from e
 
 
 @router.get("/threads/{other_user_id}", response_model=PaginatedMessagesResponse)
 async def get_conversation(
     other_user_id: int,
-    booking_id: Optional[int] = Query(None, description="Filter by booking context"),
+    booking_id: int | None = Query(None, description="Filter by booking context"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Messages per page"),
     current_user: CurrentUser = None,
@@ -259,18 +240,18 @@ async def get_conversation(
 ):
     """
     Get messages in a conversation with another user.
-    
+
     **Parameters:**
     - `other_user_id`: The other participant's ID
     - `booking_id`: Optional - filter by booking context
     - `page`: Page number (1-indexed)
     - `page_size`: Messages per page (max 100)
-    
+
     **Returns:**
     - Messages in chronological order (oldest first)
     - Total message count
     - Pagination metadata
-    
+
     **Use Cases:**
     - Load chat history
     - Infinite scroll pagination
@@ -285,7 +266,7 @@ async def get_conversation(
             page=page,
             page_size=page_size,
         )
-        
+
         return PaginatedMessagesResponse(
             messages=messages,
             total=total,
@@ -297,7 +278,7 @@ async def get_conversation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load messages",
-        )
+        ) from e
 
 
 @router.get("/search", response_model=MessageSearchResponse)
@@ -310,17 +291,17 @@ async def search_messages(
 ):
     """
     Search user's messages by content.
-    
+
     **Parameters:**
     - `q`: Search query (minimum 2 characters)
     - `page`: Page number
     - `page_size`: Results per page (max 50)
-    
+
     **Returns:**
     - Matching messages (sent or received)
     - Total match count
     - Pagination metadata
-    
+
     **Use Cases:**
     - Find past conversations
     - Search for specific information
@@ -333,9 +314,9 @@ async def search_messages(
             page=page,
             page_size=page_size,
         )
-        
+
         total_pages = (total + page_size - 1) // page_size
-        
+
         return MessageSearchResponse(
             messages=messages,
             total=total,
@@ -350,7 +331,7 @@ async def search_messages(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to search messages",
-        )
+        ) from e
 
 
 # ============================================================================
@@ -366,21 +347,19 @@ async def mark_read(
 ):
     """
     Mark a message as read (recipient only).
-    
+
     **Business Rules:**
     - Only recipient can mark as read
     - Sets read_at timestamp
     - Sends real-time read receipt to sender
-    
+
     **Use Cases:**
     - User opens/reads a message
     - Automatic read tracking
     - Read receipt notifications
     """
     try:
-        message = await run_in_threadpool(
-            service.mark_message_read, message_id, current_user.id
-        )
+        message = await run_in_threadpool(service.mark_message_read, message_id, current_user.id)
 
         # Send read receipt to sender via WebSocket
         await manager.send_personal_message(
@@ -405,19 +384,19 @@ async def mark_read(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to mark message as read",
-        )
+        ) from e
 
 
 @router.patch("/threads/{other_user_id}/read-all", status_code=status.HTTP_200_OK)
 async def mark_thread_read(
     other_user_id: int,
-    booking_id: Optional[int] = Query(None),
+    booking_id: int | None = Query(None),
     current_user: CurrentUser = None,
     service: MessageService = Depends(get_message_service),
 ):
     """
     Mark all messages in a thread as read.
-    
+
     **Use Cases:**
     - User opens a conversation
     - Bulk mark as read
@@ -461,7 +440,7 @@ async def mark_thread_read(
 async def send_message_with_attachment(
     recipient_id: int = Form(..., gt=0),
     message: str = Form(..., min_length=1, max_length=2000),
-    booking_id: Optional[int] = Form(None, gt=0),
+    booking_id: int | None = Form(None, gt=0),
     file: UploadFile = File(...),
     current_user: CurrentUser = None,
     service: MessageService = Depends(get_message_service),
@@ -469,19 +448,19 @@ async def send_message_with_attachment(
 ):
     """
     Send a message with a file attachment.
-    
+
     **Business Rules:**
     - File size limits: 10 MB (5 MB for images)
     - Allowed types: Images (JPEG, PNG, GIF, WebP), Documents (PDF, DOC, TXT)
     - Files stored in private bucket (presigned URLs for access)
     - Automatic virus scanning placeholder
     - PII masking applied to message text
-    
+
     **Security:**
     - Only sender and recipient can access files
     - Presigned URLs expire after 1 hour
     - Virus scan status tracked (future: integration with ClamAV/VirusTotal)
-    
+
     **Returns:** Message with attachment metadata
     """
     try:
@@ -493,16 +472,17 @@ async def send_message_with_attachment(
             content=message,
             booking_id=booking_id,
         )
-        
+
         # 2. Upload file to secure storage
         attachment_data = await store_message_attachment(
             user_id=current_user.id,
             message_id=msg.id,
             upload=file,
         )
-        
+
         # 3. Create attachment record in database
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         attachment = MessageAttachment(
             message_id=msg.id,
             uploaded_by=current_user.id,
@@ -510,21 +490,21 @@ async def send_message_with_attachment(
             scan_result="pending",  # Placeholder for virus scanning
             is_public=False,  # Private by default
         )
-        attachment.updated_at = datetime.now(timezone.utc)
-        
+        attachment.updated_at = datetime.now(UTC)
+
         db.add(attachment)
         db.commit()
         db.refresh(attachment)
-        
+
         logger.info(
             f"Message with attachment sent: msg_id={msg.id}, "
             f"file={attachment.original_filename}, size={attachment.file_size}, "
             f"from={current_user.id}, to={recipient_id}"
         )
-        
+
         # 4. Refresh message to include attachment
         db.refresh(msg)
-        
+
         # 5. Real-time notification to recipient with attachment info
         await manager.send_personal_message(
             {
@@ -544,20 +524,18 @@ async def send_message_with_attachment(
             },
             recipient_id,
         )
-        
+
         return msg
-        
+
     except ValidationError as e:
         logger.warning(f"Message/file validation failed: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error sending message with attachment: {e}", exc_info=True)
         # Cleanup: try to delete uploaded file if message creation failed
-        if 'attachment_data' in locals():
-            try:
-                delete_message_attachment(attachment_data['file_key'])
-            except Exception:
-                pass
+        if "attachment_data" in locals():
+            with contextlib.suppress(Exception):
+                delete_message_attachment(attachment_data["file_key"])
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send message with attachment: {str(e)}",
@@ -572,16 +550,16 @@ async def get_attachment_download_url(
 ):
     """
     Generate a presigned URL for downloading a message attachment.
-    
+
     **Security:**
     - Only sender or recipient of the message can access attachments
     - URLs expire after 1 hour
     - Access control validated before URL generation
-    
+
     **Returns:**
     - Presigned S3 URL for secure temporary access
     - Attachment metadata (filename, size, type)
-    
+
     **Use Cases:**
     - Download file from message
     - View image inline
@@ -596,21 +574,15 @@ async def get_attachment_download_url(
         )
         .first()
     )
-    
+
     if not attachment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Attachment not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
+
     # 2. Access control: only sender or recipient can download
     message = db.query(Message).filter(Message.id == attachment.message_id).first()
     if not message:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Message not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+
     is_authorized = current_user.id in {message.sender_id, message.recipient_id}
     if not is_authorized:
         logger.warning(
@@ -618,30 +590,26 @@ async def get_attachment_download_url(
             f"attachment={attachment_id}, message={message.id}"
         )
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to access this file"
+            status_code=status.HTTP_403_FORBIDDEN, detail="You don't have permission to access this file"
         )
-    
+
     # 3. Check virus scan status (block infected files)
     if attachment.scan_result == "infected":
-        logger.warning(
-            f"Attempted download of infected file: attachment={attachment_id}, "
-            f"user={current_user.id}"
-        )
+        logger.warning(f"Attempted download of infected file: attachment={attachment_id}, user={current_user.id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This file has been flagged as potentially unsafe and cannot be downloaded"
+            detail="This file has been flagged as potentially unsafe and cannot be downloaded",
         )
-    
+
     # 4. Generate presigned URL (expires in 1 hour)
     try:
         download_url = generate_presigned_url(attachment.file_key, expiry_seconds=3600)
-        
+
         logger.info(
             f"Presigned URL generated: attachment={attachment_id}, "
             f"user={current_user.id}, filename={attachment.original_filename}"
         )
-        
+
         return {
             "download_url": download_url,
             "filename": attachment.original_filename,
@@ -649,12 +617,11 @@ async def get_attachment_download_url(
             "mime_type": attachment.mime_type,
             "expires_in_seconds": 3600,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to generate download URL: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate download link"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate download link"
         )
 
 
@@ -665,11 +632,11 @@ async def get_unread_count(
 ):
     """
     Get total unread message count for current user.
-    
+
     **Returns:**
     - Total unread count (all threads)
     - Unread count per sender
-    
+
     **Use Cases:**
     - Notification badge count
     - Unread indicator
@@ -678,7 +645,7 @@ async def get_unread_count(
     try:
         total = service.get_unread_count(current_user.id)
         by_sender = service.get_unread_count_by_thread(current_user.id)
-        
+
         return UnreadCountResponse(
             total=total,
             by_sender=by_sender,
@@ -705,13 +672,13 @@ async def edit_message(
 ):
     """
     Edit a message (sender only, within 15 minutes).
-    
+
     **Business Rules:**
     - Only sender can edit their own messages
     - Must be within 15 minutes of sending
     - PII protection still applies to edited content
     - Sets is_edited flag and edited_at timestamp
-    
+
     **Use Cases:**
     - Fix typos
     - Clarify message
@@ -757,22 +724,20 @@ async def delete_message(
 ):
     """
     Delete a message (sender only, soft delete).
-    
+
     **Business Rules:**
     - Only sender can delete their own messages
     - Soft delete (kept for audit trail)
     - Sets deleted_at and deleted_by fields
     - Message hidden from both sender and recipient
-    
+
     **Use Cases:**
     - Remove inappropriate content
     - Delete sent by mistake
     - Clean up conversation
     """
     try:
-        message = await run_in_threadpool(
-            service.delete_message, message_id, current_user.id
-        )
+        message = await run_in_threadpool(service.delete_message, message_id, current_user.id)
 
         # Notify recipient of deletion via WebSocket
         await manager.send_personal_message(

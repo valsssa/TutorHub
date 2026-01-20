@@ -16,11 +16,11 @@ Usage:
 
 # Import domain modules first to ensure all models are loaded
 from . import admin, auth, bookings, messages, notifications, payments, reviews, students, subjects, tutors
-from .base import Base, JSONEncodedArray
 
 # Re-export all models for backward compatibility
 from .admin import AuditLog, Report
 from .auth import User, UserProfile
+from .base import Base, JSONEncodedArray
 from .bookings import Booking, SessionMaterial
 from .messages import Message, MessageAttachment
 from .notifications import Notification

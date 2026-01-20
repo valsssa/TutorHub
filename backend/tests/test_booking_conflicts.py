@@ -63,9 +63,7 @@ def test_subject(db_session):
     return subject
 
 
-def test_can_create_non_overlapping_bookings(
-    db_session, test_tutor, test_student, test_subject
-):
+def test_can_create_non_overlapping_bookings(db_session, test_tutor, test_student, test_subject):
     """Test that non-overlapping bookings can be created."""
     base_time = datetime.now()
 
@@ -102,9 +100,7 @@ def test_can_create_non_overlapping_bookings(
     assert booking2.id is not None
 
 
-def test_overlapping_bookings_rejected(
-    db_session, test_tutor, test_student, test_subject
-):
+def test_overlapping_bookings_rejected(db_session, test_tutor, test_student, test_subject):
     """Test that overlapping bookings are rejected."""
     base_time = datetime.now()
 
@@ -139,15 +135,10 @@ def test_overlapping_bookings_rejected(
         db_session.add(booking2)
         db_session.commit()
 
-    assert (
-        "booking conflict" in str(exc_info.value).lower()
-        or "overlaps" in str(exc_info.value).lower()
-    )
+    assert "booking conflict" in str(exc_info.value).lower() or "overlaps" in str(exc_info.value).lower()
 
 
-def test_cancelled_bookings_allow_overlap(
-    db_session, test_tutor, test_student, test_subject
-):
+def test_cancelled_bookings_allow_overlap(db_session, test_tutor, test_student, test_subject):
     """Test that cancelled bookings don't block same time slot."""
     base_time = datetime.now()
 
@@ -264,9 +255,7 @@ def test_different_tutors_same_time(db_session, test_student, test_subject):
     assert booking2.id is not None
 
 
-def test_exact_end_time_matches_next_start(
-    db_session, test_tutor, test_student, test_subject
-):
+def test_exact_end_time_matches_next_start(db_session, test_tutor, test_student, test_subject):
     """Test that back-to-back bookings (end=start) are allowed."""
     base_time = datetime.now()
 
@@ -303,9 +292,7 @@ def test_exact_end_time_matches_next_start(
     assert booking2.id is not None
 
 
-def test_pending_bookings_also_checked(
-    db_session, test_tutor, test_student, test_subject
-):
+def test_pending_bookings_also_checked(db_session, test_tutor, test_student, test_subject):
     """Test that pending bookings also prevent conflicts."""
     base_time = datetime.now()
 
@@ -340,7 +327,4 @@ def test_pending_bookings_also_checked(
         db_session.add(booking2)
         db_session.commit()
 
-    assert (
-        "booking conflict" in str(exc_info.value).lower()
-        or "overlaps" in str(exc_info.value).lower()
-    )
+    assert "booking conflict" in str(exc_info.value).lower() or "overlaps" in str(exc_info.value).lower()

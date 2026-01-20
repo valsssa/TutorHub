@@ -8,9 +8,7 @@ class TestListUsers:
 
     def test_admin_list_users(self, client, admin_token, student_user, tutor_user):
         """Test admin can list all users."""
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == status.HTTP_200_OK
         payload = response.json()
         assert "items" in payload
@@ -20,9 +18,7 @@ class TestListUsers:
         assert student_user.email in emails
         assert tutor_user.email in emails
 
-    def test_admin_list_users_includes_inactive(
-        self, client, admin_token, student_user
-    ):
+    def test_admin_list_users_includes_inactive(self, client, admin_token, student_user):
         """Deactivated users remain visible in admin dashboard."""
         deactivate_response = client.put(
             f"/api/admin/users/{student_user.id}",
@@ -31,17 +27,11 @@ class TestListUsers:
         )
         assert deactivate_response.status_code == status.HTTP_200_OK
 
-        default_response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"}
-        )
+        default_response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
         assert default_response.status_code == status.HTTP_200_OK
         default_payload = default_response.json()
         inactive_user = next(
-            (
-                item
-                for item in default_payload["items"]
-                if item["email"] == student_user.email
-            ),
+            (item for item in default_payload["items"] if item["email"] == student_user.email),
             None,
         )
         assert inactive_user is not None
@@ -60,16 +50,12 @@ class TestListUsers:
 
     def test_student_cannot_list_users(self, client, student_token):
         """Test student cannot access admin endpoint."""
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_tutor_cannot_list_users(self, client, tutor_token):
         """Test tutor cannot access admin endpoint."""
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {tutor_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {tutor_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
@@ -166,9 +152,7 @@ class TestDeleteUser:
 
     def test_admin_delete_nonexistent_user(self, client, admin_token):
         """Test deleting nonexistent user."""
-        response = client.delete(
-            "/api/admin/users/99999", headers={"Authorization": f"Bearer {admin_token}"}
-        )
+        response = client.delete("/api/admin/users/99999", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_student_cannot_delete_user(self, client, student_token, tutor_user):

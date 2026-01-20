@@ -2,7 +2,6 @@
 
 import logging
 from decimal import Decimal
-from typing import Dict
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -21,7 +20,7 @@ class DataIntegrityChecker:
     """
 
     @staticmethod
-    def check_role_profile_consistency(db: Session) -> Dict:
+    def check_role_profile_consistency(db: Session) -> dict:
         """
         Check for role-profile mismatches.
 
@@ -57,9 +56,7 @@ class DataIntegrityChecker:
         profiles_no_role = (
             db.query(User.id)
             .join(TutorProfile, User.id == TutorProfile.user_id)
-            .filter(
-                and_(User.role != "tutor", TutorProfile.profile_status != "archived")
-            )
+            .filter(and_(User.role != "tutor", TutorProfile.profile_status != "archived"))
             .all()
         )
 
@@ -86,7 +83,7 @@ class DataIntegrityChecker:
         }
 
     @staticmethod
-    def auto_repair_consistency(db: Session) -> Dict:
+    def auto_repair_consistency(db: Session) -> dict:
         """
         Automatically fix consistency issues.
 
@@ -130,9 +127,7 @@ class DataIntegrityChecker:
                 profiles_created += 1
                 logger.info("Auto-created tutor_profiles for user %s", user_id)
             except Exception as exc:
-                logger.error(
-                    "Failed to create tutor_profiles for user %s: %s", user_id, exc
-                )
+                logger.error("Failed to create tutor_profiles for user %s: %s", user_id, exc)
 
         # Archive orphaned profiles
         for user_id in issues["profiles_without_tutor_role"]:
@@ -152,9 +147,7 @@ class DataIntegrityChecker:
                     profiles_archived += 1
                     logger.info("Archived orphaned tutor_profiles for user %s", user_id)
             except Exception as exc:
-                logger.error(
-                    "Failed to archive tutor_profiles for user %s: %s", user_id, exc
-                )
+                logger.error("Failed to archive tutor_profiles for user %s: %s", user_id, exc)
 
         if profiles_created > 0 or profiles_archived > 0:
             db.commit()
@@ -174,7 +167,7 @@ class DataIntegrityChecker:
         }
 
     @staticmethod
-    def get_consistency_report(db: Session) -> Dict:
+    def get_consistency_report(db: Session) -> dict:
         """
         Generate a comprehensive consistency report.
 
@@ -196,16 +189,8 @@ class DataIntegrityChecker:
         total_users = db.query(User).count()
         tutor_users = db.query(User).filter(User.role == "tutor").count()
         tutor_profiles = db.query(TutorProfile).count()
-        active_profiles = (
-            db.query(TutorProfile)
-            .filter(TutorProfile.profile_status != "archived")
-            .count()
-        )
-        archived_profiles = (
-            db.query(TutorProfile)
-            .filter(TutorProfile.profile_status == "archived")
-            .count()
-        )
+        active_profiles = db.query(TutorProfile).filter(TutorProfile.profile_status != "archived").count()
+        archived_profiles = db.query(TutorProfile).filter(TutorProfile.profile_status == "archived").count()
 
         issues = DataIntegrityChecker.check_role_profile_consistency(db)
 

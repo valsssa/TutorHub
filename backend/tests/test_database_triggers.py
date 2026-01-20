@@ -7,8 +7,14 @@ from datetime import datetime, timedelta
 import pytest
 
 # from backend.database import get_db  # noqa: F401
-from models import Review  # StudentProfile,  # noqa: F401
-from models import Booking, Subject, TutorPricingOption, TutorProfile, User
+from models import (
+    Booking,
+    Review,  # StudentProfile,  # noqa: F401
+    Subject,
+    TutorPricingOption,
+    TutorProfile,
+    User,
+)
 
 
 @pytest.fixture

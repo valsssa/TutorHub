@@ -1,8 +1,7 @@
 """Soft delete utilities."""
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -12,12 +11,12 @@ logger = logging.getLogger(__name__)
 class SoftDeleteMixin:
     """Mixin for soft delete functionality."""
 
-    deleted_at: Optional[datetime] = None
-    deleted_by: Optional[int] = None
+    deleted_at: datetime | None = None
+    deleted_by: int | None = None
 
     def soft_delete(self, deleted_by_id: int) -> None:
         """Mark record as soft deleted."""
-        self.deleted_at = datetime.now(timezone.utc)
+        self.deleted_at = datetime.now(UTC)
         self.deleted_by = deleted_by_id
 
     def restore(self) -> None:

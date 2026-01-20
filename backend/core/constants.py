@@ -1,12 +1,11 @@
 """Application constants for validation and selection lists."""
 
-from typing import Dict, List
 
 # ============================================================================
 # Countries (ISO 3166-1 alpha-2)
 # ============================================================================
 
-COUNTRIES: List[Dict[str, str]] = [
+COUNTRIES: list[dict[str, str]] = [
     {"code": "AF", "name": "Afghanistan"},
     {"code": "AL", "name": "Albania"},
     {"code": "DZ", "name": "Algeria"},
@@ -208,7 +207,7 @@ COUNTRY_CODES = {country["code"] for country in COUNTRIES}
 # Languages (ISO 639-1)
 # ============================================================================
 
-LANGUAGES: List[Dict[str, str]] = [
+LANGUAGES: list[dict[str, str]] = [
     {"code": "am", "name": "Amharic"},
     {"code": "ar", "name": "Arabic"},
     {"code": "bn", "name": "Bengali"},
@@ -259,7 +258,7 @@ LANGUAGE_CODES = {lang["code"] for lang in LANGUAGES}
 # Language Proficiency Levels (CEFR + Native)
 # ============================================================================
 
-PROFICIENCY_LEVELS: List[Dict[str, str]] = [
+PROFICIENCY_LEVELS: list[dict[str, str]] = [
     {
         "code": "native",
         "name": "Native",
@@ -291,7 +290,7 @@ PROFICIENCY_LEVEL_CODES = {level["code"] for level in PROFICIENCY_LEVELS}
 # Phone Country Codes (ITU E.164)
 # ============================================================================
 
-PHONE_COUNTRY_CODES: List[Dict[str, str]] = [
+PHONE_COUNTRY_CODES: list[dict[str, str]] = [
     {"code": "+1", "country": "United States / Canada"},
     {"code": "+7", "country": "Russia / Kazakhstan"},
     {"code": "+20", "country": "Egypt"},

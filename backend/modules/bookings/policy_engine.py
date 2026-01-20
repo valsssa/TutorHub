@@ -294,11 +294,7 @@ class GraceEditPolicy:
         time_since_creation = now - booking_created_at
         time_until_start = booking_start_at - now
 
-        within_grace = time_since_creation.total_seconds() < (
-            cls.GRACE_PERIOD_MINUTES * 60
-        )
-        enough_advance = time_until_start.total_seconds() >= (
-            cls.MIN_ADVANCE_BOOKING_HOURS * 3600
-        )
+        within_grace = time_since_creation.total_seconds() < (cls.GRACE_PERIOD_MINUTES * 60)
+        enough_advance = time_until_start.total_seconds() >= (cls.MIN_ADVANCE_BOOKING_HOURS * 3600)
 
         return within_grace and enough_advance

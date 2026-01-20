@@ -1,7 +1,5 @@
 """Tutor profile application service."""
 
-from typing import Dict, List, Optional
-
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
@@ -48,14 +46,14 @@ class TutorProfileService:
         db: Session,
         *,
         pagination: PaginationParams,
-        subject_id: Optional[int] = None,
-        min_rate: Optional[float] = None,
-        max_rate: Optional[float] = None,
-        min_rating: Optional[float] = None,
-        min_experience: Optional[int] = None,
-        language: Optional[str] = None,
-        search_query: Optional[str] = None,
-        sort_by: Optional[str] = None,
+        subject_id: int | None = None,
+        min_rate: float | None = None,
+        max_rate: float | None = None,
+        min_rating: float | None = None,
+        min_experience: int | None = None,
+        language: str | None = None,
+        search_query: str | None = None,
+        sort_by: str | None = None,
     ):
         filters = TutorListingFilter(
             subject_id=subject_id,
@@ -95,19 +93,17 @@ class TutorProfileService:
         self,
         db: Session,
         user_id: int,
-        payload: List[TutorCertificationInput],
-        file_map: Dict[int, UploadFile],
+        payload: list[TutorCertificationInput],
+        file_map: dict[int, UploadFile],
     ):
         current = self.repository.get_or_create_by_user(db, user_id)
-        new_items: List[dict] = []
-        stored_urls: List[str] = []
+        new_items: list[dict] = []
+        stored_urls: list[str] = []
         for idx, item in enumerate(payload):
             item_data = item.model_dump()
             upload = file_map.get(idx)
             if upload:
-                document_url = await store_supporting_document(
-                    user_id, "certifications", upload
-                )
+                document_url = await store_supporting_document(user_id, "certifications", upload)
                 stored_urls.append(document_url)
                 item_data["document_url"] = document_url
             new_items.append(item_data)
@@ -116,15 +112,13 @@ class TutorProfileService:
             aggregate = self.repository.replace_certifications(
                 db,
                 user_id,
-                [item for item in new_items],
+                list(new_items),
             )
         except Exception:
             delete_files(stored_urls)
             raise
 
-        preserved_urls = {
-            item.get("document_url") for item in new_items if item.get("document_url")
-        }
+        preserved_urls = {item.get("document_url") for item in new_items if item.get("document_url")}
         stale_urls = [
             cert.document_url
             for cert in current.certifications
@@ -137,7 +131,7 @@ class TutorProfileService:
         self,
         db: Session,
         user_id: int,
-        payload: List[TutorSubjectInput],
+        payload: list[TutorSubjectInput],
     ):
         aggregate = self.repository.replace_subjects(
             db,
@@ -150,19 +144,17 @@ class TutorProfileService:
         self,
         db: Session,
         user_id: int,
-        payload: List[TutorEducationInput],
-        file_map: Dict[int, UploadFile],
+        payload: list[TutorEducationInput],
+        file_map: dict[int, UploadFile],
     ):
         current = self.repository.get_or_create_by_user(db, user_id)
-        new_items: List[dict] = []
-        stored_urls: List[str] = []
+        new_items: list[dict] = []
+        stored_urls: list[str] = []
         for idx, item in enumerate(payload):
             item_data = item.model_dump()
             upload = file_map.get(idx)
             if upload:
-                document_url = await store_supporting_document(
-                    user_id, "education", upload
-                )
+                document_url = await store_supporting_document(user_id, "education", upload)
                 stored_urls.append(document_url)
                 item_data["document_url"] = document_url
             new_items.append(item_data)
@@ -171,15 +163,13 @@ class TutorProfileService:
             aggregate = self.repository.replace_educations(
                 db,
                 user_id,
-                [item for item in new_items],
+                list(new_items),
             )
         except Exception:
             delete_files(stored_urls)
             raise
 
-        preserved_urls = {
-            item.get("document_url") for item in new_items if item.get("document_url")
-        }
+        preserved_urls = {item.get("document_url") for item in new_items if item.get("document_url")}
         stale_urls = [
             edu.document_url
             for edu in current.educations
@@ -188,9 +178,7 @@ class TutorProfileService:
         delete_files(stale_urls)
         return aggregate_to_profile_response(aggregate)
 
-    def update_description(
-        self, db: Session, user_id: int, payload: TutorDescriptionUpdate
-    ):
+    def update_description(self, db: Session, user_id: int, payload: TutorDescriptionUpdate):
         aggregate = self.repository.update_description(db, user_id, payload.description)
         return aggregate_to_profile_response(aggregate)
 
@@ -209,9 +197,7 @@ class TutorProfileService:
         existing_url = user.avatar_key if user and user.avatar_key else None
 
         # Store new photo
-        photo_url = await store_profile_photo(
-            user_id, upload, existing_url=existing_url
-        )
+        photo_url = await store_profile_photo(user_id, upload, existing_url=existing_url)
 
         # Update User avatar_key with new photo URL
         aggregate = self.repository.update_profile_photo(db, user_id, photo_url)
@@ -238,10 +224,7 @@ class TutorProfileService:
         user_id: int,
         payload: TutorAvailabilityBulkUpdate,
     ):
-        availability_entities = [
-            self._to_availability_entity(item, payload.timezone)
-            for item in payload.availability
-        ]
+        availability_entities = [self._to_availability_entity(item, payload.timezone) for item in payload.availability]
         aggregate = self.repository.replace_availability(
             db,
             user_id,
@@ -262,7 +245,7 @@ class TutorProfileService:
     def _to_availability_entity(
         self,
         payload: TutorAvailabilityInput,
-        timezone: Optional[str],
+        timezone: str | None,
     ) -> TutorAvailabilityEntity:
         return TutorAvailabilityEntity(
             id=None,

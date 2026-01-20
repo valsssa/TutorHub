@@ -84,23 +84,15 @@ Creates a new user account with specified role (student/tutor/admin). By default
         },
         400: {
             "description": "Validation error - invalid email, weak password, or invalid role",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Email must not exceed 254 characters"}
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Email must not exceed 254 characters"}}},
         },
         409: {
             "description": "Conflict - email already registered",
-            "content": {
-                "application/json": {"example": {"detail": "Email already registered"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Email already registered"}}},
         },
         429: {
             "description": "Rate limit exceeded - max 5 registrations per minute",
-            "content": {
-                "application/json": {"example": {"detail": "Rate limit exceeded"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Rate limit exceeded"}}},
         },
     },
 )
@@ -122,9 +114,7 @@ def register(
         currency=user.currency or "USD",
     )
 
-    logger.info(
-        f"User registered successfully: {user_entity.email}, role: {user_entity.role}"
-    )
+    logger.info(f"User registered successfully: {user_entity.email}, role: {user_entity.role}")
     return UserResponse(
         id=user_entity.id,
         email=user_entity.email,
@@ -188,23 +178,15 @@ Authenticates user credentials and returns JWT access token for API authorizatio
         },
         401: {
             "description": "Authentication failed - invalid email or password",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Incorrect email or password"}
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Incorrect email or password"}}},
         },
         403: {
             "description": "Account is inactive or not verified",
-            "content": {
-                "application/json": {"example": {"detail": "Account is inactive"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Account is inactive"}}},
         },
         429: {
             "description": "Rate limit exceeded - max 10 login attempts per minute",
-            "content": {
-                "application/json": {"example": {"detail": "Rate limit exceeded"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Rate limit exceeded"}}},
         },
     },
 )
@@ -278,9 +260,7 @@ Retrieves the authenticated user's profile including avatar, preferences, and ac
         },
         401: {
             "description": "Not authenticated - missing or invalid JWT token",
-            "content": {
-                "application/json": {"example": {"detail": "Not authenticated"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Not authenticated"}}},
         },
     },
 )

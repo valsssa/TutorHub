@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC
 from decimal import Decimal
-from typing import List, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -73,12 +73,10 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             )
             db.add(profile)
             db.commit()
-            profile = (
-                self._query_base(db).filter(TutorProfile.user_id == user_id).first()
-            )
+            profile = self._query_base(db).filter(TutorProfile.user_id == user_id).first()
         return self._to_aggregate(profile)
 
-    def get_by_id(self, db: Session, tutor_id: int) -> Optional[TutorProfileAggregate]:
+    def get_by_id(self, db: Session, tutor_id: int) -> TutorProfileAggregate | None:
         profile = self._query_base(db).filter(TutorProfile.id == tutor_id).first()
         if not profile or not profile.is_approved:
             return None
@@ -86,7 +84,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
     def list_public(
         self, db: Session, filters: TutorListingFilter, pagination
-    ) -> tuple[List[TutorProfileAggregate], int]:
+    ) -> tuple[list[TutorProfileAggregate], int]:
         # Use eager loading base query for optimal performance
         # Only show approved tutors to students
         query = self._query_base(db).filter(
@@ -97,9 +95,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         # Filter by subject (join only if filtering, eager load already loaded)
         if filters.subject_id:
             # The join is already loaded via joinedload, just filter
-            query = query.filter(
-                TutorProfile.subjects.any(TutorSubject.subject_id == filters.subject_id)
-            )
+            query = query.filter(TutorProfile.subjects.any(TutorSubject.subject_id == filters.subject_id))
 
         # Filter by rate range
         if filters.min_rate:
@@ -113,9 +109,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         # Filter by experience
         if filters.min_experience:
-            query = query.filter(
-                TutorProfile.experience_years >= filters.min_experience
-            )
+            query = query.filter(TutorProfile.experience_years >= filters.min_experience)
 
         # Filter by language
         if filters.language:
@@ -124,11 +118,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
                 from sqlalchemy import String, cast
                 from sqlalchemy.dialects.postgresql import ARRAY
 
-                query = query.filter(
-                    cast(TutorProfile.languages, ARRAY(String)).contains(
-                        [filters.language]
-                    )
-                )
+                query = query.filter(cast(TutorProfile.languages, ARRAY(String)).contains([filters.language]))
             except Exception:
                 # Fallback for SQLite/other DBs - serialize check
                 query = query.filter(TutorProfile.languages.contains(filters.language))
@@ -168,10 +158,10 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         user_id: int,
         *,
         title: str,
-        headline: Optional[str],
-        bio: Optional[str],
+        headline: str | None,
+        bio: str | None,
         experience_years: int,
-        languages: Optional[list[str]],
+        languages: list[str] | None,
     ) -> TutorProfileAggregate:
         profile = self._ensure_profile(db, user_id)
         profile.title = title
@@ -188,12 +178,11 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         user_id: int,
         certifications: list[dict],
     ) -> TutorProfileAggregate:
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         profile = self._ensure_profile(db, user_id)
-        db.query(TutorCertification).filter(
-            TutorCertification.tutor_profile_id == profile.id
-        ).delete()
-        now = datetime.now(timezone.utc)
+        db.query(TutorCertification).filter(TutorCertification.tutor_profile_id == profile.id).delete()
+        now = datetime.now(UTC)
         for item in certifications:
             cert = TutorCertification(tutor_profile_id=profile.id, **item)
             cert.updated_at = now  # Set timestamp in application code
@@ -208,12 +197,11 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         user_id: int,
         educations: list[dict],
     ) -> TutorProfileAggregate:
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         profile = self._ensure_profile(db, user_id)
-        db.query(TutorEducation).filter(
-            TutorEducation.tutor_profile_id == profile.id
-        ).delete()
-        now = datetime.now(timezone.utc)
+        db.query(TutorEducation).filter(TutorEducation.tutor_profile_id == profile.id).delete()
+        now = datetime.now(UTC)
         for item in educations:
             edu = TutorEducation(tutor_profile_id=profile.id, **item)
             edu.updated_at = now  # Set timestamp in application code
@@ -228,53 +216,49 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         user_id: int,
         subjects: list[dict],
     ) -> TutorProfileAggregate:
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         profile = self._ensure_profile(db, user_id)
-        db.query(TutorSubject).filter(
-            TutorSubject.tutor_profile_id == profile.id
-        ).delete()
-        now = datetime.now(timezone.utc)
+        db.query(TutorSubject).filter(TutorSubject.tutor_profile_id == profile.id).delete()
+        now = datetime.now(UTC)
         for item in subjects:
             subj = TutorSubject(tutor_profile_id=profile.id, **item)
             # Note: TutorSubject may not have updated_at column, check model
-            if hasattr(subj, 'updated_at'):
+            if hasattr(subj, "updated_at"):
                 subj.updated_at = now  # Set timestamp in application code
             db.add(subj)
         profile.updated_at = now  # Always update parent profile
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
-    def update_description(
-        self, db: Session, user_id: int, description: str
-    ) -> TutorProfileAggregate:
-        from datetime import datetime, timezone
+    def update_description(self, db: Session, user_id: int, description: str) -> TutorProfileAggregate:
+        from datetime import datetime
+
         profile = self._ensure_profile(db, user_id)
         profile.description = description.strip()
-        profile.updated_at = datetime.now(timezone.utc)  # Update in code
+        profile.updated_at = datetime.now(UTC)  # Update in code
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
-    def update_video(
-        self, db: Session, user_id: int, video_url: str
-    ) -> TutorProfileAggregate:
-        from datetime import datetime, timezone
+    def update_video(self, db: Session, user_id: int, video_url: str) -> TutorProfileAggregate:
+        from datetime import datetime
+
         profile = self._ensure_profile(db, user_id)
         profile.video_url = video_url
-        profile.updated_at = datetime.now(timezone.utc)  # Update in code
+        profile.updated_at = datetime.now(UTC)  # Update in code
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
-    def update_profile_photo(
-        self, db: Session, user_id: int, photo_url: str
-    ) -> TutorProfileAggregate:
-        from datetime import datetime, timezone
+    def update_profile_photo(self, db: Session, user_id: int, photo_url: str) -> TutorProfileAggregate:
+        from datetime import datetime
+
         profile = self._ensure_profile(db, user_id)
         # Update User avatar_key instead of TutorProfile (which doesn't have photo field)
         user = db.query(User).filter(User.id == user_id).first()
         if user:
             user.avatar_key = photo_url
-            user.updated_at = datetime.now(timezone.utc)  # Update in code
-        profile.updated_at = datetime.now(timezone.utc)  # Update in code
+            user.updated_at = datetime.now(UTC)  # Update in code
+        profile.updated_at = datetime.now(UTC)  # Update in code
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
@@ -298,14 +282,13 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
                 detail=f"Profile has been modified by another request. Please refresh and try again. Expected version {expected_version}, but current version is {profile.version}.",
             )
 
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc)
+        from datetime import datetime
+
+        now = datetime.now(UTC)
         profile.hourly_rate = hourly_rate
 
         # Atomic update: delete old and insert new pricing options
-        db.query(TutorPricingOption).filter(
-            TutorPricingOption.tutor_profile_id == profile.id
-        ).delete()
+        db.query(TutorPricingOption).filter(TutorPricingOption.tutor_profile_id == profile.id).delete()
         for item in pricing_options:
             option = TutorPricingOption(tutor_profile_id=profile.id, **item)
             option.updated_at = now  # Set timestamp in application code
@@ -322,8 +305,8 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         self,
         db: Session,
         user_id: int,
-        availability: List[TutorAvailabilityEntity],
-        timezone: Optional[str],
+        availability: list[TutorAvailabilityEntity],
+        timezone: str | None,
         expected_version: int,
     ) -> TutorProfileAggregate:
         from fastapi import HTTPException, status
@@ -337,25 +320,20 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
                 detail=f"Profile has been modified by another request. Please refresh and try again. Expected version {expected_version}, but current version is {profile.version}.",
             )
 
-        from datetime import datetime, timezone as tz
+        from datetime import datetime
+
         # Update timezone on user profile if provided
         if timezone:
-            user_profile = (
-                db.query(UserProfile)
-                .filter(UserProfile.user_id == profile.user_id)
-                .first()
-            )
+            user_profile = db.query(UserProfile).filter(UserProfile.user_id == profile.user_id).first()
             if not user_profile:
                 user_profile = UserProfile(user_id=profile.user_id, timezone=timezone)
                 db.add(user_profile)
             else:
                 user_profile.timezone = timezone
-                user_profile.updated_at = datetime.now(tz.utc)  # Update in code
+                user_profile.updated_at = datetime.now(UTC)  # Update in code
 
         # Atomic update: delete old and insert new
-        db.query(TutorAvailability).filter(
-            TutorAvailability.tutor_profile_id == profile.id
-        ).delete()
+        db.query(TutorAvailability).filter(TutorAvailability.tutor_profile_id == profile.id).delete()
         for slot in availability:
             db.add(
                 TutorAvailability(
@@ -369,7 +347,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         # Increment version after successful update
         profile.version += 1
-        profile.updated_at = datetime.now(tz.utc)  # Update in code
+        profile.updated_at = datetime.now(UTC)  # Update in code
 
         db.commit()
         return self._aggregate_from_db(db, profile.id)

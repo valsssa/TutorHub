@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -29,19 +28,19 @@ class AuditLogResponse(BaseModel):
     table_name: str
     record_id: int
     action: str
-    old_data: Optional[dict] = None
-    new_data: Optional[dict] = None
-    changed_by: Optional[int] = None
+    old_data: dict | None = None
+    new_data: dict | None = None
+    changed_by: int | None = None
     changed_at: datetime
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    ip_address: str | None = None
+    user_agent: str | None = None
 
 
 class SoftDeleteRequest(BaseModel):
     """Request to soft delete a user."""
 
     user_id: int
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class RestoreRequest(BaseModel):
@@ -56,14 +55,14 @@ class PurgeRequest(BaseModel):
     days_threshold: int = 90
 
 
-@router.get("/logs", response_model=List[AuditLogResponse])
+@router.get("/logs", response_model=list[AuditLogResponse])
 @limiter.limit("30/minute")
 async def get_audit_logs(
     request: Request,
-    table_name: Optional[str] = None,
-    record_id: Optional[int] = None,
-    action: Optional[str] = None,
-    user_id: Optional[int] = None,
+    table_name: str | None = None,
+    record_id: int | None = None,
+    action: str | None = None,
+    user_id: int | None = None,
     limit: int = Query(100, le=1000),
     offset: int = 0,
     current_user: User = Depends(get_current_admin_user),
@@ -207,9 +206,7 @@ async def purge_old_deletes_endpoint(
     db: Session = Depends(get_db),
 ):
     """Permanently delete old soft-deleted records (admin only, GDPR compliance)."""
-    logger.warning(
-        f"Admin {current_user.email} purging soft deletes older than {data.days_threshold} days"
-    )
+    logger.warning(f"Admin {current_user.email} purging soft deletes older than {data.days_threshold} days")
 
     try:
         results = purge_old_soft_deletes(db, data.days_threshold)

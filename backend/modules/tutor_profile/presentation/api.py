@@ -1,7 +1,6 @@
 """FastAPI router for tutor profile module."""
 
 import json
-from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from slowapi import Limiter
@@ -95,31 +94,19 @@ Retrieve the complete tutor profile for the currently authenticated tutor user.
         },
         401: {
             "description": "Unauthorized - Missing or invalid JWT token",
-            "content": {
-                "application/json": {"example": {"detail": "Not authenticated"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Not authenticated"}}},
         },
         403: {
             "description": "Forbidden - User is not a tutor",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Only tutors can access this endpoint"}
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Only tutors can access this endpoint"}}},
         },
         429: {
             "description": "Rate limit exceeded (30 requests/minute)",
-            "content": {
-                "application/json": {"example": {"detail": "Rate limit exceeded"}}
-            },
+            "content": {"application/json": {"example": {"detail": "Rate limit exceeded"}}},
         },
         500: {
             "description": "Internal server error",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Failed to retrieve profile"}
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Failed to retrieve profile"}}},
         },
     },
 )
@@ -168,7 +155,7 @@ async def replace_certifications_section(
         )
 
     certifications = [TutorCertificationInput(**item) for item in payload_data]
-    file_map: Dict[int, UploadFile] = {}
+    file_map: dict[int, UploadFile] = {}
     for key, value in form.multi_items():
         if key.startswith("file_") and isinstance(value, UploadFile):
             try:
@@ -180,16 +167,14 @@ async def replace_certifications_section(
                 )
             file_map[index] = value
 
-    for index in file_map.keys():
+    for index in file_map:
         if index < 0 or index >= len(certifications):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="File index out of range",
             )
 
-    return await service.replace_certifications(
-        db, current_user.id, certifications, file_map
-    )
+    return await service.replace_certifications(db, current_user.id, certifications, file_map)
 
 
 @router.put("/me/education", response_model=TutorProfileResponse)
@@ -203,18 +188,14 @@ async def replace_education_section(
     form = await request.form()
     raw_payload = form.get("education")
     if raw_payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing education payload"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing education payload")
     try:
         payload_data = json.loads(raw_payload)
     except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid education payload"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid education payload")
 
     education_items = [TutorEducationInput(**item) for item in payload_data]
-    file_map: Dict[int, UploadFile] = {}
+    file_map: dict[int, UploadFile] = {}
     for key, value in form.multi_items():
         if key.startswith("file_") and isinstance(value, UploadFile):
             try:
@@ -226,23 +207,21 @@ async def replace_education_section(
                 )
             file_map[index] = value
 
-    for index in file_map.keys():
+    for index in file_map:
         if index < 0 or index >= len(education_items):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="File index out of range",
             )
 
-    return await service.replace_educations(
-        db, current_user.id, education_items, file_map
-    )
+    return await service.replace_educations(db, current_user.id, education_items, file_map)
 
 
 @router.put("/me/subjects", response_model=TutorProfileResponse)
 @limiter.limit("10/minute")
 def replace_subjects_section(
     request: Request,
-    payload: List[TutorSubjectInput],
+    payload: list[TutorSubjectInput],
     current_user=Depends(get_current_tutor_user),
     db: Session = Depends(get_db),
 ):
@@ -326,14 +305,14 @@ def submit_profile_for_review(
 def list_tutors(
     request: Request,
     pagination: PaginationParams = Depends(),
-    subject_id: Optional[int] = None,
-    min_rate: Optional[float] = None,
-    max_rate: Optional[float] = None,
-    min_rating: Optional[float] = None,
-    min_experience: Optional[int] = None,
-    language: Optional[str] = None,
-    search_query: Optional[str] = None,
-    sort_by: Optional[str] = None,
+    subject_id: int | None = None,
+    min_rate: float | None = None,
+    max_rate: float | None = None,
+    min_rating: float | None = None,
+    min_experience: int | None = None,
+    language: str | None = None,
+    search_query: str | None = None,
+    sort_by: str | None = None,
     db: Session = Depends(get_db),
 ):
     """List approved tutors with advanced filters and pagination.
@@ -374,9 +353,7 @@ def get_tutor_profile(
     """Retrieve tutor profile by id."""
     profile = service.get_profile_by_id(db, tutor_id)
     if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Tutor not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor not found")
     return profile
 
 

@@ -1,11 +1,12 @@
 """Simple in-memory caching utilities for frequently accessed data."""
 
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any
 
 # Simple in-memory cache with TTL
-_cache: Dict[str, Tuple[Any, float]] = {}
+_cache: dict[str, tuple[Any, float]] = {}
 
 
 def cache_with_ttl(ttl_seconds: int = 300):
@@ -49,7 +50,7 @@ def cache_with_ttl(ttl_seconds: int = 300):
     return decorator
 
 
-def invalidate_cache(pattern: Optional[str] = None) -> None:
+def invalidate_cache(pattern: str | None = None) -> None:
     """
     Invalidate cached entries.
 
@@ -65,7 +66,7 @@ def invalidate_cache(pattern: Optional[str] = None) -> None:
             del _cache[key]
 
 
-def get_cache_stats() -> Dict[str, Any]:
+def get_cache_stats() -> dict[str, Any]:
     """Get cache statistics for monitoring."""
     now = time.time()
     valid_entries = sum(1 for _, expiry in _cache.values() if expiry > now)

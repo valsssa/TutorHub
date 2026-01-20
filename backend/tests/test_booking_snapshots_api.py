@@ -41,16 +41,14 @@ def test_booking_snapshot_captured_on_creation(client, tutor_token, test_subject
     # Verify snapshot fields are populated (by database trigger)
     # Note: These are populated by the database trigger, so they might be None immediately
     # In a real scenario with database triggers enabled, these would be populated
-    assert "tutor_name" in booking or True  # Skip if trigger not yet applied
-    assert "tutor_title" in booking or True
-    assert "student_name" in booking or True
-    assert "subject_name" in booking or True
-    assert "pricing_snapshot" in booking or True
+    assert True  # Skip if trigger not yet applied
+    assert True
+    assert True
+    assert True
+    assert True
 
 
-def test_booking_snapshot_immutable_after_tutor_changes(
-    client, admin_token, tutor_token, test_subject
-):
+def test_booking_snapshot_immutable_after_tutor_changes(client, admin_token, tutor_token, test_subject):
     """
     Test that booking snapshots remain unchanged even if tutor updates their profile.
     This verifies the 'store decisions' philosophy.
@@ -101,9 +99,7 @@ def test_booking_snapshot_immutable_after_tutor_changes(
     # Note: tutor_title snapshot should also remain unchanged if trigger is working
 
 
-def test_review_captures_booking_snapshot(
-    client, student_token, tutor_token, test_subject
-):
+def test_review_captures_booking_snapshot(client, student_token, tutor_token, test_subject):
     """
     Test that reviews capture an immutable snapshot of the booking.
     Even if booking is deleted, review retains context.
@@ -150,7 +146,7 @@ def test_review_captures_booking_snapshot(
         assert review["rating"] == 5
         assert review["booking_id"] == booking_id
         # Verify booking_snapshot is populated (by database trigger)
-        assert "booking_snapshot" in review or True  # Skip if trigger not applied
+        assert True  # Skip if trigger not applied
 
 
 def test_booking_list_includes_snapshot_data(client, student_token):
@@ -175,9 +171,7 @@ def test_booking_list_includes_snapshot_data(client, student_token):
         # This is primarily a structure validation test
 
 
-def test_booking_pricing_snapshot_preserves_package_details(
-    client, student_token, tutor_token, test_subject
-):
+def test_booking_pricing_snapshot_preserves_package_details(client, student_token, tutor_token, test_subject):
     """
     Test that pricing_snapshot preserves complete pricing context including
     any package/bundle details that were agreed upon.
@@ -243,9 +237,7 @@ def test_booking_conflict_prevention(client, student_token, test_subject):
     assert booking2_response.status_code in [409, 400]
 
 
-def test_booking_subject_deleted_snapshot_preserved(
-    client, admin_token, student_token, test_subject
-):
+def test_booking_subject_deleted_snapshot_preserved(client, admin_token, student_token, test_subject):
     """
     Test that even if a subject is deleted, the booking preserves
     the subject name in its snapshot.
@@ -287,9 +279,7 @@ def test_booking_subject_deleted_snapshot_preserved(
     # This test validates the philosophy: "Store decisions, not references"
 
 
-def test_multiple_bookings_maintain_individual_snapshots(
-    client, student_token, test_subject
-):
+def test_multiple_bookings_maintain_individual_snapshots(client, student_token, test_subject):
     """
     Test that multiple bookings each maintain their own immutable snapshots,
     even if created at different times with different tutor pricing.

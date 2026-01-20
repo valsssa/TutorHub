@@ -3,7 +3,7 @@
 import logging
 import os
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -67,9 +67,7 @@ class AuthService:
             )
 
         if role not in ["student", "tutor", "admin"]:
-            logger.warning(
-                f"Invalid role during registration: {role} for email: {email}"
-            )
+            logger.warning(f"Invalid role during registration: {role} for email: {email}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid role",
@@ -97,13 +95,11 @@ class AuthService:
 
         # Save to database
         created_user = self.repository.create(user_entity)
-        logger.info(
-            f"User registered successfully: {created_user.email}, role: {created_user.role}"
-        )
+        logger.info(f"User registered successfully: {created_user.email}, role: {created_user.role}")
 
         return created_user
 
-    def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
+    def authenticate_user(self, email: str, password: str) -> dict[str, Any]:
         """
         Authenticate user and generate token.
 
@@ -153,7 +149,7 @@ class AuthService:
             "token_type": "bearer",
         }
 
-    def get_user_by_email(self, email: str) -> Optional[UserEntity]:
+    def get_user_by_email(self, email: str) -> UserEntity | None:
         """
         Get user by email.
 
@@ -166,7 +162,7 @@ class AuthService:
         email = sanitize_email(email)
         return self.repository.find_by_email(email)
 
-    def get_user_by_id(self, user_id: int) -> Optional[UserEntity]:
+    def get_user_by_id(self, user_id: int) -> UserEntity | None:
         """
         Get user by ID.
 
@@ -178,9 +174,7 @@ class AuthService:
         """
         return self.repository.find_by_id(user_id)
 
-    def update_user_role(
-        self, user_id: int, new_role: str, admin_user: UserEntity
-    ) -> UserEntity:
+    def update_user_role(self, user_id: int, new_role: str, admin_user: UserEntity) -> UserEntity:
         """
         Update user role (admin only).
 
@@ -217,9 +211,7 @@ class AuthService:
         user.role = new_role
         updated_user = self.repository.update(user)
 
-        logger.info(
-            f"User {user_id} role updated to {new_role} by admin {admin_user.email}"
-        )
+        logger.info(f"User {user_id} role updated to {new_role} by admin {admin_user.email}")
 
         return updated_user
 

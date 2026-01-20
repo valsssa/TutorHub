@@ -1,13 +1,13 @@
 """Messaging models."""
 
 from sqlalchemy import (
+    TIMESTAMP,
     Boolean,
     Column,
     ForeignKey,
     Integer,
     String,
     Text,
-    TIMESTAMP,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -21,30 +21,22 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    sender_id = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
-    )
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     recipient_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    booking_id = Column(
-        Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True
-    )
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True)
     message = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False, nullable=False)
     read_at = Column(TIMESTAMP(timezone=True), nullable=True)
     is_edited = Column(Boolean, default=False, nullable=False)
     edited_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    deleted_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True
-    )
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
     updated_at = Column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -53,12 +45,8 @@ class Message(Base):
     )
 
     # Relationships
-    sender = relationship(
-        "User", foreign_keys=[sender_id], back_populates="sent_messages"
-    )
-    recipient = relationship(
-        "User", foreign_keys=[recipient_id], back_populates="received_messages"
-    )
+    sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
+    recipient = relationship("User", foreign_keys=[recipient_id], back_populates="received_messages")
     booking = relationship("Booking", back_populates="messages")
     deleter = relationship("User", foreign_keys=[deleted_by])
     attachments = relationship(
@@ -75,41 +63,33 @@ class MessageAttachment(Base):
     __tablename__ = "message_attachments"
 
     id = Column(Integer, primary_key=True, index=True)
-    message_id = Column(
-        Integer, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    message_id = Column(Integer, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, index=True)
     file_key = Column(String(500), nullable=False, index=True)
     original_filename = Column(String(255), nullable=False)
     file_size = Column(Integer, nullable=False)
     mime_type = Column(String(100), nullable=False)
     file_category = Column(String(50), nullable=False)  # 'image', 'document', 'other'
-    
+
     # Security & Access Control
-    uploaded_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True
-    )
+    uploaded_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False, index=True)
     is_scanned = Column(Boolean, default=False, nullable=False)
     scan_result = Column(String(50), nullable=True)  # 'clean', 'infected', 'pending'
     is_public = Column(Boolean, default=False, nullable=False)
-    
+
     # Metadata
     width = Column(Integer, nullable=True)  # For images
     height = Column(Integer, nullable=True)  # For images
     duration_seconds = Column(Integer, nullable=True)  # For videos/audio
-    
+
     # Timestamps
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
     updated_at = Column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
         nullable=False,
     )
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    
+
     # Relationships
     message = relationship("Message", back_populates="attachments")
     uploader = relationship("User", foreign_keys=[uploaded_by])
-
-

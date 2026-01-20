@@ -1,7 +1,6 @@
 """DTO helpers for tutor profile aggregate."""
 
 from decimal import Decimal
-from typing import List
 
 from schemas import (
     TutorAvailabilityResponse,
@@ -116,23 +115,17 @@ def aggregate_to_profile_response(
         "timezone": aggregate.timezone,
         "version": aggregate.version,
         "subjects": [_subject_to_response(s) for s in aggregate.subjects],
-        "availabilities": [
-            _availability_to_response(a) for a in aggregate.availabilities
-        ],
-        "certifications": [
-            _certification_to_response(c) for c in aggregate.certifications
-        ],
+        "availabilities": [_availability_to_response(a) for a in aggregate.availabilities],
+        "certifications": [_certification_to_response(c) for c in aggregate.certifications],
         "educations": [_education_to_response(e) for e in aggregate.educations],
-        "pricing_options": [
-            _pricing_option_to_response(p) for p in aggregate.pricing_options
-        ],
+        "pricing_options": [_pricing_option_to_response(p) for p in aggregate.pricing_options],
     }
     return TutorProfileResponse.model_validate(data)
 
 
 def aggregate_to_public_profile(aggregate: TutorProfileAggregate) -> TutorPublicProfile:
     """Convert aggregate to TutorPublicProfile DTO."""
-    subjects: List[str] = [subject.subject_name or "" for subject in aggregate.subjects]
+    subjects: list[str] = [subject.subject_name or "" for subject in aggregate.subjects]
     data = {
         "id": aggregate.id,
         "title": aggregate.title or "",

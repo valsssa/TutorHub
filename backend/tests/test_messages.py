@@ -6,9 +6,7 @@ from fastapi import status
 class TestMessaging:
     """Test message creation and retrieval."""
 
-    def test_send_message_success(
-        self, client, student_user, tutor_user, student_token, tutor_token
-    ):
+    def test_send_message_success(self, client, student_user, tutor_user, student_token, tutor_token):
         """Test sending a message between users."""
         response = client.post(
             "/api/messages",
@@ -26,9 +24,7 @@ class TestMessaging:
         assert data["message"] == "Hello, I need help with calculus"
         assert data["is_read"] is False
 
-    def test_list_user_messages(
-        self, client, student_user, tutor_user, student_token, tutor_token
-    ):
+    def test_list_user_messages(self, client, student_user, tutor_user, student_token, tutor_token):
         """Test listing messages for a user."""
         # Send multiple messages
         client.post(
@@ -43,9 +39,7 @@ class TestMessaging:
         )
 
         # Get messages as tutor
-        response = client.get(
-            "/api/messages", headers={"Authorization": f"Bearer {tutor_token}"}
-        )
+        response = client.get("/api/messages", headers={"Authorization": f"Bearer {tutor_token}"})
         assert response.status_code == status.HTTP_200_OK
 
         messages = response.json()
@@ -60,9 +54,7 @@ class TestMessaging:
         assert "is_read" in msg
         assert "created_at" in msg
 
-    def test_mark_message_as_read(
-        self, client, student_user, tutor_user, student_token, tutor_token
-    ):
+    def test_mark_message_as_read(self, client, student_user, tutor_user, student_token, tutor_token):
         """Test marking a message as read."""
         # Send message
         send_response = client.post(
@@ -80,9 +72,7 @@ class TestMessaging:
         assert response.status_code == status.HTTP_200_OK
 
         # Verify it's marked as read
-        get_response = client.get(
-            "/api/messages", headers={"Authorization": f"Bearer {tutor_token}"}
-        )
+        get_response = client.get("/api/messages", headers={"Authorization": f"Bearer {tutor_token}"})
         messages = get_response.json()
         marked_msg = next(m for m in messages if m["id"] == message_id)
         assert marked_msg["is_read"] is True
@@ -113,9 +103,7 @@ class TestMessaging:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_send_message_with_booking_context(
-        self, client, student_token, tutor_user, test_booking
-    ):
+    def test_send_message_with_booking_context(self, client, student_token, tutor_user, test_booking):
         """Test sending a message related to a booking."""
         response = client.post(
             "/api/messages",

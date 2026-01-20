@@ -1,7 +1,7 @@
 """Pagination utilities for list endpoints."""
 
 from math import ceil
-from typing import Generic, List, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -25,10 +25,10 @@ class PaginationParams(BaseModel):
         return self.page_size
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Paginated response wrapper."""
 
-    items: List[T] = Field(description="List of items for current page")
+    items: list[T] = Field(description="List of items for current page")
     total: int = Field(description="Total number of items")
     page: int = Field(description="Current page number")
     page_size: int = Field(description="Number of items per page")
@@ -39,7 +39,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     @classmethod
     def create(
         cls,
-        items: List[T],
+        items: list[T],
         total: int,
         page: int,
         page_size: int,
@@ -69,8 +69,8 @@ class PaginatedResponse(BaseModel, Generic[T]):
         )
 
 
-def paginate(
-    query_result: List[T],
+def paginate[T](
+    query_result: list[T],
     total: int,
     params: PaginationParams,
 ) -> PaginatedResponse[T]:

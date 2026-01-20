@@ -1,7 +1,7 @@
 """Sample data seeding script for development and testing."""
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -40,7 +40,6 @@ def seed_subjects(db: Session):
             db.add(subject)
 
     db.commit()
-    print("✓ Subjects created")
 
 
 def seed_users_and_profiles(db: Session):
@@ -75,15 +74,12 @@ def seed_users_and_profiles(db: Session):
                 last_name=last_name,
                 phone=f"+1{random.randint(2000000000, 9999999999)}",
                 bio="Student interested in learning various subjects.",
-                grade_level=random.choice(
-                    ["9th Grade", "10th Grade", "11th Grade", "12th Grade"]
-                ),
+                grade_level=random.choice(["9th Grade", "10th Grade", "11th Grade", "12th Grade"]),
                 total_sessions=random.randint(0, 20),
             )
             db.add(profile)
 
     db.commit()
-    print("✓ Students created")
 
     # Create tutors
     tutors_data = [
@@ -113,7 +109,7 @@ def seed_users_and_profiles(db: Session):
         ),
     ]
 
-    for email, first_name, last_name, subject_name, education in tutors_data:
+    for email, _first_name, _last_name, subject_name, education in tutors_data:
         existing = db.query(User).filter(User.email == email).first()
         if not existing:
             user = User(
@@ -127,42 +123,29 @@ def seed_users_and_profiles(db: Session):
 
             # Tutor profile is created automatically by trigger
             # Now update it
-            tutor_profile = (
-                db.query(TutorProfile).filter(TutorProfile.user_id == user.id).first()
-            )
+            tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == user.id).first()
             if tutor_profile:
                 tutor_profile.title = f"Expert {subject_name} Tutor"
-                tutor_profile.headline = (
-                    f"{random.randint(5, 15)}+ years teaching experience"
-                )
-                tutor_profile.bio = (
-                    f"Passionate about helping students excel in {subject_name}."
-                )
+                tutor_profile.headline = f"{random.randint(5, 15)}+ years teaching experience"
+                tutor_profile.bio = f"Passionate about helping students excel in {subject_name}."
                 tutor_profile.description = (
                     f"I have been teaching {subject_name} for over {random.randint(5, 15)} years "
                     f"and have helped hundreds of students achieve their academic goals. "
                     f"My teaching approach is student-centered and focuses on building "
                     f"strong foundational knowledge."
                 )
-                tutor_profile.hourly_rate = Decimal(
-                    random.choice([35, 40, 45, 50, 55, 60])
-                )
+                tutor_profile.hourly_rate = Decimal(random.choice([35, 40, 45, 50, 55, 60]))
                 tutor_profile.experience_years = random.randint(5, 15)
                 tutor_profile.education = education
-                tutor_profile.languages = random.choice(
-                    [["English"], ["English", "Spanish"], ["English", "Chinese"]]
-                )
+                tutor_profile.languages = random.choice([["English"], ["English", "Spanish"], ["English", "Chinese"]])
                 tutor_profile.is_approved = True
                 tutor_profile.profile_status = "approved"
-                tutor_profile.approved_at = datetime.now(timezone.utc) - timedelta(
-                    days=random.randint(30, 365)
-                )
+                tutor_profile.approved_at = datetime.now(UTC) - timedelta(days=random.randint(30, 365))
                 tutor_profile.average_rating = Decimal(random.uniform(4.5, 5.0))
                 tutor_profile.total_reviews = random.randint(10, 50)
                 tutor_profile.total_sessions = random.randint(50, 200)
 
     db.commit()
-    print("✓ Tutors created")
 
 
 def seed_bookings(db: Session):
@@ -172,20 +155,17 @@ def seed_bookings(db: Session):
     subjects = db.query(Subject).all()
 
     if not students or not tutors or not subjects:
-        print("⚠ Skipping bookings - missing users or subjects")
         return
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Create past bookings (completed)
-    for i in range(20):
+    for _i in range(20):
         student = random.choice(students)
         tutor = random.choice(tutors)
         subject = random.choice(subjects)
 
-        start_time = now - timedelta(
-            days=random.randint(1, 60), hours=random.randint(0, 23)
-        )
+        start_time = now - timedelta(days=random.randint(1, 60), hours=random.randint(0, 23))
         end_time = start_time + timedelta(minutes=random.choice([30, 45, 60, 90]))
 
         # Simple insert without JSONB fields - let database defaults handle them
@@ -214,10 +194,7 @@ def seed_bookings(db: Session):
                 "status": "completed",
                 "topic": f"Study session on {subject.name}",
                 "hourly_rate": float(tutor.hourly_rate),
-                "total_amount": float(
-                    tutor.hourly_rate
-                    * Decimal((end_time - start_time).total_seconds() / 3600)
-                ),
+                "total_amount": float(tutor.hourly_rate * Decimal((end_time - start_time).total_seconds() / 3600)),
                 "tutor_name": f"Dr. {tutor.user.email.split('@')[0].title()}",
                 "student_name": student.email.split("@")[0].title(),
                 "subject_name": subject.name,
@@ -225,14 +202,12 @@ def seed_bookings(db: Session):
         )
 
     # Create upcoming bookings (confirmed/pending)
-    for i in range(10):
+    for _i in range(10):
         student = random.choice(students)
         tutor = random.choice(tutors)
         subject = random.choice(subjects)
 
-        start_time = now + timedelta(
-            days=random.randint(1, 30), hours=random.randint(0, 23)
-        )
+        start_time = now + timedelta(days=random.randint(1, 30), hours=random.randint(0, 23))
         end_time = start_time + timedelta(minutes=random.choice([30, 45, 60, 90]))
 
         db.execute(
@@ -260,10 +235,7 @@ def seed_bookings(db: Session):
                 "status": random.choice(["confirmed", "pending"]),
                 "topic": f"Study session on {subject.name}",
                 "hourly_rate": float(tutor.hourly_rate),
-                "total_amount": float(
-                    tutor.hourly_rate
-                    * Decimal((end_time - start_time).total_seconds() / 3600)
-                ),
+                "total_amount": float(tutor.hourly_rate * Decimal((end_time - start_time).total_seconds() / 3600)),
                 "tutor_name": f"Dr. {tutor.user.email.split('@')[0].title()}",
                 "student_name": student.email.split("@")[0].title(),
                 "subject_name": subject.name,
@@ -271,7 +243,6 @@ def seed_bookings(db: Session):
         )
 
     db.commit()
-    print("✓ Bookings created")
 
 
 def seed_reviews(db: Session):
@@ -314,7 +285,6 @@ def seed_reviews(db: Session):
             )
 
     db.commit()
-    print("✓ Reviews created")
 
 
 def seed_messages(db: Session):
@@ -324,7 +294,6 @@ def seed_messages(db: Session):
     admin = db.query(User).filter(User.role == "admin").first()
 
     if not students or not tutors_users or not admin:
-        print("⚠ Skipping messages - missing users")
         return
 
     # Create some messages between students and tutors
@@ -365,12 +334,10 @@ def seed_messages(db: Session):
             db.add(message2)
 
     db.commit()
-    print("✓ Messages created")
 
 
 def main():
     """Run all seeding functions."""
-    print("\n🌱 Starting database seeding...\n")
 
     db = SessionLocal()
     try:
@@ -380,9 +347,7 @@ def main():
         seed_reviews(db)
         seed_messages(db)
 
-        print("\n✅ Database seeding completed successfully!\n")
-    except Exception as e:
-        print(f"\n Error seeding database: {e}\n")
+    except Exception:
         db.rollback()
         raise
     finally:

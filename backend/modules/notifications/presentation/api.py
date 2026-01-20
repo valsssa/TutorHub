@@ -1,7 +1,5 @@
 """Notifications API routes."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -16,7 +14,7 @@ router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 limiter = Limiter(key_func=get_remote_address)
 
 
-@router.get("", response_model=List[NotificationResponse])
+@router.get("", response_model=list[NotificationResponse])
 @limiter.limit("20/minute")
 async def list_notifications(
     request: Request,
@@ -49,9 +47,7 @@ async def mark_notification_read(
 
     notification = (
         db.query(Notification)
-        .filter(
-            Notification.id == notification_id, Notification.user_id == current_user.id
-        )
+        .filter(Notification.id == notification_id, Notification.user_id == current_user.id)
         .first()
     )
 
@@ -74,16 +70,14 @@ async def mark_all_notifications_read(
     from models import Notification
 
     try:
-        db.query(Notification).filter(
-            Notification.user_id == current_user.id, Notification.is_read.is_(False)
-        ).update({"is_read": True})
+        db.query(Notification).filter(Notification.user_id == current_user.id, Notification.is_read.is_(False)).update(
+            {"is_read": True}
+        )
         db.commit()
         return {"message": "All notifications marked as read"}
     except Exception:
         db.rollback()
-        raise HTTPException(
-            status_code=500, detail="Failed to mark notifications as read"
-        )
+        raise HTTPException(status_code=500, detail="Failed to mark notifications as read")
 
 
 @router.delete("/{notification_id}")
@@ -99,9 +93,7 @@ async def delete_notification(
 
     notification = (
         db.query(Notification)
-        .filter(
-            Notification.id == notification_id, Notification.user_id == current_user.id
-        )
+        .filter(Notification.id == notification_id, Notification.user_id == current_user.id)
         .first()
     )
 

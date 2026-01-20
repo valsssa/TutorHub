@@ -3,7 +3,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -21,11 +21,11 @@ class AuditLogger:
         table_name: str,
         record_id: int,
         action: str,
-        old_data: Optional[Dict[str, Any]] = None,
-        new_data: Optional[Dict[str, Any]] = None,
-        changed_by: Optional[int] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        old_data: dict[str, Any] | None = None,
+        new_data: dict[str, Any] | None = None,
+        changed_by: int | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> None:
         """
         Log an audit action.
@@ -63,9 +63,7 @@ class AuditLogger:
             db.add(audit_entry)
             db.flush()  # Don't commit here - let the caller handle transaction
 
-            logger.info(
-                f"Audit logged: {action} on {table_name}#{record_id} by user#{changed_by}"
-            )
+            logger.info(f"Audit logged: {action} on {table_name}#{record_id} by user#{changed_by}")
         except Exception as e:
             logger.error(f"Failed to log audit action: {e}")
             # Don't raise - audit failures shouldn't block business operations
@@ -76,11 +74,11 @@ class AuditLogger:
         booking_id: int,
         action: str,
         user_id: int,
-        old_status: Optional[str] = None,
-        new_status: Optional[str] = None,
-        reason: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        old_status: str | None = None,
+        new_status: str | None = None,
+        reason: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> None:
         """
         Log a booking decision (confirmation, cancellation, completion).
@@ -107,8 +105,8 @@ class AuditLogger:
         admin_id: int,
         old_status: str,
         new_status: str,
-        rejection_reason: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        rejection_reason: str | None = None,
+        ip_address: str | None = None,
     ) -> None:
         """
         Log tutor profile approval/rejection decisions.
@@ -138,9 +136,9 @@ class AuditLogger:
         user_id: int,
         amount: float,
         currency: str,
-        payment_intent_id: Optional[str] = None,
+        payment_intent_id: str | None = None,
         status: str = "completed",
-        ip_address: Optional[str] = None,
+        ip_address: str | None = None,
     ) -> None:
         """
         Log payment transactions - critical financial decisions.
@@ -171,8 +169,8 @@ class AuditLogger:
         tutor_profile_id: int,
         user_id: int,
         action: str,
-        availability_data: Dict[str, Any],
-        reason: Optional[str] = None,
+        availability_data: dict[str, Any],
+        reason: str | None = None,
     ) -> None:
         """
         Log tutor availability changes.
@@ -201,8 +199,8 @@ class AuditLogger:
         table_name: str,
         record_id: int,
         user_id: int,
-        reason: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        reason: str | None = None,
+        ip_address: str | None = None,
     ) -> None:
         """
         Log soft delete operations.
@@ -229,9 +227,9 @@ class AuditLogger:
     @staticmethod
     def get_audit_trail(
         db: Session,
-        table_name: Optional[str] = None,
-        record_id: Optional[int] = None,
-        user_id: Optional[int] = None,
+        table_name: str | None = None,
+        record_id: int | None = None,
+        user_id: int | None = None,
         limit: int = 100,
     ) -> list:
         """

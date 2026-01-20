@@ -10,7 +10,7 @@ from core.config import Roles
 from core.exceptions import AuthenticationError
 from core.security import TokenManager
 from database import get_db
-from models import User
+from models import TutorProfile, User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -41,9 +41,7 @@ async def get_current_user(
         )
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
 
     return user
 
@@ -60,9 +58,7 @@ async def get_current_admin_user(
 ) -> User:
     """Require admin role."""
     if current_user.role != Roles.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
 
 
@@ -71,9 +67,7 @@ async def get_current_tutor_user(
 ) -> User:
     """Require tutor role."""
     if current_user.role != Roles.TUTOR:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Tutor access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tutor access required")
     return current_user
 
 
@@ -82,9 +76,7 @@ async def get_current_student_user(
 ) -> User:
     """Require student role."""
     if current_user.role != Roles.STUDENT:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Student access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Student access required")
     return current_user
 
 
@@ -99,9 +91,7 @@ async def get_current_tutor_profile(
     """
     from models import TutorProfile
 
-    profile = (
-        db.query(TutorProfile).filter(TutorProfile.user_id == current_user.id).first()
-    )
+    profile = db.query(TutorProfile).filter(TutorProfile.user_id == current_user.id).first()
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

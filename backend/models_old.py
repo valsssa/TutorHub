@@ -65,19 +65,13 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
     avatar_key = Column(String(255), nullable=True, index=True)
     currency = Column(String(3), nullable=False, default="USD", server_default="USD")
     timezone = Column(String(64), nullable=False, default="UTC", server_default="UTC")
-    preferred_language = Column(
-        String(5), nullable=False, default="en", server_default="en"
-    )
+    preferred_language = Column(String(5), nullable=False, default="en", server_default="en")
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    deleted_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     profile = relationship(
@@ -101,19 +95,11 @@ class User(Base):
         cascade="all, delete-orphan",
         foreign_keys="StudentProfile.user_id",
     )
-    sent_messages = relationship(
-        "Message", foreign_keys="Message.sender_id", back_populates="sender"
-    )
-    received_messages = relationship(
-        "Message", foreign_keys="Message.recipient_id", back_populates="recipient"
-    )
-    notifications = relationship(
-        "Notification", back_populates="user", cascade="all, delete-orphan"
-    )
+    sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
+    received_messages = relationship("Message", foreign_keys="Message.recipient_id", back_populates="recipient")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
-    __table_args__ = (
-        CheckConstraint("role IN ('student', 'tutor', 'admin')", name="valid_role"),
-    )
+    __table_args__ = (CheckConstraint("role IN ('student', 'tutor', 'admin')", name="valid_role"),)
 
 
 class UserProfile(Base):
@@ -134,9 +120,7 @@ class UserProfile(Base):
     date_of_birth = Column(Date)  # For age verification
     age_confirmed = Column(Boolean, default=False, nullable=False)  # 18+ confirmation
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     user = relationship("User", back_populates="profile")
@@ -154,9 +138,7 @@ class Subject(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
-    tutor_subjects = relationship(
-        "TutorSubject", back_populates="subject", cascade="all, delete-orphan"
-    )
+    tutor_subjects = relationship("TutorSubject", back_populates="subject", cascade="all, delete-orphan")
     bookings = relationship("Booking", back_populates="subject")
 
 
@@ -180,9 +162,7 @@ class TutorProfile(Base):
     profile_status = Column(String(20), nullable=False, default="incomplete")
     rejection_reason = Column(Text)
     approved_at = Column(TIMESTAMP(timezone=True))
-    approved_by = Column(
-        Integer
-    )  # Admin user ID who approved (no FK to avoid ambiguity)
+    approved_by = Column(Integer)  # Admin user ID who approved (no FK to avoid ambiguity)
     average_rating = Column(DECIMAL(3, 2), default=0.00)
     total_reviews = Column(Integer, default=0)
     total_sessions = Column(Integer, default=0)
@@ -191,9 +171,7 @@ class TutorProfile(Base):
     # Booking configuration fields (from init.sql schema)
     auto_confirm_threshold_hours = Column(Integer, default=24)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    deleted_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     # Enhanced booking fields (optional - require migration 017)
     # cancellation_strikes = Column(Integer, default=0)
     # auto_confirm = Column(Boolean, default=False)
@@ -201,15 +179,11 @@ class TutorProfile(Base):
     # payout_method = Column(Text)
     version = Column(Integer, nullable=False, default=1, server_default="1")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     user = relationship("User", back_populates="tutor_profile", foreign_keys=[user_id])
-    subjects = relationship(
-        "TutorSubject", back_populates="tutor_profile", cascade="all, delete-orphan"
-    )
+    subjects = relationship("TutorSubject", back_populates="tutor_profile", cascade="all, delete-orphan")
     availabilities = relationship(
         "TutorAvailability",
         back_populates="tutor_profile",
@@ -220,9 +194,7 @@ class TutorProfile(Base):
         back_populates="tutor_profile",
         cascade="all, delete-orphan",
     )
-    educations = relationship(
-        "TutorEducation", back_populates="tutor_profile", cascade="all, delete-orphan"
-    )
+    educations = relationship("TutorEducation", back_populates="tutor_profile", cascade="all, delete-orphan")
     pricing_options = relationship(
         "TutorPricingOption",
         back_populates="tutor_profile",
@@ -230,9 +202,7 @@ class TutorProfile(Base):
     )
     bookings = relationship("Booking", back_populates="tutor_profile")
     reviews = relationship("Review", back_populates="tutor_profile")
-    favorites = relationship(
-        "FavoriteTutor", back_populates="tutor_profile", cascade="all, delete-orphan"
-    )
+    favorites = relationship("FavoriteTutor", back_populates="tutor_profile", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("hourly_rate > 0", name="positive_rate"),
@@ -250,9 +220,7 @@ class TutorSubject(Base):
     __tablename__ = "tutor_subjects"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"))
     proficiency_level = Column(String(20), default="B2")  # Phase 3: CEFR default
     years_experience = Column(Integer)
@@ -276,9 +244,7 @@ class TutorCertification(Base):
     __tablename__ = "tutor_certifications"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     name = Column(String(255), nullable=False)
     issuing_organization = Column(String(255))
     issue_date = Column(Date)
@@ -287,9 +253,7 @@ class TutorCertification(Base):
     credential_url = Column(String(500))
     document_url = Column(String(500))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     tutor_profile = relationship("TutorProfile", back_populates="certifications")
 
@@ -300,9 +264,7 @@ class TutorEducation(Base):
     __tablename__ = "tutor_education"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     institution = Column(String(255), nullable=False)
     degree = Column(String(255))
     field_of_study = Column(String(255))
@@ -311,9 +273,7 @@ class TutorEducation(Base):
     description = Column(Text)
     document_url = Column(String(500))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     tutor_profile = relationship("TutorProfile", back_populates="educations")
 
@@ -324,17 +284,13 @@ class TutorPricingOption(Base):
     __tablename__ = "tutor_pricing_options"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     title = Column(String(255), nullable=False)
     description = Column(Text)
     duration_minutes = Column(Integer, nullable=False)
     price = Column(DECIMAL(10, 2), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     tutor_profile = relationship("TutorProfile", back_populates="pricing_options")
 
@@ -363,9 +319,7 @@ class StudentProfile(Base):
     credit_balance_cents = Column(Integer, default=0)
     preferred_language = Column(String(10))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     user = relationship("User", back_populates="student_profile")
@@ -377,9 +331,7 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="SET NULL"))
     # package_id - Not in production DB (requires migration 017)
@@ -408,23 +360,15 @@ class Booking(Base):
     # Instant booking fields (production schema)
     is_instant_booking = Column(Boolean, default=False)
     confirmed_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    confirmed_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    confirmed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     cancellation_reason = Column(Text, nullable=True)
     cancelled_at = Column(TIMESTAMP(timezone=True), nullable=True)
     is_rebooked = Column(Boolean, default=False)
-    original_booking_id = Column(
-        Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True
-    )
+    original_booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    deleted_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     tutor_profile = relationship("TutorProfile", back_populates="bookings")
@@ -485,12 +429,8 @@ class Review(Base):
     __tablename__ = "reviews"
 
     id = Column(Integer, primary_key=True)
-    booking_id = Column(
-        Integer, ForeignKey("bookings.id", ondelete="CASCADE"), unique=True
-    )
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), unique=True)
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     rating = Column(Integer, nullable=False)
     comment = Column(Text)
@@ -503,9 +443,7 @@ class Review(Base):
     tutor_profile = relationship("TutorProfile", back_populates="reviews")
     student = relationship("User", foreign_keys=[student_id])
 
-    __table_args__ = (
-        CheckConstraint("rating BETWEEN 1 AND 5", name="valid_rating_value"),
-    )
+    __table_args__ = (CheckConstraint("rating BETWEEN 1 AND 5", name="valid_rating_value"),)
 
 
 class Message(Base):
@@ -522,12 +460,8 @@ class Message(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
-    sender = relationship(
-        "User", foreign_keys=[sender_id], back_populates="sent_messages"
-    )
-    recipient = relationship(
-        "User", foreign_keys=[recipient_id], back_populates="received_messages"
-    )
+    sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
+    recipient = relationship("User", foreign_keys=[recipient_id], back_populates="received_messages")
     booking = relationship("Booking", back_populates="messages")
 
 
@@ -556,9 +490,7 @@ class FavoriteTutor(Base):
 
     id = Column(Integer, primary_key=True)
     student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
@@ -606,9 +538,7 @@ class SupportedCurrency(Base):
     currency_symbol = Column(String(10), nullable=False)
     decimal_places = Column(Integer, default=2)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
 
 class AuditLog(Base):
@@ -644,12 +574,8 @@ class StudentPackage(Base):
     __tablename__ = "student_packages"
 
     id = Column(Integer, primary_key=True)
-    student_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False
-    )
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False)
     pricing_option_id = Column(
         Integer,
         ForeignKey("tutor_pricing_options.id", ondelete="RESTRICT"),
@@ -659,15 +585,11 @@ class StudentPackage(Base):
     sessions_remaining = Column(Integer, nullable=False)
     sessions_used = Column(Integer, default=0, nullable=False)
     purchase_price = Column(DECIMAL(10, 2), nullable=False)
-    purchased_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    purchased_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
     status = Column(String(20), default="active", nullable=False)
     payment_intent_id = Column(String(255), nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -677,18 +599,12 @@ class StudentPackage(Base):
 
     # Relationships
     student = relationship("User", foreign_keys=[student_id])
-    tutor_profile = relationship(
-        "TutorProfile", foreign_keys="StudentPackage.tutor_profile_id"
-    )
-    pricing_option = relationship(
-        "TutorPricingOption", foreign_keys="StudentPackage.pricing_option_id"
-    )
+    tutor_profile = relationship("TutorProfile", foreign_keys="StudentPackage.tutor_profile_id")
+    pricing_option = relationship("TutorPricingOption", foreign_keys="StudentPackage.pricing_option_id")
 
     __table_args__ = (
         CheckConstraint("sessions_purchased > 0", name="positive_sessions_purchased"),
-        CheckConstraint(
-            "sessions_remaining >= 0", name="non_negative_sessions_remaining"
-        ),
+        CheckConstraint("sessions_remaining >= 0", name="non_negative_sessions_remaining"),
         CheckConstraint("sessions_used >= 0", name="non_negative_sessions_used"),
         CheckConstraint("purchase_price > 0", name="positive_purchase_price"),
         CheckConstraint(
@@ -705,28 +621,20 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"))
-    student_id = Column(
-        Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     provider = Column(String(20), default="stripe", nullable=False)
     provider_payment_id = Column(Text)
     status = Column(String(30), default="REQUIRES_ACTION", nullable=False)
-    payment_metadata = Column(
-        Text
-    )  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    payment_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     booking = relationship("Booking", back_populates="payments")
     student = relationship("User", foreign_keys=[student_id])
-    refunds = relationship(
-        "Refund", back_populates="payment", cascade="all, delete-orphan"
-    )
+    refunds = relationship("Refund", back_populates="payment", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("amount_cents > 0", name="positive_payment_amount"),
@@ -747,17 +655,13 @@ class Refund(Base):
     __tablename__ = "refunds"
 
     id = Column(Integer, primary_key=True)
-    payment_id = Column(
-        Integer, ForeignKey("payments.id", ondelete="RESTRICT"), nullable=False
-    )
+    payment_id = Column(Integer, ForeignKey("payments.id", ondelete="RESTRICT"), nullable=False)
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"))
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     reason = Column(String(30), nullable=False)
     provider_refund_id = Column(Text)
-    refund_metadata = Column(
-        Text
-    )  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    refund_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
@@ -779,22 +683,16 @@ class Payout(Base):
     __tablename__ = "payouts"
 
     id = Column(Integer, primary_key=True)
-    tutor_id = Column(
-        Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
+    tutor_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     status = Column(String(20), default="PENDING", nullable=False)
     transfer_reference = Column(Text)
-    payout_metadata = Column(
-        Text
-    )  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    payout_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     tutor = relationship("User", foreign_keys=[tutor_id])
@@ -815,9 +713,7 @@ class TutorAvailability(Base):
     __tablename__ = "tutor_availabilities"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False)
     day_of_week = Column(Integer, nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
@@ -828,9 +724,7 @@ class TutorAvailability(Base):
     tutor_profile = relationship("TutorProfile", back_populates="availabilities")
 
     __table_args__ = (
-        CheckConstraint(
-            "day_of_week BETWEEN 0 AND 6", name="tutor_availabilities_day_of_week_check"
-        ),
+        CheckConstraint("day_of_week BETWEEN 0 AND 6", name="tutor_availabilities_day_of_week_check"),
         CheckConstraint("start_time < end_time", name="chk_availability_time_order"),
     )
 
@@ -841,9 +735,7 @@ class TutorBlackout(Base):
     __tablename__ = "tutor_blackouts"
 
     id = Column(Integer, primary_key=True)
-    tutor_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
+    tutor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     start_at = Column(TIMESTAMP(timezone=True), nullable=False)
     end_at = Column(TIMESTAMP(timezone=True), nullable=False)
     reason = Column(Text)

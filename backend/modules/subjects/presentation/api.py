@@ -1,7 +1,7 @@
 """Subjects API routes."""
 
 import logging
-from typing import List, Optional
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
@@ -24,7 +24,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 @cache_with_ttl(ttl_seconds=300)  # Cache for 5 minutes
-def _get_cached_subjects(db: Session, include_inactive: bool = False) -> List[Subject]:
+def _get_cached_subjects(db: Session, include_inactive: bool = False) -> list[Subject]:
     """Helper to fetch subjects with caching."""
     query = db.query(Subject)
     if not include_inactive:
@@ -32,7 +32,7 @@ def _get_cached_subjects(db: Session, include_inactive: bool = False) -> List[Su
     return query.all()
 
 
-@router.get("", response_model=List[SubjectResponse])
+@router.get("", response_model=list[SubjectResponse])
 @limiter.limit("60/minute")
 def list_subjects(
     request: Request,
@@ -49,7 +49,7 @@ def list_subjects(
 async def create_subject(
     request: Request,
     name: str,
-    description: Optional[str] = None,
+    description: str | None = None,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -59,9 +59,7 @@ async def create_subject(
     if not name or len(name.strip()) == 0:
         raise HTTPException(status_code=400, detail="Subject name is required")
 
-    description = (
-        sanitize_text_input(description, max_length=1000) if description else None
-    )
+    description = sanitize_text_input(description, max_length=1000) if description else None
 
     # Check if subject exists
     existing = db.query(Subject).filter(Subject.name == name).first()
@@ -91,9 +89,9 @@ async def create_subject(
 async def update_subject(
     request: Request,
     subject_id: int,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    is_active: Optional[bool] = None,
+    name: str | None = None,
+    description: str | None = None,
+    is_active: bool | None = None,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -114,10 +112,11 @@ async def update_subject(
 
     if is_active is not None:
         subject.is_active = is_active
-    
+
     # Update timestamp in application code (no DB triggers)
-    from datetime import datetime, timezone
-    subject.updated_at = datetime.now(timezone.utc)
+    from datetime import datetime
+
+    subject.updated_at = datetime.now(UTC)
 
     try:
         db.commit()
@@ -149,10 +148,11 @@ async def delete_subject(
 
     # Soft delete instead of hard delete
     subject.is_active = False
-    
+
     # Update timestamp in application code (no DB triggers)
-    from datetime import datetime, timezone
-    subject.updated_at = datetime.now(timezone.utc)
+    from datetime import datetime
+
+    subject.updated_at = datetime.now(UTC)
 
     try:
         db.commit()

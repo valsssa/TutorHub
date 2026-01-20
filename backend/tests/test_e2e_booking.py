@@ -17,9 +17,7 @@ from database import Base, get_db  # noqa: E402
 from main import app  # noqa: E402
 from models import User  # noqa: E402
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://postgres:postgres@test-db:5432/authapp_test"
-)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@test-db:5432/authapp_test")
 
 engine = create_engine(DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -112,10 +110,8 @@ def test_tutor_profile_setup_and_booking_lifecycle(api_client):
     assert tutors_listing.status_code == 200
     assert any(tutor["id"] == profile_id for tutor in tutors_listing.json())
 
-    now = datetime.datetime.now(datetime.timezone.utc)
-    start_time = (now + datetime.timedelta(days=1)).replace(
-        hour=14, minute=0, second=0, microsecond=0
-    )
+    now = datetime.datetime.now(datetime.UTC)
+    start_time = (now + datetime.timedelta(days=1)).replace(hour=14, minute=0, second=0, microsecond=0)
     end_time = start_time + datetime.timedelta(hours=1)
 
     booking_response = api_client.post(
@@ -186,10 +182,8 @@ def test_booking_rejects_unsupported_subject(api_client):
     assert profile_response.status_code == 200
     profile_id = profile_response.json()["id"]
 
-    now = datetime.datetime.now(datetime.timezone.utc)
-    start_time = (now + datetime.timedelta(days=2)).replace(
-        hour=10, minute=0, second=0, microsecond=0
-    )
+    now = datetime.datetime.now(datetime.UTC)
+    start_time = (now + datetime.timedelta(days=2)).replace(hour=10, minute=0, second=0, microsecond=0)
     end_time = start_time + datetime.timedelta(hours=1)
 
     response = api_client.post(

@@ -13,7 +13,6 @@ import logging
 import secrets
 from functools import lru_cache
 from io import BytesIO
-from typing import Optional, Tuple
 
 import boto3
 from botocore.client import Config as BotoConfig
@@ -62,7 +61,7 @@ def _ensure_bucket_exists() -> None:
     client = _s3_client()
     bucket = settings.MESSAGE_ATTACHMENT_STORAGE_BUCKET
     region = settings.MESSAGE_ATTACHMENT_STORAGE_REGION
-    
+
     try:
         client.head_bucket(Bucket=bucket)
         logger.debug(f"Bucket {bucket} exists")
@@ -75,14 +74,12 @@ def _ensure_bucket_exists() -> None:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Unable to access storage",
             ) from exc
-    
+
     # Create bucket (private by default - no public policy)
     try:
         create_params = {"Bucket": bucket}
         if region and region.lower() != "us-east-1":
-            create_params["CreateBucketConfiguration"] = {
-                "LocationConstraint": region
-            }
+            create_params["CreateBucketConfiguration"] = {"LocationConstraint": region}
         client.create_bucket(**create_params)
         logger.info(f"Created private bucket: {bucket}")
     except ClientError as exc:
@@ -105,7 +102,7 @@ def _categorize_file(mime_type: str) -> str:
         return "other"
 
 
-def _extract_image_dimensions(content: bytes) -> Tuple[Optional[int], Optional[int]]:
+def _extract_image_dimensions(content: bytes) -> tuple[int | None, int | None]:
     """Extract width and height from image content."""
     try:
         with Image.open(BytesIO(content)) as img:
@@ -121,7 +118,7 @@ def _generate_secure_key(user_id: int, message_id: int, original_filename: str) 
     safe_name = sanitize_filename(original_filename)
     if not safe_name:
         safe_name = "file"
-    
+
     # Extract extension
     extension = ""
     if "." in safe_name:
@@ -129,11 +126,11 @@ def _generate_secure_key(user_id: int, message_id: int, original_filename: str) 
         # Only allow alphanumeric extensions
         if not extension.isalnum() or len(extension) > 10:
             extension = "bin"
-    
+
     # Build key: messages/{user_id}/{message_id}/{random_hex}.{ext}
     random_part = secrets.token_hex(16)
     filename = f"{random_part}.{extension}" if extension else random_part
-    
+
     return f"messages/{user_id}/{message_id}/{filename}"
 
 
@@ -144,7 +141,7 @@ async def store_message_attachment(
 ) -> dict:
     """
     Store a message attachment securely in MinIO.
-    
+
     Returns:
         dict with file metadata: {
             'file_key': str,
@@ -155,7 +152,7 @@ async def store_message_attachment(
             'width': Optional[int],
             'height': Optional[int],
         }
-    
+
     Raises:
         HTTPException: If file validation fails or storage error occurs
     """
@@ -164,25 +161,22 @@ async def store_message_attachment(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported file type: {upload.content_type}. "
-                   f"Allowed: images (JPEG, PNG, GIF, WebP) and documents (PDF, DOC, TXT)",
+            f"Allowed: images (JPEG, PNG, GIF, WebP) and documents (PDF, DOC, TXT)",
         )
-    
+
     # 2. Read and validate size
     content = await upload.read()
     file_size = len(content)
-    
+
     if file_size == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Empty file"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
+
     if file_size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"File too large: {file_size / 1024 / 1024:.1f} MB (max: 10 MB)",
         )
-    
+
     # 3. Additional image validation
     width, height = None, None
     if upload.content_type in ALLOWED_IMAGE_TYPES:
@@ -192,14 +186,14 @@ async def store_message_attachment(
                 detail=f"Image too large: {file_size / 1024 / 1024:.1f} MB (max: 5 MB)",
             )
         width, height = _extract_image_dimensions(content)
-    
+
     # 4. Generate secure storage key
     file_key = _generate_secure_key(user_id, message_id, upload.filename or "file")
     file_category = _categorize_file(upload.content_type)
-    
+
     # 5. Ensure bucket exists
     _ensure_bucket_exists()
-    
+
     # 6. Upload to MinIO
     client = _s3_client()
     bucket = settings.MESSAGE_ATTACHMENT_STORAGE_BUCKET
@@ -225,7 +219,7 @@ async def store_message_attachment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to store file",
         ) from exc
-    
+
     # 7. Return metadata
     return {
         "file_key": file_key,
@@ -241,20 +235,20 @@ async def store_message_attachment(
 def generate_presigned_url(file_key: str, expiry_seconds: int = PRESIGNED_URL_EXPIRY) -> str:
     """
     Generate a presigned URL for secure temporary file access.
-    
+
     Args:
         file_key: S3 object key
         expiry_seconds: URL validity duration (default: 1 hour)
-    
+
     Returns:
         Presigned URL string
-    
+
     Raises:
         HTTPException: If URL generation fails
     """
     client = _s3_client()
     bucket = settings.MESSAGE_ATTACHMENT_STORAGE_BUCKET
-    
+
     try:
         url = client.generate_presigned_url(
             "get_object",
@@ -274,13 +268,13 @@ def generate_presigned_url(file_key: str, expiry_seconds: int = PRESIGNED_URL_EX
 def delete_message_attachment(file_key: str) -> None:
     """
     Delete a message attachment from storage.
-    
+
     Args:
         file_key: S3 object key to delete
     """
     if not file_key:
         return
-    
+
     client = _s3_client()
     bucket = settings.MESSAGE_ATTACHMENT_STORAGE_BUCKET
     try:
@@ -300,4 +294,3 @@ def check_file_exists(file_key: str) -> bool:
         return True
     except ClientError:
         return False
-

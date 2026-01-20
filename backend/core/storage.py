@@ -2,9 +2,10 @@
 
 import os
 import secrets
+from collections.abc import Iterable
+from contextlib import suppress
 from functools import lru_cache
 from io import BytesIO
-from typing import Iterable, Optional
 
 import boto3
 from botocore.client import Config as BotoConfig
@@ -26,9 +27,7 @@ MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "tutor-assets")
 MINIO_REGION = os.getenv("MINIO_REGION")
-MINIO_PUBLIC_ENDPOINT = os.getenv(
-    "MINIO_PUBLIC_ENDPOINT", "https://minio.valsa.solutions"
-)
+MINIO_PUBLIC_ENDPOINT = os.getenv("MINIO_PUBLIC_ENDPOINT", "https://minio.valsa.solutions")
 MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "false").lower() in {
     "1",
     "true",
@@ -64,9 +63,7 @@ def _ensure_bucket_exists() -> None:
         if error_code in ("404", "NoSuchBucket"):
             create_params = {"Bucket": MINIO_BUCKET}
             if MINIO_REGION and MINIO_REGION.lower() != "us-east-1":
-                create_params["CreateBucketConfiguration"] = {
-                    "LocationConstraint": MINIO_REGION
-                }
+                create_params["CreateBucketConfiguration"] = {"LocationConstraint": MINIO_REGION}
             try:
                 client.create_bucket(**create_params)
                 bucket_exists = True
@@ -106,9 +103,7 @@ def _ensure_bucket_exists() -> None:
             pass
 
 
-def _generate_filename(
-    original_filename: str, *, forced_extension: Optional[str] = None
-) -> str:
+def _generate_filename(original_filename: str, *, forced_extension: str | None = None) -> str:
     """Generate secure filename with sanitization to prevent attacks."""
     # Sanitize the filename first to remove malicious characters
     safe_filename = sanitize_filename(original_filename)
@@ -141,9 +136,7 @@ def _validate_size(content: bytes, max_bytes: int, message: str) -> None:
         )
 
 
-def _process_image(
-    content: bytes, *, original_content_type: str
-) -> tuple[bytes, str, str]:
+def _process_image(content: bytes, *, original_content_type: str) -> tuple[bytes, str, str]:
     """
     Resize and normalize uploaded image content.
 
@@ -154,9 +147,7 @@ def _process_image(
         "image/jpeg": ("JPEG", "jpg", "RGB"),
         "image/png": ("PNG", "png", "RGBA"),
     }
-    target_format, extension, target_mode = format_map.get(
-        original_content_type, ("PNG", "png", "RGBA")
-    )
+    target_format, extension, target_mode = format_map.get(original_content_type, ("PNG", "png", "RGBA"))
     try:
         with Image.open(BytesIO(content)) as image:
             image.load()
@@ -237,7 +228,7 @@ def _public_url_for_key(key: str) -> str:
     return f"{base}/{MINIO_BUCKET}/{key}"
 
 
-def _extract_key_from_url(public_url: Optional[str]) -> Optional[str]:
+def _extract_key_from_url(public_url: str | None) -> str | None:
     if not public_url:
         return None
 
@@ -259,13 +250,11 @@ async def store_profile_photo(
     user_id: int,
     upload: UploadFile,
     *,
-    existing_url: Optional[str] = None,
+    existing_url: str | None = None,
 ) -> str:
     """Store a tutor profile photo and return its public URL."""
     if upload.content_type not in IMAGE_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=400, detail="Only JPEG and PNG images are supported"
-        )
+        raise HTTPException(status_code=400, detail="Only JPEG and PNG images are supported")
 
     content = await upload.read()
     _validate_size(content, MAX_IMAGE_SIZE_BYTES, "Image exceeds 5 MB limit")
@@ -318,7 +307,7 @@ async def store_supporting_document(
 
     processed_content = content
     processed_content_type = upload.content_type
-    forced_extension: Optional[str] = None
+    forced_extension: str | None = None
     if upload.content_type in IMAGE_CONTENT_TYPES:
         processed_content, processed_content_type, forced_extension = _process_image(
             content, original_content_type=upload.content_type
@@ -333,9 +322,7 @@ async def store_supporting_document(
         "tutor_profiles",
         str(user_id),
         category,
-        _generate_filename(
-            upload.filename or "document", forced_extension=forced_extension
-        ),
+        _generate_filename(upload.filename or "document", forced_extension=forced_extension),
     )
     _ensure_bucket_exists()
 
@@ -356,21 +343,18 @@ async def store_supporting_document(
     return _public_url_for_key(key)
 
 
-def delete_file(public_url: Optional[str]) -> None:
+def delete_file(public_url: str | None) -> None:
     """Delete a stored object using its public URL."""
     key = _extract_key_from_url(public_url)
     if not key:
         return
 
     client = _s3_client()
-    try:
+    with suppress(ClientError):
         client.delete_object(Bucket=MINIO_BUCKET, Key=key)
-    except ClientError:
-        # Ignore failures to keep delete idempotent
-        pass
 
 
-def delete_files(urls: Iterable[Optional[str]]) -> None:
+def delete_files(urls: Iterable[str | None]) -> None:
     """Delete multiple stored objects."""
     for url in urls:
         delete_file(url)

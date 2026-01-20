@@ -15,7 +15,7 @@ RUN pip config set global.index-url https://nexus.in.lazarev.cloud/repository/py
     pip config set global.trusted-host nexus.in.lazarev.cloud
 
 # Install linting and formatting tools via pip
-RUN pip install --no-cache-dir flake8 black isort
+RUN pip install --no-cache-dir ruff
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -23,9 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN echo "Checking installed versions..." && \
     python3 --version && \
     pip3 --version && \
-    python3 -m flake8 --version && \
-    black --version && \
-    isort --version && \
+    ruff --version && \
     pytest --version
 
 COPY . .

@@ -4,8 +4,10 @@ import json
 
 from sqlalchemy import Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
+from sqlalchemy.ext.declarative import declarative_base
 
-from database import Base
+# Base class for all SQLAlchemy models
+Base = declarative_base()
 
 
 class JSONEncodedArray(TypeDecorator):

@@ -53,10 +53,8 @@ COPY backend/ .
 
 # Install linting tools (if not in requirements.txt)
 RUN pip install --no-cache-dir \
-    ruff==0.1.9 \
+    ruff==0.14.11 \
     mypy==1.8.0 \
-    black==23.12.1 \
-    isort==5.13.2 \
     2>/dev/null || true
 
 # Run code formatting check (black)

@@ -2,8 +2,8 @@
 
 import json
 import logging
+from datetime import UTC
 from decimal import Decimal
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from slowapi import Limiter
@@ -26,9 +26,7 @@ router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 
 
 @cache_with_ttl(ttl_seconds=300)  # Cache for 5 minutes
-def _get_cached_tutor_reviews(
-    db: Session, tutor_id: int, page: int, page_size: int
-) -> List[Review]:
+def _get_cached_tutor_reviews(db: Session, tutor_id: int, page: int, page_size: int) -> list[Review]:
     """Helper to fetch tutor reviews with caching."""
     offset = (page - 1) * page_size
     return (
@@ -58,23 +56,17 @@ async def create_review(
         if booking.student_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized")
         if booking.status != "completed":
-            raise HTTPException(
-                status_code=400, detail="Can only review completed bookings"
-            )
+            raise HTTPException(status_code=400, detail="Can only review completed bookings")
 
         # Check if review already exists
-        existing_review = (
-            db.query(Review).filter(Review.booking_id == review_data.booking_id).first()
-        )
+        existing_review = db.query(Review).filter(Review.booking_id == review_data.booking_id).first()
         if existing_review:
             raise HTTPException(status_code=400, detail="Review already exists")
 
         # Sanitize comment
         sanitized_comment = None
         if review_data.comment:
-            sanitized_comment = sanitize_text_input(
-                review_data.comment, max_length=2000
-            )
+            sanitized_comment = sanitize_text_input(review_data.comment, max_length=2000)
             if not sanitized_comment.strip():
                 sanitized_comment = None
 
@@ -127,36 +119,25 @@ async def create_review(
         )
 
         # Update tutor average rating and total reviews
-        tutor_profile = (
-            db.query(TutorProfile)
-            .filter(TutorProfile.id == booking.tutor_profile_id)
-            .first()
-        )
+        tutor_profile = db.query(TutorProfile).filter(TutorProfile.id == booking.tutor_profile_id).first()
 
         if tutor_profile:
             # Calculate new average rating
             avg_rating = (
-                db.query(func.avg(Review.rating))
-                .filter(Review.tutor_profile_id == booking.tutor_profile_id)
-                .scalar()
+                db.query(func.avg(Review.rating)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
             )
 
             total_reviews = (
-                db.query(func.count(Review.id))
-                .filter(Review.tutor_profile_id == booking.tutor_profile_id)
-                .scalar()
+                db.query(func.count(Review.id)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
             )
 
-            tutor_profile.average_rating = (
-                Decimal(str(round(float(avg_rating), 2)))
-                if avg_rating
-                else Decimal("0.00")
-            )
+            tutor_profile.average_rating = Decimal(str(round(float(avg_rating), 2))) if avg_rating else Decimal("0.00")
             tutor_profile.total_reviews = total_reviews or 0
-            
+
             # Update timestamp in application code (no DB triggers)
-            from datetime import datetime, timezone
-            tutor_profile.updated_at = datetime.now(timezone.utc)
+            from datetime import datetime
+
+            tutor_profile.updated_at = datetime.now(UTC)
 
         db.commit()
         db.refresh(review)
@@ -167,9 +148,7 @@ async def create_review(
         )
 
         # Invalidate tutor reviews cache
-        invalidate_cache(
-            pattern=f"_get_cached_tutor_reviews_{booking.tutor_profile_id}_"
-        )
+        invalidate_cache(pattern=f"_get_cached_tutor_reviews_{booking.tutor_profile_id}_")
 
         return review
 
@@ -181,7 +160,7 @@ async def create_review(
         raise HTTPException(status_code=500, detail="Failed to create review")
 
 
-@router.get("/tutors/{tutor_id}", response_model=List[ReviewResponse])
+@router.get("/tutors/{tutor_id}", response_model=list[ReviewResponse])
 @limiter.limit("60/minute")
 async def get_tutor_reviews(
     request: Request,
@@ -199,9 +178,7 @@ async def get_tutor_reviews(
 
     try:
         reviews = _get_cached_tutor_reviews(db, tutor_id, page, page_size)
-        logger.info(
-            f"Retrieved {len(reviews)} reviews for tutor {tutor_id} (page {page})"
-        )
+        logger.info(f"Retrieved {len(reviews)} reviews for tutor {tutor_id} (page {page})")
         return reviews
     except Exception as e:
         logger.error(f"Error retrieving tutor reviews: {e}")

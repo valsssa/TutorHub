@@ -4,14 +4,12 @@ Payment Service Tests
 Tests for payment processing, refunds, Stripe integration, and webhook handling.
 """
 
-import pytest
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock, patch
 
-from sqlalchemy.orm import Session
+import pytest
 
-from backend.models.bookings import Booking
 from backend.core.currency import calculate_platform_fee
 
 
@@ -66,8 +64,8 @@ class TestRefundPolicy:
     def test_refund_policy_greater_than_12h(self):
         """Test full refund when cancelled >12h before session"""
         # Given
-        start_time = datetime.now(timezone.utc) + timedelta(hours=24)
-        current_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC) + timedelta(hours=24)
+        current_time = datetime.now(UTC)
         total_amount = Decimal("100.00")
 
         # When
@@ -82,8 +80,8 @@ class TestRefundPolicy:
     def test_refund_policy_less_than_12h(self):
         """Test no refund when cancelled <12h before session"""
         # Given
-        start_time = datetime.now(timezone.utc) + timedelta(hours=6)
-        current_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC) + timedelta(hours=6)
+        current_time = datetime.now(UTC)
         total_amount = Decimal("100.00")
 
         # When
@@ -98,8 +96,8 @@ class TestRefundPolicy:
     def test_refund_policy_exactly_12h(self):
         """Test refund at exactly 12h boundary"""
         # Given
-        start_time = datetime.now(timezone.utc) + timedelta(hours=12)
-        current_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC) + timedelta(hours=12)
+        current_time = datetime.now(UTC)
         total_amount = Decimal("100.00")
 
         # When
@@ -143,25 +141,22 @@ class TestStripeIntegration:
     @pytest.fixture
     def mock_stripe_payment_intent(self):
         """Mock Stripe PaymentIntent"""
-        with patch('stripe.PaymentIntent') as mock:
+        with patch("stripe.PaymentIntent") as mock:
             mock.create.return_value = MagicMock(
                 id="pi_test_123456",
                 client_secret="pi_test_123456_secret_abc",
                 status="requires_payment_method",
                 amount=10000,  # cents
-                currency="usd"
+                currency="usd",
             )
             yield mock
 
     @pytest.fixture
     def mock_stripe_refund(self):
         """Mock Stripe Refund"""
-        with patch('stripe.Refund') as mock:
+        with patch("stripe.Refund") as mock:
             mock.create.return_value = MagicMock(
-                id="re_test_123456",
-                status="succeeded",
-                amount=10000,
-                charge="ch_test_123456"
+                id="re_test_123456", status="succeeded", amount=10000, charge="ch_test_123456"
             )
             yield mock
 
@@ -240,24 +235,21 @@ class TestPaymentWorkflows:
             json={
                 "tutor_profile_id": test_tutor_profile.id,
                 "subject_id": 1,
-                "start_time": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+                "start_time": (datetime.now(UTC) + timedelta(days=7)).isoformat(),
                 "duration_minutes": 60,
-                "notes_student": "Test booking"
+                "notes_student": "Test booking",
             },
-            headers={"Authorization": f"Bearer {test_student_token}"}
+            headers={"Authorization": f"Bearer {test_student_token}"},
         )
         assert response.status_code == 201
         booking_id = response.json()["id"]
-        payment_intent_id = response.json().get("payment_intent_id")
+        response.json().get("payment_intent_id")
 
         # Step 2: Simulate payment success webhook
         # ... webhook processing ...
 
         # Step 3: Verify booking status updated
-        response = client.get(
-            f"/api/bookings/{booking_id}",
-            headers={"Authorization": f"Bearer {test_student_token}"}
-        )
+        response = client.get(f"/api/bookings/{booking_id}", headers={"Authorization": f"Bearer {test_student_token}"})
         assert response.json()["payment_status"] == "paid"
 
     def test_refund_flow_student_cancellation_12h(self, client, test_student_token, test_booking_paid):
@@ -271,7 +263,7 @@ class TestPaymentWorkflows:
         response = client.post(
             f"/api/bookings/{booking_id}/cancel",
             json={"reason": "Schedule conflict"},
-            headers={"Authorization": f"Bearer {test_student_token}"}
+            headers={"Authorization": f"Bearer {test_student_token}"},
         )
 
         # Then

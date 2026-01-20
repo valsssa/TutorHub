@@ -2,7 +2,7 @@
 
 import hashlib
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -58,16 +58,12 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                         # Check if client has cached version
                         if_none_match = request.headers.get("If-None-Match")
                         if if_none_match and if_none_match.strip('"') == etag:
-                            return Response(
-                                status_code=304, headers=dict(response.headers)
-                            )
+                            return Response(status_code=304, headers=dict(response.headers))
                 return response
 
         # Default: no cache for authenticated endpoints
         if "Authorization" in request.headers or "api" in request.url.path:
-            response.headers["Cache-Control"] = (
-                "private, no-cache, no-store, must-revalidate"
-            )
+            response.headers["Cache-Control"] = "private, no-cache, no-store, must-revalidate"
         else:
             # Public endpoints get short cache
             response.headers["Cache-Control"] = "public, max-age=30"

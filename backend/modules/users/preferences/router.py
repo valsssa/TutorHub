@@ -1,6 +1,7 @@
 """User preferences API router."""
 
 import logging
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
@@ -32,10 +33,11 @@ async def update_preferences(
     if preferences.timezone:
         current_user.timezone = preferences.timezone
         logger.debug(f"Updated timezone to: {preferences.timezone}")
-        
+
         # Update timestamp in application code (no DB triggers)
-        from datetime import datetime, timezone as tz
-        current_user.updated_at = datetime.now(tz.utc)
+        from datetime import datetime
+
+        current_user.updated_at = datetime.now(UTC)
 
     db.commit()
     db.refresh(current_user)

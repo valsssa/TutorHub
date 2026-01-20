@@ -6,7 +6,6 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from functools import lru_cache
-from typing import Optional
 
 import aiofiles
 from aiobotocore.session import get_session
@@ -29,9 +28,9 @@ class AvatarStorageClient:
         access_key: str,
         secret_key: str,
         bucket: str,
-        region: Optional[str],
+        region: str | None,
         use_ssl: bool,
-        public_endpoint: Optional[str],
+        public_endpoint: str | None,
         url_ttl_seconds: int,
     ) -> None:
         self._endpoint = endpoint
@@ -51,9 +50,7 @@ class AvatarStorageClient:
     async def _client(self, *, use_public_endpoint: bool = False):
         endpoint = self._public_endpoint if use_public_endpoint else self._endpoint
         # Determine SSL from endpoint URL
-        use_ssl = (
-            endpoint.startswith("https://") if use_public_endpoint else self._use_ssl
-        )
+        use_ssl = endpoint.startswith("https://") if use_public_endpoint else self._use_ssl
 
         async with self._session.create_client(
             "s3",
@@ -83,9 +80,7 @@ class AvatarStorageClient:
                 if error_code in {"404", "NoSuchBucket"}:
                     create_params = {"Bucket": self._bucket}
                     if self._region and self._region.lower() != "us-east-1":
-                        create_params["CreateBucketConfiguration"] = {
-                            "LocationConstraint": self._region
-                        }
+                        create_params["CreateBucketConfiguration"] = {"LocationConstraint": self._region}
                     try:
                         async with self._client() as client:
                             await client.create_bucket(**create_params)
@@ -106,28 +101,20 @@ class AvatarStorageClient:
                                     {
                                         "Sid": "AuthenticatedWriteAccess",
                                         "Effect": "Allow",
-                                        "Principal": {
-                                            "AWS": [
-                                                f"arn:aws:iam:::user/{self._access_key}"
-                                            ]
-                                        },
+                                        "Principal": {"AWS": [f"arn:aws:iam:::user/{self._access_key}"]},
                                         "Action": ["s3:PutObject", "s3:DeleteObject"],
                                         "Resource": [f"arn:aws:s3:::{self._bucket}/*"],
                                     },
                                 ],
                             }
                             try:
-                                await client.put_bucket_policy(
-                                    Bucket=self._bucket, Policy=json.dumps(policy)
-                                )
+                                await client.put_bucket_policy(Bucket=self._bucket, Policy=json.dumps(policy))
                                 logger.info(
                                     "Set bucket policy for %s: public read, authenticated write",
                                     self._bucket,
                                 )
                             except ClientError as policy_exc:
-                                logger.warning(
-                                    "Failed to set bucket policy: %s", policy_exc
-                                )
+                                logger.warning("Failed to set bucket policy: %s", policy_exc)
 
                     except ClientError as create_exc:
                         logger.error(
@@ -140,9 +127,7 @@ class AvatarStorageClient:
                             detail="Unable to prepare avatar storage",
                         ) from create_exc
                 else:
-                    logger.error(
-                        "Failed to access avatar bucket %s: %s", self._bucket, exc
-                    )
+                    logger.error("Failed to access avatar bucket %s: %s", self._bucket, exc)
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail="Unable to access avatar storage",
@@ -188,9 +173,7 @@ class AvatarStorageClient:
     async def generate_presigned_url(self, key: str) -> str:
         """Generate public URL for avatar access (bucket has public read policy)."""
         if not key:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Avatar not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avatar not found")
 
         # Return direct public URL since bucket has public read access
         public_url = f"{self._public_endpoint.rstrip('/')}/{self._bucket}/{key}"

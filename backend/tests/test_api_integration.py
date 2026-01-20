@@ -163,9 +163,7 @@ class TestAPIErrorHandling:
     def test_422_for_invalid_data(self, client, student_token):
         """Test 422 response for invalid request data."""
         headers = {"Authorization": f"Bearer {student_token}"}
-        response = client.post(
-            "/api/bookings", headers=headers, json={"invalid": "data"}
-        )
+        response = client.post("/api/bookings", headers=headers, json={"invalid": "data"})
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_500_error_handling(self, client, student_token, monkeypatch):
@@ -190,9 +188,7 @@ class TestAPICaching:
         count1 = len(response1.json())
 
         # Add new subject directly to DB
-        new_subject = Subject(
-            name="Physics", description="Physics tutoring", is_active=True
-        )
+        new_subject = Subject(name="Physics", description="Physics tutoring", is_active=True)
         db_session.add(new_subject)
         db_session.commit()
 
@@ -237,9 +233,7 @@ class TestAPIPerformance:
 class TestAPIDataConsistency:
     """Test data consistency across API operations."""
 
-    def test_booking_amount_calculation(
-        self, client, student_token, tutor_user, test_subject
-    ):
+    def test_booking_amount_calculation(self, client, student_token, tutor_user, test_subject):
         """Test that booking amount is calculated correctly."""
         headers = {"Authorization": f"Bearer {student_token}"}
 
@@ -264,9 +258,7 @@ class TestAPIDataConsistency:
         expected_amount = 2.0 * float(tutor_user.tutor_profile.hourly_rate)
         assert float(booking["total_amount"]) == expected_amount
 
-    def test_tutor_rating_updates_on_review(
-        self, client, student_token, tutor_user, test_booking, db_session
-    ):
+    def test_tutor_rating_updates_on_review(self, client, student_token, tutor_user, test_booking, db_session):
         """Test that tutor rating updates when review is created."""
         # Complete the booking first
         test_booking.status = "completed"
@@ -275,9 +267,7 @@ class TestAPIDataConsistency:
         headers = {"Authorization": f"Bearer {student_token}"}
 
         # Get current stats
-        tutor_response = client.get(
-            f"/api/tutors/{tutor_user.tutor_profile.id}", headers=headers
-        )
+        tutor_response = client.get(f"/api/tutors/{tutor_user.tutor_profile.id}", headers=headers)
         initial_reviews = tutor_response.json()["total_reviews"]
 
         # Create review
@@ -293,9 +283,7 @@ class TestAPIDataConsistency:
         assert review_response.status_code == status.HTTP_201_CREATED
 
         # Verify review count updated
-        tutor_response2 = client.get(
-            f"/api/tutors/{tutor_user.tutor_profile.id}", headers=headers
-        )
+        tutor_response2 = client.get(f"/api/tutors/{tutor_user.tutor_profile.id}", headers=headers)
         new_reviews = tutor_response2.json()["total_reviews"]
 
         assert new_reviews == initial_reviews + 1

@@ -1,8 +1,7 @@
 """Tutor availability API routes."""
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
@@ -21,7 +20,7 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/tutors", tags=["tutor-availability"])
 
 
-@router.get("/{tutor_id}/available-slots", response_model=List[AvailableSlot])
+@router.get("/{tutor_id}/available-slots", response_model=list[AvailableSlot])
 @limiter.limit("60/minute")
 async def get_available_slots(
     request: Request,
@@ -36,11 +35,7 @@ async def get_available_slots(
     and existing bookings.
     """
     # Verify tutor exists and is approved
-    tutor = (
-        db.query(TutorProfile)
-        .filter(TutorProfile.id == tutor_id, TutorProfile.is_approved.is_(True))
-        .first()
-    )
+    tutor = db.query(TutorProfile).filter(TutorProfile.id == tutor_id, TutorProfile.is_approved.is_(True)).first()
     if not tutor:
         raise HTTPException(status_code=404, detail="Tutor not found or not approved")
 
@@ -54,11 +49,7 @@ async def get_available_slots(
         raise HTTPException(status_code=400, detail="Date range cannot exceed 30 days")
 
     # Get tutor's recurring availability
-    availabilities = (
-        db.query(TutorAvailability)
-        .filter(TutorAvailability.tutor_profile_id == tutor_id)
-        .all()
-    )
+    availabilities = db.query(TutorAvailability).filter(TutorAvailability.tutor_profile_id == tutor_id).all()
 
     if not availabilities:
         return []
@@ -93,10 +84,8 @@ async def get_available_slots(
         day_of_week = (python_weekday + 1) % 7  # Convert to Sunday=0, Saturday=6
 
         # Find availability rules for this day
-        day_availabilities = [
-            av for av in availabilities if av.day_of_week == day_of_week
-        ]
-        
+        day_availabilities = [av for av in availabilities if av.day_of_week == day_of_week]
+
         if day_availabilities:
             logger.debug(
                 f"Date {current_date} ({current_date.strftime('%A')}) -> "
@@ -117,15 +106,14 @@ async def get_available_slots(
                 slot_end = current_slot + timedelta(minutes=30)
 
                 # Skip past slots (use UTC for comparison)
-                now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+                now_utc = datetime.now(UTC).replace(tzinfo=None)
                 if current_slot < now_utc:
                     current_slot = slot_end
                     continue
 
                 # Check if slot conflicts with existing bookings
                 is_booked = any(
-                    booking.start_time < slot_end and booking.end_time > current_slot
-                    for booking in bookings
+                    booking.start_time < slot_end and booking.end_time > current_slot for booking in bookings
                 )
 
                 if not is_booked:
@@ -144,7 +132,7 @@ async def get_available_slots(
     return available_slots
 
 
-@router.get("/availability", response_model=List[TutorAvailabilityResponse])
+@router.get("/availability", response_model=list[TutorAvailabilityResponse])
 @limiter.limit("60/minute")
 async def get_my_availability(
     request: Request,
@@ -178,9 +166,7 @@ async def create_availability(
 
     # Validate time range
     if availability_data.start_time >= availability_data.end_time:
-        raise HTTPException(
-            status_code=400, detail="Start time must be before end time"
-        )
+        raise HTTPException(status_code=400, detail="Start time must be before end time")
 
     # Check for overlapping availability on the same day
     overlapping = (
@@ -233,12 +219,10 @@ async def create_availability(
     except Exception as e:
         db.rollback()
         logger.error(f"Error creating availability: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create availability")
+        raise HTTPException(status_code=500, detail="Failed to create availability") from e
 
 
-@router.delete(
-    "/availability/{availability_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/availability/{availability_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("30/minute")
 async def delete_availability(
     request: Request,
@@ -262,34 +246,28 @@ async def delete_availability(
     try:
         db.delete(availability)
         db.commit()
-        logger.info(
-            f"Availability {availability_id} deleted by tutor {profile.user.email}"
-        )
+        logger.info(f"Availability {availability_id} deleted by tutor {profile.user.email}")
     except Exception as e:
         db.rollback()
         logger.error(f"Error deleting availability: {e}")
-        raise HTTPException(status_code=500, detail="Failed to delete availability")
+        raise HTTPException(status_code=500, detail="Failed to delete availability") from e
 
 
 @router.post("/availability/bulk", status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/minute")
 async def create_bulk_availability(
     request: Request,
-    availabilities: List[TutorAvailabilityCreate],
+    availabilities: list[TutorAvailabilityCreate],
     profile: TutorProfile = Depends(get_current_tutor_profile),
     db: Session = Depends(get_db),
 ):
     """Create multiple availability slots at once."""
 
     if len(availabilities) > 50:
-        raise HTTPException(
-            status_code=400, detail="Cannot create more than 50 slots at once"
-        )
+        raise HTTPException(status_code=400, detail="Cannot create more than 50 slots at once")
 
     # Clear existing availability
-    db.query(TutorAvailability).filter(
-        TutorAvailability.tutor_profile_id == profile.id
-    ).delete()
+    db.query(TutorAvailability).filter(TutorAvailability.tutor_profile_id == profile.id).delete()
 
     created_slots = []
     try:
@@ -308,9 +286,7 @@ async def create_bulk_availability(
             created_slots.append(availability)
 
         db.commit()
-        logger.info(
-            f"Bulk availability created for tutor profile {profile.id}: {len(created_slots)} slots"
-        )
+        logger.info(f"Bulk availability created for tutor profile {profile.id}: {len(created_slots)} slots")
         return {
             "message": f"Successfully created {len(created_slots)} availability slots",
             "count": len(created_slots),
@@ -318,6 +294,4 @@ async def create_bulk_availability(
     except Exception as e:
         db.rollback()
         logger.error(f"Error creating bulk availability: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to create bulk availability"
-        )
+        raise HTTPException(status_code=500, detail="Failed to create bulk availability") from e

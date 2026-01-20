@@ -1,7 +1,5 @@
 """Auth repository for database operations."""
 
-from typing import List, Optional
-
 from sqlalchemy.orm import Session
 
 from models import User
@@ -30,16 +28,14 @@ class UserRepository:
             updated_at=user.updated_at,
         )
 
-    def find_by_email(self, email: str) -> Optional[UserEntity]:
+    def find_by_email(self, email: str) -> UserEntity | None:
         """Find user by email (case-insensitive)."""
         from sqlalchemy import func
 
-        user = (
-            self.db.query(User).filter(func.lower(User.email) == email.lower()).first()
-        )
+        user = self.db.query(User).filter(func.lower(User.email) == email.lower()).first()
         return self._to_entity(user) if user else None
 
-    def find_by_id(self, user_id: int) -> Optional[UserEntity]:
+    def find_by_id(self, user_id: int) -> UserEntity | None:
         """Find user by ID."""
         user = self.db.query(User).filter(User.id == user_id).first()
         return self._to_entity(user) if user else None
@@ -48,10 +44,7 @@ class UserRepository:
         """Check if user exists by email."""
         from sqlalchemy import func
 
-        return (
-            self.db.query(User).filter(func.lower(User.email) == email.lower()).first()
-            is not None
-        )
+        return self.db.query(User).filter(func.lower(User.email) == email.lower()).first() is not None
 
     def create(self, entity: UserEntity) -> UserEntity:
         """Create new user."""
@@ -97,9 +90,7 @@ class UserRepository:
         self.db.commit()
         return True
 
-    def find_all(
-        self, skip: int = 0, limit: int = 100, active_only: bool = False
-    ) -> List[UserEntity]:
+    def find_all(self, skip: int = 0, limit: int = 100, active_only: bool = False) -> list[UserEntity]:
         """Find all users with pagination."""
         query = self.db.query(User)
 
@@ -118,15 +109,7 @@ class UserRepository:
 
         return query.count()
 
-    def find_by_role(
-        self, role: str, skip: int = 0, limit: int = 100
-    ) -> List[UserEntity]:
+    def find_by_role(self, role: str, skip: int = 0, limit: int = 100) -> list[UserEntity]:
         """Find users by role with pagination."""
-        users = (
-            self.db.query(User)
-            .filter(User.role == role)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        users = self.db.query(User).filter(User.role == role).offset(skip).limit(limit).all()
         return [self._to_entity(user) for user in users]

@@ -2,14 +2,13 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
 class UserEntity:
     """User domain entity."""
 
-    id: Optional[int]
+    id: int | None
     email: str
     hashed_password: str
     role: str
@@ -17,8 +16,8 @@ class UserEntity:
     is_verified: bool = False
     timezone: str = "UTC"
     currency: str = "USD"
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     def is_admin(self) -> bool:
         """Check if user is admin."""

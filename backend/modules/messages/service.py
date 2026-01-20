@@ -11,8 +11,7 @@ Principles:
 
 import logging
 import re
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
@@ -26,14 +25,14 @@ logger = logging.getLogger(__name__)
 class MessageService:
     """
     Domain service for messaging operations.
-    
+
     Core Responsibilities:
     1. Message Lifecycle: Send, edit, delete
     2. Conversation Management: Threads, history
     3. Read Receipts: Track message status
     4. PII Protection: Mask sensitive data pre-booking
     5. Content Safety: Sanitize and validate
-    
+
     Business Rules:
     - Edit window: 15 minutes
     - Soft delete: Keep for audit
@@ -54,23 +53,23 @@ class MessageService:
         sender_id: int,
         recipient_id: int,
         content: str,
-        booking_id: Optional[int] = None,
+        booking_id: int | None = None,
     ) -> Message:
         """
         Send a message from sender to recipient.
-        
+
         Args:
             sender_id: ID of the message sender
             recipient_id: ID of the message recipient
             content: Message text content
             booking_id: Optional booking context
-            
+
         Returns:
             Created Message object
-            
+
         Raises:
             ValidationError: If validation fails
-            
+
         Business Rules:
         - Cannot message yourself
         - Recipient must exist and be active
@@ -84,11 +83,7 @@ class MessageService:
             raise ValidationError("Cannot send message to yourself")
 
         # 2. Validate recipient exists and is active
-        recipient = (
-            self.db.query(User)
-            .filter(User.id == recipient_id, User.is_active.is_(True))
-            .first()
-        )
+        recipient = self.db.query(User).filter(User.id == recipient_id, User.is_active.is_(True)).first()
         if not recipient:
             logger.warning(f"Invalid recipient {recipient_id} for sender {sender_id}")
             raise ValidationError("Recipient not found or inactive")
@@ -101,9 +96,7 @@ class MessageService:
             raise ValidationError(f"Message too long ({len(content)}/2000 characters)")
 
         # 4. Apply PII protection if needed
-        should_mask_pii = self._is_pre_booking_conversation(
-            sender_id, recipient_id, booking_id
-        )
+        should_mask_pii = self._is_pre_booking_conversation(sender_id, recipient_id, booking_id)
         if should_mask_pii:
             content = self._mask_pii(content)
             logger.debug(f"PII masked for message from {sender_id} to {recipient_id}")
@@ -119,20 +112,21 @@ class MessageService:
 
         try:
             # Set updated_at explicitly (no DB triggers - all logic in code)
-            from datetime import datetime, timezone
-            message.updated_at = datetime.now(timezone.utc)
-            
+            from datetime import datetime
+
+            message.updated_at = datetime.now(UTC)
+
             self.db.add(message)
             self.db.commit()
             self.db.refresh(message)
-            
+
             logger.info(
                 f"Message created: id={message.id}, "
                 f"sender={sender_id}, recipient={recipient_id}, "
                 f"booking={booking_id}, pii_masked={should_mask_pii}"
             )
             return message
-            
+
         except Exception as e:
             self.db.rollback()
             logger.error(f"Database error saving message: {e}", exc_info=True)
@@ -144,34 +138,31 @@ class MessageService:
         self,
         user1_id: int,
         user2_id: int,
-        booking_id: Optional[int] = None,
+        booking_id: int | None = None,
         page: int = 1,
         page_size: int = 50,
-    ) -> Tuple[List[Message], int]:
+    ) -> tuple[list[Message], int]:
         """
         Get messages between two users with pagination.
-        
+
         Returns: (messages, total_count)
         """
         page_size = min(page_size, 100)  # Max 100 per page
         offset = (page - 1) * page_size
 
         # Base query
-        query = (
-            self.db.query(Message)
-            .filter(
-                Message.deleted_at.is_(None),
-                or_(
-                    and_(
-                        Message.sender_id == user1_id,
-                        Message.recipient_id == user2_id,
-                    ),
-                    and_(
-                        Message.sender_id == user2_id,
-                        Message.recipient_id == user1_id,
-                    ),
+        query = self.db.query(Message).filter(
+            Message.deleted_at.is_(None),
+            or_(
+                and_(
+                    Message.sender_id == user1_id,
+                    Message.recipient_id == user2_id,
                 ),
-            )
+                and_(
+                    Message.sender_id == user2_id,
+                    Message.recipient_id == user1_id,
+                ),
+            ),
         )
 
         if booking_id is not None:
@@ -181,26 +172,19 @@ class MessageService:
         total = query.count()
 
         # Get paginated messages
-        messages = (
-            query.order_by(Message.created_at.desc())
-            .offset(offset)
-            .limit(page_size)
-            .all()
-        )
+        messages = query.order_by(Message.created_at.desc()).offset(offset).limit(page_size).all()
 
         # Return in chronological order (oldest first)
         return list(reversed(messages)), total
 
-    def get_user_threads(
-        self, user_id: int, limit: int = 100
-    ) -> List[dict]:
+    def get_user_threads(self, user_id: int, limit: int = 100) -> list[dict]:
         """
         Get all conversation threads for a user.
-        
+
         Args:
             user_id: User ID to get threads for
             limit: Maximum number of threads (default: 100)
-            
+
         Returns:
             List of thread dictionaries with:
             - other_user_id: Conversation partner ID
@@ -211,7 +195,7 @@ class MessageService:
             - last_message_time: Timestamp of last message
             - last_sender_id: Who sent the last message
             - unread_count: Number of unread messages in thread
-            
+
         Note:
             Threads are sorted by most recent activity (last_message_time DESC)
         """
@@ -278,7 +262,7 @@ class MessageService:
                 .limit(limit)
                 .all()
             )
-            
+
             # Calculate unread count per thread separately (more accurate)
             threads = []
             for t in threads_query:
@@ -295,25 +279,29 @@ class MessageService:
                                 t.booking_id.is_(None) if t.booking_id is None else False,
                                 Message.booking_id.is_(None),
                             ),
-                        ) if t.booking_id is not None else Message.booking_id.is_(None),
+                        )
+                        if t.booking_id is not None
+                        else Message.booking_id.is_(None),
                     )
                     .scalar()
                 ) or 0
-                
-                threads.append({
-                    "other_user_id": t.other_user_id,
-                    "other_user_email": t.other_user_email,
-                    "other_user_role": t.other_user_role,
-                    "booking_id": t.booking_id,
-                    "last_message": t.last_message,
-                    "last_message_time": t.last_time,
-                    "last_sender_id": t.last_sender_id,
-                    "unread_count": unread_count,
-                })
-            
+
+                threads.append(
+                    {
+                        "other_user_id": t.other_user_id,
+                        "other_user_email": t.other_user_email,
+                        "other_user_role": t.other_user_role,
+                        "booking_id": t.booking_id,
+                        "last_message": t.last_message,
+                        "last_message_time": t.last_time,
+                        "last_sender_id": t.last_sender_id,
+                        "unread_count": unread_count,
+                    }
+                )
+
             logger.debug(f"Retrieved {len(threads)} threads for user {user_id}")
             return threads
-            
+
         except Exception as e:
             logger.error(f"Failed to get threads for user {user_id}: {e}", exc_info=True)
             raise ValidationError("Failed to load conversation threads") from e
@@ -324,10 +312,10 @@ class MessageService:
         search_query: str,
         page: int = 1,
         page_size: int = 20,
-    ) -> Tuple[List[Message], int]:
+    ) -> tuple[list[Message], int]:
         """
         Search user's messages by content.
-        
+
         Returns: (messages, total_count)
         """
         search_query = search_query.strip()
@@ -341,26 +329,18 @@ class MessageService:
         search_pattern = f"%{search_query}%"
 
         # Base query
-        query = (
-            self.db.query(Message)
-            .filter(
-                Message.deleted_at.is_(None),
-                or_(
-                    Message.sender_id == user_id,
-                    Message.recipient_id == user_id,
-                ),
-                Message.message.ilike(search_pattern),
-            )
+        query = self.db.query(Message).filter(
+            Message.deleted_at.is_(None),
+            or_(
+                Message.sender_id == user_id,
+                Message.recipient_id == user_id,
+            ),
+            Message.message.ilike(search_pattern),
         )
 
         total = query.count()
 
-        messages = (
-            query.order_by(Message.created_at.desc())
-            .offset(offset)
-            .limit(page_size)
-            .all()
-        )
+        messages = query.order_by(Message.created_at.desc()).offset(offset).limit(page_size).all()
 
         return messages, total
 
@@ -385,16 +365,14 @@ class MessageService:
 
         if not message.is_read:
             message.is_read = True
-            message.read_at = datetime.now(timezone.utc)
-            message.updated_at = datetime.now(timezone.utc)  # Update timestamp in code
+            message.read_at = datetime.now(UTC)
+            message.updated_at = datetime.now(UTC)  # Update timestamp in code
             self.db.commit()
             self.db.refresh(message)
 
         return message
 
-    def mark_thread_read(
-        self, user_id: int, other_user_id: int, booking_id: Optional[int] = None
-    ) -> int:
+    def mark_thread_read(self, user_id: int, other_user_id: int, booking_id: int | None = None) -> int:
         """Mark all messages in a thread as read."""
         query = self.db.query(Message).filter(
             Message.deleted_at.is_(None),
@@ -406,7 +384,7 @@ class MessageService:
         if booking_id is not None:
             query = query.filter(Message.booking_id == booking_id)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         count = query.update(
             {"is_read": True, "read_at": now, "updated_at": now},  # Update timestamp in code
             synchronize_session=False,
@@ -444,18 +422,16 @@ class MessageService:
             .all()
         )
 
-        return {sender_id: count for sender_id, count in results}
+        return dict(results)
 
     # ========================================================================
     # Edit & Delete
     # ========================================================================
 
-    def edit_message(
-        self, message_id: int, user_id: int, new_content: str
-    ) -> Message:
+    def edit_message(self, message_id: int, user_id: int, new_content: str) -> Message:
         """
         Edit a message (sender only, within 15 minutes).
-        
+
         Business Rules:
         - Only sender can edit
         - Must be within 15 minutes of sending
@@ -476,9 +452,7 @@ class MessageService:
             raise ValidationError("Message not found or not authorized")
 
         # Check 15-minute window
-        time_since_sent = datetime.now(timezone.utc) - message.created_at.replace(
-            tzinfo=timezone.utc
-        )
+        time_since_sent = datetime.now(UTC) - message.created_at.replace(tzinfo=UTC)
         if time_since_sent > timedelta(minutes=15):
             raise ValidationError("Cannot edit messages older than 15 minutes")
 
@@ -490,15 +464,13 @@ class MessageService:
             raise ValidationError("Message too long (max 2000 characters)")
 
         # Apply PII protection
-        if self._is_pre_booking_conversation(
-            message.sender_id, message.recipient_id, message.booking_id
-        ):
+        if self._is_pre_booking_conversation(message.sender_id, message.recipient_id, message.booking_id):
             new_content = self._mask_pii(new_content)
 
         message.message = new_content
         message.is_edited = True
-        message.edited_at = datetime.now(timezone.utc)
-        message.updated_at = datetime.now(timezone.utc)  # Update timestamp in code
+        message.edited_at = datetime.now(UTC)
+        message.updated_at = datetime.now(UTC)  # Update timestamp in code
         self.db.commit()
         self.db.refresh(message)
 
@@ -508,7 +480,7 @@ class MessageService:
     def delete_message(self, message_id: int, user_id: int) -> Message:
         """
         Soft-delete a message (sender only).
-        
+
         Business Rules:
         - Only sender can delete
         - Soft delete (keep for audit)
@@ -526,9 +498,9 @@ class MessageService:
         if not message:
             raise ValidationError("Message not found or not authorized")
 
-        message.deleted_at = datetime.now(timezone.utc)
+        message.deleted_at = datetime.now(UTC)
         message.deleted_by = user_id
-        message.updated_at = datetime.now(timezone.utc)  # Update timestamp in code
+        message.updated_at = datetime.now(UTC)  # Update timestamp in code
         self.db.commit()
         self.db.refresh(message)
 
@@ -543,25 +515,23 @@ class MessageService:
         """Basic content sanitization and normalization."""
         if not content:
             return ""
-        
+
         # Strip whitespace
         content = content.strip()
-        
+
         # Remove null bytes and control characters
         content = content.replace("\x00", "")
         content = "".join(char for char in content if ord(char) >= 32 or char in "\n\r\t")
-        
+
         # Normalize whitespace
         content = " ".join(content.split())
-        
+
         return content
 
-    def _is_pre_booking_conversation(
-        self, user1_id: int, user2_id: int, booking_id: Optional[int]
-    ) -> bool:
+    def _is_pre_booking_conversation(self, user1_id: int, user2_id: int, booking_id: int | None) -> bool:
         """
         Determine if conversation requires PII protection.
-        
+
         Pre-booking = no booking OR booking is still PENDING
         Post-booking = CONFIRMED, COMPLETED, or later states
         """
@@ -579,7 +549,7 @@ class MessageService:
     def _mask_pii(self, content: str) -> str:
         """
         Mask PII (Personal Identifiable Information) in messages.
-        
+
         Masks:
         - Email addresses
         - Phone numbers (various formats)
@@ -613,17 +583,21 @@ class MessageService:
 
         # Messaging apps (case-insensitive)
         messaging_apps = [
-            "whatsapp", "telegram", "signal", "wechat", "line", "viber",
-            "skype", "discord", "snapchat", "facebook messenger", "instagram"
+            "whatsapp",
+            "telegram",
+            "signal",
+            "wechat",
+            "line",
+            "viber",
+            "skype",
+            "discord",
+            "snapchat",
+            "facebook messenger",
+            "instagram",
         ]
         for app in messaging_apps:
             # Match app name followed by optional colon/dash and contact info
             pattern = rf"\b{app}\b\s*[:\-]?\s*\S+"
-            content = re.sub(
-                pattern,
-                f"[{app.title()} contact hidden]",
-                content,
-                flags=re.IGNORECASE
-            )
+            content = re.sub(pattern, f"[{app.title()} contact hidden]", content, flags=re.IGNORECASE)
 
         return content

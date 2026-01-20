@@ -1,16 +1,14 @@
 """Student-related models."""
 
 from sqlalchemy import (
-    Boolean,
+    DECIMAL,
+    TIMESTAMP,
     CheckConstraint,
     Column,
-    DECIMAL,
-    Date,
     ForeignKey,
     Integer,
     String,
     Text,
-    TIMESTAMP,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -38,14 +36,13 @@ class StudentProfile(Base):
     preferred_language = Column(String(10))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 
     # Relationships
     user = relationship("User", back_populates="student_profile")
-
-
 
 
 class FavoriteTutor(Base):
@@ -55,16 +52,12 @@ class FavoriteTutor(Base):
 
     id = Column(Integer, primary_key=True)
     student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
     student = relationship("User", foreign_keys=[student_id])
     tutor_profile = relationship("TutorProfile", back_populates="favorites")
-
-
 
 
 class StudentPackage(Base):
@@ -73,12 +66,8 @@ class StudentPackage(Base):
     __tablename__ = "student_packages"
 
     id = Column(Integer, primary_key=True)
-    student_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False
-    )
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False)
     pricing_option_id = Column(
         Integer,
         ForeignKey("tutor_pricing_options.id", ondelete="RESTRICT"),
@@ -88,15 +77,11 @@ class StudentPackage(Base):
     sessions_remaining = Column(Integer, nullable=False)
     sessions_used = Column(Integer, default=0, nullable=False)
     purchase_price = Column(DECIMAL(10, 2), nullable=False)
-    purchased_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    purchased_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
     status = Column(String(20), default="active", nullable=False)
     payment_intent_id = Column(String(255), nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -106,18 +91,12 @@ class StudentPackage(Base):
 
     # Relationships
     student = relationship("User", foreign_keys=[student_id])
-    tutor_profile = relationship(
-        "TutorProfile", foreign_keys="StudentPackage.tutor_profile_id"
-    )
-    pricing_option = relationship(
-        "TutorPricingOption", foreign_keys="StudentPackage.pricing_option_id"
-    )
+    tutor_profile = relationship("TutorProfile", foreign_keys="StudentPackage.tutor_profile_id")
+    pricing_option = relationship("TutorPricingOption", foreign_keys="StudentPackage.pricing_option_id")
 
     __table_args__ = (
         CheckConstraint("sessions_purchased > 0", name="positive_sessions_purchased"),
-        CheckConstraint(
-            "sessions_remaining >= 0", name="non_negative_sessions_remaining"
-        ),
+        CheckConstraint("sessions_remaining >= 0", name="non_negative_sessions_remaining"),
         CheckConstraint("sessions_used >= 0", name="non_negative_sessions_used"),
         CheckConstraint("purchase_price > 0", name="positive_purchase_price"),
         CheckConstraint(
@@ -125,5 +104,3 @@ class StudentPackage(Base):
             name="valid_package_status",
         ),
     )
-
-

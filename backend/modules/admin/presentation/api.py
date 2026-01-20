@@ -1,8 +1,7 @@
 """Admin API routes."""
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
@@ -98,11 +97,7 @@ async def list_all_users(
     query = (
         db.query(User)
         .outerjoin(TutorProfile, User.id == TutorProfile.user_id)
-        .filter(
-            (User.role != "tutor")
-            | (TutorProfile.id.is_(None))
-            | (TutorProfile.is_approved.is_(True))
-        )
+        .filter((User.role != "tutor") | (TutorProfile.id.is_(None)) | (TutorProfile.is_approved.is_(True)))
         .order_by(User.created_at.desc())
     )
 
@@ -117,7 +112,7 @@ async def list_all_users(
         return result
     except Exception as e:
         logger.error(f"Error listing users: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve users")
+        raise HTTPException(status_code=500, detail="Failed to retrieve users") from e
 
 
 @router.put("/users/{user_id}", response_model=UserResponse)
@@ -206,8 +201,9 @@ async def update_user(
             setattr(user, field, value)
 
         # Update timestamp in application code (no DB triggers)
-        from datetime import datetime, timezone
-        user.updated_at = datetime.now(timezone.utc)
+        from datetime import datetime
+
+        user.updated_at = datetime.now(UTC)
 
         # Handle role change side effects (maintain role-profile consistency)
         if "role" in update_data and update_data["role"] != old_role:
@@ -227,9 +223,7 @@ async def update_user(
         db.commit()
         db.refresh(user)
 
-        logger.info(
-            f"Admin {current_user.email} updated user {user_id}: {list(update_data.keys())}"
-        )
+        logger.info(f"Admin {current_user.email} updated user {user_id}: {list(update_data.keys())}")
         return user
     except Exception as e:
         db.rollback()
@@ -335,9 +329,7 @@ async def delete_user(
         user.is_active = False
         db.commit()
 
-        logger.warning(
-            f"Admin {current_user.email} soft-deleted user {user_id} ({user.email})"
-        )
+        logger.warning(f"Admin {current_user.email} soft-deleted user {user_id} ({user.email})")
         return {"message": "User deactivated"}
     except Exception as e:
         db.rollback()
@@ -363,9 +355,7 @@ async def list_pending_tutors(
     try:
         query = (
             db.query(TutorProfile)
-            .filter(
-                TutorProfile.profile_status.in_(["pending_approval", "under_review"])
-            )
+            .filter(TutorProfile.profile_status.in_(["pending_approval", "under_review"]))
             .order_by(TutorProfile.created_at.desc())
         )
 
@@ -399,9 +389,7 @@ async def list_approved_tutors(
         return result
     except Exception as e:
         logger.error(f"Error retrieving approved tutors: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to retrieve approved tutors"
-        )
+        raise HTTPException(status_code=500, detail="Failed to retrieve approved tutors")
 
 
 @router.post("/tutors/{tutor_id}/approve", response_model=TutorProfileResponse)
@@ -424,7 +412,7 @@ async def approve_tutor(
         # Update profile status
         tutor_profile.is_approved = True
         tutor_profile.profile_status = "approved"
-        tutor_profile.approved_at = datetime.now(timezone.utc)
+        tutor_profile.approved_at = datetime.now(UTC)
         tutor_profile.approved_by = current_user.id
         tutor_profile.rejection_reason = None
 
@@ -470,9 +458,7 @@ async def reject_tutor(
     # Sanitize rejection reason to prevent XSS
     rejection_reason = sanitize_text_input(payload.rejection_reason, max_length=500)
     if not rejection_reason or len(rejection_reason.strip()) < 10:
-        raise HTTPException(
-            status_code=400, detail="Rejection reason must be at least 10 characters"
-        )
+        raise HTTPException(status_code=400, detail="Rejection reason must be at least 10 characters")
 
     try:
         # Update profile status
@@ -574,9 +560,7 @@ async def get_dashboard_stats(
     """Get dashboard statistics (admin only)."""
     try:
         # Total users count
-        total_users = (
-            db.query(func.count(User.id)).filter(User.is_active.is_(True)).scalar() or 0
-        )
+        total_users = db.query(func.count(User.id)).filter(User.is_active.is_(True)).scalar() or 0
 
         # Active tutors (approved profiles)
         active_tutors = (
@@ -593,39 +577,19 @@ async def get_dashboard_stats(
 
         # Total sessions
         total_sessions = (
-            db.query(func.count(Booking.id))
-            .filter(Booking.status.in_(["confirmed", "completed"]))
-            .scalar()
-            or 0
+            db.query(func.count(Booking.id)).filter(Booking.status.in_(["confirmed", "completed"])).scalar() or 0
         )
 
         # Revenue (sum of completed bookings)
-        revenue = (
-            db.query(func.sum(Booking.total_amount))
-            .filter(Booking.status == "completed")
-            .scalar()
-            or 0.0
-        )
+        revenue = db.query(func.sum(Booking.total_amount)).filter(Booking.status == "completed").scalar() or 0.0
 
         # Average satisfaction (rating)
-        avg_rating = (
-            db.query(func.avg(Review.rating))
-            .filter(Review.is_public.is_(True))
-            .scalar()
-            or 0.0
-        )
+        avg_rating = db.query(func.avg(Review.rating)).filter(Review.is_public.is_(True)).scalar() or 0.0
 
         # Completion rate (completed vs all bookings)
         total_bookings = db.query(func.count(Booking.id)).scalar() or 1
-        completed_bookings = (
-            db.query(func.count(Booking.id))
-            .filter(Booking.status == "completed")
-            .scalar()
-            or 0
-        )
-        completion_rate = (
-            (completed_bookings / total_bookings * 100) if total_bookings > 0 else 0
-        )
+        completed_bookings = db.query(func.count(Booking.id)).filter(Booking.status == "completed").scalar() or 0
+        completion_rate = (completed_bookings / total_bookings * 100) if total_bookings > 0 else 0
 
         logger.info(f"Admin {current_user.email} fetched dashboard stats")
 
@@ -639,12 +603,10 @@ async def get_dashboard_stats(
         )
     except Exception as e:
         logger.error(f"Error fetching dashboard stats: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to fetch dashboard statistics"
-        )
+        raise HTTPException(status_code=500, detail="Failed to fetch dashboard statistics")
 
 
-@router.get("/dashboard/recent-activities", response_model=List[ActivityItem])
+@router.get("/dashboard/recent-activities", response_model=list[ActivityItem])
 @limiter.limit("60/minute")
 async def get_recent_activities(
     request: Request,
@@ -668,15 +630,9 @@ async def get_recent_activities(
         )
 
         for booking in recent_bookings:
-            student_name = (
-                booking.student.email.split("@")[0] if booking.student else "Unknown"
-            )
-            action = (
-                "completed a session"
-                if booking.status == "completed"
-                else "scheduled a session"
-            )
-            time_diff = datetime.now(timezone.utc) - booking.created_at
+            student_name = booking.student.email.split("@")[0] if booking.student else "Unknown"
+            action = "completed a session" if booking.status == "completed" else "scheduled a session"
+            time_diff = datetime.now(UTC) - booking.created_at
             time_str = format_time_ago(time_diff)
 
             activities.append(
@@ -700,12 +656,8 @@ async def get_recent_activities(
 
         for user in recent_users:
             user_name = user.email.split("@")[0]
-            action = (
-                "joined as new tutor"
-                if user.role == "tutor"
-                else "registered as student"
-            )
-            time_diff = datetime.now(timezone.utc) - user.created_at
+            action = "joined as new tutor" if user.role == "tutor" else "registered as student"
+            time_diff = datetime.now(UTC) - user.created_at
             time_str = format_time_ago(time_diff)
 
             activities.append(
@@ -732,7 +684,7 @@ async def get_recent_activities(
         raise HTTPException(status_code=500, detail="Failed to fetch recent activities")
 
 
-@router.get("/dashboard/upcoming-sessions", response_model=List[BookingResponse])
+@router.get("/dashboard/upcoming-sessions", response_model=list[BookingResponse])
 @limiter.limit("60/minute")
 async def get_upcoming_sessions(
     request: Request,
@@ -742,7 +694,7 @@ async def get_upcoming_sessions(
 ):
     """Get upcoming sessions (admin only)."""
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         upcoming = (
             db.query(Booking)
             .filter(
@@ -763,7 +715,7 @@ async def get_upcoming_sessions(
         raise HTTPException(status_code=500, detail="Failed to fetch upcoming sessions")
 
 
-@router.get("/dashboard/session-metrics", response_model=List[SessionMetric])
+@router.get("/dashboard/session-metrics", response_model=list[SessionMetric])
 @limiter.limit("60/minute")
 async def get_session_metrics(
     request: Request,
@@ -773,10 +725,8 @@ async def get_session_metrics(
     """Get session metrics (admin only)."""
     try:
         # Calculate current month and previous month
-        now = datetime.now(timezone.utc)
-        current_month_start = now.replace(
-            day=1, hour=0, minute=0, second=0, microsecond=0
-        )
+        now = datetime.now(UTC)
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         previous_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
 
         # Current month bookings
@@ -807,39 +757,21 @@ async def get_session_metrics(
         # Average session duration
         avg_duration_current = calculate_avg_duration(current_bookings)
         avg_duration_previous = calculate_avg_duration(previous_bookings)
-        duration_change = (
-            avg_duration_current - avg_duration_previous
-            if avg_duration_previous > 0
-            else 0
-        )
+        duration_change = avg_duration_current - avg_duration_previous if avg_duration_previous > 0 else 0
 
         # Completion rate
         total_current = len(current_bookings)
-        completed_current = len(
-            [b for b in current_bookings if b.status == "completed"]
-        )
-        completion_rate = (
-            (completed_current / total_current * 100) if total_current > 0 else 0
-        )
+        completed_current = len([b for b in current_bookings if b.status == "completed"])
+        completion_rate = (completed_current / total_current * 100) if total_current > 0 else 0
 
         total_previous = len(previous_bookings)
-        completed_previous = len(
-            [b for b in previous_bookings if b.status == "completed"]
-        )
-        completion_rate_previous = (
-            (completed_previous / total_previous * 100) if total_previous > 0 else 0
-        )
+        completed_previous = len([b for b in previous_bookings if b.status == "completed"])
+        completion_rate_previous = (completed_previous / total_previous * 100) if total_previous > 0 else 0
         completion_change = completion_rate - completion_rate_previous
 
         # Average rating
-        current_reviews = (
-            db.query(Review).filter(Review.created_at >= current_month_start).all()
-        )
-        avg_rating_current = (
-            sum(r.rating for r in current_reviews) / len(current_reviews)
-            if current_reviews
-            else 0
-        )
+        current_reviews = db.query(Review).filter(Review.created_at >= current_month_start).all()
+        avg_rating_current = sum(r.rating for r in current_reviews) / len(current_reviews) if current_reviews else 0
         previous_reviews = (
             db.query(Review)
             .filter(
@@ -850,40 +782,24 @@ async def get_session_metrics(
             )
             .all()
         )
-        avg_rating_previous = (
-            sum(r.rating for r in previous_reviews) / len(previous_reviews)
-            if previous_reviews
-            else 0
-        )
+        avg_rating_previous = sum(r.rating for r in previous_reviews) / len(previous_reviews) if previous_reviews else 0
         rating_change = avg_rating_current - avg_rating_previous
 
         metrics = [
             SessionMetric(
                 metric="Avg Session Duration",
                 value=f"{int(avg_duration_current)} min",
-                change=(
-                    f"+{int(duration_change)} min"
-                    if duration_change >= 0
-                    else f"{int(duration_change)} min"
-                ),
+                change=(f"+{int(duration_change)} min" if duration_change >= 0 else f"{int(duration_change)} min"),
             ),
             SessionMetric(
                 metric="Completion Rate",
                 value=f"{int(completion_rate)}%",
-                change=(
-                    f"+{int(completion_change)}%"
-                    if completion_change >= 0
-                    else f"{int(completion_change)}%"
-                ),
+                change=(f"+{int(completion_change)}%" if completion_change >= 0 else f"{int(completion_change)}%"),
             ),
             SessionMetric(
                 metric="Avg Rating",
                 value=f"{avg_rating_current:.1f}/5",
-                change=(
-                    f"+{rating_change:.1f}"
-                    if rating_change >= 0
-                    else f"{rating_change:.1f}"
-                ),
+                change=(f"+{rating_change:.1f}" if rating_change >= 0 else f"{rating_change:.1f}"),
             ),
             SessionMetric(
                 metric="Response Time",
@@ -899,7 +815,7 @@ async def get_session_metrics(
         raise HTTPException(status_code=500, detail="Failed to fetch session metrics")
 
 
-@router.get("/dashboard/subject-distribution", response_model=List[SubjectDistribution])
+@router.get("/dashboard/subject-distribution", response_model=list[SubjectDistribution])
 @limiter.limit("60/minute")
 async def get_subject_distribution(
     request: Request,
@@ -924,7 +840,7 @@ async def get_subject_distribution(
 
         distribution = []
         for idx, (name, count) in enumerate(subject_counts):
-            percentage = int((count / total * 100)) if total > 0 else 0
+            percentage = int(count / total * 100) if total > 0 else 0
             distribution.append(
                 SubjectDistribution(
                     subject=name,
@@ -937,12 +853,10 @@ async def get_subject_distribution(
         return distribution
     except Exception as e:
         logger.error(f"Error fetching subject distribution: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to fetch subject distribution"
-        )
+        raise HTTPException(status_code=500, detail="Failed to fetch subject distribution")
 
 
-@router.get("/dashboard/monthly-revenue", response_model=List[MonthlyData])
+@router.get("/dashboard/monthly-revenue", response_model=list[MonthlyData])
 @limiter.limit("60/minute")
 async def get_monthly_revenue(
     request: Request,
@@ -952,16 +866,12 @@ async def get_monthly_revenue(
 ):
     """Get monthly revenue and sessions data (admin only)."""
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         data = []
 
         for i in range(months - 1, -1, -1):
-            month_start = (now - timedelta(days=30 * i)).replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
-            month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(
-                seconds=1
-            )
+            month_start = (now - timedelta(days=30 * i)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(seconds=1)
 
             revenue = (
                 db.query(func.sum(Booking.total_amount))
@@ -1005,7 +915,7 @@ async def get_monthly_revenue(
         raise HTTPException(status_code=500, detail="Failed to fetch monthly revenue")
 
 
-@router.get("/dashboard/user-growth", response_model=List[UserGrowthData])
+@router.get("/dashboard/user-growth", response_model=list[UserGrowthData])
 @limiter.limit("60/minute")
 async def get_user_growth(
     request: Request,
@@ -1015,13 +925,11 @@ async def get_user_growth(
 ):
     """Get user growth data (admin only)."""
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         data = []
 
         for i in range(months - 1, -1, -1):
-            month_start = (now - timedelta(days=30 * i)).replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            month_start = (now - timedelta(days=30 * i)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             month_end = (month_start + timedelta(days=32)).replace(day=1)
 
             tutors = (

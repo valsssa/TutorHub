@@ -1,7 +1,7 @@
 """User currency management API."""
 
 import logging
-from typing import List
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -25,11 +25,9 @@ class CurrencyUpdateRequest(BaseModel):
     currency: str = Field(..., min_length=3, max_length=3)
 
 
-@router.get("/options", response_model=List[CurrencyOption])
+@router.get("/options", response_model=list[CurrencyOption])
 @limiter.limit("30/minute")
-def list_currency_options(
-    request: Request, db: Session = Depends(get_db)
-) -> List[CurrencyOption]:
+def list_currency_options(request: Request, db: Session = Depends(get_db)) -> list[CurrencyOption]:
     """Return the list of supported currencies."""
     currencies = load_supported_currencies(db)
     logger.debug("Loaded %d currency options", len(currencies))
@@ -57,11 +55,12 @@ def update_currency(
         )
 
     current_user.currency = currency_code
-    
+
     # Update timestamp in application code (no DB triggers)
-    from datetime import datetime, timezone as tz
-    current_user.updated_at = datetime.now(tz.utc)
-    
+    from datetime import datetime
+
+    current_user.updated_at = datetime.now(UTC)
+
     db.commit()
     db.refresh(current_user)
 

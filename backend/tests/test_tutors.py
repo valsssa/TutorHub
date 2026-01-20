@@ -11,9 +11,7 @@ class TestListTutors:
 
     def test_list_tutors_success(self, client, student_token, tutor_user):
         """Test successful listing of tutors."""
-        response = client.get(
-            "/api/tutors", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/tutors", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) >= 1
@@ -51,9 +49,7 @@ class TestGetTutorProfile:
 
     def test_get_nonexistent_tutor(self, client, student_token):
         """Test getting nonexistent tutor."""
-        response = client.get(
-            "/api/tutors/99999", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/tutors/99999", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -62,9 +58,7 @@ class TestGetMyTutorProfile:
 
     def test_tutor_get_own_profile(self, client, tutor_token, tutor_user):
         """Test tutor can get their own profile."""
-        response = client.get(
-            "/api/tutors/me/profile", headers={"Authorization": f"Bearer {tutor_token}"}
-        )
+        response = client.get("/api/tutors/me/profile", headers={"Authorization": f"Bearer {tutor_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["title"] == "Expert Math Tutor"
@@ -174,9 +168,7 @@ class TestTutorPhoto:
             assert content
             return f"https://example.com/tutors/{user_id}.webp"
 
-        monkeypatch.setattr(
-            tutor_services, "store_profile_photo", fake_store_profile_photo
-        )
+        monkeypatch.setattr(tutor_services, "store_profile_photo", fake_store_profile_photo)
         monkeypatch.setattr(tutor_services, "delete_file", lambda url: None)
 
         buffer = BytesIO()
@@ -191,10 +183,7 @@ class TestTutorPhoto:
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert (
-            data["profile_photo_url"]
-            == f"https://example.com/tutors/{tutor_user.id}.webp"
-        )
+        assert data["profile_photo_url"] == f"https://example.com/tutors/{tutor_user.id}.webp"
 
 
 class TestTutorSubmission:
@@ -211,9 +200,7 @@ class TestTutorSubmission:
         db_session.refresh(profile)
         return profile
 
-    def test_update_description_keeps_status_incomplete(
-        self, client, db_session, tutor_token, tutor_user
-    ):
+    def test_update_description_keeps_status_incomplete(self, client, db_session, tutor_token, tutor_user):
         """Updating description should not auto-submit profile."""
         profile = self._prepare_profile(db_session, tutor_user)
 
@@ -231,9 +218,7 @@ class TestTutorSubmission:
         assert profile.profile_status == "incomplete"
         assert profile.description == "B" * 410
 
-    def test_submit_profile_idempotent_pending_status(
-        self, client, db_session, tutor_token, tutor_user
-    ):
+    def test_submit_profile_idempotent_pending_status(self, client, db_session, tutor_token, tutor_user):
         """Submitting twice should remain pending without errors."""
         profile = self._prepare_profile(db_session, tutor_user)
 
@@ -298,9 +283,7 @@ class TestTutorAvailability:
         assert data["availabilities"][0]["day_of_week"] == 1
         assert data["availabilities"][0]["start_time"] == "09:00:00"
 
-    def test_tutor_delete_availability(
-        self, client, tutor_token, db_session, tutor_user
-    ):
+    def test_tutor_delete_availability(self, client, tutor_token, db_session, tutor_user):
         """Test tutor can delete availability."""
         # Create availability
         from datetime import time
@@ -325,9 +308,7 @@ class TestTutorAvailability:
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    def test_tutor_cannot_delete_other_tutor_availability(
-        self, client, tutor_token, db_session
-    ):
+    def test_tutor_cannot_delete_other_tutor_availability(self, client, tutor_token, db_session):
         """Test tutor cannot delete another tutor's availability."""
         from auth import get_password_hash
         from models import TutorAvailability, TutorProfile, User

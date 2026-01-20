@@ -24,8 +24,8 @@ def db_session():
     """Create a test database session."""
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    session_maker = sessionmaker(bind=engine)
+    session = session_maker()
 
     yield session
 
@@ -139,15 +139,9 @@ class TestBookingCreation:
         assert booking.student_tz == "America/New_York"
         assert booking.tutor_tz == "Europe/London"
 
-    def test_create_booking_with_auto_confirm(
-        self, db_session, test_student, test_tutor
-    ):
+    def test_create_booking_with_auto_confirm(self, db_session, test_student, test_tutor):
         """Test booking creation with auto-confirm enabled."""
-        tutor_profile = (
-            db_session.query(TutorProfile)
-            .filter(TutorProfile.user_id == test_tutor.id)
-            .first()
-        )
+        tutor_profile = db_session.query(TutorProfile).filter(TutorProfile.user_id == test_tutor.id).first()
         tutor_profile.auto_confirm = True
         db_session.commit()
 
@@ -164,9 +158,7 @@ class TestBookingCreation:
         assert booking.status == "CONFIRMED"
         assert booking.join_url is not None
 
-    def test_create_booking_calculates_30min_rate(
-        self, db_session, test_student, test_tutor
-    ):
+    def test_create_booking_calculates_30min_rate(self, db_session, test_student, test_tutor):
         """Test pro-rated pricing for 30-minute session."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(days=1)
@@ -180,15 +172,9 @@ class TestBookingCreation:
 
         assert booking.rate_cents == 2500  # $50 * 0.5 * 100
 
-    def test_create_trial_booking_with_special_price(
-        self, db_session, test_student, test_tutor
-    ):
+    def test_create_trial_booking_with_special_price(self, db_session, test_student, test_tutor):
         """Test trial booking with special pricing."""
-        tutor_profile = (
-            db_session.query(TutorProfile)
-            .filter(TutorProfile.user_id == test_tutor.id)
-            .first()
-        )
+        tutor_profile = db_session.query(TutorProfile).filter(TutorProfile.user_id == test_tutor.id).first()
         tutor_profile.trial_price_cents = 1000  # $10 trial
         db_session.commit()
 
@@ -338,11 +324,7 @@ class TestCancellation:
         booking.status = "CONFIRMED"
         db_session.commit()
 
-        tutor_profile = (
-            db_session.query(TutorProfile)
-            .filter(TutorProfile.user_id == test_tutor.id)
-            .first()
-        )
+        tutor_profile = db_session.query(TutorProfile).filter(TutorProfile.user_id == test_tutor.id).first()
         initial_strikes = tutor_profile.cancellation_strikes or 0
 
         _ = service.cancel_booking(
@@ -364,9 +346,7 @@ class TestCancellation:
 class TestNoShow:
     """Test no-show marking logic."""
 
-    def test_mark_student_no_show_after_grace(
-        self, db_session, test_student, test_tutor
-    ):
+    def test_mark_student_no_show_after_grace(self, db_session, test_student, test_tutor):
         """Tutor marks student no-show after 10min grace."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() - timedelta(minutes=15)  # Started 15 min ago

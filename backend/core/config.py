@@ -2,7 +2,6 @@
 
 import json
 import os
-from typing import List, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -40,12 +39,9 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = Field(
-        default_factory=lambda: os.getenv(
-            "SECRET_KEY",
-            os.urandom(32).hex() if os.getenv("DEBUG") == "true" else None
-        ),
+        default_factory=lambda: os.getenv("SECRET_KEY", os.urandom(32).hex() if os.getenv("DEBUG") == "true" else None),
         min_length=32,
-        description="Secret key for JWT signing (minimum 32 characters)"
+        description="Secret key for JWT signing (minimum 32 characters)",
     )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
@@ -62,16 +58,14 @@ class Settings(BaseSettings):
         if len(v) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters long")
         if v == "your-secret-key-min-32-characters-long-change-in-production":
-            raise ValueError(
-                "Default SECRET_KEY detected! You must set a custom SECRET_KEY in production."
-            )
+            raise ValueError("Default SECRET_KEY detected! You must set a custom SECRET_KEY in production.")
         return v
 
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@db:5432/authapp"
 
     # CORS
-    CORS_ORIGINS: List[str] | str = [
+    CORS_ORIGINS: list[str] | str = [
         "https://edustream.valsa.solutions",
         "http://edustream.valsa.solutions",
         "https://api.valsa.solutions",
@@ -107,9 +101,9 @@ class Settings(BaseSettings):
     AVATAR_STORAGE_ACCESS_KEY: str = "minioadmin"
     AVATAR_STORAGE_SECRET_KEY: str = "minioadmin123"
     AVATAR_STORAGE_BUCKET: str = "user-avatars"
-    AVATAR_STORAGE_REGION: Optional[str] = None
+    AVATAR_STORAGE_REGION: str | None = None
     AVATAR_STORAGE_USE_SSL: bool = True
-    AVATAR_STORAGE_PUBLIC_ENDPOINT: Optional[str] = "https://minio.valsa.solutions"
+    AVATAR_STORAGE_PUBLIC_ENDPOINT: str | None = "https://minio.valsa.solutions"
     AVATAR_STORAGE_URL_TTL_SECONDS: int = 300
     AVATAR_STORAGE_DEFAULT_URL: str = "https://placehold.co/300x300?text=Avatar"
 
@@ -118,9 +112,9 @@ class Settings(BaseSettings):
     MESSAGE_ATTACHMENT_STORAGE_ACCESS_KEY: str = "minioadmin"
     MESSAGE_ATTACHMENT_STORAGE_SECRET_KEY: str = "minioadmin123"
     MESSAGE_ATTACHMENT_STORAGE_BUCKET: str = "message-attachments"
-    MESSAGE_ATTACHMENT_STORAGE_REGION: Optional[str] = None
+    MESSAGE_ATTACHMENT_STORAGE_REGION: str | None = None
     MESSAGE_ATTACHMENT_STORAGE_USE_SSL: bool = True
-    MESSAGE_ATTACHMENT_STORAGE_PUBLIC_ENDPOINT: Optional[str] = "https://minio.valsa.solutions"
+    MESSAGE_ATTACHMENT_STORAGE_PUBLIC_ENDPOINT: str | None = "https://minio.valsa.solutions"
     MESSAGE_ATTACHMENT_MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10 MB
     MESSAGE_ATTACHMENT_MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5 MB
     MESSAGE_ATTACHMENT_URL_TTL_SECONDS: int = 3600  # 1 hour
@@ -139,14 +133,8 @@ class Settings(BaseSettings):
                 parsed = _safe_json_loads(cleaned)
                 if isinstance(parsed, str):
                     raise ValueError("Invalid JSON for CORS_ORIGINS")
-                return [
-                    item.strip().rstrip("/")
-                    for item in parsed
-                    if isinstance(item, str) and item.strip()
-                ]
-            return [
-                item.strip().rstrip("/") for item in cleaned.split(",") if item.strip()
-            ]
+                return [item.strip().rstrip("/") for item in parsed if isinstance(item, str) and item.strip()]
+            return [item.strip().rstrip("/") for item in cleaned.split(",") if item.strip()]
 
         if isinstance(value, list):
             return [item.strip().rstrip("/") for item in value if isinstance(item, str)]

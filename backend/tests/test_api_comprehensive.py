@@ -347,9 +347,7 @@ def test_list_bookings(client, student_token):
     assert isinstance(data, list)
 
 
-def test_update_booking_status_tutor(
-    client, tutor_token, test_db, tutor_user, student_user, test_subject
-):
+def test_update_booking_status_tutor(client, tutor_token, test_db, tutor_user, student_user, test_subject):
     """Test tutor confirming booking."""
     # Create a booking
     start_time = datetime.utcnow() + timedelta(days=1)
@@ -453,9 +451,7 @@ def test_approve_tutor_admin(client, admin_token, test_db):
 # ============================================================================
 
 
-def test_create_review(
-    client, student_token, test_db, tutor_user, student_user, test_subject
-):
+def test_create_review(client, student_token, test_db, tutor_user, student_user, test_subject):
     """Test creating a review."""
     # Create completed booking
     start_time = datetime.utcnow() - timedelta(days=1)

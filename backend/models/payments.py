@@ -1,16 +1,15 @@
 """Payment, refund, and payout models."""
 
 from sqlalchemy import (
+    TIMESTAMP,
     Boolean,
     CheckConstraint,
     Column,
     Date,
-    DECIMAL,
     ForeignKey,
     Integer,
     String,
     Text,
-    TIMESTAMP,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -28,11 +27,7 @@ class SupportedCurrency(Base):
     currency_symbol = Column(String(10), nullable=False)
     decimal_places = Column(Integer, default=2)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
-
-
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
 
 class Payment(Base):
@@ -42,29 +37,24 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"))
-    student_id = Column(
-        Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     provider = Column(String(20), default="stripe", nullable=False)
     provider_payment_id = Column(Text)
     status = Column(String(30), default="REQUIRES_ACTION", nullable=False)
-    payment_metadata = Column(
-        Text
-    )  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    payment_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 
     # Relationships
     booking = relationship("Booking", back_populates="payments")
     student = relationship("User", foreign_keys=[student_id])
-    refunds = relationship(
-        "Refund", back_populates="payment", cascade="all, delete-orphan"
-    )
+    refunds = relationship("Refund", back_populates="payment", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("amount_cents > 0", name="positive_payment_amount"),
@@ -85,17 +75,13 @@ class Refund(Base):
     __tablename__ = "refunds"
 
     id = Column(Integer, primary_key=True)
-    payment_id = Column(
-        Integer, ForeignKey("payments.id", ondelete="RESTRICT"), nullable=False
-    )
+    payment_id = Column(Integer, ForeignKey("payments.id", ondelete="RESTRICT"), nullable=False)
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"))
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     reason = Column(String(30), nullable=False)
     provider_refund_id = Column(Text)
-    refund_metadata = Column(
-        Text
-    )  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    refund_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
@@ -117,21 +103,18 @@ class Payout(Base):
     __tablename__ = "payouts"
 
     id = Column(Integer, primary_key=True)
-    tutor_id = Column(
-        Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
-    )
+    tutor_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     status = Column(String(20), default="PENDING", nullable=False)
     transfer_reference = Column(Text)
-    payout_metadata = Column(
-        Text
-    )  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    payout_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 
@@ -146,5 +129,3 @@ class Payout(Base):
         ),
         CheckConstraint("period_start <= period_end", name="valid_payout_period"),
     )
-
-

@@ -5,7 +5,6 @@ Only password hashing and token functions remain here for backward compatibility
 """
 
 from datetime import timedelta
-from typing import Optional
 
 # Re-export for backward compatibility - will be removed in future version
 from core.dependencies import (  # noqa: E402,F401
@@ -32,6 +31,6 @@ def get_password_hash(password: str) -> str:
     return PasswordHasher.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create JWT access token."""
     return TokenManager.create_access_token(data, expires_delta)

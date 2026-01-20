@@ -1,6 +1,6 @@
 """Tests for security and authentication mechanisms."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from fastapi import status
 from jose import jwt
@@ -95,9 +95,7 @@ class TestJWTTokens:
 
         data = {"sub": "test@example.com"}
         # Create token that expires immediately
-        token = TokenManager.create_access_token(
-            data, expires_delta=timedelta(seconds=-1)
-        )
+        token = TokenManager.create_access_token(data, expires_delta=timedelta(seconds=-1))
 
         try:
             TokenManager.decode_token(token)
@@ -120,14 +118,12 @@ class TestJWTTokens:
         data = {"sub": "test@example.com"}
         token = TokenManager.create_access_token(data)
 
-        decoded = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        decoded = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         assert "exp" in decoded
 
         # Check expiration is in the future
-        exp_time = datetime.fromtimestamp(decoded["exp"], tz=timezone.utc)
-        assert exp_time > datetime.now(timezone.utc)
+        exp_time = datetime.fromtimestamp(decoded["exp"], tz=UTC)
+        assert exp_time > datetime.now(UTC)
 
     def test_token_custom_expiration(self):
         """Test token with custom expiration."""
@@ -135,13 +131,11 @@ class TestJWTTokens:
         custom_delta = timedelta(hours=2)
         token = TokenManager.create_access_token(data, expires_delta=custom_delta)
 
-        decoded = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        exp_time = datetime.fromtimestamp(decoded["exp"], tz=timezone.utc)
+        decoded = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        exp_time = datetime.fromtimestamp(decoded["exp"], tz=UTC)
 
         # Should expire roughly 2 hours from now (within 5 seconds tolerance)
-        expected_exp = datetime.now(timezone.utc) + custom_delta
+        expected_exp = datetime.now(UTC) + custom_delta
         time_diff = abs((exp_time - expected_exp).total_seconds())
         assert time_diff < 5
 
@@ -156,9 +150,7 @@ class TestAuthenticationEndpoints:
 
     def test_protected_endpoint_with_invalid_token(self, client):
         """Test accessing protected endpoint with invalid token."""
-        response = client.get(
-            "/api/auth/me", headers={"Authorization": "Bearer invalid_token"}
-        )
+        response = client.get("/api/auth/me", headers={"Authorization": "Bearer invalid_token"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_protected_endpoint_with_expired_token(self, client, student_user):
@@ -167,23 +159,17 @@ class TestAuthenticationEndpoints:
         data = {"sub": student_user.email}
         token = create_access_token(data, expires_delta=timedelta(seconds=-1))
 
-        response = client.get(
-            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
-        )
+        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_protected_endpoint_with_valid_token(self, client, student_token):
         """Test accessing protected endpoint with valid token."""
-        response = client.get(
-            "/api/auth/me", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
 
     def test_admin_endpoint_requires_admin_role(self, client, student_token):
         """Test that admin endpoints reject non-admin users."""
-        response = client.get(
-            "/api/admin/users", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_tutor_endpoint_requires_tutor_role(self, client, student_token):
@@ -208,9 +194,7 @@ class TestAuthenticationEndpoints:
         db_session.commit()
 
         # Try to access protected endpoint
-        response = client.get(
-            "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
-        )
+        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 

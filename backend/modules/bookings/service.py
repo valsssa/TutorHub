@@ -5,7 +5,6 @@ Implements core booking business logic per booking_detail.md spec.
 
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Optional, Tuple
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, or_
@@ -70,9 +69,9 @@ class BookingService:
         start_at: datetime,
         duration_minutes: int,
         lesson_type: str = "REGULAR",
-        subject_id: Optional[int] = None,
-        notes_student: Optional[str] = None,
-        package_id: Optional[int] = None,
+        subject_id: int | None = None,
+        notes_student: str | None = None,
+        package_id: int | None = None,
     ) -> Booking:
         """
         Create a new booking with conflict checking and price calculation.
@@ -91,9 +90,7 @@ class BookingService:
             )
 
         # 2. Get tutor profile
-        tutor_profile = (
-            self.db.query(TutorProfile).join(User).filter(User.id == tutor_id).first()
-        )
+        tutor_profile = self.db.query(TutorProfile).join(User).filter(User.id == tutor_id).first()
         if not tutor_profile:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -177,7 +174,7 @@ class BookingService:
         tutor_id: int,
         start_at: datetime,
         end_at: datetime,
-        exclude_booking_id: Optional[int] = None,
+        exclude_booking_id: int | None = None,
     ) -> str:
         """
         Check for scheduling conflicts.
@@ -214,9 +211,7 @@ class BookingService:
                         TutorBlackout.start_at <= start_at,
                         TutorBlackout.end_at > start_at,
                     ),
-                    and_(
-                        TutorBlackout.start_at < end_at, TutorBlackout.end_at >= end_at
-                    ),
+                    and_(TutorBlackout.start_at < end_at, TutorBlackout.end_at >= end_at),
                     and_(
                         TutorBlackout.start_at >= start_at,
                         TutorBlackout.end_at <= end_at,
@@ -236,11 +231,7 @@ class BookingService:
         end_time = end_at.time()
 
         # Get tutor profile to access availabilities
-        tutor_profile = (
-            self.db.query(TutorProfile)
-            .filter(TutorProfile.user_id == tutor_id)
-            .first()
-        )
+        tutor_profile = self.db.query(TutorProfile).filter(TutorProfile.user_id == tutor_id).first()
 
         if tutor_profile:
             # Check if there's an availability slot covering this time
@@ -264,9 +255,7 @@ class BookingService:
     # Cancel Booking
     # ========================================================================
 
-    def cancel_booking(
-        self, booking: Booking, cancelled_by_role: str, reason: Optional[str] = None
-    ) -> Booking:
+    def cancel_booking(self, booking: Booking, cancelled_by_role: str, reason: str | None = None) -> Booking:
         """
         Cancel a booking with policy enforcement.
 
@@ -316,9 +305,7 @@ class BookingService:
         # Apply penalties/compensations
         if decision.apply_strike_to_tutor and booking.tutor_profile:
             tutor_profile = booking.tutor_profile
-            tutor_profile.cancellation_strikes = (
-                tutor_profile.cancellation_strikes or 0
-            ) + 1
+            tutor_profile.cancellation_strikes = (tutor_profile.cancellation_strikes or 0) + 1
 
         # Handle package credit restoration
         if decision.restore_package_unit and booking.package_id:
@@ -330,9 +317,7 @@ class BookingService:
     # Mark No-Show
     # ========================================================================
 
-    def mark_no_show(
-        self, booking: Booking, reporter_role: str, notes: Optional[str] = None
-    ) -> Booking:
+    def mark_no_show(self, booking: Booking, reporter_role: str, notes: str | None = None) -> Booking:
         """Mark a booking as no-show."""
         now = datetime.utcnow()
 
@@ -365,9 +350,7 @@ class BookingService:
         # Apply penalties
         if decision.apply_strike_to_tutor and booking.tutor_profile:
             tutor_profile = booking.tutor_profile
-            tutor_profile.cancellation_strikes = (
-                tutor_profile.cancellation_strikes or 0
-            ) + 1
+            tutor_profile.cancellation_strikes = (tutor_profile.cancellation_strikes or 0) + 1
 
         return booking
 
@@ -377,7 +360,7 @@ class BookingService:
 
     def _calculate_pricing(
         self, tutor_profile: TutorProfile, duration_minutes: int, lesson_type: str
-    ) -> Tuple[int, int, int]:
+    ) -> tuple[int, int, int]:
         """
         Calculate rate, platform fee, and tutor earnings.
 
@@ -429,22 +412,14 @@ class BookingService:
 
     def _consume_package_credit(self, package_id: int) -> None:
         """Decrement package sessions_remaining."""
-        package = (
-            self.db.query(StudentPackage)
-            .filter(StudentPackage.id == package_id)
-            .first()
-        )
+        package = self.db.query(StudentPackage).filter(StudentPackage.id == package_id).first()
         if package and package.sessions_remaining > 0:
             package.sessions_remaining -= 1
             package.sessions_used += 1
 
     def _restore_package_credit(self, package_id: int) -> None:
         """Restore package credit on cancellation."""
-        package = (
-            self.db.query(StudentPackage)
-            .filter(StudentPackage.id == package_id)
-            .first()
-        )
+        package = self.db.query(StudentPackage).filter(StudentPackage.id == package_id).first()
         if package:
             package.sessions_remaining += 1
             package.sessions_used = max(0, package.sessions_used - 1)
@@ -470,7 +445,9 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     tutor_name = booking.tutor_name or (
         f"{tutor_user_profile.first_name or ''} {tutor_user_profile.last_name or ''}".strip()
         if tutor_user_profile
-        else tutor_user.email if tutor_user else "Unknown"
+        else tutor_user.email
+        if tutor_user
+        else "Unknown"
     )
 
     tutor_info = TutorInfoDTO(
@@ -488,7 +465,9 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     student_name = booking.student_name or (
         f"{student_profile.first_name or ''} {student_profile.last_name or ''}".strip()
         if student_profile
-        else student.email if student else "Unknown"
+        else student.email
+        if student
+        else "Unknown"
     )
 
     student_info = StudentInfoDTO(
@@ -517,8 +496,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
         notes_tutor=booking.notes_tutor,
         tutor=tutor_info,
         student=student_info,
-        subject_name=booking.subject_name
-        or (booking.subject.name if booking.subject else None),
+        subject_name=booking.subject_name or (booking.subject.name if booking.subject else None),
         topic=booking.topic,
         created_at=booking.created_at,
         updated_at=booking.updated_at,

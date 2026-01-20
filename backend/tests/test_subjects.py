@@ -6,13 +6,9 @@ from fastapi import status
 class TestSubjectsAPI:
     """Test subject listing."""
 
-    def test_list_subjects_success(
-        self, client, db_session, student_token, test_subject
-    ):
+    def test_list_subjects_success(self, client, db_session, student_token, test_subject):
         """Test listing all active subjects."""
-        response = client.get(
-            "/api/subjects", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert isinstance(data, list)
@@ -25,9 +21,7 @@ class TestSubjectsAPI:
         assert "description" in subject
         assert "is_active" in subject
 
-    def test_list_subjects_only_returns_active(
-        self, client, db_session, student_token, test_subject
-    ):
+    def test_list_subjects_only_returns_active(self, client, db_session, student_token, test_subject):
         """Test that only active subjects are returned."""
         from models import Subject
 
@@ -40,9 +34,7 @@ class TestSubjectsAPI:
         db_session.add(inactive_subject)
         db_session.commit()
 
-        response = client.get(
-            "/api/subjects", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
 
         subjects = response.json()
@@ -52,9 +44,7 @@ class TestSubjectsAPI:
 
     def test_subjects_sorted_by_name(self, client, db_session, student_token):
         """Test that subjects are returned in a consistent order."""
-        response = client.get(
-            "/api/subjects", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
 
         subjects = response.json()
@@ -62,9 +52,7 @@ class TestSubjectsAPI:
             names = [s["name"] for s in subjects]
             # Verify it's a consistent order (not necessarily alphabetical,
             # but same order on repeated calls)
-            response2 = client.get(
-                "/api/subjects", headers={"Authorization": f"Bearer {student_token}"}
-            )
+            response2 = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
             names2 = [s["name"] for s in response2.json()]
             assert names == names2
 
@@ -84,9 +72,7 @@ class TestSubjectsAPI:
         db_session.commit()
 
         # Regular list (only active)
-        response = client.get(
-            "/api/subjects", headers={"Authorization": f"Bearer {admin_token}"}
-        )
+        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {admin_token}"})
         subjects = response.json()
         names = [s["name"] for s in subjects]
         assert "Active Subject" in names
@@ -182,9 +168,7 @@ class TestAdminSubjectManagement:
         assert response.status_code == status.HTTP_200_OK
 
         # Verify it's deleted
-        response = client.get(
-            "/api/subjects", headers={"Authorization": f"Bearer {admin_token}"}
-        )
+        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {admin_token}"})
         subjects = response.json()
         subject_ids = [s["id"] for s in subjects]
         assert test_subject.id not in subject_ids

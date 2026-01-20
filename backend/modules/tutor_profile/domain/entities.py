@@ -3,67 +3,66 @@
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import List, Optional
 
 
 @dataclass(slots=True)
 class TutorSubjectEntity:
     """Tutor subject specialization."""
 
-    id: Optional[int]
+    id: int | None
     subject_id: int
-    subject_name: Optional[str]
+    subject_name: str | None
     proficiency_level: str
-    years_experience: Optional[int]
+    years_experience: int | None
 
 
 @dataclass(slots=True)
 class TutorAvailabilityEntity:
     """Tutor availability window."""
 
-    id: Optional[int]
+    id: int | None
     day_of_week: int
     start_time: time
     end_time: time
     is_recurring: bool
-    timezone: Optional[str] = None
+    timezone: str | None = None
 
 
 @dataclass(slots=True)
 class TutorCertificationEntity:
     """Tutor certification credential."""
 
-    id: Optional[int]
+    id: int | None
     name: str
-    issuing_organization: Optional[str]
-    issue_date: Optional[date]
-    expiration_date: Optional[date]
-    credential_id: Optional[str]
-    credential_url: Optional[str]
-    document_url: Optional[str]
+    issuing_organization: str | None
+    issue_date: date | None
+    expiration_date: date | None
+    credential_id: str | None
+    credential_url: str | None
+    document_url: str | None
 
 
 @dataclass(slots=True)
 class TutorEducationEntity:
     """Tutor education entry."""
 
-    id: Optional[int]
+    id: int | None
     institution: str
-    degree: Optional[str]
-    field_of_study: Optional[str]
-    start_year: Optional[int]
-    end_year: Optional[int]
-    description: Optional[str]
-    document_url: Optional[str]
+    degree: str | None
+    field_of_study: str | None
+    start_year: int | None
+    end_year: int | None
+    description: str | None
+    document_url: str | None
 
 
 @dataclass(slots=True)
 class TutorPricingOptionEntity:
     """Tutor pricing option entity."""
 
-    id: Optional[int]
+    id: int | None
     title: str
-    description: Optional[str]
+    description: str | None
     duration_minutes: int
     price: Decimal
 
@@ -74,26 +73,26 @@ class TutorProfileAggregate:
 
     id: int
     user_id: int
-    title: Optional[str]
-    headline: Optional[str]
-    bio: Optional[str]
-    description: Optional[str]
+    title: str | None
+    headline: str | None
+    bio: str | None
+    description: str | None
     hourly_rate: Decimal
     experience_years: int
-    education: Optional[str]
-    languages: List[str] = field(default_factory=list)
-    video_url: Optional[str] = None
+    education: str | None
+    languages: list[str] = field(default_factory=list)
+    video_url: str | None = None
     is_approved: bool = False
     profile_status: str = "incomplete"
-    rejection_reason: Optional[str] = None
+    rejection_reason: str | None = None
     average_rating: Decimal = Decimal("0.00")
     total_reviews: int = 0
     total_sessions: int = 0
-    timezone: Optional[str] = "UTC"
+    timezone: str | None = "UTC"
     version: int = 1
-    created_at: Optional[datetime] = None
-    subjects: List[TutorSubjectEntity] = field(default_factory=list)
-    availabilities: List[TutorAvailabilityEntity] = field(default_factory=list)
-    certifications: List[TutorCertificationEntity] = field(default_factory=list)
-    educations: List[TutorEducationEntity] = field(default_factory=list)
-    pricing_options: List[TutorPricingOptionEntity] = field(default_factory=list)
+    created_at: datetime | None = None
+    subjects: list[TutorSubjectEntity] = field(default_factory=list)
+    availabilities: list[TutorAvailabilityEntity] = field(default_factory=list)
+    certifications: list[TutorCertificationEntity] = field(default_factory=list)
+    educations: list[TutorEducationEntity] = field(default_factory=list)
+    pricing_options: list[TutorPricingOptionEntity] = field(default_factory=list)

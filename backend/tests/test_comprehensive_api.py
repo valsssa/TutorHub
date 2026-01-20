@@ -56,9 +56,7 @@ def test_auth_login_and_token_flow(client):
     token = data["access_token"]
 
     # Use token to access protected endpoint
-    me_response = client.get(
-        "/api/auth/me", headers={"Authorization": f"Bearer {token}"}
-    )
+    me_response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert me_response.status_code == 200
     user_data = me_response.json()
@@ -86,16 +84,12 @@ def test_currency_options_endpoint(client, student_token):
 def test_subjects_list_cached(client, student_token):
     """Test subjects listing with caching."""
     # First request
-    response1 = client.get(
-        "/api/subjects", headers={"Authorization": f"Bearer {student_token}"}
-    )
+    response1 = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
     assert response1.status_code == 200
     subjects1 = response1.json()
 
     # Second request (should be cached)
-    response2 = client.get(
-        "/api/subjects", headers={"Authorization": f"Bearer {student_token}"}
-    )
+    response2 = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
     assert response2.status_code == 200
     subjects2 = response2.json()
 
@@ -206,9 +200,7 @@ def test_booking_status_transitions(client, tutor_token, student_token, test_sub
     assert complete_response.json()["status"] == "completed"
 
 
-def test_review_creation_requires_completed_booking(
-    client, student_token, test_subject
-):
+def test_review_creation_requires_completed_booking(client, student_token, test_subject):
     """Test that reviews can only be created for completed bookings."""
     # Create pending booking
     start_time = (datetime.now() + timedelta(days=1)).isoformat()
@@ -320,9 +312,7 @@ def test_tutor_pricing_options(client, tutor_token):
 def test_admin_user_management(client, admin_token):
     """Test admin user management operations."""
     # List all users
-    response = client.get(
-        "/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"}
-    )
+    response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
 
     assert response.status_code == 200
     data = response.json()
@@ -382,9 +372,7 @@ def test_rate_limiting_headers(client):
     # Note: This test may not trigger rate limiting in test environment
 
 
-def test_soft_delete_preserves_relationships(
-    client, admin_token, student_token, test_subject
-):
+def test_soft_delete_preserves_relationships(client, admin_token, student_token, test_subject):
     """Test that soft-deleted records preserve relationships."""
     # Create a booking
     start_time = (datetime.now() + timedelta(days=1)).isoformat()

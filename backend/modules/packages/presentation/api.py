@@ -3,7 +3,6 @@
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
@@ -28,10 +27,8 @@ class PackagePurchaseRequest(BaseModel):
 
     tutor_profile_id: int
     pricing_option_id: int
-    payment_intent_id: Optional[str] = None
-    agreed_terms: Optional[str] = Field(
-        None, description="User agreement to package terms"
-    )
+    payment_intent_id: str | None = None
+    agreed_terms: str | None = Field(None, description="User agreement to package terms")
 
 
 class PackageResponse(BaseModel):
@@ -46,9 +43,9 @@ class PackageResponse(BaseModel):
     sessions_used: int
     purchase_price: Decimal
     purchased_at: datetime
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
     status: str
-    payment_intent_id: Optional[str]
+    payment_intent_id: str | None
 
     class Config:
         from_attributes = True
@@ -87,18 +84,14 @@ async def purchase_package(
         raise HTTPException(status_code=404, detail="Tutor not found or not approved")
 
     pricing_option = (
-        db.query(TutorPricingOption)
-        .filter(TutorPricingOption.id == purchase_data.pricing_option_id)
-        .first()
+        db.query(TutorPricingOption).filter(TutorPricingOption.id == purchase_data.pricing_option_id).first()
     )
     if not pricing_option:
         raise HTTPException(status_code=404, detail="Pricing option not found")
 
     # Verify pricing option belongs to tutor
     if pricing_option.tutor_profile_id != purchase_data.tutor_profile_id:
-        raise HTTPException(
-            status_code=400, detail="Pricing option does not belong to this tutor"
-        )
+        raise HTTPException(status_code=400, detail="Pricing option does not belong to this tutor")
 
     # Calculate expiration date (if pricing option has validity)
     expires_at = None
@@ -173,18 +166,16 @@ async def purchase_package(
     return package
 
 
-@router.get("", response_model=List[PackageResponse])
+@router.get("", response_model=list[PackageResponse])
 @limiter.limit("100/minute")
 async def list_my_packages(
     request: Request,
-    status_filter: Optional[str] = Query(None, description="Filter by status"),
+    status_filter: str | None = Query(None, description="Filter by status"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get current user's packages."""
-    query = db.query(StudentPackage).filter(
-        StudentPackage.student_id == current_user.id
-    )
+    query = db.query(StudentPackage).filter(StudentPackage.student_id == current_user.id)
 
     if status_filter:
         query = query.filter(StudentPackage.status == status_filter)
@@ -220,9 +211,7 @@ async def use_package_credit(
         raise HTTPException(status_code=404, detail="Package not found")
 
     if package.status != "active":
-        raise HTTPException(
-            status_code=400, detail=f"Package is {package.status}, cannot use credits"
-        )
+        raise HTTPException(status_code=400, detail=f"Package is {package.status}, cannot use credits")
 
     if package.sessions_remaining <= 0:
         raise HTTPException(status_code=400, detail="No credits remaining in package")
@@ -243,7 +232,7 @@ async def use_package_credit(
         # Auto-update status if exhausted
         if package.sessions_remaining == 0:
             package.status = "exhausted"
-        
+
         # Update timestamp in application code (no DB triggers)
         package.updated_at = datetime.now()
 

@@ -8,9 +8,7 @@ from fastapi import status
 class TestCreateBooking:
     """Test booking creation."""
 
-    def test_student_create_booking_success(
-        self, client, student_token, tutor_user, test_subject
-    ):
+    def test_student_create_booking_success(self, client, student_token, tutor_user, test_subject):
         """Test successful booking creation by student."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time + timedelta(hours=2)
@@ -33,9 +31,7 @@ class TestCreateBooking:
         assert float(data["total_amount"]) == 100.00  # 2 hours * $50/hour
         assert data["topic"] == "Algebra basics"
 
-    def test_tutor_cannot_create_booking(
-        self, client, tutor_token, tutor_user, test_subject
-    ):
+    def test_tutor_cannot_create_booking(self, client, tutor_token, tutor_user, test_subject):
         """Test tutor cannot create booking."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
@@ -52,9 +48,7 @@ class TestCreateBooking:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_create_booking_invalid_duration(
-        self, client, student_token, tutor_user, test_subject
-    ):
+    def test_create_booking_invalid_duration(self, client, student_token, tutor_user, test_subject):
         """Test booking with invalid duration (end before start)."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time - timedelta(hours=1)  # Invalid
@@ -71,9 +65,7 @@ class TestCreateBooking:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_booking_too_long(
-        self, client, student_token, tutor_user, test_subject
-    ):
+    def test_create_booking_too_long(self, client, student_token, tutor_user, test_subject):
         """Test booking exceeding 8 hours."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time + timedelta(hours=9)  # Too long
@@ -90,9 +82,7 @@ class TestCreateBooking:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_booking_nonexistent_tutor(
-        self, client, student_token, test_subject
-    ):
+    def test_create_booking_nonexistent_tutor(self, client, student_token, test_subject):
         """Test booking with nonexistent tutor."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
@@ -115,9 +105,7 @@ class TestListBookings:
 
     def test_student_list_own_bookings(self, client, student_token, test_booking):
         """Test student can list their bookings."""
-        response = client.get(
-            "/api/bookings", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/bookings", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) == 1
@@ -125,9 +113,7 @@ class TestListBookings:
 
     def test_tutor_list_own_bookings(self, client, tutor_token, test_booking):
         """Test tutor can list bookings for their profile."""
-        response = client.get(
-            "/api/bookings", headers={"Authorization": f"Bearer {tutor_token}"}
-        )
+        response = client.get("/api/bookings", headers={"Authorization": f"Bearer {tutor_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) == 1
@@ -135,9 +121,7 @@ class TestListBookings:
 
     def test_admin_list_all_bookings(self, client, admin_token, test_booking):
         """Test admin can list all bookings."""
-        response = client.get(
-            "/api/bookings", headers={"Authorization": f"Bearer {admin_token}"}
-        )
+        response = client.get("/api/bookings", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) >= 1
@@ -189,9 +173,7 @@ class TestUpdateBookingStatus:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_tutor_cannot_update_other_tutor_booking(
-        self, client, tutor_user, db_session
-    ):
+    def test_tutor_cannot_update_other_tutor_booking(self, client, tutor_user, db_session):
         """Test tutor cannot update another tutor's booking."""
         from auth import get_password_hash
         from models import Booking, Subject, TutorProfile, User

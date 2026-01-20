@@ -8,15 +8,11 @@ class TestNotifications:
 
     def test_list_notifications_empty(self, client, student_token):
         """Test listing notifications when there are none."""
-        response = client.get(
-            "/api/notifications", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == []
 
-    def test_list_user_notifications(
-        self, client, student_token, student_user, db_session
-    ):
+    def test_list_user_notifications(self, client, student_token, student_user, db_session):
         """Test user can list their own notifications."""
         from models import Notification
 
@@ -38,9 +34,7 @@ class TestNotifications:
         db_session.add_all([notif1, notif2])
         db_session.commit()
 
-        response = client.get(
-            "/api/notifications", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) == 2
@@ -49,9 +43,7 @@ class TestNotifications:
         assert data[0]["id"] == notif2.id  # Most recent
         assert data[1]["id"] == notif1.id
 
-    def test_notifications_only_returns_own(
-        self, client, student_token, tutor_user, db_session
-    ):
+    def test_notifications_only_returns_own(self, client, student_token, tutor_user, db_session):
         """Test users only see their own notifications."""
         from models import Notification
 
@@ -66,9 +58,7 @@ class TestNotifications:
         db_session.add(other_notif)
         db_session.commit()
 
-        response = client.get(
-            "/api/notifications", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) == 0  # Should not see other user's notifications
@@ -78,9 +68,7 @@ class TestNotifications:
         response = client.get("/api/notifications")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_mark_notification_read(
-        self, client, student_token, student_user, db_session
-    ):
+    def test_mark_notification_read(self, client, student_token, student_user, db_session):
         """Test marking notification as read."""
         from models import Notification
 
@@ -106,9 +94,7 @@ class TestNotifications:
         db_session.refresh(notif)
         assert notif.is_read is True
 
-    def test_mark_other_user_notification_read_fails(
-        self, client, student_token, tutor_user, db_session
-    ):
+    def test_mark_other_user_notification_read_fails(self, client, student_token, tutor_user, db_session):
         """Test cannot mark another user's notification as read."""
         from models import Notification
 
@@ -136,9 +122,7 @@ class TestNotifications:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_mark_all_notifications_read(
-        self, client, student_token, student_user, db_session
-    ):
+    def test_mark_all_notifications_read(self, client, student_token, student_user, db_session):
         """Test marking all notifications as read."""
         from models import Notification
 
@@ -205,9 +189,7 @@ class TestNotifications:
         assert student_notif.is_read is True
         assert tutor_notif.is_read is False
 
-    def test_notifications_pagination_limit(
-        self, client, student_token, student_user, db_session
-    ):
+    def test_notifications_pagination_limit(self, client, student_token, student_user, db_session):
         """Test notifications are limited to 50 recent items."""
         from models import Notification
 
@@ -225,9 +207,7 @@ class TestNotifications:
         db_session.add_all(notifs)
         db_session.commit()
 
-        response = client.get(
-            "/api/notifications", headers={"Authorization": f"Bearer {student_token}"}
-        )
+        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) == 50  # Limited to 50

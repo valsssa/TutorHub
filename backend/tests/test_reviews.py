@@ -6,9 +6,7 @@ from fastapi import status
 class TestCreateReview:
     """Test review creation."""
 
-    def test_student_create_review_success(
-        self, client, student_token, test_booking, db_session
-    ):
+    def test_student_create_review_success(self, client, student_token, test_booking, db_session):
         """Test student can create review for completed booking."""
         # Mark booking as completed
         test_booking.status = "completed"
@@ -28,9 +26,7 @@ class TestCreateReview:
         assert data["rating"] == 5
         assert data["comment"] == "Excellent tutor! Very helpful and patient."
 
-    def test_cannot_review_non_completed_booking(
-        self, client, student_token, test_booking
-    ):
+    def test_cannot_review_non_completed_booking(self, client, student_token, test_booking):
         """Test cannot review pending booking."""
         response = client.post(
             "/api/reviews",
@@ -40,9 +36,7 @@ class TestCreateReview:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "completed" in response.json()["detail"].lower()
 
-    def test_cannot_review_other_student_booking(
-        self, client, test_booking, db_session
-    ):
+    def test_cannot_review_other_student_booking(self, client, test_booking, db_session):
         """Test student cannot review another student's booking."""
         from auth import get_password_hash
         from models import User
@@ -109,9 +103,7 @@ class TestCreateReview:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "already exists" in response.json()["detail"].lower()
 
-    def test_tutor_cannot_create_review(
-        self, client, tutor_token, test_booking, db_session
-    ):
+    def test_tutor_cannot_create_review(self, client, tutor_token, test_booking, db_session):
         """Test tutor cannot create review."""
         test_booking.status = "completed"
         db_session.commit()
@@ -131,9 +123,7 @@ class TestCreateReview:
 class TestGetTutorReviews:
     """Test getting tutor reviews."""
 
-    def test_get_tutor_reviews_success(
-        self, client, student_token, tutor_user, test_booking, db_session
-    ):
+    def test_get_tutor_reviews_success(self, client, student_token, tutor_user, test_booking, db_session):
         """Test getting tutor reviews."""
         from models import Review
 
@@ -162,9 +152,7 @@ class TestGetTutorReviews:
         assert data[0]["rating"] == 5
         assert data[0]["comment"] == "Excellent!"
 
-    def test_only_public_reviews_shown(
-        self, client, student_token, tutor_user, test_booking, db_session
-    ):
+    def test_only_public_reviews_shown(self, client, student_token, tutor_user, test_booking, db_session):
         """Test only public reviews are shown."""
         from models import Review
 

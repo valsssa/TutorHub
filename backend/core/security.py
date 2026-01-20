@@ -1,8 +1,7 @@
 """Security utilities for authentication and authorization."""
 
 import logging
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from jose import JWTError, jwt
@@ -36,9 +35,7 @@ class PasswordHasher:
         """Verify a password against its hash."""
         logger.debug("Verifying password")
         try:
-            result = bcrypt.checkpw(
-                plain_password.encode("utf-8"), hashed_password.encode("utf-8")
-            )
+            result = bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
             logger.debug(f"Password verification result: {result}")
             return result
         except Exception as e:
@@ -50,34 +47,25 @@ class TokenManager:
     """Handle JWT token creation and validation."""
 
     @staticmethod
-    def create_access_token(
-        data: dict, expires_delta: Optional[timedelta] = None
-    ) -> str:
+    def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
         """Create a new JWT access token."""
-        from datetime import timezone as tz
 
         to_encode = data.copy()
 
         if expires_delta:
-            expire = datetime.now(tz.utc) + expires_delta
+            expire = datetime.now(UTC) + expires_delta
         else:
-            expire = datetime.now(tz.utc) + timedelta(
-                minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-            )
+            expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
         to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(
-            to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
-        )
+        encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
 
     @staticmethod
     def decode_token(token: str) -> dict:
         """Decode and validate a JWT token."""
         try:
-            payload = jwt.decode(
-                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-            )
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             return payload
         except JWTError as e:
             raise AuthenticationError(f"Invalid token: {str(e)}")
@@ -94,6 +82,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return PasswordHasher.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create access token."""
     return TokenManager.create_access_token(data, expires_delta)

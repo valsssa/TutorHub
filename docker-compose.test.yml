@@ -142,9 +142,8 @@ services:
     command: >
       sh -c "
         echo '🔍 Running backend linting and tests...' &&
-        python3 -m flake8 . --max-line-length=88 --extend-ignore=E203,W503 &&
-        python3 -m black --check . &&
-        python3 -m isort . --check-only &&
+        ruff check . &&
+        ruff format --check . &&
         python -m pytest tests/ -v --tb=short
       "
 

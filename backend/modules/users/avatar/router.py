@@ -54,9 +54,7 @@ async def get_my_avatar(
     """Retrieve a signed URL for the authenticated user's avatar."""
     service = _service(db)
     result = await service.fetch_for_user(current_user)
-    response.headers["Cache-Control"] = (
-        f"private, max-age={min(settings.AVATAR_STORAGE_URL_TTL_SECONDS, 300)}"
-    )
+    response.headers["Cache-Control"] = f"private, max-age={min(settings.AVATAR_STORAGE_URL_TTL_SECONDS, 300)}"
     response.headers["Pragma"] = "no-cache"
     return result
 

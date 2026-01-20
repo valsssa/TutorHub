@@ -1,6 +1,7 @@
 """User authentication and profile models."""
 
 from sqlalchemy import (
+    TIMESTAMP,
     Boolean,
     CheckConstraint,
     Column,
@@ -8,7 +9,6 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    TIMESTAMP,
     Text,
 )
 from sqlalchemy.orm import relationship
@@ -30,19 +30,16 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
     avatar_key = Column(String(255), nullable=True, index=True)
     currency = Column(String(3), nullable=False, default="USD", server_default="USD")
     timezone = Column(String(64), nullable=False, default="UTC", server_default="UTC")
-    preferred_language = Column(
-        String(5), nullable=False, default="en", server_default="en"
-    )
+    preferred_language = Column(String(5), nullable=False, default="en", server_default="en")
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    deleted_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     profile = relationship(
@@ -66,19 +63,11 @@ class User(Base):
         cascade="all, delete-orphan",
         foreign_keys="StudentProfile.user_id",
     )
-    sent_messages = relationship(
-        "Message", foreign_keys="Message.sender_id", back_populates="sender"
-    )
-    received_messages = relationship(
-        "Message", foreign_keys="Message.recipient_id", back_populates="recipient"
-    )
-    notifications = relationship(
-        "Notification", back_populates="user", cascade="all, delete-orphan"
-    )
+    sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
+    received_messages = relationship("Message", foreign_keys="Message.recipient_id", back_populates="recipient")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
-    __table_args__ = (
-        CheckConstraint("role IN ('student', 'tutor', 'admin')", name="valid_role"),
-    )
+    __table_args__ = (CheckConstraint("role IN ('student', 'tutor', 'admin')", name="valid_role"),)
 
 
 class UserProfile(Base):
@@ -100,7 +89,8 @@ class UserProfile(Base):
     age_confirmed = Column(Boolean, default=False, nullable=False)  # 18+ confirmation
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 

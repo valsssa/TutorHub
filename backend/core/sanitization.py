@@ -2,10 +2,9 @@
 
 import html
 import re
-from typing import Optional
 
 
-def sanitize_html(text: Optional[str]) -> Optional[str]:
+def sanitize_html(text: str | None) -> str | None:
     """
     Sanitize HTML to prevent XSS attacks.
 
@@ -24,7 +23,7 @@ def sanitize_html(text: Optional[str]) -> Optional[str]:
     return sanitized
 
 
-def sanitize_filename(filename: Optional[str]) -> Optional[str]:
+def sanitize_filename(filename: str | None) -> str | None:
     """
     Sanitize filename to prevent directory traversal and other attacks.
 
@@ -57,7 +56,7 @@ def sanitize_filename(filename: Optional[str]) -> Optional[str]:
     return filename
 
 
-def sanitize_url(url: Optional[str]) -> Optional[str]:
+def sanitize_url(url: str | None) -> str | None:
     """
     Sanitize URL to prevent XSS via javascript: or data: schemes.
 
@@ -81,17 +80,13 @@ def sanitize_url(url: Optional[str]) -> Optional[str]:
             return None
 
     # Only allow http, https, and relative URLs
-    if not (
-        url.startswith("http://") or url.startswith("https://") or url.startswith("/")
-    ):
+    if not (url.startswith("http://") or url.startswith("https://") or url.startswith("/")):
         return None
 
     return url
 
 
-def sanitize_text_input(
-    text: Optional[str], max_length: Optional[int] = None
-) -> Optional[str]:
+def sanitize_text_input(text: str | None, max_length: int | None = None) -> str | None:
     """
     General text sanitization for user inputs.
 
@@ -112,9 +107,7 @@ def sanitize_text_input(
     text = text.replace("\x00", "")
 
     # Remove control characters except newline, tab, carriage return
-    text = "".join(
-        char for char in text if ord(char) >= 32 or char in ["\n", "\t", "\r"]
-    )
+    text = "".join(char for char in text if ord(char) >= 32 or char in ["\n", "\t", "\r"])
 
     # Escape HTML
     text = html.escape(text, quote=False)
@@ -126,7 +119,7 @@ def sanitize_text_input(
     return text
 
 
-def validate_phone_number(phone: str, country_code: Optional[str] = None) -> bool:
+def validate_phone_number(phone: str, country_code: str | None = None) -> bool:
     """
     Validate phone number format (E.164).
 
@@ -156,7 +149,7 @@ def validate_phone_number(phone: str, country_code: Optional[str] = None) -> boo
     return bool(re.match(pattern, phone))
 
 
-def sanitize_email(email: Optional[str]) -> Optional[str]:
+def sanitize_email(email: str | None) -> str | None:
     """
     Sanitize email address.
 
@@ -179,7 +172,7 @@ def sanitize_email(email: Optional[str]) -> Optional[str]:
     return email
 
 
-def clean_search_query(query: Optional[str]) -> Optional[str]:
+def clean_search_query(query: str | None) -> str | None:
     """
     Clean search query to prevent SQL injection (extra safety).
 
@@ -223,9 +216,7 @@ def clean_search_query(query: Optional[str]) -> Optional[str]:
     return query.strip()
 
 
-def sanitize_string(
-    text: Optional[str], max_length: Optional[int] = None, allow_html: bool = False
-) -> Optional[str]:
+def sanitize_string(text: str | None, max_length: int | None = None, allow_html: bool = False) -> str | None:
     """
     General string sanitization for any text input.
 
@@ -257,7 +248,7 @@ def sanitize_string(
     return text
 
 
-def validate_video_url(url: Optional[str]) -> bool:
+def validate_video_url(url: str | None) -> bool:
     """
     Validate video URL (YouTube, Vimeo, Loom).
 

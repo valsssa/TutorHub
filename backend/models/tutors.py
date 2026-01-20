@@ -1,17 +1,17 @@
 """Tutor-related models."""
 
 from sqlalchemy import (
+    DECIMAL,
+    TIMESTAMP,
     Boolean,
     CheckConstraint,
     Column,
     Date,
-    DECIMAL,
     ForeignKey,
     Integer,
     String,
     Text,
     Time,
-    TIMESTAMP,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -39,9 +39,7 @@ class TutorProfile(Base):
     profile_status = Column(String(20), nullable=False, default="incomplete")
     rejection_reason = Column(Text)
     approved_at = Column(TIMESTAMP(timezone=True))
-    approved_by = Column(
-        Integer
-    )  # Admin user ID who approved (no FK to avoid ambiguity)
+    approved_by = Column(Integer)  # Admin user ID who approved (no FK to avoid ambiguity)
     average_rating = Column(DECIMAL(3, 2), default=0.00)
     total_reviews = Column(Integer, default=0)
     total_sessions = Column(Integer, default=0)
@@ -50,9 +48,7 @@ class TutorProfile(Base):
     # Booking configuration fields (from init.sql schema)
     auto_confirm_threshold_hours = Column(Integer, default=24)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    deleted_by = Column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
-    )
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     # Enhanced booking fields (optional - require migration 017)
     # cancellation_strikes = Column(Integer, default=0)
     # auto_confirm = Column(Boolean, default=False)
@@ -61,15 +57,14 @@ class TutorProfile(Base):
     version = Column(Integer, nullable=False, default=1, server_default="1")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 
     # Relationships
     user = relationship("User", back_populates="tutor_profile", foreign_keys=[user_id])
-    subjects = relationship(
-        "TutorSubject", back_populates="tutor_profile", cascade="all, delete-orphan"
-    )
+    subjects = relationship("TutorSubject", back_populates="tutor_profile", cascade="all, delete-orphan")
     availabilities = relationship(
         "TutorAvailability",
         back_populates="tutor_profile",
@@ -80,9 +75,7 @@ class TutorProfile(Base):
         back_populates="tutor_profile",
         cascade="all, delete-orphan",
     )
-    educations = relationship(
-        "TutorEducation", back_populates="tutor_profile", cascade="all, delete-orphan"
-    )
+    educations = relationship("TutorEducation", back_populates="tutor_profile", cascade="all, delete-orphan")
     pricing_options = relationship(
         "TutorPricingOption",
         back_populates="tutor_profile",
@@ -90,9 +83,7 @@ class TutorProfile(Base):
     )
     bookings = relationship("Booking", back_populates="tutor_profile")
     reviews = relationship("Review", back_populates="tutor_profile")
-    favorites = relationship(
-        "FavoriteTutor", back_populates="tutor_profile", cascade="all, delete-orphan"
-    )
+    favorites = relationship("FavoriteTutor", back_populates="tutor_profile", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("hourly_rate > 0", name="positive_rate"),
@@ -110,9 +101,7 @@ class TutorSubject(Base):
     __tablename__ = "tutor_subjects"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"))
     proficiency_level = Column(String(20), default="B2")  # Phase 3: CEFR default
     years_experience = Column(Integer)
@@ -136,9 +125,7 @@ class TutorCertification(Base):
     __tablename__ = "tutor_certifications"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     name = Column(String(255), nullable=False)
     issuing_organization = Column(String(255))
     issue_date = Column(Date)
@@ -148,7 +135,8 @@ class TutorCertification(Base):
     document_url = Column(String(500))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 
@@ -161,9 +149,7 @@ class TutorEducation(Base):
     __tablename__ = "tutor_education"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     institution = Column(String(255), nullable=False)
     degree = Column(String(255))
     field_of_study = Column(String(255))
@@ -173,7 +159,8 @@ class TutorEducation(Base):
     document_url = Column(String(500))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 
@@ -186,16 +173,15 @@ class TutorPricingOption(Base):
     __tablename__ = "tutor_pricing_options"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE")
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     title = Column(String(255), nullable=False)
     description = Column(Text)
     duration_minutes = Column(Integer, nullable=False)
     price = Column(DECIMAL(10, 2), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
 
@@ -207,16 +193,13 @@ class TutorPricingOption(Base):
     )
 
 
-
 class TutorAvailability(Base):
     """Recurring weekly availability windows for tutors."""
 
     __tablename__ = "tutor_availabilities"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(
-        Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False
-    )
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False)
     day_of_week = Column(Integer, nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
@@ -227,9 +210,7 @@ class TutorAvailability(Base):
     tutor_profile = relationship("TutorProfile", back_populates="availabilities")
 
     __table_args__ = (
-        CheckConstraint(
-            "day_of_week BETWEEN 0 AND 6", name="tutor_availabilities_day_of_week_check"
-        ),
+        CheckConstraint("day_of_week BETWEEN 0 AND 6", name="tutor_availabilities_day_of_week_check"),
         CheckConstraint("start_time < end_time", name="chk_availability_time_order"),
     )
 
@@ -240,9 +221,7 @@ class TutorBlackout(Base):
     __tablename__ = "tutor_blackouts"
 
     id = Column(Integer, primary_key=True)
-    tutor_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
+    tutor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     start_at = Column(TIMESTAMP(timezone=True), nullable=False)
     end_at = Column(TIMESTAMP(timezone=True), nullable=False)
     reason = Column(Text)

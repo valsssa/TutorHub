@@ -5,10 +5,9 @@ from __future__ import annotations
 import os
 import tempfile
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
-from typing import Optional
 from uuid import uuid4
 
 import aiofiles
@@ -33,9 +32,7 @@ CONTENT_TYPE_WEBP = "image/webp"
 class AvatarService:
     """Coordinate avatar persistence between storage and database."""
 
-    def __init__(
-        self, db: Session, storage: Optional[AvatarStorageClient] = None
-    ) -> None:
+    def __init__(self, db: Session, storage: AvatarStorageClient | None = None) -> None:
         self._db = db
         self._storage = storage or get_avatar_storage()
 
@@ -45,18 +42,17 @@ class AvatarService:
         old_key = user.avatar_key
 
         try:
-            await self._storage.upload_file(
-                new_key, temp_path, content_type=CONTENT_TYPE_WEBP
-            )
+            await self._storage.upload_file(new_key, temp_path, content_type=CONTENT_TYPE_WEBP)
         except Exception:
             # Clean temp file before bubbling error
             self._cleanup_temp_file(temp_path)
             raise
 
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
+
             user.avatar_key = new_key
-            user.updated_at = datetime.now(timezone.utc)  # Update timestamp in code
+            user.updated_at = datetime.now(UTC)  # Update timestamp in code
             self._db.commit()
         except Exception as exc:
             self._db.rollback()
@@ -89,9 +85,10 @@ class AvatarService:
 
         key_to_delete = user.avatar_key
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
+
             user.avatar_key = None
-            user.updated_at = datetime.now(timezone.utc)  # Update timestamp in code
+            user.updated_at = datetime.now(UTC)  # Update timestamp in code
             self._db.commit()
         except Exception as exc:
             self._db.rollback()
@@ -103,9 +100,7 @@ class AvatarService:
         await self._storage.delete_file(key_to_delete)
         return AvatarDeleteResponse(detail="Avatar removed successfully")
 
-    async def _prepare_avatar(
-        self, *, user_id: int, upload: UploadFile
-    ) -> tuple[str, str]:
+    async def _prepare_avatar(self, *, user_id: int, upload: UploadFile) -> tuple[str, str]:
         """Validate upload, transform to WebP, and persist to temp storage."""
         if upload.content_type not in ALLOWED_CONTENT_TYPES:
             raise HTTPException(
@@ -142,9 +137,7 @@ class AvatarService:
                     )
 
                 rgb_image = image.convert("RGB")
-                processed = ImageOps.fit(
-                    rgb_image, TARGET_SIZE, Image.Resampling.LANCZOS
-                )
+                processed = ImageOps.fit(rgb_image, TARGET_SIZE, Image.Resampling.LANCZOS)
 
                 buffer = BytesIO()
                 processed.save(
@@ -170,35 +163,22 @@ class AvatarService:
 
         temp_dir = Path(os.getenv("AVATAR_TMP_DIR", "/tmp"))
         temp_dir.mkdir(parents=True, exist_ok=True)
-        temp_file = tempfile.NamedTemporaryFile(
-            suffix=".webp", dir=temp_dir, delete=False
-        )
-        try:
+        with tempfile.NamedTemporaryFile(suffix=".webp", dir=temp_dir, delete=False) as temp_file:
             temp_file_path = Path(temp_file.name)
-            temp_file.close()
             async with aiofiles.open(temp_file_path, "wb") as tmp_fp:
                 await tmp_fp.write(output_bytes)
-        finally:
-            with suppress(Exception):
-                temp_file.close()
 
         key = self._build_object_key(user_id=user_id)
         return str(temp_file_path), key
 
     async def _build_response(self, key: str) -> AvatarResponse:
         signed_url = await self._storage.generate_presigned_url(key)
-        expires_at = datetime.now(timezone.utc) + timedelta(
-            seconds=self._storage.url_ttl()
-        )
+        expires_at = datetime.now(UTC) + timedelta(seconds=self._storage.url_ttl())
         return AvatarResponse(avatar_url=signed_url, expires_at=expires_at)
 
     def _default_response(self) -> AvatarResponse:
-        expires_at = datetime.now(timezone.utc) + timedelta(
-            seconds=self._storage.url_ttl()
-        )
-        return AvatarResponse(
-            avatar_url=settings.AVATAR_STORAGE_DEFAULT_URL, expires_at=expires_at
-        )
+        expires_at = datetime.now(UTC) + timedelta(seconds=self._storage.url_ttl())
+        return AvatarResponse(avatar_url=settings.AVATAR_STORAGE_DEFAULT_URL, expires_at=expires_at)
 
     def _build_object_key(self, *, user_id: int) -> str:
         return f"avatars/{user_id}/{uuid4().hex}.webp"
