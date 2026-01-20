@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import confetti from "canvas-confetti";
 import {
   Calendar,
@@ -14,6 +14,8 @@ import {
   MessageSquare,
   Zap,
   Check,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { TutorProfile, Subject } from "@/types";
 import { useToast } from "./ToastContainer";
@@ -55,6 +57,9 @@ export default function ModernBookingModal({
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotsCache, setSlotsCache] = useState<Record<string, TimeSlot[]>>({});
+  
+  // Slot conflict state
+  const [slotConflict, setSlotConflict] = useState(false);
   
   // Booking state
   const [duration, setDuration] = useState<25 | 50>(50);
@@ -112,60 +117,79 @@ export default function ModernBookingModal({
     return days;
   }, [currentMonth]);
 
+  // Function to fetch slots for a specific date
+  const fetchSlotsForDate = useCallback(async (date: Date, forceRefresh = false) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+
+    // Use cache unless force refresh
+    if (!forceRefresh && slotsCache[dateKey]) {
+      setAvailableSlots(slotsCache[dateKey]);
+      return;
+    }
+
+    setLoadingSlots(true);
+    try {
+      const startDateStr = `${dateKey}T00:00:00`;
+      const endDateStr = `${dateKey}T23:59:59`;
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+      if (!API_URL) {
+        setAvailableSlots([]);
+        return;
+      }
+      const token = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("token="))
+        ?.split("=")[1];
+
+      const response = await fetch(
+        `${API_URL}/api/tutors/${tutor.id}/available-slots?start_date=${startDateStr}&end_date=${endDateStr}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.ok) {
+        const slots = await response.json();
+        setAvailableSlots(slots);
+        setSlotsCache((prev) => ({ ...prev, [dateKey]: slots }));
+      } else {
+        setAvailableSlots([]);
+      }
+    } catch {
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [tutor.id, slotsCache]);
+
   // Fetch available slots when date is selected
   useEffect(() => {
     if (!selectedDate) {
       setAvailableSlots([]);
       return;
     }
+    fetchSlotsForDate(selectedDate);
+  }, [selectedDate, fetchSlotsForDate]);
 
-    const year = selectedDate.getFullYear();
-    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-    const day = String(selectedDate.getDate()).padStart(2, '0');
-    const dateKey = `${year}-${month}-${day}`;
-
-    if (slotsCache[dateKey]) {
-      setAvailableSlots(slotsCache[dateKey]);
-      return;
+  // Function to refresh slots (clear cache and refetch)
+  const refreshSlots = useCallback(() => {
+    if (selectedDate) {
+      // Clear cache for this date
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
+      setSlotsCache((prev) => {
+        const newCache = { ...prev };
+        delete newCache[dateKey];
+        return newCache;
+      });
+      // Force refetch
+      fetchSlotsForDate(selectedDate, true);
     }
-
-    const fetchSlots = async () => {
-      setLoadingSlots(true);
-      try {
-        const startDateStr = `${dateKey}T00:00:00`;
-        const endDateStr = `${dateKey}T23:59:59`;
-
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
-        if (!API_URL) {
-          setAvailableSlots([]);
-          return;
-        }
-        const token = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("token="))
-          ?.split("=")[1];
-
-        const response = await fetch(
-          `${API_URL}/api/tutors/${tutor.id}/available-slots?start_date=${startDateStr}&end_date=${endDateStr}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        if (response.ok) {
-          const slots = await response.json();
-          setAvailableSlots(slots);
-          setSlotsCache((prev) => ({ ...prev, [dateKey]: slots }));
-        } else {
-          setAvailableSlots([]);
-        }
-      } catch {
-        setAvailableSlots([]);
-      } finally {
-        setLoadingSlots(false);
-      }
-    };
-
-    fetchSlots();
-  }, [selectedDate, tutor.id, slotsCache]);
+  }, [selectedDate, fetchSlotsForDate]);
 
   const handlePrevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
@@ -226,6 +250,7 @@ export default function ModernBookingModal({
     const endDate = new Date(startDate.getTime() + duration * 60000);
 
     setSubmitting(true);
+    setSlotConflict(false);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL;
       if (!API_URL) {
@@ -259,7 +284,28 @@ export default function ModernBookingModal({
         setTimeout(() => onSuccess(), 2500);
       } else {
         const errorData = await response.json();
-        showError(errorData.detail || "Failed to create booking");
+        const errorMessage = errorData.detail || "Failed to create booking";
+        
+        // Check if this is a slot conflict (409 Conflict or availability-related error)
+        const isSlotConflict = 
+          response.status === 409 ||
+          errorMessage.toLowerCase().includes("not available") ||
+          errorMessage.toLowerCase().includes("already booked") ||
+          errorMessage.toLowerCase().includes("slot") ||
+          errorMessage.toLowerCase().includes("conflict") ||
+          errorMessage.toLowerCase().includes("availability");
+        
+        if (isSlotConflict) {
+          // Slot is no longer available - handle gracefully
+          setSlotConflict(true);
+          setSelectedSlot(null);
+          setStep(1);
+          // Refresh the available slots
+          refreshSlots();
+          showError("This time slot is no longer available. The schedule has been updated.");
+        } else {
+          showError(errorMessage);
+        }
       }
     } catch {
       showError("Failed to create booking");
@@ -300,6 +346,31 @@ export default function ModernBookingModal({
           {/* Step 1: Select Time */}
           {step === 1 && (
             <div className="space-y-6">
+              {/* Slot Conflict Warning */}
+              {slotConflict && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
+                  <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Schedule Updated
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                      The tutor&apos;s availability has changed. Please select a new time slot.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSlotConflict(false);
+                      refreshSlots();
+                    }}
+                    className="p-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
+                    title="Refresh slots"
+                  >
+                    <RefreshCw size={16} className="text-amber-600 dark:text-amber-400" />
+                  </button>
+                </div>
+              )}
+
               {/* Duration Toggle */}
               <div>
                 <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">
@@ -394,13 +465,25 @@ export default function ModernBookingModal({
                 {/* Time Slots */}
                 <div className="w-full lg:w-56 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
                   <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-                    <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Clock size={18} className="text-emerald-500" />
-                      {selectedDate 
-                        ? selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-                        : 'Select a date'
-                      }
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Clock size={18} className="text-emerald-500" />
+                        {selectedDate 
+                          ? selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                          : 'Select a date'
+                        }
+                      </h4>
+                      {selectedDate && (
+                        <button
+                          onClick={refreshSlots}
+                          disabled={loadingSlots}
+                          className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+                          title="Refresh available times"
+                        >
+                          <RefreshCw size={14} className={`text-slate-500 ${loadingSlots ? 'animate-spin' : ''}`} />
+                        </button>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-500 mt-1">
                       {selectedDate ? 'Select a time to book' : 'Pick a date from calendar'}
                     </p>

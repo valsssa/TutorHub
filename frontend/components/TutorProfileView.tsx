@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -20,6 +20,7 @@ import {
   Quote,
   Share,
   Info,
+  RefreshCw,
 } from "lucide-react";
 import { TutorProfile, Subject, Review } from "@/types";
 import { resolveAssetUrl } from "@/lib/media";
@@ -87,9 +88,15 @@ export default function TutorProfileView({
     Record<string, TimeSlot[]>
   >({});
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Ref for scrolling to schedule
   const scheduleRef = useRef<HTMLDivElement>(null);
+
+  // Function to manually refresh slots
+  const refreshSlots = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
 
   const scrollToSchedule = () => {
     scheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -165,50 +172,55 @@ export default function TutorProfileView({
   };
 
   // Fetch available slots for the week
-  const fetchWeekSlots = useCallback(async () => {
-    setLoadingSlots(true);
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL;
-      if (!API_URL) {
-        setAvailableSlots({});
-        return;
-      }
-      const token = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("token="))
-        ?.split("=")[1];
-
-      const startDateStr = scheduleDays[0].toISOString().split("T")[0];
-      const endDateStr = scheduleDays[6].toISOString().split("T")[0];
-
-      const response = await fetch(
-        `${API_URL}/api/tutors/${tutor.id}/available-slots?start_date=${startDateStr}T00:00:00&end_date=${endDateStr}T23:59:59`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.ok) {
-        const slots: TimeSlot[] = await response.json();
-        // Group slots by date
-        const grouped: Record<string, TimeSlot[]> = {};
-        slots.forEach((slot) => {
-          const dateKey = slot.start_time.split("T")[0];
-          if (!grouped[dateKey]) grouped[dateKey] = [];
-          grouped[dateKey].push(slot);
-        });
-        setAvailableSlots(grouped);
-      } else {
-        setAvailableSlots({});
-      }
-    } catch {
-      setAvailableSlots({});
-    } finally {
-      setLoadingSlots(false);
-    }
-  }, [scheduleDays, tutor.id]);
-
   useEffect(() => {
+    const fetchWeekSlots = async () => {
+      setLoadingSlots(true);
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        if (!API_URL) {
+          setAvailableSlots({});
+          return;
+        }
+        const token = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("token="))
+          ?.split("=")[1];
+
+        // Calculate start and end dates from scheduleDate
+        const startDate = new Date(scheduleDate);
+        const endDate = new Date(scheduleDate);
+        endDate.setDate(endDate.getDate() + 6);
+
+        const startDateStr = startDate.toISOString().split("T")[0];
+        const endDateStr = endDate.toISOString().split("T")[0];
+
+        const response = await fetch(
+          `${API_URL}/api/tutors/${tutor.id}/available-slots?start_date=${startDateStr}T00:00:00&end_date=${endDateStr}T23:59:59`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.ok) {
+          const slots: TimeSlot[] = await response.json();
+          // Group slots by date
+          const grouped: Record<string, TimeSlot[]> = {};
+          slots.forEach((slot) => {
+            const dateKey = slot.start_time.split("T")[0];
+            if (!grouped[dateKey]) grouped[dateKey] = [];
+            grouped[dateKey].push(slot);
+          });
+          setAvailableSlots(grouped);
+        } else {
+          setAvailableSlots({});
+        }
+      } catch {
+        setAvailableSlots({});
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+
     fetchWeekSlots();
-  }, [scheduleDate, fetchWeekSlots]);
+  }, [scheduleDate, tutor.id, refreshKey]);
 
   const getSlotsForDay = (dayIndex: number): string[] => {
     const dateKey = scheduleDays[dayIndex].toISOString().split("T")[0];
@@ -562,9 +574,19 @@ export default function TutorProfileView({
             ref={scheduleRef}
             className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm scroll-mt-24"
           >
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
-              Schedule
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                Schedule
+              </h2>
+              <button
+                onClick={refreshSlots}
+                disabled={loadingSlots}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                title="Refresh available times"
+              >
+                <RefreshCw size={18} className={loadingSlots ? "animate-spin" : ""} />
+              </button>
+            </div>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl flex gap-3 mb-6 items-start">
               <Info

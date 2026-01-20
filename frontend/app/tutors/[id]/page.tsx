@@ -87,7 +87,7 @@ function TutorDetailContent() {
   }
 
   const canBook = user && authUtils.isStudent(user);
-  const isOwnProfile = user && authUtils.isTutor(user) && tutor.user_id === user.id;
+  const isOwnProfile = !!(user && authUtils.isTutor(user) && tutor.user_id === user.id);
 
   return (
     <>
