@@ -70,7 +70,7 @@ class BookingCreateRequest(BaseModel):
     @classmethod
     def validate_duration(cls, v: int) -> int:
         """Ensure duration matches allowed values."""
-        allowed = [30, 45, 60, 90, 120]
+        allowed = [25, 30, 45, 50, 60, 90, 120]
         if v not in allowed:
             raise ValueError(f"Duration must be one of: {allowed}")
         return v
