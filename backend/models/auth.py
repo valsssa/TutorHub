@@ -79,8 +79,6 @@ class UserProfile(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
-    first_name = Column(String(100))
-    last_name = Column(String(100))
     phone = Column(String(20))
     bio = Column(Text)
     timezone = Column(String(64), default="UTC")

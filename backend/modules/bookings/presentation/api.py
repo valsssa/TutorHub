@@ -119,7 +119,7 @@ async def create_booking(
         service = BookingService(db)
         booking = service.create_booking(
             student_id=current_user.id,
-            tutor_id=request.tutor_id,
+            tutor_profile_id=request.tutor_profile_id,
             start_at=request.start_at,
             duration_minutes=request.duration_minutes,
             lesson_type=request.lesson_type,
@@ -312,10 +312,9 @@ async def reschedule_booking(
         new_end_at = request.new_start_at + timedelta(minutes=duration)
 
         # Check conflicts at new time
-        tutor_user = booking.tutor_profile.user if booking.tutor_profile else None
-        if tutor_user:
+        if booking.tutor_profile:
             conflicts = service.check_conflicts(
-                tutor_id=tutor_user.id,
+                tutor_profile_id=booking.tutor_profile.id,
                 start_at=request.new_start_at,
                 end_at=new_end_at,
                 exclude_booking_id=booking.id,

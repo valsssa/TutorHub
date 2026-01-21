@@ -17,6 +17,7 @@ from models import (
     Subject,
     TutorProfile,
     User,
+    UserProfile,
 )
 
 
@@ -64,14 +65,14 @@ def seed_users_and_profiles(db: Session):
                 hashed_password=get_password_hash("student123"),
                 role="student",
                 is_verified=True,
+                first_name=first_name,
+                last_name=last_name,
             )
             db.add(user)
             db.commit()
 
             profile = StudentProfile(
                 user_id=user.id,
-                first_name=first_name,
-                last_name=last_name,
                 phone=f"+1{random.randint(2000000000, 9999999999)}",
                 bio="Student interested in learning various subjects.",
                 grade_level=random.choice(["9th Grade", "10th Grade", "11th Grade", "12th Grade"]),
@@ -109,7 +110,7 @@ def seed_users_and_profiles(db: Session):
         ),
     ]
 
-    for email, _first_name, _last_name, subject_name, education in tutors_data:
+    for email, first_name, last_name, subject_name, education in tutors_data:
         existing = db.query(User).filter(User.email == email).first()
         if not existing:
             user = User(
@@ -117,6 +118,8 @@ def seed_users_and_profiles(db: Session):
                 hashed_password=get_password_hash("tutor123"),
                 role="tutor",
                 is_verified=True,
+                first_name=first_name,
+                last_name=last_name,
             )
             db.add(user)
             db.commit()
@@ -168,6 +171,22 @@ def seed_bookings(db: Session):
         start_time = now - timedelta(days=random.randint(1, 60), hours=random.randint(0, 23))
         end_time = start_time + timedelta(minutes=random.choice([30, 45, 60, 90]))
 
+        # Get profile data for names
+        tutor_user_profile = db.query(User).filter(User.id == tutor.user_id).first()
+        student_profile = db.query(StudentProfile).filter(StudentProfile.user_id == student.id).first()
+
+        # Build names using user data (single source of truth)
+        tutor_name = (
+            f"{tutor_user_profile.first_name or ''} {tutor_user_profile.last_name or ''}".strip()
+            if tutor_user_profile and (tutor_user_profile.first_name or tutor_user_profile.last_name)
+            else tutor.user.email
+        )
+        student_name = (
+            f"{student.first_name or ''} {student.last_name or ''}".strip()
+            if student and (student.first_name or student.last_name)
+            else student.email
+        )
+
         # Simple insert without JSONB fields - let database defaults handle them
         db.execute(
             text(
@@ -195,8 +214,8 @@ def seed_bookings(db: Session):
                 "topic": f"Study session on {subject.name}",
                 "hourly_rate": float(tutor.hourly_rate),
                 "total_amount": float(tutor.hourly_rate * Decimal((end_time - start_time).total_seconds() / 3600)),
-                "tutor_name": f"Dr. {tutor.user.email.split('@')[0].title()}",
-                "student_name": student.email.split("@")[0].title(),
+                "tutor_name": tutor_name,
+                "student_name": student_name,
                 "subject_name": subject.name,
             },
         )
@@ -209,6 +228,22 @@ def seed_bookings(db: Session):
 
         start_time = now + timedelta(days=random.randint(1, 30), hours=random.randint(0, 23))
         end_time = start_time + timedelta(minutes=random.choice([30, 45, 60, 90]))
+
+        # Get profile data for names
+        tutor_user_profile = db.query(User).filter(User.id == tutor.user_id).first()
+        student_profile = db.query(StudentProfile).filter(StudentProfile.user_id == student.id).first()
+
+        # Build names using user data (single source of truth)
+        tutor_name = (
+            f"{tutor_user_profile.first_name or ''} {tutor_user_profile.last_name or ''}".strip()
+            if tutor_user_profile and (tutor_user_profile.first_name or tutor_user_profile.last_name)
+            else tutor.user.email
+        )
+        student_name = (
+            f"{student.first_name or ''} {student.last_name or ''}".strip()
+            if student and (student.first_name or student.last_name)
+            else student.email
+        )
 
         db.execute(
             text(
@@ -236,8 +271,8 @@ def seed_bookings(db: Session):
                 "topic": f"Study session on {subject.name}",
                 "hourly_rate": float(tutor.hourly_rate),
                 "total_amount": float(tutor.hourly_rate * Decimal((end_time - start_time).total_seconds() / 3600)),
-                "tutor_name": f"Dr. {tutor.user.email.split('@')[0].title()}",
-                "student_name": student.email.split("@")[0].title(),
+                "tutor_name": tutor_name,
+                "student_name": student_name,
                 "subject_name": subject.name,
             },
         )

@@ -18,9 +18,9 @@ class UserCreate(BaseModel):
     """Schema for user registration."""
 
     email: EmailStr
-    password: str = Field(..., min_length=6, max_length=128)
-    first_name: str = Field(..., min_length=1, max_length=100)
-    last_name: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=8, max_length=128)
+    first_name: str | None = Field(None, min_length=1, max_length=100)
+    last_name: str | None = Field(None, min_length=1, max_length=100)
     role: str | None = Field(default="student")
     timezone: str | None = Field(default="UTC")
     currency: str | None = Field(default="USD")
@@ -98,8 +98,8 @@ class UserResponse(BaseModel):
 
     id: int
     email: str
-    first_name: str | None = None
-    last_name: str | None = None
+    first_name: str | None = Field(None, min_length=1, max_length=100)
+    last_name: str | None = Field(None, min_length=1, max_length=100)
     role: str
     is_active: bool
     is_verified: bool
@@ -128,8 +128,6 @@ class UserResponse(BaseModel):
 class UserProfileUpdate(BaseModel):
     """Update user profile."""
 
-    first_name: str | None = None
-    last_name: str | None = None
     phone: str | None = None
     bio: str | None = None
     timezone: str | None = None
@@ -155,8 +153,6 @@ class UserProfileResponse(BaseModel):
     """User profile response."""
 
     id: int
-    first_name: str | None
-    last_name: str | None
     phone: str | None
     bio: str | None
     timezone: str
@@ -427,8 +423,7 @@ class TutorProfileResponse(BaseModel):
 
     id: int
     user_id: int
-    first_name: str | None = None
-    last_name: str | None = None
+    name: str
     title: str
     headline: str | None
     bio: str | None
@@ -460,8 +455,6 @@ class TutorPublicProfile(BaseModel):
     """Public tutor profile (for listings)."""
 
     id: int
-    first_name: str | None = None
-    last_name: str | None = None
     title: str
     headline: str | None
     bio: str | None
@@ -483,8 +476,6 @@ class TutorPublicProfile(BaseModel):
 class StudentProfileUpdate(BaseModel):
     """Update student profile."""
 
-    first_name: str | None = None
-    last_name: str | None = None
     phone: str | None = None
     bio: str | None = None
     grade_level: str | None = None
@@ -498,8 +489,6 @@ class StudentProfileResponse(BaseModel):
 
     id: int
     user_id: int
-    first_name: str | None
-    last_name: str | None
     phone: str | None
     bio: str | None
     grade_level: str | None
@@ -735,6 +724,15 @@ class UserUpdate(BaseModel):
         if v and v not in ["student", "tutor", "admin"]:
             raise ValueError("Role must be student, tutor, or admin")
         return v
+
+
+class UserSelfUpdate(BaseModel):
+    """User self-update for basic profile information."""
+
+    first_name: str | None = Field(None, min_length=1, max_length=100)
+    last_name: str | None = Field(None, min_length=1, max_length=100)
+    timezone: str | None = None
+    currency: str | None = None
 
 
 class ReportCreate(BaseModel):

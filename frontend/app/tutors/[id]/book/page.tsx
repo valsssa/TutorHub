@@ -121,7 +121,7 @@ function BookingPageContent() {
     setSubmitting(true);
     try {
       await bookings.create({
-        tutor_id: tutor.id,
+        tutor_profile_id: tutor.id,
         subject_id: selectedSubjectId,
         start_at: startDate.toISOString(),
         duration_minutes: duration,
@@ -129,7 +129,11 @@ function BookingPageContent() {
       });
 
       showSuccess("Booking confirmed! Check your email for details.");
-      router.push("/bookings");
+
+      // Use setTimeout to ensure toast is shown before redirect
+      setTimeout(() => {
+        router.replace("/bookings");
+      }, 100);
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.detail || "Failed to create booking";

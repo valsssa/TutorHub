@@ -53,6 +53,18 @@ class StringUtils:
             return text
         return text[: max_length - len(suffix)] + suffix
 
+    @staticmethod
+    def format_display_name(first_name: str | None, last_name: str | None, fallback: str | None = None) -> str:
+        """
+        Centralized utility for formatting display names.
+
+        Combines first and last name, or returns fallback if no names available.
+        Used consistently across the application for name display.
+        """
+        if first_name or last_name:
+            return f"{first_name or ''} {last_name or ''}".strip()
+        return fallback or ""
+
 
 class ValidationUtils:
     """Common validation utilities."""

@@ -260,10 +260,8 @@ export default function TutorProfileView({
   };
 
   // Tutor display info
-  const displayName = tutor.first_name && tutor.last_name
-    ? `${tutor.first_name} ${tutor.last_name}`
-    : tutor.title;
-  const firstName = tutor.first_name || tutor.title.split(" ")[0];
+  const displayName = tutor.name?.trim() || tutor.title;
+  const firstName = tutor.name?.split(" ")[0] || tutor.title.split(" ")[0];
   const isVerified = tutor.is_approved;
   const averageRating = Number(tutor.average_rating);
   const totalReviews = tutor.total_reviews || reviews.length;

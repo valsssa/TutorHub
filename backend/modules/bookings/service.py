@@ -3,7 +3,7 @@ Booking service with state machine logic and conflict checking.
 Implements core booking business logic per booking_detail.md spec.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -11,6 +11,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from core.currency import calculate_platform_fee
+from core.utils import StringUtils
 from models import Booking, StudentPackage, TutorBlackout, TutorProfile, User
 from modules.bookings.policy_engine import CancellationPolicy, NoShowPolicy
 from modules.bookings.schemas import BookingDTO, StudentInfoDTO, TutorInfoDTO
@@ -65,7 +66,7 @@ class BookingService:
     def create_booking(
         self,
         student_id: int,
-        tutor_id: int,
+        tutor_profile_id: int,
         start_at: datetime,
         duration_minutes: int,
         lesson_type: str = "REGULAR",
@@ -80,8 +81,12 @@ class BookingService:
             HTTPException: If validation fails or conflicts exist
         """
         # 1. Validate inputs
+        # Ensure start_at is timezone-aware (convert to UTC if naive)
+        if start_at.tzinfo is None:
+            start_at = start_at.replace(tzinfo=UTC)
+
         end_at = start_at + timedelta(minutes=duration_minutes)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if start_at <= now:
             raise HTTPException(
@@ -90,7 +95,7 @@ class BookingService:
             )
 
         # 2. Get tutor profile
-        tutor_profile = self.db.query(TutorProfile).join(User).filter(User.id == tutor_id).first()
+        tutor_profile = self.db.query(TutorProfile).filter(TutorProfile.id == tutor_profile_id).first()
         if not tutor_profile:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -106,7 +111,7 @@ class BookingService:
             )
 
         # 4. Check for conflicts
-        conflicts = self.check_conflicts(tutor_id, start_at, end_at)
+        conflicts = self.check_conflicts(tutor_profile_id, start_at, end_at)
         if conflicts:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -125,31 +130,30 @@ class BookingService:
         # 7. Determine initial status
         initial_status = "CONFIRMED" if tutor_profile.auto_confirm else "PENDING"
 
-        # 8. Create booking
+        # 8. Create booking (using actual schema fields)
         booking = Booking(
             tutor_profile_id=tutor_profile.id,
             student_id=student_id,
             subject_id=subject_id,
-            package_id=package_id,
+            # package_id not in production schema (requires migration)
             start_time=start_at,
             end_time=end_at,
             status=initial_status,
             lesson_type=lesson_type,
-            student_tz=student_tz,
-            tutor_tz=tutor_tz,
-            notes_student=notes_student,
-            rate_cents=rate_cents,
-            currency=tutor_profile.currency,
-            platform_fee_pct=self.PLATFORM_FEE_PCT,
-            platform_fee_cents=platform_fee_cents,
-            tutor_earnings_cents=tutor_earnings_cents,
+            notes=notes_student,
+            # Use actual schema fields for pricing
+            hourly_rate=tutor_profile.hourly_rate,
+            total_amount=Decimal(rate_cents) / 100,
+            pricing_type="hourly",
             created_by="STUDENT",
-            # Snapshot fields
-            tutor_name=f"{tutor_profile.user.profile.first_name or ''} {tutor_profile.user.profile.last_name or ''}".strip()
-            or tutor_profile.user.email,
+            # Snapshot fields - names now accessed directly from users table
+            tutor_name=StringUtils.format_display_name(
+                tutor_profile.user.first_name, tutor_profile.user.last_name, tutor_profile.user.email
+            ),
             tutor_title=tutor_profile.title,
-            student_name=f"{student.profile.first_name or ''} {student.profile.last_name or ''}".strip()
-            or student.email,
+            student_name=StringUtils.format_display_name(
+                student.first_name, student.last_name, student.email
+            ),
         )
 
         # 9. If auto-confirm, generate join URL
@@ -171,7 +175,7 @@ class BookingService:
 
     def check_conflicts(
         self,
-        tutor_id: int,
+        tutor_profile_id: int,
         start_at: datetime,
         end_at: datetime,
         exclude_booking_id: int | None = None,
@@ -183,9 +187,12 @@ class BookingService:
             Empty string if no conflicts, error message otherwise
         """
         # Check for overlapping bookings
+        tutor_profile = self.db.query(TutorProfile).filter(TutorProfile.id == tutor_profile_id).first()
+        if not tutor_profile:
+            return ""  # No tutor profile means no conflicts
+
         query = self.db.query(Booking).filter(
-            Booking.tutor_profile_id == TutorProfile.id,
-            TutorProfile.user_id == tutor_id,
+            Booking.tutor_profile_id == tutor_profile.id,
             Booking.status.in_(["PENDING", "CONFIRMED"]),
             or_(
                 and_(Booking.start_time <= start_at, Booking.end_time > start_at),
@@ -205,7 +212,7 @@ class BookingService:
         blackout = (
             self.db.query(TutorBlackout)
             .filter(
-                TutorBlackout.tutor_id == tutor_id,
+                TutorBlackout.tutor_id == tutor_profile.user_id,
                 or_(
                     and_(
                         TutorBlackout.start_at <= start_at,
@@ -226,12 +233,12 @@ class BookingService:
         # Check availability windows
         from models import TutorAvailability
 
-        day_of_week = start_at.weekday()  # Monday=0, Sunday=6
+        # Convert Python weekday (Mon=0, Sun=6) to JS convention (Sun=0, Sat=6)
+        # This matches the convention used in availability_api.py
+        python_weekday = start_at.weekday()  # Monday=0, Sunday=6
+        day_of_week = (python_weekday + 1) % 7  # Convert to Sunday=0, Saturday=6
         start_time = start_at.time()
         end_time = end_at.time()
-
-        # Get tutor profile to access availabilities
-        tutor_profile = self.db.query(TutorProfile).filter(TutorProfile.user_id == tutor_id).first()
 
         if tutor_profile:
             # Check if there's an availability slot covering this time
@@ -264,7 +271,7 @@ class BookingService:
             cancelled_by_role: "STUDENT" or "TUTOR"
             reason: Optional cancellation reason
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Validate transition
         new_status = f"CANCELLED_BY_{cancelled_by_role}"
@@ -319,7 +326,7 @@ class BookingService:
 
     def mark_no_show(self, booking: Booking, reporter_role: str, notes: str | None = None) -> Booking:
         """Mark a booking as no-show."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Validate with policy
         decision = NoShowPolicy.evaluate_no_show_report(
@@ -443,9 +450,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     tutor_user_profile = tutor_user.profile if tutor_user else None
 
     tutor_name = booking.tutor_name or (
-        f"{tutor_user_profile.first_name or ''} {tutor_user_profile.last_name or ''}".strip()
-        if tutor_user_profile
-        else tutor_user.email
+        StringUtils.format_display_name(tutor_user.first_name, tutor_user.last_name, "Unknown")
         if tutor_user
         else "Unknown"
     )
@@ -453,7 +458,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     tutor_info = TutorInfoDTO(
         id=tutor_user.id if tutor_user else 0,
         name=tutor_name,
-        avatar_url=tutor_user_profile.avatar_url if tutor_user_profile else None,
+        avatar_url=tutor_user.avatar_key if tutor_user else None,
         rating_avg=tutor_profile.average_rating if tutor_profile else Decimal("0.00"),
         title=booking.tutor_title or (tutor_profile.title if tutor_profile else None),
     )
@@ -463,9 +468,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     student_profile = student.profile if student else None
 
     student_name = booking.student_name or (
-        f"{student_profile.first_name or ''} {student_profile.last_name or ''}".strip()
-        if student_profile
-        else student.email
+        StringUtils.format_display_name(student.first_name, student.last_name, "Unknown")
         if student
         else "Unknown"
     )
@@ -473,9 +476,20 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     student_info = StudentInfoDTO(
         id=student.id if student else 0,
         name=student_name,
-        avatar_url=student_profile.avatar_url if student_profile else None,
+        avatar_url=student.avatar_key if student else None,
         level=None,  # TODO: Add student level field if needed
     )
+
+    # Get timezones from user profiles
+    student_tz = student.timezone if student else "UTC"
+    tutor_tz = tutor_user.timezone if tutor_user else "UTC"
+
+    # Calculate pricing fields from actual schema fields
+    hourly_rate_cents = int((booking.hourly_rate or Decimal("0")) * 100)
+    total_amount_cents = int((booking.total_amount or Decimal("0")) * 100)
+    platform_fee_pct = Decimal("20.0")
+    platform_fee_cents = int(total_amount_cents * platform_fee_pct / 100)
+    tutor_earnings_cents = total_amount_cents - platform_fee_cents
 
     # Use booking fields directly (they are already denormalized/calculated)
     return BookingDTO(
@@ -484,16 +498,16 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
         status=booking.status or "pending",
         start_at=booking.start_time,
         end_at=booking.end_time,
-        student_tz=booking.student_tz or "UTC",
-        tutor_tz=booking.tutor_tz or "UTC",
-        rate_cents=booking.rate_cents or 0,
-        currency=booking.currency or "USD",
-        platform_fee_pct=booking.platform_fee_pct or Decimal("20.0"),
-        platform_fee_cents=booking.platform_fee_cents or 0,
-        tutor_earnings_cents=booking.tutor_earnings_cents or 0,
+        student_tz=student_tz,
+        tutor_tz=tutor_tz,
+        rate_cents=hourly_rate_cents,
+        currency="USD",  # Default currency (should be in config)
+        platform_fee_pct=platform_fee_pct,
+        platform_fee_cents=platform_fee_cents,
+        tutor_earnings_cents=tutor_earnings_cents,
         join_url=booking.join_url,
-        notes_student=booking.notes_student or booking.notes,
-        notes_tutor=booking.notes_tutor,
+        notes_student=booking.notes,
+        notes_tutor=None,  # Not in current schema
         tutor=tutor_info,
         student=student_info,
         subject_name=booking.subject_name or (booking.subject.name if booking.subject else None),

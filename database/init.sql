@@ -55,11 +55,10 @@ CREATE INDEX IF NOT EXISTS idx_users_last_name ON users(last_name);
 CREATE INDEX IF NOT EXISTS idx_users_full_name ON users(first_name, last_name);
 
 -- Extended user profiles (avatar_url removed - using users.avatar_key)
+-- NOTE: first_name/last_name removed in Migration 021 (Phase 1.2) - names now stored only in users table
 CREATE TABLE IF NOT EXISTS user_profiles (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
     phone VARCHAR(20),
     bio TEXT,
     timezone VARCHAR(64) DEFAULT 'UTC',
@@ -268,11 +267,10 @@ CREATE INDEX IF NOT EXISTS idx_tutor_pricing_sort ON tutor_pricing_options(tutor
 -- ============================================================================
 
 -- Student profiles (with additional fields from migration 019)
+-- NOTE: first_name/last_name removed in Migration 021 (Phase 1.2) - names now stored only in users table
 CREATE TABLE IF NOT EXISTS student_profiles (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
     phone VARCHAR(50),
     bio TEXT,
     interests TEXT,
@@ -289,8 +287,6 @@ CREATE TABLE IF NOT EXISTS student_profiles (
 );
 
 CREATE INDEX IF NOT EXISTS idx_student_profiles_user_id ON student_profiles(user_id);
-CREATE INDEX IF NOT EXISTS idx_student_profiles_first_name ON student_profiles(first_name);
-CREATE INDEX IF NOT EXISTS idx_student_profiles_last_name ON student_profiles(last_name);
 
 -- Student package credits/subscriptions
 CREATE TABLE IF NOT EXISTS student_packages (

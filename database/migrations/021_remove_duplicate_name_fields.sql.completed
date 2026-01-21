@@ -1,0 +1,113 @@
+-- ============================================================================
+-- Migration 021: Remove Duplicate Name Fields
+-- Phase 1.2: Remove duplicate first_name/last_name from profile tables
+-- ============================================================================
+
+-- This migration removes duplicate name fields from user_profiles and student_profiles tables
+-- as part of consolidating all user names to a single source of truth in the users table.
+
+-- Pre-migration verification: Ensure backup exists
+DO $$
+DECLARE
+    backup_schema_exists BOOLEAN;
+    users_backup_count INTEGER;
+BEGIN
+    -- Check if backup schema exists
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.schemata WHERE schema_name = 'naming_backup'
+    ) INTO backup_schema_exists;
+
+    IF NOT backup_schema_exists THEN
+        RAISE EXCEPTION 'Backup schema naming_backup does not exist. Run Phase 1.1 backup first.';
+    END IF;
+
+    -- Check if backup tables have data
+    SELECT COUNT(*) INTO users_backup_count FROM naming_backup.backup_users_names;
+
+    RAISE NOTICE 'Backup verification passed. Backup contains % user records.', users_backup_count;
+END $$;
+
+-- Remove duplicate name fields from user_profiles table
+-- These fields are redundant since names will be stored only in users table
+ALTER TABLE user_profiles DROP COLUMN IF EXISTS first_name;
+ALTER TABLE user_profiles DROP COLUMN IF EXISTS last_name;
+
+-- Remove duplicate name fields from student_profiles table
+-- These fields are redundant since names will be stored only in users table
+ALTER TABLE student_profiles DROP COLUMN IF EXISTS first_name;
+ALTER TABLE student_profiles DROP COLUMN IF EXISTS last_name;
+
+-- Remove duplicate indexes that were created for the name fields
+-- These indexes are no longer needed and will be removed
+DROP INDEX IF EXISTS idx_user_profiles_first_name;
+DROP INDEX IF EXISTS idx_user_profiles_last_name;
+DROP INDEX IF EXISTS idx_user_profiles_full_name;
+DROP INDEX IF EXISTS idx_student_profiles_first_name;
+DROP INDEX IF EXISTS idx_student_profiles_last_name;
+
+-- Post-migration verification
+DO $$
+DECLARE
+    user_profiles_has_names BOOLEAN;
+    student_profiles_has_names BOOLEAN;
+BEGIN
+    -- Verify user_profiles no longer has name columns
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'user_profiles'
+        AND column_name IN ('first_name', 'last_name')
+    ) INTO user_profiles_has_names;
+
+    -- Verify student_profiles no longer has name columns
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'student_profiles'
+        AND column_name IN ('first_name', 'last_name')
+    ) INTO student_profiles_has_names;
+
+    IF user_profiles_has_names THEN
+        RAISE EXCEPTION 'Migration failed: user_profiles still contains name columns';
+    END IF;
+
+    IF student_profiles_has_names THEN
+        RAISE EXCEPTION 'Migration failed: student_profiles still contains name columns';
+    END IF;
+
+    RAISE NOTICE 'Migration 021 completed successfully: Duplicate name fields removed from profile tables';
+END $$;
+
+-- ============================================================================
+-- Migration Metadata
+-- ============================================================================
+
+/*
+Migration: 021_remove_duplicate_name_fields
+Date: January 21, 2026
+Phase: 1.2 - Remove Duplicate Name Fields
+
+Changes Made:
+- Removed first_name, last_name columns from user_profiles table
+- Removed first_name, last_name columns from student_profiles table
+- Removed associated indexes: idx_user_profiles_first_name, idx_user_profiles_last_name,
+  idx_user_profiles_full_name, idx_student_profiles_first_name, idx_student_profiles_last_name
+
+Verification:
+- Backup created in Phase 1.1 (naming_backup schema)
+- Profile tables no longer contain duplicate name fields
+- Users table remains unchanged (single source of truth)
+
+Next Steps:
+- Phase 1.3: Migrate any existing profile names to users table (if any exist)
+- Phase 2.1: Update Pydantic schemas to remove name fields from profile models
+
+Rollback Instructions:
+1. Restore from Phase 1.1 backup
+2. Recreate name columns: ALTER TABLE user_profiles ADD COLUMN first_name VARCHAR(100);
+3. Recreate name columns: ALTER TABLE student_profiles ADD COLUMN first_name VARCHAR(100);
+4. Restore data from naming_backup.backup_user_profiles_names and backup_student_profiles_names
+
+Risk Assessment:
+- LOW: Removing duplicate fields (data preserved in backup)
+- LOW: No active data in current system (confirmed via audit)
+- MEDIUM: Schema changes require application updates before use
+*/

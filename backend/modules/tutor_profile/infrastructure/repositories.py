@@ -174,16 +174,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         profile.experience_years = experience_years
         profile.languages = languages or []
 
-        # Sync first_name and last_name to User table for display in tutor cards and messages
-        if first_name is not None or last_name is not None:
-            user = db.query(User).filter(User.id == user_id).first()
-            if user:
-                if first_name is not None:
-                    user.first_name = first_name.strip()
-                if last_name is not None:
-                    user.last_name = last_name.strip()
-                user.updated_at = datetime.now(UTC)
-
+        # NOTE: first_name/last_name sync removed - names now stored directly in users table
         profile.updated_at = datetime.now(UTC)
         db.commit()
         return self._aggregate_from_db(db, profile.id)

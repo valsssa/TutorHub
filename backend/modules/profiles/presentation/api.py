@@ -72,20 +72,9 @@ async def update_my_profile(
             update_data["bio"] = sanitize_text_input(update_data["bio"], max_length=1000)
 
         # Apply updates to profile
+        # NOTE: first_name/last_name removed from UserProfile in Phase 1.2 - names now stored in users table
         for field, value in update_data.items():
             setattr(profile, field, value)
-
-        # Sync first_name and last_name to User table for display in tutor cards and messages
-        if "first_name" in update_data or "last_name" in update_data:
-            user = db.query(User).filter(User.id == current_user.id).first()
-            if user:
-                if "first_name" in update_data:
-                    user.first_name = update_data["first_name"]
-                if "last_name" in update_data:
-                    user.last_name = update_data["last_name"]
-
-                from datetime import datetime
-                user.updated_at = datetime.now(UTC)
 
         # Update timestamp in application code (no DB triggers)
         from datetime import datetime

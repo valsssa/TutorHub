@@ -80,34 +80,55 @@ async def create_default_users():
         # Create admin
         admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@example.com")
         logger.debug(f"Checking for admin user: {admin_email}")
-        if not db.query(User).filter(User.email == admin_email).first():
+        existing_admin = db.query(User).filter(User.email == admin_email).first()
+        if not existing_admin:
             admin = User(
                 email=admin_email,
                 hashed_password=get_password_hash(os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")),
                 role="admin",
                 is_verified=True,
+                first_name="Admin",
+                last_name="User",
             )
             db.add(admin)
             logger.info(f"Created default admin: {admin_email}")
         else:
-            logger.debug(f"Admin user already exists: {admin_email}")
+            # Update existing admin if missing names
+            logger.debug(f"Admin exists, first_name: '{existing_admin.first_name}', last_name: '{existing_admin.last_name}'")
+            if not existing_admin.first_name or not existing_admin.last_name:
+                existing_admin.first_name = existing_admin.first_name or "Admin"
+                existing_admin.last_name = existing_admin.last_name or "User"
+                logger.info(f"Updated default admin with names: {admin_email}")
+            else:
+                logger.debug(f"Admin user already exists with names: {admin_email}")
 
         # Create student
         student_email = os.getenv("DEFAULT_STUDENT_EMAIL", "student@example.com")
         logger.debug(f"Checking for student user: {student_email}")
-        if not db.query(User).filter(User.email == student_email).first():
+        existing_student = db.query(User).filter(User.email == student_email).first()
+        if not existing_student:
             student = User(
                 email=student_email,
                 hashed_password=get_password_hash(os.getenv("DEFAULT_STUDENT_PASSWORD", "student123")),
                 role="student",
                 is_verified=True,
+                first_name="Demo",
+                last_name="Student",
             )
             db.add(student)
             logger.info(f"Created default student: {student_email}")
         else:
-            logger.debug(f"Student user already exists: {student_email}")
+            # Update existing student if missing names
+            logger.debug(f"Student exists, first_name: '{existing_student.first_name}', last_name: '{existing_student.last_name}'")
+            if not existing_student.first_name or not existing_student.last_name:
+                existing_student.first_name = existing_student.first_name or "Demo"
+                existing_student.last_name = existing_student.last_name or "Student"
+                logger.info(f"Updated default student with names: {student_email}")
+                db.commit()  # Commit immediately after update
+            else:
+                logger.debug(f"Student user already exists with names: {student_email}")
 
-        # Commit non-tutor users first
+        # Commit non-tutor users first (in case new users were added)
         db.commit()
 
         # Create tutor (with proper profile creation via DDD event handler)
@@ -121,6 +142,8 @@ async def create_default_users():
                 hashed_password=get_password_hash(os.getenv("DEFAULT_TUTOR_PASSWORD", "tutor123")),
                 role="student",  # Start as student, then change to tutor
                 is_verified=True,
+                first_name="Demo",
+                last_name="Tutor",
             )
             db.add(tutor)
             db.flush()  # Get user ID

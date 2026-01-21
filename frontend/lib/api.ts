@@ -458,6 +458,23 @@ export const auth = {
       throw error;
     }
   },
+
+  async updateUser(updates: {
+    first_name?: string;
+    last_name?: string;
+    timezone?: string;
+    currency?: string;
+  }): Promise<User> {
+    logger.info(`Updating user: ${Object.keys(updates).join(", ")}`);
+    try {
+      const { data } = await api.put<User>("/api/auth/me", updates);
+      logger.info(`User updated successfully`);
+      return normalizeUser(data);
+    } catch (error) {
+      logger.error("Failed to update user", error);
+      throw error;
+    }
+  },
 };
 
 // ============================================================================

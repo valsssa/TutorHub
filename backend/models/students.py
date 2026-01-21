@@ -23,8 +23,6 @@ class StudentProfile(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
-    first_name = Column(String(100))
-    last_name = Column(String(100))
     phone = Column(String(50))
     bio = Column(Text)
     grade_level = Column(String(50))

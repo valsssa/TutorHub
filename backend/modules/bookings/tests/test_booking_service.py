@@ -80,6 +80,10 @@ def test_tutor(db_session):
     return tutor
 
 
+def _get_tutor_profile(session, tutor_user):
+    return session.query(TutorProfile).filter(TutorProfile.user_id == tutor_user.id).first()
+
+
 # ============================================================================
 # State Machine Tests
 # ============================================================================
@@ -121,10 +125,11 @@ class TestBookingCreation:
         service = BookingService(db_session)
 
         start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=60,
             lesson_type="REGULAR",
@@ -141,7 +146,7 @@ class TestBookingCreation:
 
     def test_create_booking_with_auto_confirm(self, db_session, test_student, test_tutor):
         """Test booking creation with auto-confirm enabled."""
-        tutor_profile = db_session.query(TutorProfile).filter(TutorProfile.user_id == test_tutor.id).first()
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
         tutor_profile.auto_confirm = True
         db_session.commit()
 
@@ -150,7 +155,7 @@ class TestBookingCreation:
 
         booking = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=60,
         )
@@ -162,10 +167,11 @@ class TestBookingCreation:
         """Test pro-rated pricing for 30-minute session."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=30,
         )
@@ -174,7 +180,7 @@ class TestBookingCreation:
 
     def test_create_trial_booking_with_special_price(self, db_session, test_student, test_tutor):
         """Test trial booking with special pricing."""
-        tutor_profile = db_session.query(TutorProfile).filter(TutorProfile.user_id == test_tutor.id).first()
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
         tutor_profile.trial_price_cents = 1000  # $10 trial
         db_session.commit()
 
@@ -183,7 +189,7 @@ class TestBookingCreation:
 
         booking = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=30,
             lesson_type="TRIAL",
@@ -200,9 +206,10 @@ class TestBookingCreation:
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
+            tutor_profile = _get_tutor_profile(db_session, test_tutor)
             service.create_booking(
                 student_id=test_student.id,
-                tutor_id=test_tutor.id,
+                tutor_profile_id=tutor_profile.id,
                 start_at=start_at,
                 duration_minutes=60,
             )
@@ -223,9 +230,10 @@ class TestConflictChecking:
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(days=1)
         end_at = start_at + timedelta(hours=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         conflicts = service.check_conflicts(
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             end_at=end_at,
         )
@@ -236,11 +244,12 @@ class TestConflictChecking:
         """Detect conflict with existing booking."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         # Create first booking
         _ = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=60,
         )
@@ -248,7 +257,7 @@ class TestConflictChecking:
 
         # Try to create overlapping booking
         conflicts = service.check_conflicts(
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at + timedelta(minutes=30),  # Overlaps
             end_at=start_at + timedelta(minutes=90),
         )
@@ -260,11 +269,12 @@ class TestConflictChecking:
         """Adjacent bookings should not conflict."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         # Create first booking
         _ = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=60,
         )
@@ -272,7 +282,7 @@ class TestConflictChecking:
 
         # Create adjacent booking (starts when first ends)
         conflicts = service.check_conflicts(
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at + timedelta(hours=1),
             end_at=start_at + timedelta(hours=2),
         )
@@ -292,10 +302,11 @@ class TestCancellation:
         """Student cancels 24h before: allowed with refund."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=60,
         )
@@ -314,17 +325,18 @@ class TestCancellation:
         """Tutor cancels < 12h: gets penalty strike."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(hours=6)  # 6h away
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=60,
         )
         booking.status = "CONFIRMED"
         db_session.commit()
 
-        tutor_profile = db_session.query(TutorProfile).filter(TutorProfile.user_id == test_tutor.id).first()
+        # Reuse tutor_profile from above for strike tracking
         initial_strikes = tutor_profile.cancellation_strikes or 0
 
         _ = service.cancel_booking(
@@ -350,10 +362,11 @@ class TestNoShow:
         """Tutor marks student no-show after 10min grace."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() - timedelta(minutes=15)  # Started 15 min ago
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
             student_id=test_student.id,
-            tutor_id=test_tutor.id,
+            tutor_profile_id=tutor_profile.id,
             start_at=start_at,
             duration_minutes=60,
         )

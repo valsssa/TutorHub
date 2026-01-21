@@ -12,6 +12,7 @@ class TestCreateBooking:
         """Test successful booking creation by student."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time + timedelta(hours=2)
+        duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
         response = client.post(
             "/api/bookings",
@@ -19,8 +20,8 @@ class TestCreateBooking:
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "subject_id": test_subject.id,
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
+                "start_at": start_time.isoformat(),
+                "duration_minutes": duration_minutes,
                 "topic": "Algebra basics",
                 "notes": "Need help with quadratic equations",
             },
@@ -35,6 +36,7 @@ class TestCreateBooking:
         """Test tutor cannot create booking."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
+        duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
         response = client.post(
             "/api/bookings",
@@ -42,16 +44,15 @@ class TestCreateBooking:
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "subject_id": test_subject.id,
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
+                "start_at": start_time.isoformat(),
+                "duration_minutes": duration_minutes,
             },
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_booking_invalid_duration(self, client, student_token, tutor_user, test_subject):
-        """Test booking with invalid duration (end before start)."""
+        """Test booking with invalid (too short) duration."""
         start_time = datetime.utcnow() + timedelta(days=1)
-        end_time = start_time - timedelta(hours=1)  # Invalid
 
         response = client.post(
             "/api/bookings",
@@ -59,16 +60,17 @@ class TestCreateBooking:
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "subject_id": test_subject.id,
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
+                "start_at": start_time.isoformat(),
+                "duration_minutes": 10,
             },
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_create_booking_too_long(self, client, student_token, tutor_user, test_subject):
         """Test booking exceeding 8 hours."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time + timedelta(hours=9)  # Too long
+        duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
         response = client.post(
             "/api/bookings",
@@ -76,16 +78,17 @@ class TestCreateBooking:
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "subject_id": test_subject.id,
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
+                "start_at": start_time.isoformat(),
+                "duration_minutes": duration_minutes,
             },
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_create_booking_nonexistent_tutor(self, client, student_token, test_subject):
         """Test booking with nonexistent tutor."""
         start_time = datetime.utcnow() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
+        duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
         response = client.post(
             "/api/bookings",
@@ -93,8 +96,8 @@ class TestCreateBooking:
             json={
                 "tutor_profile_id": 99999,  # Nonexistent
                 "subject_id": test_subject.id,
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
+                "start_at": start_time.isoformat(),
+                "duration_minutes": duration_minutes,
             },
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
