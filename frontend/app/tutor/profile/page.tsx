@@ -553,7 +553,7 @@ function TutorProfileContent() {
       ...prev,
       {
         subject_id: defaultSubjectId,
-        proficiency_level: "b2",
+        proficiency_level: "B2",
         years_experience: 0,
       },
     ]);
@@ -993,13 +993,13 @@ function TutorProfileContent() {
                       }
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      <option value="a1">A1 - Beginner</option>
-                      <option value="a2">A2 - Elementary</option>
-                      <option value="b1">B1 - Intermediate</option>
-                      <option value="b2">B2 - Upper Intermediate</option>
-                      <option value="c1">C1 - Advanced</option>
-                      <option value="c2">C2 - Mastery</option>
-                      <option value="native">Native</option>
+                      <option value="A1">A1 - Beginner</option>
+                      <option value="A2">A2 - Elementary</option>
+                      <option value="B1">B1 - Intermediate</option>
+                      <option value="B2">B2 - Upper Intermediate</option>
+                      <option value="C1">C1 - Advanced</option>
+                      <option value="C2">C2 - Mastery</option>
+                      <option value="Native">Native</option>
                     </select>
                   </div>
                   <div className="flex gap-2">

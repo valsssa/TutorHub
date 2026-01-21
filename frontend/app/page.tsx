@@ -21,8 +21,10 @@ export default function HomePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [featuredTutors, setFeaturedTutors] = useState<TutorPublicSummary[]>([]);
+  const [filteredTutors, setFilteredTutors] = useState<TutorPublicSummary[]>([]);
   const [subjectsList, setSubjectsList] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filtering, setFiltering] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Search section state
@@ -38,20 +40,22 @@ export default function HomePage() {
 
   useEffect(() => {
     const token = Cookies.get("token");
-    
+
     const loadData = async () => {
       try {
         if (token) {
           const user = await auth.getCurrentUser();
           setCurrentUser(user);
         }
-        
+
         const [tutorsList, subjectsData] = await Promise.all([
           tutors.list({ sort_by: "rating", page_size: 6 }),
           subjects.list()
         ]);
 
         setFeaturedTutors(tutorsList.items);
+        setFilteredTutors(tutorsList.items); // Initially show featured tutors
+        setResultsCount(tutorsList.total || tutorsList.items.length);
         setSubjectsList(subjectsData);
       } catch (error) {
         console.error("Error loading homepage data:", error);
@@ -62,6 +66,59 @@ export default function HomePage() {
 
     loadData();
   }, []);
+
+  // Function to fetch filtered tutors
+  const fetchFilteredTutors = async () => {
+    setFiltering(true);
+    try {
+      const params: any = {
+        sort_by: sortBy,
+        page_size: 12, // Show more tutors when filtering
+      };
+
+      if (searchQuery.trim()) {
+        params.search_query = searchQuery;
+      }
+
+      if (selectedSubject) {
+        params.subject_id = selectedSubject;
+      }
+
+      if (priceRange[0] !== PRICE_LIMITS.min) {
+        params.min_rate = priceRange[0];
+      }
+
+      if (priceRange[1] !== PRICE_LIMITS.max) {
+        params.max_rate = priceRange[1];
+      }
+
+      if (minRating) {
+        params.min_rating = minRating;
+      }
+
+      if (minExperience) {
+        params.min_experience = minExperience;
+      }
+
+      const response = await tutors.list(params);
+      setFilteredTutors(response.items);
+      setResultsCount(response.total || response.items.length);
+    } catch (error) {
+      console.error("Error fetching filtered tutors:", error);
+      // Fallback to featured tutors if filtering fails
+      setFilteredTutors(featuredTutors);
+      setResultsCount(featuredTutors.length);
+    } finally {
+      setFiltering(false);
+    }
+  };
+
+  // Effect to trigger filtering when filters change
+  useEffect(() => {
+    if (!loading) {
+      fetchFilteredTutors();
+    }
+  }, [selectedSubject, priceRange, minRating, minExperience, sortBy, searchQuery]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -96,39 +153,48 @@ export default function HomePage() {
     setSearchQuery(term);
   };
 
-  const handleSearchUpdate = () => {
-    const params = new URLSearchParams();
+  // Helper functions for dynamic titles and subtitles
+  const hasActiveFilters = () => {
+    return (
+      selectedSubject ||
+      priceRange[0] !== PRICE_LIMITS.min ||
+      priceRange[1] !== PRICE_LIMITS.max ||
+      minRating ||
+      minExperience ||
+      searchQuery.trim()
+    );
+  };
 
+  const getTutorsSectionTitle = () => {
     if (searchQuery.trim()) {
-      params.set('search', searchQuery);
+      return `Tutors for "${searchQuery}"`;
     }
-
     if (selectedSubject) {
-      params.set('subject', selectedSubject.toString());
+      const subject = subjectsList.find(s => s.id === selectedSubject);
+      return subject ? `${subject.name} Tutors` : "Filtered Tutors";
     }
-
-    if (priceRange[0] !== PRICE_LIMITS.min) {
-      params.set('min_price', priceRange[0].toString());
-    }
-
-    if (priceRange[1] !== PRICE_LIMITS.max) {
-      params.set('max_price', priceRange[1].toString());
-    }
-
     if (minRating) {
-      params.set('min_rating', minRating.toString());
+      return `${minRating}+ Star Tutors`;
     }
-
     if (minExperience) {
-      params.set('min_experience', minExperience.toString());
+      return `Experienced Tutors`;
     }
+    return "Available Tutors";
+  };
 
-    if (sortBy !== 'rating') {
-      params.set('sort_by', sortBy);
+  const getTutorsSectionSubtitle = () => {
+    if (searchQuery.trim()) {
+      return "Matching your search criteria";
     }
+    if (hasActiveFilters()) {
+      return "Filtered results based on your preferences";
+    }
+    return "Browse our selection of qualified tutors";
+  };
 
-    const queryString = params.toString();
-    router.push(queryString ? `/tutors?${queryString}` : '/tutors');
+  const handleSearchUpdate = () => {
+    // Instead of redirecting, trigger filtering on the homepage
+    fetchFilteredTutors();
   };
 
   if (loading) {
@@ -315,8 +381,58 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Tutors */}
-      {featuredTutors.length > 0 && (
+      {/* Tutors Grid */}
+      {(filteredTutors.length > 0 || filtering) && (
+        <section className="py-16 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+                {filtering ? "Searching Tutors..." : getTutorsSectionTitle()}
+              </h2>
+              <p className="text-xl text-slate-600 dark:text-slate-400">
+                {filtering ? "Finding the perfect match for you" : getTutorsSectionSubtitle()}
+              </p>
+              {!filtering && resultsCount > 0 && (
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                  Showing {resultsCount} tutor{resultsCount !== 1 ? 's' : ''}
+                </p>
+              )}
+            </motion.div>
+
+            {filtering ? (
+              <div className="flex justify-center items-center py-12">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  {filteredTutors.map((tutor) => (
+                    <TutorCard key={tutor.id} tutor={tutor} />
+                  ))}
+                </div>
+
+                <div className="text-center">
+                  <Button
+                    onClick={() => router.push("/tutors")}
+                    variant="primary"
+                    size="lg"
+                    className="shadow-lg shadow-emerald-500/20"
+                  >
+                    View All Tutors <FiArrowRight className="w-5 h-5" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Show featured tutors only when no filters are applied */}
+      {filteredTutors.length === 0 && !filtering && !hasActiveFilters() && featuredTutors.length > 0 && (
         <section className="py-16 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
