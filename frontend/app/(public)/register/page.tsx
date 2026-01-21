@@ -170,7 +170,7 @@ export default function RegisterPage() {
         {/* Registration Card */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-2xl animate-fade-in">
           {/* Back to Login */}
-          <Link 
+          <Link
             href="/login"
             className="flex items-center gap-2 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 text-sm mb-6 transition-colors"
           >
@@ -192,8 +192,8 @@ export default function RegisterPage() {
               type="button"
               onClick={() => handleChange("isTutor", false)}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                !values.isTutor 
-                  ? 'bg-white dark:bg-slate-700 shadow text-emerald-600 dark:text-emerald-400' 
+                !values.isTutor
+                  ? 'bg-white dark:bg-slate-700 shadow text-emerald-600 dark:text-emerald-400'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -203,8 +203,8 @@ export default function RegisterPage() {
               type="button"
               onClick={() => handleChange("isTutor", true)}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                values.isTutor 
-                  ? 'bg-white dark:bg-slate-700 shadow text-emerald-600 dark:text-emerald-400' 
+                values.isTutor
+                  ? 'bg-white dark:bg-slate-700 shadow text-emerald-600 dark:text-emerald-400'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >

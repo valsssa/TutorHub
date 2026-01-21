@@ -4,11 +4,20 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import axios from 'axios'
+import ProtectedRoute from '@/components/ProtectedRoute'
 import { ChevronLeft, DollarSign, Users, PieChart, ArrowRight, CheckCircle } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function AffiliateProgramPage() {
+  return (
+    <ProtectedRoute>
+      <AffiliateContent />
+    </ProtectedRoute>
+  )
+}
+
+function AffiliateContent() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)

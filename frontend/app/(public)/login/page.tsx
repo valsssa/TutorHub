@@ -122,13 +122,13 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 text-slate-500 dark:text-slate-400 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="rounded bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-0" 
+                <input
+                  type="checkbox"
+                  className="rounded bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-0"
                 />
                 Remember me
               </label>
-              <button 
+              <button
                 type="button"
                 className="text-emerald-500 hover:underline focus:outline-none"
               >

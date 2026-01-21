@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import axios from 'axios'
+import ProtectedRoute from '@/components/ProtectedRoute'
 import { ChevronLeft, Search, Mail, MessageCircle, AlertCircle, HelpCircle, CheckCircle, ChevronDown, ChevronUp, Book, CreditCard, Shield, User, Send, X } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -16,17 +17,43 @@ interface FAQ {
   category: FaqCategory
 }
 
-const FAQS: FAQ[] = [
-  {
-    category: 'General',
-    question: "How does EduConnect work?",
-    answer: "EduConnect connects students with elite educators for 1-on-1 online lessons. You can browse tutor profiles, book a time slot that fits your schedule, and meet in our integrated video classroom. There are no monthly subscription fees for students; you simply pay per lesson."
-  },
-  {
-    category: 'General',
-    question: "Is EduConnect safe to use?",
-    answer: "Yes. We take safety seriously. We verify our tutors' identities and qualifications before they can list on the platform. All payments are processed through secure, encrypted channels (Stripe), and personal contact details are kept private until a booking is confirmed."
-  },
+export default function SupportPage() {
+  return (
+    <ProtectedRoute>
+      <SupportContent />
+    </ProtectedRoute>
+  )
+}
+
+function SupportContent() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = Cookies.get('token')
+      if (!token) {
+        router.replace('/login')
+        return
+      }
+
+      try {
+        const response = await axios.get(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setUser(response.data)
+      } catch (error) {
+        Cookies.remove('token')
+        router.replace('/login')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
+
+  const FAQS: FAQ[] = [
   {
     category: 'Booking & Lessons',
     question: "How do I reschedule or cancel a lesson?",
@@ -64,10 +91,7 @@ const FAQS: FAQ[] = [
   }
 ]
 
-export default function SupportPage() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<FaqCategory | 'All'>('All')
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)

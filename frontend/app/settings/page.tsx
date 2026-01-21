@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { FiSave, FiUser } from "react-icons/fi";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { auth } from "@/lib/api";
 import { User } from "@/types";
 import { useToast } from "@/components/ToastContainer";
@@ -11,6 +12,14 @@ import SettingsCard from "@/components/settings/SettingsCard";
 import AvatarUploader from "@/components/AvatarUploader";
 
 export default function ProfileSettingsPage() {
+  return (
+    <ProtectedRoute>
+      <SettingsContent />
+    </ProtectedRoute>
+  );
+}
+
+function SettingsContent() {
   const { showSuccess, showError } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
