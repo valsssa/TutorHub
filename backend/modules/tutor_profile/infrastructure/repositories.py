@@ -517,6 +517,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             education=profile.education,
             languages=profile.languages or [],
             video_url=profile.video_url,
+            auto_confirm=bool(profile.auto_confirm),
             is_approved=profile.is_approved,
             profile_status=profile.profile_status or "incomplete",
             rejection_reason=profile.rejection_reason,

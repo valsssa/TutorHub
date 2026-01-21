@@ -187,6 +187,12 @@ function BookingPageContent() {
 
   const averageRating = Number(tutor.average_rating);
   const firstReview = reviews[0];
+  const tutorDisplayName = tutor.name?.trim() || tutor.title;
+  const tutorInitial = (
+    tutorDisplayName?.charAt(0) ||
+    tutor.title?.charAt(0) ||
+    "T"
+  ).toUpperCase();
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-12">
@@ -215,7 +221,7 @@ function BookingPageContent() {
                 {tutor.profile_photo_url ? (
                   <Image
                     src={resolveAssetUrl(tutor.profile_photo_url)}
-                    alt={tutor.title}
+                    alt={tutorDisplayName}
                     width={64}
                     height={64}
                     className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
@@ -224,14 +230,17 @@ function BookingPageContent() {
                 ) : (
                   <div className="w-16 h-16 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                     <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                      {tutor.title.charAt(0)}
+                      {tutorInitial}
                     </span>
                   </div>
                 )}
                 <div>
                   <h3 className="font-bold text-xl text-slate-900 dark:text-white">
-                    {tutor.title}
+                    {tutorDisplayName}
                   </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                    {tutor.title}
+                  </p>
                   <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 mt-1">
                     <Star
                       size={14}
@@ -540,7 +549,7 @@ function BookingPageContent() {
             {firstReview && (
               <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
                 <h3 className="font-bold text-slate-900 dark:text-white mb-4">
-                  {tutor.title} is a great choice
+                  {tutorDisplayName} is a great choice
                 </h3>
 
                 <div className="flex items-center justify-between mb-4">

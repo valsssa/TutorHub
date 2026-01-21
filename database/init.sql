@@ -364,7 +364,18 @@ CREATE TABLE IF NOT EXISTS bookings (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT chk_booking_time_order CHECK (start_time < end_time),
-    CONSTRAINT valid_booking_status CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed', 'no_show')),
+    CONSTRAINT valid_booking_status CHECK (
+        status IN (
+            'PENDING',
+            'CONFIRMED',
+            'CANCELLED_BY_STUDENT',
+            'CANCELLED_BY_TUTOR',
+            'NO_SHOW_STUDENT',
+            'NO_SHOW_TUTOR',
+            'COMPLETED',
+            'REFUNDED'
+        )
+    ),
     CONSTRAINT valid_booking_pricing_type CHECK (pricing_type IN ('hourly', 'session', 'package', 'subscription')),
     CONSTRAINT valid_lesson_type CHECK (lesson_type IN ('TRIAL', 'REGULAR', 'PACKAGE')),
     CONSTRAINT valid_created_by CHECK (created_by IN ('STUDENT', 'TUTOR', 'ADMIN'))

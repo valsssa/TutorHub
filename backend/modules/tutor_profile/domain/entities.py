@@ -84,6 +84,7 @@ class TutorProfileAggregate:
     education: str | None = None
     languages: list[str] = field(default_factory=list)
     video_url: str | None = None
+    auto_confirm: bool = False
     is_approved: bool = False
     profile_status: str = "incomplete"
     rejection_reason: str | None = None
