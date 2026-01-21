@@ -56,7 +56,7 @@ export default function Navbar({ user }: NavbarProps) {
   const handleLogout = () => {
     auth.logout()
     showSuccess('Logged out successfully 👋')
-    router.push('/login')
+    router.push('/')
   }
 
   const handleMenuClick = (action: () => void) => {

@@ -96,8 +96,7 @@ def aggregate_to_profile_response(
     data = {
         "id": aggregate.id,
         "user_id": aggregate.user_id,
-        "first_name": aggregate.first_name,
-        "last_name": aggregate.last_name,
+        "name": f"{aggregate.first_name or ''} {aggregate.last_name or ''}".strip() or "Unknown",
         "title": aggregate.title or "",
         "headline": aggregate.headline,
         "bio": aggregate.bio,

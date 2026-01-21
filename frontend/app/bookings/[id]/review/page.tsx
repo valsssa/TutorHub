@@ -59,6 +59,7 @@ function BookingReviewContent() {
         end_time: bookingData.end_at,
         status: bookingData.status as any,
         tutor_name: bookingData.tutor.name,
+        student_name: bookingData.student.name,
         topic: bookingData.topic || "",
         notes: bookingData.notes_student || "",
         total_amount: bookingData.rate_cents / 100,

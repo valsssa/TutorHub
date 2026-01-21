@@ -68,7 +68,7 @@ export interface BookingListResponse {
 }
 
 export interface BookingCreateRequest {
-  tutor_id: number;
+  tutor_profile_id: number;
   start_at: string;
   duration_minutes: number;
   lesson_type?: LessonType;

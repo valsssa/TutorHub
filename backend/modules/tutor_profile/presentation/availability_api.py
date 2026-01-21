@@ -98,20 +98,20 @@ async def get_available_slots(
             slot_start_time = availability.start_time
             slot_end_time = availability.end_time
 
-            # Convert time to datetime for the specific date
-            current_slot = datetime.combine(current_date, slot_start_time)
-            end_boundary = datetime.combine(current_date, slot_end_time)
+            # Convert time to datetime for the specific date (UTC-aware)
+            current_slot = datetime.combine(current_date, slot_start_time).replace(tzinfo=UTC)
+            end_boundary = datetime.combine(current_date, slot_end_time).replace(tzinfo=UTC)
 
             while current_slot + timedelta(minutes=30) <= end_boundary:
                 slot_end = current_slot + timedelta(minutes=30)
 
                 # Skip past slots (use UTC for comparison)
-                now_utc = datetime.now(UTC).replace(tzinfo=None)
+                now_utc = datetime.now(UTC)
                 if current_slot < now_utc:
                     current_slot = slot_end
                     continue
 
-                # Check if slot conflicts with existing bookings
+                # Check if slot conflicts with existing bookings (both are now timezone-aware)
                 is_booked = any(
                     booking.start_time < slot_end and booking.end_time > current_slot for booking in bookings
                 )

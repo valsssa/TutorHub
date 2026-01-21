@@ -47,6 +47,7 @@ class TutorProfile(Base):
     currency = Column(String(3), nullable=False, default="USD", server_default="USD")
     # Booking configuration fields (from init.sql schema)
     auto_confirm_threshold_hours = Column(Integer, default=24)
+    auto_confirm = Column(Boolean, default=False)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     # Enhanced booking fields (optional - require migration 017)

@@ -54,9 +54,12 @@ function ProfileContent() {
       setUser(currentUser);
       setProfile(studentProfile);
 
+      if (currentUser) {
+        setFirstName(currentUser.first_name || "");
+        setLastName(currentUser.last_name || "");
+      }
+
       if (studentProfile) {
-        setFirstName(studentProfile.first_name || "");
-        setLastName(studentProfile.last_name || "");
         setPhone(studentProfile.phone || "");
         setBio(studentProfile.bio || "");
         setLearningGoals(studentProfile.learning_goals || "");
@@ -83,16 +86,24 @@ function ProfileContent() {
 
     setSaving(true);
     try {
-      const updated = await students.updateProfile({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
+      // Update user information (names) via auth API
+      if (user) {
+        const updatedUser = await auth.updateUser({
+          first_name: firstName.trim() || undefined,
+          last_name: lastName.trim() || undefined,
+        });
+        setUser(updatedUser);
+      }
+
+      // Update student profile information (excluding names)
+      const updatedProfile = await students.updateProfile({
         phone: phone.trim() || undefined,
         bio: bio.trim() || undefined,
         learning_goals: learningGoals.trim() || undefined,
         interests: interests.trim() || undefined
       });
 
-      setProfile(updated);
+      setProfile(updatedProfile);
       showSuccess("Profile updated successfully!");
     } catch (error) {
       showError("Failed to update profile");

@@ -68,8 +68,7 @@ export interface TutorPricingOption {
 export interface TutorProfile {
   id: number;
   user_id: number;
-  first_name?: string | null;
-  last_name?: string | null;
+  name: string;
   title: string;
   headline?: string;
   bio?: string;
@@ -109,6 +108,9 @@ export interface TutorPublicSummary {
   id: number;
   first_name?: string | null;
   last_name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  name?: string | null;
   title: string;
   headline?: string;
   bio?: string;
@@ -149,8 +151,6 @@ export interface Subject {
 export interface StudentProfile {
   id: number;
   user_id: number;
-  first_name?: string | null;
-  last_name?: string | null;
   phone?: string | null;
   bio?: string | null;
   grade_level?: string | null;
@@ -177,7 +177,7 @@ export interface Booking {
   meeting_url?: string;
   pricing_option_id?: number;
   pricing_type?: string;
-  // Immutable snapshot fields (populated by database trigger)
+  // Immutable snapshot fields (populated by backend on booking creation)
   tutor_name?: string;
   tutor_title?: string;
   student_name?: string;

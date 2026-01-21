@@ -15,7 +15,7 @@ from database import get_db
 from models import User
 from modules.auth.application.services import AuthService
 from modules.users.avatar.service import AvatarService
-from schemas import Token, UserCreate, UserResponse
+from schemas import Token, UserCreate, UserResponse, UserSelfUpdate
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -290,3 +290,54 @@ async def get_me(
         updated_at=current_user.updated_at,
         avatar_url=avatar.avatar_url,
     )
+
+
+@router.put("/me", response_model=UserResponse)
+@limiter.limit("10/minute")
+async def update_me(
+    request: Request,
+    user_data: UserSelfUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update current user information."""
+    try:
+        logger.info(f"User update requested: {current_user.email}")
+
+        # Update allowed fields
+        update_data = user_data.model_dump(exclude_unset=True)
+
+        # Apply updates
+        for field, value in update_data.items():
+            if hasattr(current_user, field):
+                setattr(current_user, field, value)
+
+        # Update timestamp
+        current_user.updated_at = datetime.now(UTC)
+
+        db.commit()
+        db.refresh(current_user)
+
+        # Return updated user data
+        avatar_service = AvatarService(db=db)
+        avatar = await avatar_service.fetch_for_user(current_user)
+
+        logger.info(f"User updated successfully: {current_user.email}")
+        return UserResponse(
+            id=current_user.id,
+            email=current_user.email,
+            first_name=getattr(current_user, "first_name", None),
+            last_name=getattr(current_user, "last_name", None),
+            role=current_user.role,
+            is_active=current_user.is_active,
+            is_verified=current_user.is_verified,
+            created_at=current_user.created_at,
+            currency=current_user.currency,
+            timezone=current_user.timezone,
+            updated_at=current_user.updated_at,
+            avatar_url=avatar.avatar_url,
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating user {current_user.id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update user")

@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 import { TutorProfile, Subject } from "@/types";
 import { useToast } from "./ToastContainer";
+import axios from "axios";
+import { bookings } from "@/lib/api";
+import type { BookingCreateRequest } from "@/types/booking";
 
 interface ModernBookingModalProps {
   tutor: TutorProfile;
@@ -247,68 +250,49 @@ export default function ModernBookingModal({
     if (!selectedSlot) return;
 
     const startDate = new Date(selectedSlot);
-    const endDate = new Date(startDate.getTime() + duration * 60000);
+
+    const payload: BookingCreateRequest = {
+      tutor_profile_id: tutor.id,
+      start_at: startDate.toISOString(),
+      duration_minutes: duration,
+      lesson_type: "REGULAR",
+      subject_id: bookingData.subject_id,
+      notes_student: bookingData.notes || undefined,
+    };
 
     setSubmitting(true);
     setSlotConflict(false);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL;
-      if (!API_URL) {
-        showError('API configuration error');
-        return;
-      }
-      const token = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("token="))
-        ?.split("=")[1];
+      await bookings.create(payload);
+      setStep(3);
+      triggerConfetti();
+      setTimeout(() => onSuccess(), 2500);
+    } catch (error) {
+      const axiosError = axios.isAxiosError(error) ? error : null;
+      const responseStatus = axiosError?.response?.status;
+      const rawDetail =
+        axiosError?.response?.data?.detail ||
+        (error instanceof Error ? error.message : "Failed to create booking");
+      const errorMessage = rawDetail || "Failed to create booking";
 
-      const response = await fetch(`${API_URL}/api/bookings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          tutor_profile_id: tutor.id,
-          subject_id: bookingData.subject_id,
-          start_time: startDate.toISOString(),
-          end_time: endDate.toISOString(),
-          topic: bookingData.topic || undefined,
-          notes: bookingData.notes || undefined,
-        }),
-      });
+      const lowerDetail = errorMessage.toLowerCase();
+      const isSlotConflict =
+        responseStatus === 409 ||
+        lowerDetail.includes("not available") ||
+        lowerDetail.includes("already booked") ||
+        lowerDetail.includes("slot") ||
+        lowerDetail.includes("conflict") ||
+        lowerDetail.includes("availability");
 
-      if (response.ok) {
-        setStep(3);
-        triggerConfetti();
-        setTimeout(() => onSuccess(), 2500);
+      if (isSlotConflict) {
+        setSlotConflict(true);
+        setSelectedSlot(null);
+        setStep(1);
+        refreshSlots();
+        showError("This time slot is no longer available. The schedule has been updated.");
       } else {
-        const errorData = await response.json();
-        const errorMessage = errorData.detail || "Failed to create booking";
-        
-        // Check if this is a slot conflict (409 Conflict or availability-related error)
-        const isSlotConflict = 
-          response.status === 409 ||
-          errorMessage.toLowerCase().includes("not available") ||
-          errorMessage.toLowerCase().includes("already booked") ||
-          errorMessage.toLowerCase().includes("slot") ||
-          errorMessage.toLowerCase().includes("conflict") ||
-          errorMessage.toLowerCase().includes("availability");
-        
-        if (isSlotConflict) {
-          // Slot is no longer available - handle gracefully
-          setSlotConflict(true);
-          setSelectedSlot(null);
-          setStep(1);
-          // Refresh the available slots
-          refreshSlots();
-          showError("This time slot is no longer available. The schedule has been updated.");
-        } else {
-          showError(errorMessage);
-        }
+        showError(errorMessage);
       }
-    } catch {
-      showError("Failed to create booking");
     } finally {
       setSubmitting(false);
     }

@@ -427,7 +427,7 @@ export const auth = {
     Cookies.remove("token");
     clearCache(); // Clear cache on logout
     if (typeof window !== "undefined") {
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   },
 
@@ -455,6 +455,23 @@ export const auth = {
       return normalizeUser(latest);
     } catch (error) {
       logger.error("Failed to update preferences", error);
+      throw error;
+    }
+  },
+
+  async updateUser(updates: {
+    first_name?: string;
+    last_name?: string;
+    timezone?: string;
+    currency?: string;
+  }): Promise<User> {
+    logger.info(`Updating user: ${Object.keys(updates).join(", ")}`);
+    try {
+      const { data } = await api.put<User>("/api/auth/me", updates);
+      logger.info(`User updated successfully`);
+      return normalizeUser(data);
+    } catch (error) {
+      logger.error("Failed to update user", error);
       throw error;
     }
   },

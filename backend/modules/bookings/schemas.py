@@ -58,7 +58,7 @@ class StudentInfoDTO(BaseModel):
 class BookingCreateRequest(BaseModel):
     """Create booking request (student initiated)."""
 
-    tutor_id: int
+    tutor_profile_id: int
     start_at: datetime
     duration_minutes: int = Field(..., ge=15, le=180)
     lesson_type: LessonType = "REGULAR"

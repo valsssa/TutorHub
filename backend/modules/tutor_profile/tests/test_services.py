@@ -468,12 +468,211 @@ class TestProfileVisibility:
             assert profile.user.is_active
 
 
-# Additional test scenarios to implement:
-# - Optimistic locking with version field
-# - Concurrent profile updates
-# - Profile analytics (views, bookings conversion rate)
-# - Featured tutor status
-# - Tutor badges/achievements
-# - Profile photo management
-# - Social media links
-# - Teaching methodology description
+    def test_approve_profile(self, db: Session, test_admin_user, test_tutor_profile_pending):
+        """Test admin approving tutor profile"""
+        # When
+        approved = TutorProfileService.approve_profile(
+            db,
+            test_tutor_profile_pending.id,
+            test_admin_user.id
+        )
+
+        # Then
+        assert approved.is_approved == True
+        assert approved.profile_status == "approved"
+        assert approved.approved_by == test_admin_user.id
+        assert approved.approved_at is not None
+        # Audit log created
+        # Notification sent to tutor
+
+    def test_reject_profile(self, db: Session, test_admin_user, test_tutor_profile_pending):
+        """Test admin rejecting tutor profile"""
+        # Given
+        reason = "Certifications not verified"
+
+        # When
+        rejected = TutorProfileService.reject_profile(
+            db,
+            test_tutor_profile_pending.id,
+            test_admin_user.id,
+            reason
+        )
+
+        # Then
+        assert rejected.profile_status == "rejected"
+        assert rejected.rejection_reason == reason
+        # Notification sent to tutor with reason
+
+
+class TestTutorProfileService:
+    """Test TutorProfileService business logic"""
+
+    def test_create_profile_success(self, db, test_tutor_user):
+        """Test successful tutor profile creation"""
+        # Given
+        profile_data = {
+            "title": "Math Expert",
+            "bio": "10 years experience",
+            "hourly_rate": 50.00,
+            "experience_years": 10
+        }
+
+        # When
+        profile = TutorProfileService.create_profile(db, test_tutor_user.id, profile_data)
+
+        # Then
+        assert profile.user_id == test_tutor_user.id
+        assert profile.title == "Math Expert"
+        assert profile.hourly_rate == Decimal("50.00")
+        assert profile.profile_status == "incomplete"
+
+    def test_create_profile_duplicate_error(self, db, test_tutor_with_profile):
+        """Test error when creating duplicate profile"""
+        # When/Then
+        with pytest.raises(ValueError, match="Profile already exists"):
+            TutorProfileService.create_profile(db, test_tutor_with_profile.id, {})
+
+    def test_update_profile_subjects(self, db, test_tutor_profile):
+        """Test updating tutor subjects"""
+        # Given
+        subjects = [
+            {"subject_id": 1, "proficiency_level": "C2", "years_experience": 5},
+            {"subject_id": 2, "proficiency_level": "B2", "years_experience": 3}
+        ]
+
+        # When
+        updated = TutorProfileService.update_subjects(db, test_tutor_profile.id, subjects)
+
+        # Then
+        assert len(updated.subjects) == 2
+        assert updated.subjects[0].proficiency_level == "C2"
+
+    def test_calculate_completion_percentage(self, db, test_tutor_profile):
+        """Test profile completion calculation"""
+        # Given - minimal profile
+        assert test_tutor_profile.completion_percentage < 50
+
+        # When - add more fields
+        test_tutor_profile.title = "Expert"
+        test_tutor_profile.bio = "Bio"
+        test_tutor_profile.hourly_rate = 50.00
+        test_tutor_profile.video_url = "https://youtube.com/..."
+        db.commit()
+
+        # Then
+        completion = TutorProfileService.calculate_completion(db, test_tutor_profile.id)
+        assert completion > 50
+
+    def test_submit_for_approval(self, db, test_tutor_profile):
+        """Test profile submission for admin review"""
+        # Given - complete all required fields
+        test_tutor_profile.title = "Expert"
+        test_tutor_profile.bio = "Bio"
+        test_tutor_profile.hourly_rate = 50.00
+        test_tutor_profile.experience_years = 5
+        # Add at least one subject
+        db.add(TutorSubject(tutor_profile_id=test_tutor_profile.id, subject_id=1))
+        db.commit()
+
+        # When
+        result = TutorProfileService.submit_for_approval(db, test_tutor_profile.id)
+
+        # Then
+        assert result.profile_status == "pending_approval"
+        # Notification should be sent to admin
+
+
+class TestAvailabilityService:
+    """Test AvailabilityService business logic"""
+
+    def test_create_recurring_availability(self, db, test_tutor_profile):
+        """Test creating recurring weekly availability"""
+        # Given
+        slots = [
+            {"day_of_week": 1, "start_time": "09:00", "end_time": "17:00"},  # Monday
+            {"day_of_week": 3, "start_time": "10:00", "end_time": "16:00"}   # Wednesday
+        ]
+
+        # When
+        result = AvailabilityService.set_availability(db, test_tutor_profile.id, slots)
+
+        # Then
+        assert len(result) == 2
+        assert result[0].day_of_week == 1
+
+    def test_availability_overlap_same_day(self, db, test_tutor_profile):
+        """Test error on overlapping slots same day"""
+        # Given - existing slot Mon 9am-5pm
+        db.add(TutorAvailability(
+            tutor_profile_id=test_tutor_profile.id,
+            day_of_week=1,
+            start_time=time(9, 0),
+            end_time=time(17, 0)
+        ))
+        db.commit()
+
+        # When - try to add Mon 3pm-7pm (overlap)
+        with pytest.raises(ValueError, match="Overlapping availability"):
+            AvailabilityService.add_slot(db, test_tutor_profile.id, {
+                "day_of_week": 1,
+                "start_time": "15:00",
+                "end_time": "19:00"
+            })
+
+    def test_create_blackout_period(self, db, test_tutor_profile):
+        """Test creating vacation/blackout period"""
+        # Given
+        blackout = {
+            "start_time": "2025-12-20T00:00:00Z",
+            "end_time": "2025-12-27T23:59:59Z",
+            "reason": "Holiday vacation"
+        }
+
+        # When
+        result = AvailabilityService.create_blackout(db, test_tutor_profile.id, blackout)
+
+        # Then
+        assert result.reason == "Holiday vacation"
+        # Future bookings during this period should be blocked
+
+    def test_get_available_slots(self, db, test_tutor_profile_with_availability):
+        """Test retrieving available time slots for a date"""
+        # Given - Mon 9am-5pm availability
+        date = datetime(2025, 1, 6, tzinfo=timezone.utc)  # Monday
+
+        # When
+        slots = AvailabilityService.get_available_slots(
+            db,
+            test_tutor_profile_with_availability.id,
+            date,
+            duration_minutes=60
+        )
+
+        # Then
+        assert len(slots) > 0
+        assert slots[0]["start_time"].hour == 9
+
+    def test_available_slots_exclude_bookings(self, db, test_tutor_profile, test_booking):
+        """Test that booked slots are excluded from available slots"""
+        # Given - Mon 9am-5pm availability + booking 10am-11am
+        date = test_booking.start_time.date()
+
+        # When
+        slots = AvailabilityService.get_available_slots(db, test_tutor_profile.id, date)
+
+        # Then
+        # 10am-11am slot should not be in available slots
+        booked_time = test_booking.start_time.time()
+        for slot in slots:
+            assert slot["start_time"].time() != booked_time
+
+    def test_available_slots_exclude_blackouts(self, db, test_tutor_profile, test_blackout):
+        """Test that blackout periods exclude all slots"""
+        # Given - Blackout Dec 20-27
+        date = datetime(2025, 12, 23, tzinfo=timezone.utc)
+
+        # When
+        slots = AvailabilityService.get_available_slots(db, test_tutor_profile.id, date)
+
+        # Then
+        assert len(slots) == 0
