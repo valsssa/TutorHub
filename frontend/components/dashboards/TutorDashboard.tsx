@@ -75,16 +75,15 @@ export default function TutorDashboard({
     return studentIds.size;
   }, [bookings]);
 
-  // Get upcoming sessions sorted by time
+  // Get all upcoming sessions (confirmed + pending) sorted by time
   const upcomingSessions = useMemo(
     () =>
-      confirmedBookings
+      [...confirmedBookings, ...pendingBookings]
         .sort(
           (a, b) =>
             new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
-        )
-        .slice(0, 5),
-    [confirmedBookings]
+        ),
+    [confirmedBookings, pendingBookings]
   );
 
   // Helper for relative date labels
@@ -327,6 +326,8 @@ export default function TutorDashboard({
                   upcomingSessions.map((session) => {
                     const studentName =
                       session.student?.name || "Student";
+                    const isPending = session.status === "PENDING" || session.status === "pending";
+                    const isConfirmed = session.status === "CONFIRMED" || session.status === "confirmed";
                     return (
                       <div
                         key={session.id}
@@ -338,9 +339,21 @@ export default function TutorDashboard({
                             {studentName.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <h4 className="font-bold text-slate-900 dark:text-white text-base">
-                              {studentName}
-                            </h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                                {studentName}
+                              </h4>
+                              {isPending && (
+                                <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded font-medium">
+                                  Pending
+                                </span>
+                              )}
+                              {isConfirmed && (
+                                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded font-medium">
+                                  Confirmed
+                                </span>
+                              )}
+                            </div>
                             <p className="text-slate-500 dark:text-slate-400 text-sm">
                               {getRelativeDateLabel(session.start_at)},{" "}
                               {formatTimeRange(session.start_at)}
@@ -354,13 +367,21 @@ export default function TutorDashboard({
                         </div>
 
                         <div className="flex items-center gap-2 text-slate-400 justify-end">
+                          {isPending && (
+                            <button
+                              onClick={() => router.push(`/bookings?status=pending`)}
+                              className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-500 font-medium"
+                            >
+                              Review
+                            </button>
+                          )}
                           <button
                             className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg hover:text-emerald-600 transition-colors shadow-sm"
                             title="Lesson Notes"
                           >
                             <FiFileText size={20} />
                           </button>
-                          {session.join_url && (
+                          {session.join_url && isConfirmed && (
                             <a
                               href={session.join_url}
                               target="_blank"
