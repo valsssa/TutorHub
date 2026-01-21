@@ -10,6 +10,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from core.avatar_storage import get_avatar_storage
+from core.config import settings
 from core.currency import calculate_platform_fee
 from core.utils import StringUtils
 from models import Booking, StudentPackage, TutorBlackout, TutorProfile, User
@@ -43,6 +45,16 @@ def can_transition(from_status: str, to_status: str) -> bool:
     """Check if state transition is valid."""
     allowed = VALID_TRANSITIONS.get(from_status.upper(), [])
     return to_status.upper() in allowed
+
+
+def _build_avatar_url(key: str | None) -> str | None:
+    if not key:
+        return settings.AVATAR_STORAGE_DEFAULT_URL
+
+    storage = get_avatar_storage()
+    public_endpoint = storage.public_endpoint().rstrip("/")
+    bucket = storage.bucket()
+    return f"{public_endpoint}/{bucket}/{key}"
 
 
 # ============================================================================
@@ -458,7 +470,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     tutor_info = TutorInfoDTO(
         id=tutor_user.id if tutor_user else 0,
         name=tutor_name,
-        avatar_url=tutor_user.avatar_key if tutor_user else None,
+        avatar_url=_build_avatar_url(tutor_user.avatar_key if tutor_user else None),
         rating_avg=tutor_profile.average_rating if tutor_profile else Decimal("0.00"),
         title=booking.tutor_title or (tutor_profile.title if tutor_profile else None),
     )
@@ -476,7 +488,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     student_info = StudentInfoDTO(
         id=student.id if student else 0,
         name=student_name,
-        avatar_url=student.avatar_key if student else None,
+        avatar_url=_build_avatar_url(student.avatar_key if student else None),
         level=None,  # TODO: Add student level field if needed
     )
 
