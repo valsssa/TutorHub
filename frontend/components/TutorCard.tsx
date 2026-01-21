@@ -29,7 +29,11 @@ export default function TutorCard({
 }: TutorCardProps) {
   const router = useRouter();
 
-  const displayName = tutor.name || tutor.title;
+  const normalizedFirstName = tutor.first_name?.trim() || tutor.firstName?.trim();
+  const normalizedLastName = tutor.last_name?.trim() || tutor.lastName?.trim();
+  const fullName =
+    [normalizedFirstName, normalizedLastName].filter(Boolean).join(" ");
+  const displayName = fullName || tutor.name || tutor.title;
 
   const getRatingStars = (rating: number) => {
     const fullStars = Math.floor(rating);

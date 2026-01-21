@@ -28,7 +28,7 @@ describe('ProtectedRoute', () => {
     mockPush.mockClear();
   });
 
-  it('redirects to login when no token', async () => {
+  it('redirects to home when no token', async () => {
     (Cookies.get as jest.Mock).mockReturnValue(undefined);
 
     render(
@@ -38,7 +38,7 @@ describe('ProtectedRoute', () => {
     );
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/login');
+      expect(mockReplace).toHaveBeenCalledWith('/');
     });
 
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
@@ -122,7 +122,7 @@ describe('ProtectedRoute', () => {
     });
   });
 
-  it('redirects to login on auth error', async () => {
+  it('redirects to home on auth error', async () => {
     (Cookies.get as jest.Mock).mockReturnValue('fake-token');
     (auth.getCurrentUser as jest.Mock).mockRejectedValue(new Error('Auth failed'));
 
@@ -134,7 +134,7 @@ describe('ProtectedRoute', () => {
 
     await waitFor(() => {
       expect(Cookies.remove).toHaveBeenCalledWith('token');
-      expect(mockReplace).toHaveBeenCalledWith('/login');
+      expect(mockReplace).toHaveBeenCalledWith('/');
     });
   });
 

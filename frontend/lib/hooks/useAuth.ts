@@ -24,7 +24,7 @@ interface UseAuthReturn {
 }
 
 export function useAuth(options: UseAuthOptions = {}): UseAuthReturn {
-  const { requiredRole, redirectTo = '/login' } = options;
+  const { requiredRole, redirectTo = '/' } = options;
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ export function useAuth(options: UseAuthOptions = {}): UseAuthReturn {
   const logout = useCallback(() => {
     auth.logout();
     setUser(null);
-    router.push('/login');
+    router.push('/');
   }, [router]);
 
   return {

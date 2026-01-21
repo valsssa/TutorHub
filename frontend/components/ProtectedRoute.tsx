@@ -29,7 +29,7 @@ export default function ProtectedRoute({
 
       if (!token) {
         setLoading(false);
-        router.replace("/login");
+        router.replace("/");
         return;
       }
 
@@ -39,16 +39,16 @@ export default function ProtectedRoute({
 
         // Check role requirement
         if (requiredRole && currentUser.role !== requiredRole) {
-          setLoading(false);
-          router.replace("/unauthorized");
-          return;
-        }
+        setLoading(false);
+        router.replace("/unauthorized");
+        return;
+      }
 
         setLoading(false);
       } catch (error) {
         Cookies.remove("token");
         setLoading(false);
-        router.replace("/login");
+        router.replace("/");
       }
     };
 

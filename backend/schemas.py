@@ -455,6 +455,8 @@ class TutorPublicProfile(BaseModel):
     """Public tutor profile (for listings)."""
 
     id: int
+    first_name: str | None = None
+    last_name: str | None = None
     title: str
     headline: str | None
     bio: str | None

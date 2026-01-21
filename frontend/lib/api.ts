@@ -427,7 +427,7 @@ export const auth = {
     Cookies.remove("token");
     clearCache(); // Clear cache on logout
     if (typeof window !== "undefined") {
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   },
 

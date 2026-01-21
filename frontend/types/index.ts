@@ -106,7 +106,11 @@ export interface PaginatedResponse<T> {
 
 export interface TutorPublicSummary {
   id: number;
-  name: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  name?: string | null;
   title: string;
   headline?: string;
   bio?: string;
