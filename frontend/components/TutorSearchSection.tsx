@@ -115,19 +115,7 @@ export default function TutorSearchSection({
   return (
     <section className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
       <div className="max-w-7xl mx-auto px-4 py-8" ref={dropdownRef}>
-        {/* Hero Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold mb-4 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            {resultsCount.toLocaleString()} tutors available
-          </div>
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-3 tracking-tight">
-            Find the <span className="text-emerald-600 dark:text-emerald-400">perfect tutor</span> for your goals
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
-            Book 1-on-1 lessons with verified experts. Master any subject from the comfort of your home.
-          </p>
-        </div>
+
 
         {/* --- MOBILE: Search Bar & Filter Toggle --- */}
         <div className="md:hidden mb-6">

@@ -7,7 +7,7 @@ Comprehensive test coverage for all payment scenarios including multi-currency s
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

@@ -17,7 +17,6 @@ from models import (
     Subject,
     TutorProfile,
     User,
-    UserProfile,
 )
 
 

@@ -8,7 +8,9 @@ import { motion } from "framer-motion";
 import { FiSearch, FiStar, FiUsers, FiBookOpen, FiAward, FiTrendingUp, FiCheck, FiArrowRight } from "react-icons/fi";
 import { tutors, subjects, auth } from "@/lib/api";
 import { TutorPublicSummary, Subject, User } from "@/types";
+import { PRICE_LIMITS } from "@/types/filters";
 import TutorCard from "@/components/TutorCard";
+import TutorSearchSection from "@/components/TutorSearchSection";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Button from "@/components/Button";
 import PublicHeader from "@/components/PublicHeader";
@@ -22,6 +24,17 @@ export default function HomePage() {
   const [subjectsList, setSubjectsList] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Search section state
+  const [selectedSubject, setSelectedSubject] = useState<number | undefined>();
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    PRICE_LIMITS.min,
+    PRICE_LIMITS.max,
+  ]);
+  const [minRating, setMinRating] = useState<number | undefined>();
+  const [minExperience, setMinExperience] = useState<number | undefined>();
+  const [sortBy, setSortBy] = useState<string>("rating");
+  const [resultsCount, setResultsCount] = useState(0);
 
   useEffect(() => {
     const token = Cookies.get("token");
@@ -56,6 +69,66 @@ export default function HomePage() {
     } else {
       router.push("/tutors");
     }
+  };
+
+  // Search section handlers
+  const handleSubjectChange = (id?: number) => {
+    setSelectedSubject(id);
+  };
+
+  const handlePriceChange = (range: [number, number]) => {
+    setPriceRange(range);
+  };
+
+  const handleMinRatingChange = (rating?: number) => {
+    setMinRating(rating);
+  };
+
+  const handleMinExperienceChange = (years?: number) => {
+    setMinExperience(years);
+  };
+
+  const handleSortChange = (sort: string) => {
+    setSortBy(sort);
+  };
+
+  const handleSearchChange = (term: string) => {
+    setSearchQuery(term);
+  };
+
+  const handleSearchUpdate = () => {
+    const params = new URLSearchParams();
+
+    if (searchQuery.trim()) {
+      params.set('search', searchQuery);
+    }
+
+    if (selectedSubject) {
+      params.set('subject', selectedSubject.toString());
+    }
+
+    if (priceRange[0] !== PRICE_LIMITS.min) {
+      params.set('min_price', priceRange[0].toString());
+    }
+
+    if (priceRange[1] !== PRICE_LIMITS.max) {
+      params.set('max_price', priceRange[1].toString());
+    }
+
+    if (minRating) {
+      params.set('min_rating', minRating.toString());
+    }
+
+    if (minExperience) {
+      params.set('min_experience', minExperience.toString());
+    }
+
+    if (sortBy !== 'rating') {
+      params.set('sort_by', sortBy);
+    }
+
+    const queryString = params.toString();
+    router.push(queryString ? `/tutors?${queryString}` : '/tutors');
   };
 
   if (loading) {
@@ -218,29 +291,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-12 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
+      {/* Advanced Search Section */}
+      <section className="py-12 bg-slate-50 dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { icon: FiUsers, label: "Expert Tutors", value: "1,000+" },
-              { icon: FiBookOpen, label: "Subjects", value: subjectsList.length.toString() || "50+" },
-              { icon: FiStar, label: "Avg Rating", value: "4.9" },
-              { icon: FiAward, label: "Sessions", value: "50k+" }
-            ].map((stat, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * idx }}
-                className="text-center"
-              >
-                <stat.icon className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-3" />
-                <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">{stat.value}</p>
-                <p className="text-slate-600 dark:text-slate-400">{stat.label}</p>
-              </motion.div>
-            ))}
-          </div>
+
+          <TutorSearchSection
+            subjects={subjectsList}
+            selectedSubject={selectedSubject}
+            priceRange={priceRange}
+            minRating={minRating}
+            minExperience={minExperience}
+            sortBy={sortBy}
+            searchTerm={searchQuery}
+            resultsCount={resultsCount}
+            onSubjectChange={handleSubjectChange}
+            onPriceChange={handlePriceChange}
+            onMinRatingChange={handleMinRatingChange}
+            onMinExperienceChange={handleMinExperienceChange}
+            onSortChange={handleSortChange}
+            onSearchChange={handleSearchChange}
+            onUpdate={handleSearchUpdate}
+          />
         </div>
       </section>
 
