@@ -36,18 +36,6 @@ export default function PublicHeader() {
         <div className="hidden md:flex items-center gap-6">
           {/* Navigation Links */}
           <div className="flex gap-6">
-            <Link
-              href="/tutors"
-              className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-            >
-              Find Tutors
-            </Link>
-            <Link
-              href="/register?role=tutor"
-              className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-            >
-              Become a Tutor
-            </Link>
           </div>
 
           <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
@@ -105,20 +93,6 @@ export default function PublicHeader() {
             >
               <div className="p-4 space-y-4">
                 <div className="flex flex-col gap-3">
-                  <Link
-                    href="/tutors"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
-                  >
-                    Find Tutors
-                  </Link>
-                  <Link
-                    href="/register?role=tutor"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
-                  >
-                    Become a Tutor
-                  </Link>
                   <div className="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
                   <button
                     onClick={() => {
