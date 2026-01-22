@@ -11,6 +11,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 export default function ReferralPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
   const [openFaq, setOpenFaq] = useState<number | null>(0) // Default first open
 
@@ -21,36 +22,25 @@ export default function ReferralPage() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = Cookies.get('token')
-      if (!token) {
-        router.replace('/login')
-        return
+      if (token) {
+        try {
+          const response = await axios.get(`${API_URL}/users/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          setUser(response.data)
+          setIsLoggedIn(true)
+        } catch (error) {
+          Cookies.remove('token')
+          setIsLoggedIn(false)
+        }
+      } else {
+        setIsLoggedIn(false)
       }
-
-      try {
-        const response = await axios.get(`${API_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        setUser(response.data)
-      } catch (error) {
-        Cookies.remove('token')
-        router.replace('/login')
-      } finally {
-        setLoading(false)
-      }
+      setLoading(false)
     }
 
     checkAuth()
-  }, [router])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-      </div>
-    )
-  }
-
-  if (!user) return null
+  }, [])
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 pb-20">

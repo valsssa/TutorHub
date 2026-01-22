@@ -10,51 +10,35 @@ import { ChevronLeft, DollarSign, Users, PieChart, ArrowRight, CheckCircle } fro
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function AffiliateProgramPage() {
-  return (
-    <ProtectedRoute>
-      <AffiliateContent />
-    </ProtectedRoute>
-  )
+  return <AffiliateContent />
 }
 
 function AffiliateContent() {
   const router = useRouter()
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
       const token = Cookies.get('token')
-      if (!token) {
-        router.replace('/login')
-        return
-      }
-
-      try {
-        const response = await axios.get(`${API_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        setUser(response.data)
-      } catch (error) {
-        Cookies.remove('token')
-        router.replace('/login')
-      } finally {
-        setLoading(false)
+      if (token) {
+        try {
+          const response = await axios.get(`${API_URL}/users/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          setUser(response.data)
+          setIsLoggedIn(true)
+        } catch (error) {
+          Cookies.remove('token')
+          setIsLoggedIn(false)
+        }
+      } else {
+        setIsLoggedIn(false)
       }
     }
 
     checkAuth()
-  }, [router])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-      </div>
-    )
-  }
-
-  if (!user) return null
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -86,18 +70,29 @@ function AffiliateContent() {
           Join our affiliate program and earn competitive commissions for every new student or tutor you refer to EduConnect.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <button
-            onClick={() => router.push('/register')}
-            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
-          >
-            Become a Partner
-          </button>
-          <button
-            onClick={() => router.push('/login')}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-          >
-            Log In
-          </button>
+          {isLoggedIn ? (
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
+            >
+              Go to Dashboard
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => router.push('/register')}
+                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-xl font-bold text-lg hover:opacity-90 transition-opacity"
+              >
+                Become a Partner
+              </button>
+              <button
+                onClick={() => router.push('/login')}
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Log In
+              </button>
+            </>
+          )}
         </div>
       </div>
 
