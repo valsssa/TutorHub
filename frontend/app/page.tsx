@@ -165,32 +165,6 @@ export default function HomePage() {
     );
   };
 
-  const getTutorsSectionTitle = () => {
-    if (searchQuery.trim()) {
-      return `Tutors for "${searchQuery}"`;
-    }
-    if (selectedSubject) {
-      const subject = subjectsList.find(s => s.id === selectedSubject);
-      return subject ? `${subject.name} Tutors` : "Filtered Tutors";
-    }
-    if (minRating) {
-      return `${minRating}+ Star Tutors`;
-    }
-    if (minExperience) {
-      return `Experienced Tutors`;
-    }
-    return "";
-  };
-
-  const getTutorsSectionSubtitle = () => {
-    if (searchQuery.trim()) {
-      return "Matching your search criteria";
-    }
-    if (hasActiveFilters()) {
-      return "Filtered results based on your preferences";
-    }
-    return "";
-  };
 
   const handleSearchUpdate = () => {
     // Instead of redirecting, trigger filtering on the homepage
@@ -385,23 +359,6 @@ export default function HomePage() {
       {(filteredTutors.length > 0 || filtering) && (
         <section className="py-16 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
-                {filtering ? "Searching Tutors..." : getTutorsSectionTitle()}
-              </h2>
-              <p className="text-xl text-slate-600 dark:text-slate-400">
-                {filtering ? "Finding the perfect match for you" : getTutorsSectionSubtitle()}
-              </p>
-              {!filtering && resultsCount > 0 && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                  {resultsCount} Teachers available {resultsCount !== 1 ? 's' : ''}
-                </p>
-              )}
-            </motion.div>
 
             {filtering ? (
               <div className="flex justify-center items-center py-12">
