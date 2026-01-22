@@ -186,10 +186,10 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="container mx-auto px-4 py-16 md:py-24 max-w-7xl">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="container mx-auto px-4 py-12 md:py-20 lg:py-24 max-w-7xl">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left Content */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -205,12 +205,12 @@ export default function HomePage() {
               </div>
 
               {/* Main Heading */}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white mb-6 tracking-tight leading-[1.1]">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white mb-4 sm:mb-6 tracking-tight leading-[1.1]">
                 Find the <span className="text-emerald-600 dark:text-emerald-400">perfect tutor</span> for your goals
               </h1>
               
               {/* Subheading */}
-              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
+              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto lg:mx-0 mb-6 sm:mb-8 leading-relaxed px-4 sm:px-0">
                 Book 1-on-1 lessons with verified experts. Master any subject from the comfort of your home.
               </p>
 
@@ -235,7 +235,7 @@ export default function HomePage() {
               </div>
 
               {/* Subject Pills */}
-              <div className="flex flex-wrap justify-center lg:justify-start gap-2">
+              <div className="flex flex-wrap justify-center lg:justify-start gap-2 mb-2 lg:mb-0">
                 {['English', 'Mathematics', 'Spanish', 'Physics', 'Piano', 'Computer Science'].map((topic) => (
                   <button
                     key={topic}
@@ -249,17 +249,17 @@ export default function HomePage() {
 
               {/* CTA Buttons */}
               {!currentUser && (
-                <div className="flex flex-wrap gap-4 justify-center lg:justify-start mt-8">
+                <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 justify-center lg:justify-start mt-6 lg:mt-8">
                   <Button
                     onClick={() => router.push("/register")}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg shadow-emerald-500/20"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg shadow-emerald-500/20 w-full sm:w-auto"
                   >
                     Get Started Free
                   </Button>
                   <Button
                     onClick={() => router.push("/tutors")}
                     variant="outline"
-                    className="px-8 py-4 rounded-xl font-bold text-lg"
+                    className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg w-full sm:w-auto"
                   >
                     Browse Tutors
                   </Button>
@@ -269,7 +269,7 @@ export default function HomePage() {
               {currentUser && (
                 <Button
                   onClick={() => router.push(currentUser.role === 'admin' ? '/admin' : '/dashboard')}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-lg mt-8"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg mt-6 lg:mt-8 w-full sm:w-auto"
                 >
                   Go to Dashboard <FiArrowRight className="w-5 h-5" />
                 </Button>
@@ -277,31 +277,32 @@ export default function HomePage() {
             </motion.div>
 
             {/* Right Image with Floating Cards */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="relative hidden lg:block h-[500px]"
+              className="relative hidden lg:block"
             >
               {/* Background Gradient Shape */}
               <div className="absolute inset-0 bg-gradient-to-tr from-emerald-100 to-blue-100 dark:from-emerald-900/20 dark:to-blue-900/20 rounded-[40px] transform rotate-3 scale-95" />
               
               {/* Main Image */}
-              <Image 
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000&auto=format&fit=crop" 
-                alt="Students learning together" 
-                width={1000}
-                height={667}
-                className="relative rounded-[40px] shadow-2xl w-full h-full object-cover border-8 border-white dark:border-slate-800 transform -rotate-2 hover:rotate-0 transition-transform duration-700"
-                unoptimized
-              />
+              <div className="relative w-full h-[300px] md:h-[400px] lg:h-[500px]">
+                <Image
+                  src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1000&auto=format&fit=crop"
+                  alt="Students learning together"
+                  fill
+                  className="rounded-[20px] lg:rounded-[40px] shadow-2xl object-cover border-4 lg:border-8 border-white dark:border-slate-800 transform -rotate-1 lg:-rotate-2 hover:rotate-0 transition-transform duration-700"
+                  unoptimized
+                />
+              </div>
               
               {/* Floating Card - Bottom Left: Satisfaction Guaranteed */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
-                className="absolute -bottom-8 -left-8 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-4"
+                className="absolute -bottom-4 -left-2 lg:-bottom-8 lg:-left-8 bg-white dark:bg-slate-800 p-3 lg:p-4 rounded-xl lg:rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 lg:gap-4 max-w-[200px] lg:max-w-none"
               >
                 <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-full text-emerald-600 dark:text-emerald-400">
                   <FiCheck className="w-6 h-6" strokeWidth={3} />
@@ -313,11 +314,11 @@ export default function HomePage() {
               </motion.div>
 
               {/* Floating Card - Top Right: Average Rating */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.8 }}
-                className="absolute top-12 -right-8 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700"
+                className="absolute top-8 -right-2 lg:top-12 lg:-right-8 bg-white dark:bg-slate-800 p-3 lg:p-4 rounded-xl lg:rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700"
               >
                 <div className="flex items-center gap-1 text-amber-400 mb-1">
                   {[1,2,3,4,5].map(i => (
@@ -332,7 +333,7 @@ export default function HomePage() {
       </section>
 
       {/* Advanced Search Section */}
-      <section className="py-2 bg-slate-50 dark:bg-slate-900">
+      <section className="py-8 md:py-12 lg:py-16 bg-slate-50 dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <TutorSearchSection
@@ -357,7 +358,7 @@ export default function HomePage() {
 
       {/* Tutors Grid */}
       {(filteredTutors.length > 0 || filtering) && (
-        <section className="py-4 bg-white dark:bg-slate-900">
+        <section className="py-8 md:py-12 lg:py-16 bg-white dark:bg-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {filtering ? (
@@ -392,7 +393,7 @@ export default function HomePage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8 mb-8">
                   {filteredTutors.map((tutor) => (
                     <TutorCard key={tutor.id} tutor={tutor} />
                   ))}
@@ -414,7 +415,7 @@ export default function HomePage() {
 
       {/* Show featured tutors only when no filters are applied */}
       {filteredTutors.length === 0 && !filtering && !hasActiveFilters() && featuredTutors.length > 0 && (
-        <section className="py-4 bg-white dark:bg-slate-900">
+        <section className="py-8 md:py-12 lg:py-16 bg-white dark:bg-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -429,7 +430,7 @@ export default function HomePage() {
               </p>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8 mb-8">
               {featuredTutors.map((tutor) => (
                 <TutorCard key={tutor.id} tutor={tutor} />
               ))}
