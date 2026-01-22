@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { FiSearch, FiStar, FiUsers, FiBookOpen, FiAward, FiTrendingUp, FiCheck, FiArrowRight } from "react-icons/fi";
 import { tutors, subjects, auth } from "@/lib/api";
 import { TutorPublicSummary, Subject, User } from "@/types";
-import { PRICE_LIMITS } from "@/types/filters";
+import { PRICE_LIMITS, SORT_OPTIONS } from "@/types/filters";
 import TutorCard from "@/components/TutorCard";
 import TutorSearchSection from "@/components/TutorSearchSection";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -35,7 +35,7 @@ export default function HomePage() {
   ]);
   const [minRating, setMinRating] = useState<number | undefined>();
   const [minExperience, setMinExperience] = useState<number | undefined>();
-  const [sortBy, setSortBy] = useState<string>("rating");
+  const [sortBy, setSortBy] = useState<string>("top_picks");
   const [resultsCount, setResultsCount] = useState(0);
 
   useEffect(() => {
@@ -398,7 +398,7 @@ export default function HomePage() {
               </p>
               {!filtering && resultsCount > 0 && (
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                  Showing {resultsCount} tutor{resultsCount !== 1 ? 's' : ''}
+                  {resultsCount} Teachers available {resultsCount !== 1 ? 's' : ''}
                 </p>
               )}
             </motion.div>
@@ -409,6 +409,32 @@ export default function HomePage() {
               </div>
             ) : (
               <>
+                {/* Results Header */}
+                {resultsCount > 0 && (
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 px-4">
+                    {/* Left: Results Count */}
+                    <div className="text-lg font-semibold text-slate-900 dark:text-white">
+                      {resultsCount} Teachers available
+                    </div>
+
+                    {/* Right: Sort Selector */}
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                      <span className="font-medium">Sort by:</span>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => handleSortChange(e.target.value)}
+                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        {SORT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                   {filteredTutors.map((tutor) => (
                     <TutorCard key={tutor.id} tutor={tutor} />

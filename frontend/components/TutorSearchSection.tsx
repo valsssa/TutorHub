@@ -439,7 +439,7 @@ export default function TutorSearchSection({
           {/* Row 2: Secondary Filters */}
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Sort Dropdown */}
-            <div className="relative">
+            {/* <div className="relative">
               <button 
                 onClick={() => setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')}
                 className={`h-full bg-white dark:bg-slate-900 border ${activeDropdown === 'sort' ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-slate-200 dark:border-slate-700'} text-slate-700 dark:text-slate-300 font-medium px-4 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2 whitespace-nowrap z-20 relative`}
@@ -470,7 +470,7 @@ export default function TutorSearchSection({
                   </div>
                 </>
               )}
-            </div>
+            </div> */}
 
             {/* Clear Filters Button */}
             {activeFiltersCount > 0 && (

@@ -19,11 +19,11 @@ export interface FilterOption<T = unknown> {
 }
 
 export const SORT_OPTIONS: FilterOption<string>[] = [
-  { value: "rating", label: "Best Match" },
-  { value: "rate_asc", label: "Price: Low to High" },
-  { value: "rate_desc", label: "Price: High to Low" },
-  { value: "experience", label: "Most Experienced" },
-  { value: "sessions", label: "Most Popular" },
+  { value: "top_picks", label: "Our top picks" },
+  { value: "rating", label: "Highest rated" },
+  { value: "rate_asc", label: "Price: low → high" },
+  { value: "experience", label: "Experience" },
+  { value: "availability", label: "Availability soonest" },
 ];
 
 export const RATING_OPTIONS: FilterOption<number>[] = [
