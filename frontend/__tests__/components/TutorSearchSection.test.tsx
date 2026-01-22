@@ -1,274 +1,170 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { TutorSearchSection } from '@/components/TutorSearchSection'
-
-jest.mock('@/lib/api', () => ({
-  tutors: {
-    search: jest.fn()
-  },
-  subjects: {
-    list: jest.fn()
-  }
-}))
+import TutorSearchSection from '@/components/TutorSearchSection'
+import { Subject } from '@/types'
 
 describe('TutorSearchSection', () => {
-  const mockOnSearch = jest.fn()
+  const mockProps = {
+    subjects: [] as Subject[],
+    selectedSubject: undefined,
+    priceRange: [5, 200] as [number, number],
+    minRating: undefined,
+    minExperience: undefined,
+    sortBy: 'top_picks',
+    searchTerm: '',
+    resultsCount: 0,
+    onSubjectChange: jest.fn(),
+    onPriceChange: jest.fn(),
+    onMinRatingChange: jest.fn(),
+    onMinExperienceChange: jest.fn(),
+    onSortChange: jest.fn(),
+    onSearchChange: jest.fn(),
+    onUpdate: jest.fn(),
+  }
 
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('renders search input and filters', async () => {
-    // Given
-    const { subjects } = await import('@/lib/api')
-    ;(subjects.list as jest.Mock).mockResolvedValue({
-      data: [
-        { id: 1, name: 'Mathematics' },
-        { id: 2, name: 'English' }
-      ]
-    })
-
+  it('renders search input and basic filter buttons', () => {
     // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
+    render(<TutorSearchSection {...mockProps} />)
 
     // Then
-    expect(screen.getByPlaceholderText(/Search by name or subject/i)).toBeInTheDocument()
-    expect(screen.getByLabelText('Subject')).toBeInTheDocument()
-    expect(screen.getByLabelText(/Price Range/i)).toBeInTheDocument()
-    expect(screen.getByLabelText('Minimum Rating')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Search tutors/i)).toBeInTheDocument()
+    expect(screen.getByText('All Subjects')).toBeInTheDocument()
+    expect(screen.getByText('Any price')).toBeInTheDocument()
+    expect(screen.getByText('Any Rating')).toBeInTheDocument()
+    expect(screen.getByText('Any Experience')).toBeInTheDocument()
+    expect(screen.getByText('Our top picks')).toBeInTheDocument()
   })
 
-  it('debounces search input', async () => {
+  it('displays subject dropdown options when clicked', () => {
+    // Given
+    const subjects = [
+      { id: 1, name: 'Mathematics' },
+      { id: 2, name: 'English' }
+    ]
+
     // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
+    render(<TutorSearchSection {...mockProps} subjects={subjects} />)
 
-    const input = screen.getByPlaceholderText(/Search/i)
-    fireEvent.change(input, { target: { value: 'Math' } })
+    const subjectButton = screen.getByText('All Subjects')
+    fireEvent.click(subjectButton)
 
-    // Then - should not call immediately
-    expect(mockOnSearch).not.toHaveBeenCalled()
+    // Then
+    expect(screen.getByText('Mathematics')).toBeInTheDocument()
+    expect(screen.getByText('English')).toBeInTheDocument()
+  })
 
-    // After debounce delay (500ms)
+  it('calls onSubjectChange when subject is selected', () => {
+    // Given
+    const subjects = [{ id: 1, name: 'Mathematics' }]
+
+    // When
+    render(<TutorSearchSection {...mockProps} subjects={subjects} />)
+
+    const subjectButton = screen.getByText('All Subjects')
+    fireEvent.click(subjectButton)
+
+    const mathOption = screen.getByText('Mathematics')
+    fireEvent.click(mathOption)
+
+    // Then
+    expect(mockProps.onSubjectChange).toHaveBeenCalledWith(1)
+  })
+
+  it('displays selected subject name', () => {
+    // Given
+    const subjects = [{ id: 1, name: 'Mathematics' }]
+
+    // When
+    render(<TutorSearchSection {...mockProps} subjects={subjects} selectedSubject={1} />)
+
+    // Then
+    expect(screen.getByText('Mathematics')).toBeInTheDocument()
+  })
+
+  it('calls onSearchChange when search input changes', async () => {
+    // When
+    render(<TutorSearchSection {...mockProps} />)
+
+    const searchInput = screen.getByPlaceholderText(/Search tutors/i)
+    fireEvent.change(searchInput, { target: { value: 'John Doe' } })
+
+    // Wait for debounce
     await waitFor(() => {
-      expect(mockOnSearch).toHaveBeenCalledWith('Math')
+      expect(mockProps.onSearchChange).toHaveBeenCalledWith('John Doe')
     }, { timeout: 600 })
   })
 
-  it('applies subject filter', async () => {
-    // Given
-    const { subjects } = await import('@/lib/api')
-    ;(subjects.list as jest.Mock).mockResolvedValue({
-      data: [{ id: 1, name: 'Mathematics' }]
-    })
-
+  it('displays price range label correctly', () => {
     // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
-
-    await waitFor(() => {
-      const subjectSelect = screen.getByLabelText('Subject')
-      fireEvent.change(subjectSelect, { target: { value: '1' } })
-    })
+    render(<TutorSearchSection {...mockProps} priceRange={[10, 50]} />)
 
     // Then
-    await waitFor(() => {
-      expect(mockOnSearch).toHaveBeenCalledWith('', { subject_id: 1 })
-    })
+    expect(screen.getByText('$10 - $50')).toBeInTheDocument()
   })
 
-  it('applies price range filter', () => {
+  it('shows rating filter options when clicked', () => {
     // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
+    render(<TutorSearchSection {...mockProps} />)
 
-    const maxPriceInput = screen.getByLabelText('Max Price')
-    fireEvent.change(maxPriceInput, { target: { value: '75' } })
+    const ratingButton = screen.getByText('Any Rating')
+    fireEvent.click(ratingButton)
 
     // Then
-    expect(mockOnSearch).toHaveBeenCalledWith('', { max_price: 75 })
+    expect(screen.getByText('4+ Stars')).toBeInTheDocument()
+    expect(screen.getByText('4.5+ Stars')).toBeInTheDocument()
+    expect(screen.getByText('5 Stars')).toBeInTheDocument()
   })
 
-  it('applies rating filter', () => {
+  it('calls onMinRatingChange when rating option is selected', () => {
     // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
+    render(<TutorSearchSection {...mockProps} />)
 
-    const ratingSelect = screen.getByLabelText('Minimum Rating')
-    fireEvent.change(ratingSelect, { target: { value: '4' } })
+    const ratingButton = screen.getByText('Any Rating')
+    fireEvent.click(ratingButton)
+
+    const fourStarsOption = screen.getByText('4+ Stars')
+    fireEvent.click(fourStarsOption)
 
     // Then
-    expect(mockOnSearch).toHaveBeenCalledWith('', { min_rating: 4 })
+    expect(mockProps.onMinRatingChange).toHaveBeenCalledWith(4)
   })
 
-  it('combines multiple filters', async () => {
-    // Given
-    const { subjects } = await import('@/lib/api')
-    ;(subjects.list as jest.Mock).mockResolvedValue({
-      data: [{ id: 1, name: 'Mathematics' }]
-    })
 
+  it('shows experience filter options when clicked', () => {
     // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
+    render(<TutorSearchSection {...mockProps} />)
 
-    // Apply multiple filters
-    const searchInput = screen.getByPlaceholderText(/Search/i)
-    fireEvent.change(searchInput, { target: { value: 'John' } })
-
-    await waitFor(() => {
-      const subjectSelect = screen.getByLabelText('Subject')
-      fireEvent.change(subjectSelect, { target: { value: '1' } })
-    })
-
-    const maxPriceInput = screen.getByLabelText('Max Price')
-    fireEvent.change(maxPriceInput, { target: { value: '60' } })
+    const experienceButton = screen.getByText('Any Experience')
+    fireEvent.click(experienceButton)
 
     // Then
-    await waitFor(() => {
-      expect(mockOnSearch).toHaveBeenCalledWith('John', {
-        subject_id: 1,
-        max_price: 60
-      })
-    })
+    expect(screen.getByText('1+ Years')).toBeInTheDocument()
+    expect(screen.getByText('3+ Years')).toBeInTheDocument()
+    expect(screen.getByText('5+ Years')).toBeInTheDocument()
+    expect(screen.getByText('10+ Years')).toBeInTheDocument()
   })
 
-  it('shows loading state during search', async () => {
-    // Given
-    mockOnSearch.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-
+  it('calls onMinExperienceChange when experience option is selected', () => {
     // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
+    render(<TutorSearchSection {...mockProps} />)
 
-    const input = screen.getByPlaceholderText(/Search/i)
-    fireEvent.change(input, { target: { value: 'test' } })
+    const experienceButton = screen.getByText('Any Experience')
+    fireEvent.click(experienceButton)
+
+    const fiveYearsOption = screen.getByText('5+ Years')
+    fireEvent.click(fiveYearsOption)
 
     // Then
-    expect(screen.getByText('Searching...')).toBeInTheDocument()
+    expect(mockProps.onMinExperienceChange).toHaveBeenCalledWith(5)
   })
 
-  it('displays search results count', async () => {
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} totalResults={25} />)
 
-    // Then
-    expect(screen.getByText('25 tutors found')).toBeInTheDocument()
-  })
 
-  it('shows no results message', () => {
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} totalResults={0} />)
 
-    // Then
-    expect(screen.getByText('No tutors found')).toBeInTheDocument()
-  })
 
-  it('clears search when clear button clicked', () => {
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
 
-    // Fill search
-    const input = screen.getByPlaceholderText(/Search/i)
-    fireEvent.change(input, { target: { value: 'test search' } })
 
-    // Clear search
-    const clearButton = screen.getByLabelText('Clear search')
-    fireEvent.click(clearButton)
-
-    // Then
-    expect(input).toHaveValue('')
-    expect(mockOnSearch).toHaveBeenCalledWith('')
-  })
-
-  it('handles search error', async () => {
-    // Given
-    mockOnSearch.mockRejectedValue(new Error('Search failed'))
-
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
-
-    const input = screen.getByPlaceholderText(/Search/i)
-    fireEvent.change(input, { target: { value: 'test' } })
-
-    // Then
-    await waitFor(() => {
-      expect(screen.getByText('Search failed')).toBeInTheDocument()
-    })
-  })
-
-  it('shows advanced filters toggle', () => {
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
-
-    // Then
-    expect(screen.getByText('Advanced Filters')).toBeInTheDocument()
-  })
-
-  it('toggles advanced filters visibility', () => {
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
-
-    const toggleButton = screen.getByText('Advanced Filters')
-    fireEvent.click(toggleButton)
-
-    // Then - Advanced filters should be visible
-    expect(screen.getByText('Sort by')).toBeInTheDocument()
-    expect(screen.getByText('Availability')).toBeInTheDocument()
-  })
-
-  it('applies sorting options', () => {
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
-
-    // Show advanced filters
-    const toggleButton = screen.getByText('Advanced Filters')
-    fireEvent.click(toggleButton)
-
-    // Select sorting
-    const sortSelect = screen.getByLabelText('Sort by')
-    fireEvent.change(sortSelect, { target: { value: 'rating' } })
-
-    // Then
-    expect(mockOnSearch).toHaveBeenCalledWith('', { sort_by: 'rating' })
-  })
-
-  it('filters by availability', () => {
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
-
-    // Show advanced filters
-    const toggleButton = screen.getByText('Advanced Filters')
-    fireEvent.click(toggleButton)
-
-    // Select availability
-    const availabilitySelect = screen.getByLabelText('Availability')
-    fireEvent.change(availabilitySelect, { target: { value: 'today' } })
-
-    // Then
-    expect(mockOnSearch).toHaveBeenCalledWith('', { available_today: true })
-  })
-
-  it('resets all filters', async () => {
-    // Given
-    const { subjects } = await import('@/lib/api')
-    ;(subjects.list as jest.Mock).mockResolvedValue({
-      data: [{ id: 1, name: 'Mathematics' }]
-    })
-
-    // When
-    render(<TutorSearchSection onSearch={mockOnSearch} />)
-
-    // Apply filters
-    const searchInput = screen.getByPlaceholderText(/Search/i)
-    fireEvent.change(searchInput, { target: { value: 'test' } })
-
-    await waitFor(() => {
-      const subjectSelect = screen.getByLabelText('Subject')
-      fireEvent.change(subjectSelect, { target: { value: '1' } })
-    })
-
-    // Reset filters
-    const resetButton = screen.getByText('Reset Filters')
-    fireEvent.click(resetButton)
-
-    // Then
-    await waitFor(() => {
-      expect(searchInput).toHaveValue('')
-      expect(mockOnSearch).toHaveBeenCalledWith('', {})
-    })
-  })
 })

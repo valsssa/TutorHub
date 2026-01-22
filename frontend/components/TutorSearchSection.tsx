@@ -170,7 +170,7 @@ export default function TutorSearchSection({
         </div>
 
         {/* --- DESKTOP: Full Filter Grid --- */}
-        <div className="hidden md:block space-y-4">
+        <div className="hidden md:block space-y-4" style={{ zIndex: 9999, position: 'relative' }}>
           {/* Row 1: Primary Filters */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             
@@ -385,8 +385,8 @@ export default function TutorSearchSection({
             </div>
 
             {/* Experience Filter */}
-            <div className="relative z-0">
-              <button 
+            <div className="relative z-30">
+              <button
                 onClick={() => setActiveDropdown(activeDropdown === 'experience' ? null : 'experience')}
                 className={`w-full h-full bg-white dark:bg-slate-900 border ${activeDropdown === 'experience' ? 'border-emerald-500 ring-1 ring-emerald-500' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-3 hover:border-slate-300 dark:hover:border-slate-600 transition-all cursor-pointer text-left relative z-20 flex flex-col justify-center`}
               >
@@ -402,7 +402,7 @@ export default function TutorSearchSection({
               {activeDropdown === 'experience' && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
-                  <div className="absolute top-[calc(100%+8px)] right-0 w-full md:w-[280px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 py-2">
+                  <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-[350px] overflow-y-auto py-2">
                     <button
                       onClick={() => {
                         onMinExperienceChange(undefined);
@@ -546,12 +546,19 @@ export default function TutorSearchSection({
             </div>
 
             {/* Rating */}
-            <div>
+            <div className="relative" style={{ zIndex: 9999, isolation: 'isolate' }}>
               <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">Minimum Rating</label>
-              <select 
+              <select
                 value={minRating || ""}
                 onChange={(e) => onMinRatingChange(e.target.value ? Number(e.target.value) : undefined)}
-                className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white"
+                className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                style={{
+                  position: 'relative',
+                  zIndex: 10000,
+                  isolation: 'isolate',
+                  transform: 'translateZ(0)',
+                  contain: 'none'
+                }}
               >
                 <option value="">Any Rating</option>
                 {RATING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -559,12 +566,19 @@ export default function TutorSearchSection({
             </div>
 
             {/* Experience */}
-            <div>
+            <div className="relative" style={{ zIndex: 9999, isolation: 'isolate' }}>
               <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">Experience Level</label>
-              <select 
+              <select
                 value={minExperience || ""}
                 onChange={(e) => onMinExperienceChange(e.target.value ? Number(e.target.value) : undefined)}
-                className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white"
+                className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                style={{
+                  position: 'relative',
+                  zIndex: 10000,
+                  isolation: 'isolate',
+                  transform: 'translateZ(0)',
+                  contain: 'none'
+                }}
               >
                 <option value="">Any Experience</option>
                 {EXPERIENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -572,12 +586,19 @@ export default function TutorSearchSection({
             </div>
 
             {/* Sort */}
-            <div>
+            <div className="relative" style={{ zIndex: 9999, isolation: 'isolate' }}>
               <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">Sort By</label>
-              <select 
+              <select
                 value={sortBy}
                 onChange={(e) => onSortChange(e.target.value)}
-                className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white"
+                className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                style={{
+                  position: 'relative',
+                  zIndex: 10000,
+                  isolation: 'isolate',
+                  transform: 'translateZ(0)',
+                  contain: 'none'
+                }}
               >
                 {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>

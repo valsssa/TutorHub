@@ -95,8 +95,8 @@ export default function Navbar({ user }: NavbarProps) {
     <nav className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link 
-          href={authUtils.isAdmin(user) ? '/admin' : '/dashboard'} 
+        <Link
+          href="/"
           className="flex items-center gap-2 cursor-pointer"
         >
           <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center shadow-sm">
@@ -114,12 +114,6 @@ export default function Navbar({ user }: NavbarProps) {
             {authUtils.isStudent(user) && (
               <>
                 <Link
-                  href="/dashboard"
-                  className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <Link
                   href="/tutors"
                   className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
                 >
@@ -134,20 +128,12 @@ export default function Navbar({ user }: NavbarProps) {
               </>
             )}
             {authUtils.isTutor(user) && (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/tutor/availability"
-                  className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-                >
-                  Availability
-                </Link>
-              </>
+              <Link
+                href="/tutor/availability"
+                className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+              >
+                Availability
+              </Link>
             )}
             {authUtils.isAdmin(user) && (
               <Link
@@ -345,14 +331,6 @@ export default function Navbar({ user }: NavbarProps) {
 
                 {/* Menu Items */}
                 <div className="grid gap-2">
-                  <Link 
-                    href="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
-                  >
-                    Dashboard
-                  </Link>
-
                   {authUtils.isStudent(user) && (
                     <>
                       <Link 

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { FilterBar } from '@/components/FilterBar'
+import FilterBar from '@/components/FilterBar'
 
 describe('FilterBar', () => {
   const mockOnFilterChange = jest.fn()

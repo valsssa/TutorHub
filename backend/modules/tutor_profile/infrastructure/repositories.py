@@ -93,26 +93,26 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         )
 
         # Filter by subject (join only if filtering, eager load already loaded)
-        if filters.subject_id:
+        if filters.subject_id is not None:
             # The join is already loaded via joinedload, just filter
             query = query.filter(TutorProfile.subjects.any(TutorSubject.subject_id == filters.subject_id))
 
         # Filter by rate range
-        if filters.min_rate:
+        if filters.min_rate is not None:
             query = query.filter(TutorProfile.hourly_rate >= filters.min_rate)
-        if filters.max_rate:
+        if filters.max_rate is not None:
             query = query.filter(TutorProfile.hourly_rate <= filters.max_rate)
 
         # Filter by rating
-        if filters.min_rating:
+        if filters.min_rating is not None:
             query = query.filter(TutorProfile.average_rating >= filters.min_rating)
 
         # Filter by experience
-        if filters.min_experience:
+        if filters.min_experience is not None:
             query = query.filter(TutorProfile.experience_years >= filters.min_experience)
 
         # Filter by language
-        if filters.language:
+        if filters.language is not None:
             try:
                 # Try PostgreSQL-specific array containment
                 from sqlalchemy import String, cast
@@ -124,7 +124,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
                 query = query.filter(TutorProfile.languages.contains(filters.language))
 
         # Search in title, headline, and bio
-        if filters.search_query:
+        if filters.search_query is not None:
             search = f"%{filters.search_query}%"
             query = query.filter(
                 (TutorProfile.title.ilike(search))

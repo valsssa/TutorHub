@@ -76,6 +76,7 @@ export default function HomePage() {
         page_size: 12, // Show more tutors when filtering
       };
 
+      // Send filter parameters - only send price filters when different from defaults for "Any price" to work
       if (searchQuery.trim()) {
         params.search_query = searchQuery;
       }

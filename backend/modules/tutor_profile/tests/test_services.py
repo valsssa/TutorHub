@@ -110,6 +110,15 @@ class TestTutorProfileCreation:
         with pytest.raises(ValueError, match="User is not a tutor"):
             TutorProfileService.create_profile(db, test_student_user.id, {})
 
+    def test_get_profile_by_user_non_tutor_error(self, db: Session, test_student_user):
+        """Test error when non-tutor tries to access profile via get_profile_by_user"""
+        # When/Then
+        from fastapi import HTTPException
+        with pytest.raises(HTTPException) as exc_info:
+            TutorProfileService.get_profile_by_user(db, test_student_user.id)
+        assert exc_info.value.status_code == 403
+        assert "not 'tutor'" in str(exc_info.value.detail)
+
 
 class TestTutorProfileUpdates:
     """Test profile update operations"""
@@ -144,6 +153,34 @@ class TestTutorProfileUpdates:
         # When/Then
         with pytest.raises(ValueError, match="Invalid hourly rate"):
             TutorProfileService.update_pricing(db, test_tutor_profile.id, {"hourly_rate": Decimal("-10.00")})
+
+    def test_update_pricing_optimistic_locking(self, db: Session, test_tutor_profile):
+        """Test optimistic locking prevents concurrent edits"""
+        # Given
+        new_rate = Decimal("75.00")
+        original_version = test_tutor_profile.version
+
+        # When/Then - Should succeed with correct version
+        updated = TutorProfileService.update_pricing(
+            db,
+            test_tutor_profile.id,
+            {"hourly_rate": new_rate},
+            expected_version=original_version
+        )
+        assert updated.hourly_rate == new_rate
+        assert updated.version == original_version + 1
+
+        # When/Then - Should fail with stale version
+        from fastapi import HTTPException
+        with pytest.raises(HTTPException) as exc_info:
+            TutorProfileService.update_pricing(
+                db,
+                test_tutor_profile.id,
+                {"hourly_rate": Decimal("80.00")},
+                expected_version=original_version  # Stale version
+            )
+        assert exc_info.value.status_code == 409
+        assert "been modified by another request" in str(exc_info.value.detail)
 
     def test_update_description(self, db: Session, test_tutor_profile):
         """Test updating full description"""
@@ -676,3 +713,49 @@ class TestAvailabilityService:
 
         # Then
         assert len(slots) == 0
+
+    def test_replace_availability_with_timezone(self, db: Session, test_tutor_profile):
+        """Test replacing availability with timezone handling"""
+        # Given
+        availability = [
+            {
+                "day_of_week": 1,  # Monday
+                "start_time": "09:00:00",
+                "end_time": "17:00:00",
+                "is_recurring": True,
+            }
+        ]
+        timezone = "America/New_York"
+
+        # When
+        updated = TutorProfileService.replace_availability(
+            db, test_tutor_profile.user_id, availability, timezone
+        )
+
+        # Then
+        assert len(updated.availabilities) == 1
+        assert updated.availabilities[0].day_of_week == 1
+        assert updated.availabilities[0].start_time.strftime("%H:%M:%S") == "09:00:00"
+        assert updated.timezone == timezone
+
+    def test_replace_availability_optimistic_locking(self, db: Session, test_tutor_profile):
+        """Test optimistic locking prevents concurrent availability edits"""
+        # Given
+        availability = [{"day_of_week": 1, "start_time": "09:00:00", "end_time": "17:00:00", "is_recurring": True}]
+        original_version = test_tutor_profile.version
+
+        # When/Then - Should succeed with correct version
+        updated = TutorProfileService.replace_availability(
+            db, test_tutor_profile.user_id, availability, expected_version=original_version
+        )
+        assert len(updated.availabilities) == 1
+        assert updated.version == original_version + 1
+
+        # When/Then - Should fail with stale version
+        from fastapi import HTTPException
+        with pytest.raises(HTTPException) as exc_info:
+            TutorProfileService.replace_availability(
+                db, test_tutor_profile.user_id, availability, expected_version=original_version
+            )
+        assert exc_info.value.status_code == 409
+        assert "been modified by another request" in str(exc_info.value.detail)
