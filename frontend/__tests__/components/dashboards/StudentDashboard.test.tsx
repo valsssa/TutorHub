@@ -222,44 +222,6 @@ describe('StudentDashboard', () => {
     });
   });
 
-  describe('Call to Action', () => {
-    it('shows Find Tutors CTA when no sessions', async () => {
-      // Given
-      const { bookings, tutors } = require('@/lib/api');
-      bookings.list.mockResolvedValue({ data: [] });
-      tutors.getFeatured.mockResolvedValue({ data: [] });
-
-      // When
-      render(<StudentDashboard user={mockUser} />);
-
-      // Then
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Find a Tutor/i })).toBeInTheDocument();
-      });
-    });
-
-    it('clicking Find Tutors navigates to tutor search', async () => {
-      // Given
-      const { useRouter } = require('next/navigation');
-      const mockPush = jest.fn();
-      useRouter.mockReturnValue({ push: mockPush, replace: jest.fn(), prefetch: jest.fn() });
-
-      const { bookings, tutors } = require('@/lib/api');
-      bookings.list.mockResolvedValue({ data: [] });
-      tutors.getFeatured.mockResolvedValue({ data: [] });
-
-      // When
-      render(<StudentDashboard user={mockUser} />);
-
-      await waitFor(() => {
-        const findTutorBtn = screen.getByRole('button', { name: /Find a Tutor/i });
-        findTutorBtn.click();
-      });
-
-      // Then
-      expect(mockPush).toHaveBeenCalledWith('/tutors');
-    });
-  });
 
   describe('Recommended Tutors', () => {
     it('displays featured tutors section', async () => {

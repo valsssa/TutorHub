@@ -28,11 +28,6 @@ export default function Footer() {
             <h4 className="font-bold text-slate-900 dark:text-white mb-4">Product</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/tutors" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                  Find a Tutor
-                </Link>
-              </li>
-              <li>
                 <Link href="/referral" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                   Refer a friend
                 </Link>

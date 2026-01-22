@@ -92,22 +92,6 @@ export default function StudentDashboard({
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <button
-            onClick={() => router.push("/tutors")}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex items-center gap-4 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all hover:shadow-lg group"
-          >
-            <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <FiSearch size={24} />
-            </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                Find a Tutor
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Browse expert tutors and book sessions
-              </p>
-            </div>
-          </button>
 
           <button
             onClick={() => router.push("/bookings")}
@@ -138,12 +122,6 @@ export default function StudentDashboard({
                 <FiCalendar size={28} className="text-slate-400" />
               </div>
               <p className="mb-4">No sessions booked yet.</p>
-              <button
-                onClick={() => router.push("/tutors")}
-                className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 font-medium hover:underline transition-all"
-              >
-                Find a tutor to get started →
-              </button>
             </div>
           ) : (
             bookings.map((booking, idx) => {

@@ -111,22 +111,6 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="hidden md:flex items-center gap-4 sm:gap-6">
           {/* Navigation Links based on role */}
           <div className="flex gap-6">
-            {authUtils.isStudent(user) && (
-              <>
-                <Link
-                  href="/tutors"
-                  className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-                >
-                  Find Tutors
-                </Link>
-                <Link
-                  href="/bookings"
-                  className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
-                >
-                  My Lessons
-                </Link>
-              </>
-            )}
             {authUtils.isTutor(user) && (
               <Link
                 href="/tutor/availability"
@@ -331,24 +315,6 @@ export default function Navbar({ user }: NavbarProps) {
 
                 {/* Menu Items */}
                 <div className="grid gap-2">
-                  {authUtils.isStudent(user) && (
-                    <>
-                      <Link 
-                        href="/tutors"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
-                      >
-                        Find Tutors
-                      </Link>
-                      <Link 
-                        href="/bookings"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
-                      >
-                        My Lessons
-                      </Link>
-                    </>
-                  )}
 
                   {authUtils.isTutor(user) && (
                     <>

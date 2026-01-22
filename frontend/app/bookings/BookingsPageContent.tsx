@@ -324,11 +324,6 @@ export default function BookingsPageContent() {
               ? "Book a tutor to get started with your learning journey"
               : "Your tutoring sessions will appear here"}
           </p>
-          {authUtils.isStudent(user) && (
-            <Button variant="primary" onClick={() => router.push("/tutors")}>
-              Find Tutors
-            </Button>
-          )}
         </div>
       )}
 
