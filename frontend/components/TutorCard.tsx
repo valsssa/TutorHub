@@ -305,10 +305,10 @@ export default function TutorCard({
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/tutors/${tutor.id}`);
+            router.push(`/messages?user=${tutor.user_id}`);
           }}
         >
-          View Profile
+          <FiMessageCircle className="w-4 h-4" />
         </Button>
       </div>
     </div>
