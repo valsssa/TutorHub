@@ -398,15 +398,13 @@ export default function HomePage() {
                   ))}
                 </div>
 
-                <div className="text-center">
-                  <Button
+                <div className="p-4 text-center border-t border-slate-200 dark:border-slate-800">
+                  <button
                     onClick={() => router.push("/tutors")}
-                    variant="primary"
-                    size="lg"
-                    className="shadow-lg shadow-emerald-500/20"
+                    className="text-sm font-bold text-emerald-600 hover:underline"
                   >
-                    View All Tutors <FiArrowRight className="w-5 h-5" />
-                  </Button>
+                    View all tutors
+                  </button>
                 </div>
               </>
             )}
@@ -437,15 +435,13 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="text-center">
-              <Button
+            <div className="p-4 text-center border-t border-slate-200 dark:border-slate-800">
+              <button
                 onClick={() => router.push("/tutors")}
-                variant="primary"
-                size="lg"
-                className="shadow-lg shadow-emerald-500/20"
+                className="text-sm font-bold text-emerald-600 hover:underline"
               >
-                View All Tutors <FiArrowRight className="w-5 h-5" />
-              </Button>
+                View all tutors
+              </button>
             </div>
           </div>
         </section>
