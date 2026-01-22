@@ -4,7 +4,7 @@
 
 export interface TutorFilters {
   searchTerm: string;
-  subjectId?: number;
+  subject?: string;
   priceRange: [number, number];
   minRating?: number;
   minExperience?: number;

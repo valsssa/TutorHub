@@ -179,7 +179,7 @@ export default function HomePage() {
     if (minExperience) {
       return `Experienced Tutors`;
     }
-    return "Available Tutors";
+    return "";
   };
 
   const getTutorsSectionSubtitle = () => {
@@ -189,7 +189,7 @@ export default function HomePage() {
     if (hasActiveFilters()) {
       return "Filtered results based on your preferences";
     }
-    return "Browse our selection of qualified tutors";
+    return "";
   };
 
   const handleSearchUpdate = () => {
