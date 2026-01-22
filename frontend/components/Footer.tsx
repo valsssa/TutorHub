@@ -70,7 +70,7 @@ export default function Footer() {
           </div>
 
           {/* Legal */}
-          <div>
+          {/* <div>
             <h4 className="font-bold text-slate-900 dark:text-white mb-6">Legal</h4>
             <ul className="space-y-3 text-sm">
               <li>
@@ -89,7 +89,7 @@ export default function Footer() {
                 </Link>
               </li>
             </ul>
-          </div>
+          </div> */}
         </div>
 
         <div className="pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">

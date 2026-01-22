@@ -113,7 +113,7 @@ export default function TutorSearchSection({
     (minExperience ? 1 : 0);
 
   return (
-    <section className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
+    <section className="bg-slate-50 dark:bg-slate-950">
       <div className="max-w-7xl mx-auto px-4 py-8" ref={dropdownRef}>
 
 

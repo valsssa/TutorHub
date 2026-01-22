@@ -227,7 +227,7 @@ function BookingReviewContent() {
           </div>
 
           {/* Privacy Notice */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-blue-50 rounded-lg p-4">
             <p className="text-sm text-blue-900">
               <strong>Note:</strong> Your review will be publicly visible to
               help other students make informed decisions. Please be respectful
