@@ -114,7 +114,7 @@ export default function TutorSearchSection({
 
   return (
     <section className="bg-slate-50 dark:bg-slate-950">
-      <div className="max-w-7xl mx-auto px-4 py-8" ref={dropdownRef}>
+      <div className="max-w-7xl mx-auto px-4 py-2" ref={dropdownRef}>
 
 
         {/* --- MOBILE: Search Bar & Filter Toggle --- */}
@@ -170,7 +170,7 @@ export default function TutorSearchSection({
         </div>
 
         {/* --- DESKTOP: Full Filter Grid --- */}
-        <div className="hidden md:block space-y-4">
+        <div className="hidden md:block space-y-2">
           {/* Row 1: Primary Filters */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             
