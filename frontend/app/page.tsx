@@ -186,7 +186,7 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="container mx-auto px-4 py-12 md:py-20 lg:py-24 max-w-7xl">
+        <div className="container mx-auto px-4 py-8 md:py-12 lg:py-16 max-w-7xl">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left Content */}
             <motion.div
@@ -333,7 +333,7 @@ export default function HomePage() {
       </section>
 
       {/* Advanced Search Section */}
-      <section className="py-8 md:py-12 lg:py-16 bg-slate-50 dark:bg-slate-900">
+      <section className="py-1 md:py-2 lg:py-4 bg-slate-50 dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <TutorSearchSection
@@ -358,7 +358,7 @@ export default function HomePage() {
 
       {/* Tutors Grid */}
       {(filteredTutors.length > 0 || filtering) && (
-        <section className="py-8 md:py-12 lg:py-16 bg-white dark:bg-slate-900">
+        <section className="py-2 md:py-4 lg:py-6 bg-white dark:bg-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {filtering ? (
@@ -415,7 +415,7 @@ export default function HomePage() {
 
       {/* Show featured tutors only when no filters are applied */}
       {filteredTutors.length === 0 && !filtering && !hasActiveFilters() && featuredTutors.length > 0 && (
-        <section className="py-8 md:py-12 lg:py-16 bg-white dark:bg-slate-900">
+        <section className="py-2 md:py-4 lg:py-6 bg-white dark:bg-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
