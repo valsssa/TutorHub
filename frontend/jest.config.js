@@ -26,6 +26,10 @@ const customJestConfig = {
     '!**/node_modules/**',
     '!**/.next/**',
   ],
+  // Fix Next.js 14.2.33 SWC compatibility issue
+  transformIgnorePatterns: [
+    'node_modules/(?!(lucide-react|@lucide)/)',
+  ],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

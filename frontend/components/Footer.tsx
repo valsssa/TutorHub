@@ -50,8 +50,9 @@ export default function Footer() {
             <h4 className="font-bold text-slate-900 dark:text-white mb-4">Support</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/support" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                  Help Center
+                <Link href="/help-center" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                  
+                  
                 </Link>
               </li>
             </ul>
