@@ -322,7 +322,7 @@ export default function TutorCard({
           <span className="text-slate-500 text-xs font-normal">/hr</span>
         </div>
         <Button
-          variant="primary"
+          variant="ghost"
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
@@ -333,7 +333,7 @@ export default function TutorCard({
             router.push(`/messages?user=${tutor.user_id}`);
           }}
         >
-          <FiMessageCircle className="w-4 h-4" />
+          <FiMessageCircle className="w-7 h-7" />
         </Button>
       </div>
     </div>
