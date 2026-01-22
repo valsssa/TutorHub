@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   FiStar,
   FiDollarSign,
@@ -9,8 +10,10 @@ import {
   FiHeart,
   FiMessageCircle,
 } from "react-icons/fi";
-import { TutorPublicSummary } from "@/types";
+import { TutorPublicSummary, User } from "@/types";
 import { resolveAssetUrl } from "@/lib/media";
+import { auth } from "@/lib/api";
+import Cookies from "js-cookie";
 import Button from "./Button";
 import Badge from "./Badge";
 
@@ -28,6 +31,24 @@ export default function TutorCard({
   onToggleSave,
 }: TutorCardProps) {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = Cookies.get("token");
+        if (token) {
+          const currentUser = await auth.getCurrentUser();
+          setUser(currentUser);
+        }
+      } catch (error) {
+        // User is not authenticated
+        setUser(null);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const normalizedFirstName = tutor.first_name?.trim() || tutor.firstName?.trim();
   const normalizedLastName = tutor.last_name?.trim() || tutor.lastName?.trim();
@@ -305,6 +326,10 @@ export default function TutorCard({
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
+            if (!user) {
+              router.push("/login");
+              return;
+            }
             router.push(`/messages?user=${tutor.user_id}`);
           }}
         >
