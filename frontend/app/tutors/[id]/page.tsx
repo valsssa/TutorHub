@@ -2,20 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import { tutors, subjects as subjectsApi, auth } from "@/lib/api";
 import { authUtils } from "@/lib/auth";
 import type { TutorProfile, User, Subject, Review } from "@/types";
 import { useToast } from "@/components/ToastContainer";
 import { TutorProfileSkeleton } from "@/components/SkeletonLoader";
 import TutorProfileView from "@/components/TutorProfileView";
+import Cookies from "js-cookie";
+import PublicHeader from "@/components/PublicHeader";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 export default function TutorDetailPage() {
-  return (
-    <ProtectedRoute>
-      <TutorDetailContent />
-    </ProtectedRoute>
-  );
+  return <TutorDetailContent />;
 }
 
 function TutorDetailContent() {
@@ -36,17 +35,28 @@ function TutorDetailContent() {
 
     setLoading(true);
     try {
-      const [tutorData, currentUser, subjectsData, reviewsData] =
-        await Promise.all([
-          tutors.get(tutorId),
-          auth.getCurrentUser(),
-          subjectsApi.list(),
-          tutors.getReviews(tutorId),
-        ]);
+      // Load tutor data and subjects (always available)
+      const [tutorData, subjectsData, reviewsData] = await Promise.all([
+        tutors.get(tutorId),
+        subjectsApi.list(),
+        tutors.getReviews(tutorId),
+      ]);
+
       setTutor(tutorData);
-      setUser(currentUser);
       setSubjectsList(subjectsData);
       setReviews(reviewsData);
+
+      // Try to get current user (optional for public access)
+      try {
+        const token = Cookies.get("token");
+        if (token) {
+          const currentUser = await auth.getCurrentUser();
+          setUser(currentUser);
+        }
+      } catch (authError) {
+        // User is not authenticated, which is fine for public access
+        setUser(null);
+      }
     } catch (error) {
       showError("Failed to load tutor profile");
       router.push("/tutors");
@@ -80,8 +90,15 @@ function TutorDetailContent() {
   const handleBookSlot = (slotIso: string) => {
     if (!tutorId) return;
 
+    // Check if user is authenticated
+    if (!user) {
+      // Redirect to login page
+      router.push("/login");
+      return;
+    }
+
     // Only students can book
-    if (!user || !authUtils.isStudent(user)) {
+    if (!authUtils.isStudent(user)) {
       showError("Only students can book lessons");
       return;
     }
@@ -103,18 +120,27 @@ function TutorDetailContent() {
   );
 
   return (
-    <TutorProfileView
-      tutor={tutor}
-      reviews={reviews}
-      subjects={subjectsList}
-      onBookSlot={handleBookSlot}
-      onMessage={handleMessage}
-      isOwnProfile={isOwnProfile}
-      onEdit={() => router.push("/tutor/profile")}
-      onToggleSave={canBook ? handleToggleSave : undefined}
-      isSaved={isSaved}
-      backHref="/tutors"
-      backLabel="Back to Marketplace"
-    />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
+      {/* Navigation Header */}
+      {user ? <Navbar user={user} /> : <PublicHeader />}
+
+      <main className="flex-1">
+        <TutorProfileView
+          tutor={tutor}
+          reviews={reviews}
+          subjects={subjectsList}
+          onBookSlot={handleBookSlot}
+          onMessage={handleMessage}
+          isOwnProfile={isOwnProfile}
+          onEdit={() => router.push("/tutor/profile")}
+          onToggleSave={canBook ? handleToggleSave : undefined}
+          isSaved={isSaved}
+          backHref="/tutors"
+          backLabel="Back to Marketplace"
+        />
+      </main>
+
+      <Footer />
+    </div>
   );
 }

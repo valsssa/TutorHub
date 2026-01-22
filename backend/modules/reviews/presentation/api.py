@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from core.audit import AuditLogger
 from core.cache import cache_with_ttl, invalidate_cache
-from core.dependencies import get_current_student_user, get_current_user
+from core.dependencies import get_current_student_user, get_current_user, get_current_user_optional
 from core.sanitization import sanitize_text_input
 from database import get_db
 from models import Booking, Review, TutorProfile, User
@@ -167,7 +167,6 @@ async def get_tutor_reviews(
     tutor_id: int,
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get all reviews for a tutor with pagination and caching."""

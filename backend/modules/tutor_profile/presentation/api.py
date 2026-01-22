@@ -347,10 +347,9 @@ def list_tutors(
 def get_tutor_profile(
     request: Request,
     tutor_id: int,
-    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieve tutor profile by id."""
+    """Retrieve tutor profile by id. Public access allowed."""
     profile = service.get_profile_by_id(db, tutor_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor not found")

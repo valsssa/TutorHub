@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from core.config import Roles
@@ -12,7 +12,7 @@ from core.security import TokenManager
 from database import get_db
 from models import TutorProfile, User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 async def get_current_user(
@@ -42,6 +42,30 @@ async def get_current_user(
 
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
+
+    return user
+
+
+async def get_current_user_optional(
+    token: Annotated[str | None, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User | None:
+    """Get the current authenticated user from JWT token, or None if not authenticated."""
+    if not token:
+        return None
+
+    try:
+        payload = TokenManager.decode_token(token)
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+
+    except AuthenticationError:
+        return None
+
+    user = db.query(User).filter(User.email == email.lower().strip()).first()
+    if user is None or not user.is_active:
+        return None
 
     return user
 
