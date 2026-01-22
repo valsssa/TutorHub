@@ -81,6 +81,13 @@ function TutorDetailContent() {
   };
 
   const handleMessage = () => {
+    // Check if user is authenticated
+    if (!user) {
+      // Redirect to login page
+      router.push("/login");
+      return;
+    }
+
     if (tutor?.user_id) {
       router.push(`/messages?user=${tutor.user_id}`);
     }
