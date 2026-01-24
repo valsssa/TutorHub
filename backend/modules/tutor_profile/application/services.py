@@ -92,6 +92,7 @@ class TutorProfileService:
             title=payload.title,
             headline=payload.headline,
             bio=payload.bio,
+            teaching_philosophy=payload.teaching_philosophy,
             experience_years=payload.experience_years,
             languages=payload.languages,
         )

@@ -458,7 +458,13 @@ export default function TutorDashboard({
                             <FileText size={18} />
                           </button>
                           <button
-                            onClick={() => onOpenChat?.(String(session.student?.id || ''), studentName) || (() => router.push("/messages"))}
+                            onClick={() => {
+                              if (onOpenChat) {
+                                onOpenChat(String(session.student?.id || ''), studentName);
+                              } else {
+                                router.push(`/messages?user=${session.student?.id || ''}`);
+                              }
+                            }}
                             className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg hover:text-emerald-600 transition-colors"
                             title="Message"
                           >

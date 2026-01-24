@@ -162,6 +162,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         title: str,
         headline: str | None,
         bio: str | None,
+        teaching_philosophy: str | None,
         experience_years: int,
         languages: list[str] | None,
     ) -> TutorProfileAggregate:
@@ -171,6 +172,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         profile.title = title
         profile.headline = headline
         profile.bio = bio
+        profile.teaching_philosophy = teaching_philosophy
         profile.experience_years = experience_years
         profile.languages = languages or []
 
@@ -512,6 +514,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             headline=profile.headline,
             bio=profile.bio,
             description=profile.description,
+            teaching_philosophy=profile.teaching_philosophy,
             hourly_rate=profile.hourly_rate or Decimal("0.00"),
             experience_years=profile.experience_years or 0,
             education=profile.education,

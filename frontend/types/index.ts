@@ -122,6 +122,10 @@ export interface TutorPublicSummary {
   total_sessions: number;
   subjects: string[];
   profile_photo_url?: string | null;
+  education?: string[];
+  teaching_philosophy?: string;
+  recent_review?: string;
+  next_available_slots?: string[];
 }
 
 export interface TutorSubject {

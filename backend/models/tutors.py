@@ -30,6 +30,7 @@ class TutorProfile(Base):
     headline = Column(String(255))
     bio = Column(Text)
     description = Column(Text)
+    teaching_philosophy = Column(Text)
     hourly_rate = Column(DECIMAL(10, 2), nullable=False)
     experience_years = Column(Integer, default=0)
     education = Column(String(255))

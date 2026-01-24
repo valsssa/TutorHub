@@ -114,6 +114,7 @@ function DashboardContent() {
         onManageVerification={() => router.push("/tutor/profile")}
         onViewEarnings={() => router.push("/bookings")}
         onViewStudents={() => router.push("/bookings")}
+        onOpenChat={(userId, userName) => router.push(`/messages?user=${userId}`)}
       />
     );
   }
