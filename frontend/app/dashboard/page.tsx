@@ -104,8 +104,16 @@ function DashboardContent() {
         user={user}
         bookings={userBookings}
         profile={tutorProfile}
+        verificationStatus={tutorProfile?.is_approved ? 'verified' : tutorProfile?.profile_status === 'pending_approval' ? 'pending' : 'unverified'}
         onAvatarChange={handleAvatarChange}
         onProfileUpdate={(updated) => setTutorProfile(updated)}
+        onEditProfile={() => router.push("/tutor/profile")}
+        onViewProfile={() => router.push("/tutor/profile")}
+        onUpdateSchedule={(mode) => router.push("/tutor/availability")}
+        onViewCalendar={() => router.push("/bookings")}
+        onManageVerification={() => router.push("/tutor/profile")}
+        onViewEarnings={() => router.push("/bookings")}
+        onViewStudents={() => router.push("/bookings")}
       />
     );
   }

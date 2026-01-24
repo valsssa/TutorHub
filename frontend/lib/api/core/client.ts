@@ -4,6 +4,7 @@
 import axios, { AxiosError } from "axios";
 import Cookies from "js-cookie";
 import { createLogger } from "../../logger";
+import { getApiBaseUrl } from "@/shared/utils/url";
 
 const logger = createLogger('API');
 
@@ -13,8 +14,14 @@ export interface ApiErrorResponse {
   [key: string]: unknown;
 }
 
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    suppressErrorLog?: boolean;
+  }
+}
+
 // Production API URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.valsa.solutions';
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 logger.info(`API client initialized with base URL: ${API_URL}`);
 
@@ -87,10 +94,15 @@ api.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    const status = error.response?.status;
+    const shouldSuppress =
+      status === 404 && error.config?.suppressErrorLog;
     const errorMessage = (error.response?.data as ApiErrorResponse)?.detail || error.message;
-    logger.error(`API Error: ${error.config?.url} - ${error.response?.status || 'Network Error'}`, { detail: errorMessage });
+    if (!shouldSuppress) {
+      logger.error(`API Error: ${error.config?.url} - ${status || 'Network Error'}`, { detail: errorMessage });
+    }
 
-    if (error.response?.status === 401) {
+    if (status === 401) {
       logger.warn("Unauthorized access, redirecting to login");
       Cookies.remove("token");
       if (

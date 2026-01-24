@@ -342,6 +342,20 @@ def list_tutors(
     )
 
 
+@router.get("/{tutor_id}/public", response_model=TutorPublicProfile)
+@limiter.limit("60/minute")
+def get_tutor_public_profile(
+    request: Request,
+    tutor_id: int,
+    db: Session = Depends(get_db),
+):
+    """Retrieve tutor's public profile by id. Public access allowed."""
+    profile = service.get_public_profile_by_id(db, tutor_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor not found")
+    return profile
+
+
 @router.get("/{tutor_id}", response_model=TutorProfileResponse)
 @limiter.limit("60/minute")
 def get_tutor_profile(

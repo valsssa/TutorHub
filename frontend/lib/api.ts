@@ -4,6 +4,7 @@
 import axios, { AxiosError } from "axios";
 import Cookies from "js-cookie";
 import { createLogger } from "./logger";
+import { getApiBaseUrl } from "@/shared/utils/url";
 import type {
   User,
   TutorProfile,
@@ -22,6 +23,7 @@ import type {
   StudentPackage,
   AvatarApiResponse,
   AvatarSignedUrl,
+  FavoriteTutor,
   PaginatedResponse,
 } from "@/types";
 
@@ -41,12 +43,18 @@ export interface RateLimitInfo {
   retryAfter?: number; // Seconds to wait
 }
 
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    suppressErrorLog?: boolean;
+  }
+}
+
 // Rate limit state
 let rateLimitWarningShown = false;
 let lastRateLimitReset = 0;
 
 // Production API URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.valsa.solutions';
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 logger.info(`API client initialized with base URL: ${API_URL}`);
 
@@ -289,10 +297,15 @@ api.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    const status = error.response?.status;
+    const shouldSuppress =
+      status === 404 && error.config?.suppressErrorLog;
     const errorMessage = (error.response?.data as ApiErrorResponse)?.detail || error.message;
-    logger.error(`API Error: ${error.config?.url} - ${error.response?.status || 'Network Error'}`, { detail: errorMessage });
+    if (!shouldSuppress) {
+      logger.error(`API Error: ${error.config?.url} - ${status || 'Network Error'}`, { detail: errorMessage });
+    }
 
-    if (error.response?.status === 401) {
+    if (status === 401) {
       logger.warn("Unauthorized access, redirecting to login");
       Cookies.remove("token");
       if (
@@ -537,6 +550,11 @@ export const tutors = {
 
   async get(tutorId: number): Promise<TutorProfile> {
     const { data } = await api.get<TutorProfile>(`/api/tutors/${tutorId}`);
+    return data;
+  },
+
+  async getPublic(tutorId: number): Promise<TutorPublicSummary> {
+    const { data } = await api.get<TutorPublicSummary>(`/api/tutors/${tutorId}/public`);
     return data;
   },
 
@@ -1054,6 +1072,34 @@ export const notifications = {
 // ============================================================================
 // Admin
 // ============================================================================
+
+// Favorites API
+export const favorites = {
+  async getFavorites(): Promise<FavoriteTutor[]> {
+    const { data } = await api.get("/api/favorites");
+    return data;
+  },
+
+  async addFavorite(tutorProfileId: number): Promise<FavoriteTutor> {
+    const { data } = await api.post("/api/favorites", { tutor_profile_id: tutorProfileId });
+    return data;
+  },
+
+  async removeFavorite(tutorProfileId: number): Promise<void> {
+    await api.delete(`/api/favorites/${tutorProfileId}`);
+  },
+
+  async checkFavorite(tutorProfileId: number): Promise<FavoriteTutor | null> {
+    const response = await api.get(`/api/favorites/${tutorProfileId}`, {
+      suppressErrorLog: true,
+      validateStatus: (status) => status === 404 || (status >= 200 && status < 300),
+    });
+    if (response.status === 404) {
+      return null;
+    }
+    return response.data;
+  },
+};
 
 export const admin = {
   async listUsers(): Promise<User[]> {

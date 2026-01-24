@@ -6,8 +6,9 @@ import Cookies from 'js-cookie'
 import axios from 'axios'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { ChevronLeft, Search, Mail, MessageCircle, AlertCircle, HelpCircle, CheckCircle, ChevronDown, ChevronUp, Book, CreditCard, Shield, User, Send, X } from 'lucide-react'
+import { getApiBaseUrl } from '@/shared/utils/url'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL)
 
 type FaqCategory = 'General' | 'Booking & Lessons' | 'Payments' | 'For Tutors'
 

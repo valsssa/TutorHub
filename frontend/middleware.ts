@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getApiBaseUrl, getWebSocketBaseUrl } from '@/shared/utils/url';
 
 export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
@@ -7,10 +8,11 @@ export function middleware(request: NextRequest) {
   const scriptSrc = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https:'];
   const connectSrc = new Set(["'self'"]);
 
-  const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.valsa.solutions';
+  const configuredApiUrl = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+  const configuredWsUrl = getWebSocketBaseUrl(process.env.NEXT_PUBLIC_WS_URL);
   const candidateUrls = [
     configuredApiUrl,
-    process.env.NEXT_PUBLIC_WS_URL,
+    configuredWsUrl,
     process.env.NEXT_PUBLIC_INTERNAL_API_URL,
     'https://edustream.valsa.solutions',
     'https://api.valsa.solutions',

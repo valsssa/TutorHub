@@ -38,7 +38,7 @@ from modules.notifications.presentation.api import router as notifications_route
 from modules.packages.presentation.api import router as packages_router
 from modules.profiles.presentation.api import router as profiles_router
 from modules.reviews.presentation.api import router as reviews_router
-from modules.students.presentation.api import router as students_router
+from modules.students.presentation.api import router as students_router, favorites_router
 from modules.subjects.presentation.api import router as subjects_router
 from modules.tutor_profile.presentation.api import router as tutor_profile_router
 from modules.tutor_profile.presentation.availability_api import (
@@ -433,6 +433,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(students_router)
+app.include_router(favorites_router)
 app.include_router(subjects_router)
 app.include_router(bookings_router)
 app.include_router(reviews_router)

@@ -159,6 +159,7 @@ export interface StudentProfile {
   learning_goals?: string | null;
   interests?: string | null;
   total_sessions: number;
+  credit_balance_cents?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -268,6 +269,13 @@ export interface Notification {
   type: "info" | "success" | "warning" | "error";
   is_read: boolean;
   link?: string;
+  created_at: string;
+}
+
+export interface FavoriteTutor {
+  id: number;
+  student_id: number;
+  tutor_profile_id: number;
   created_at: string;
 }
 

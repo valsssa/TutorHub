@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { tutors, subjects as subjectsApi, auth } from "@/lib/api";
+import { tutors, subjects as subjectsApi, auth, favorites } from "@/lib/api";
 import { authUtils } from "@/lib/auth";
 import type { TutorProfile, User, Subject, Review } from "@/types";
 import { useToast } from "@/components/ToastContainer";
@@ -52,10 +52,15 @@ function TutorDetailContent() {
         if (token) {
           const currentUser = await auth.getCurrentUser();
           setUser(currentUser);
+
+          // Check if tutor is favorited by current user
+          const favorite = await favorites.checkFavorite(tutorId);
+          setIsSaved(Boolean(favorite));
         }
       } catch (authError) {
         // User is not authenticated, which is fine for public access
         setUser(null);
+        setIsSaved(false);
       }
     } catch (error) {
       showError("Failed to load tutor profile");
@@ -71,12 +76,22 @@ function TutorDetailContent() {
     }
   }, [tutorId, loadData]);
 
-  const handleToggleSave = (e: React.MouseEvent, id: number) => {
+  const handleToggleSave = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    setIsSaved(!isSaved);
-    // TODO: Implement save to favorites API
-    if (!isSaved) {
-      showSuccess("Tutor saved to favorites");
+
+    try {
+      if (isSaved) {
+        await favorites.removeFavorite(id);
+        setIsSaved(false);
+        showSuccess("Tutor removed from favorites");
+      } else {
+        await favorites.addFavorite(id);
+        setIsSaved(true);
+        showSuccess("Tutor saved to favorites");
+      }
+    } catch (error: any) {
+      console.error("Error toggling favorite:", error);
+      showError(error.response?.data?.detail || "Failed to update favorites");
     }
   };
 

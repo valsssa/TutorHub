@@ -1,17 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  FiCalendar,
-  FiClock,
-  FiVideo,
-  FiStar,
-  FiSearch,
-} from "react-icons/fi";
-import { User } from "@/types";
+import { Wallet, Heart, Calendar, Clock, Video } from "lucide-react";
+import { User, FavoriteTutor, TutorPublicSummary, StudentProfile } from "@/types";
 import { BookingDTO } from "@/types/booking";
-import AppShell from "@/components/AppShell";
+import TutorCard from "@/components/TutorCard";
+import { favorites, tutors, students } from "@/lib/api";
+import { useToast } from "@/components/ToastContainer";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 interface StudentDashboardProps {
   user: User;
@@ -41,26 +39,57 @@ export default function StudentDashboard({
   bookings,
 }: StudentDashboardProps) {
   const router = useRouter();
+  const { showError } = useToast();
+
+  const [savedTutors, setSavedTutors] = useState<TutorPublicSummary[]>([]);
+  const [favoritesList, setFavoritesList] = useState<FavoriteTutor[]>([]);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+  const [loadingSavedTutors, setLoadingSavedTutors] = useState(true);
+
+  // Load saved tutors and student profile on component mount
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoadingSavedTutors(true);
+
+        // Load student profile (includes balance if available)
+        try {
+          const profile = await students.getProfile();
+          setStudentProfile(profile);
+        } catch (error) {
+          console.error("Error loading student profile:", error);
+          // Continue without profile data
+        }
+
+        // Get user's favorites
+        const userFavorites = await favorites.getFavorites();
+        setFavoritesList(userFavorites);
+
+        if (userFavorites.length > 0) {
+          // Get tutor profiles for each favorite
+          const tutorIds = userFavorites.map(fav => fav.tutor_profile_id);
+          const tutorPromises = tutorIds.map(id => tutors.getPublic(id));
+          const tutorProfiles = await Promise.all(tutorPromises);
+          setSavedTutors(tutorProfiles);
+        } else {
+          setSavedTutors([]);
+        }
+      } catch (error: any) {
+        console.error("Error loading dashboard data:", error);
+        showError(error.response?.data?.detail || "Failed to load dashboard data");
+        setSavedTutors([]);
+      } finally {
+        setLoadingSavedTutors(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [showError]);
 
   // Filter bookings by status
-  const upcomingBookings = useMemo(
-    () =>
-      bookings.filter(
-        (b) =>
-          b.status === "CONFIRMED" ||
-          b.status === "confirmed" ||
-          b.status === "PENDING" ||
-          b.status === "pending"
-      ),
-    [bookings]
-  );
-
-  const completedBookings = useMemo(
-    () =>
-      bookings.filter(
-        (b) => b.status === "COMPLETED" || b.status === "completed"
-      ),
-    [bookings]
+  const mySessions = useMemo(
+    () => bookings.filter(booking => booking.student.id === user.id),
+    [bookings, user.id]
   );
 
   // Check if a session is joinable (within 15 minutes of start time)
@@ -79,180 +108,173 @@ export default function StudentDashboard({
     return user.email.split("@")[0];
   };
 
+  const handleStartSession = (booking: BookingDTO) => {
+    if (booking.join_url) {
+      window.open(booking.join_url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleReviewSession = (bookingId: number) => {
+    router.push(`/bookings/${bookingId}/review`);
+  };
+
+  const handleViewProfile = (tutor: TutorPublicSummary) => {
+    router.push(`/tutors/${tutor.id}`);
+  };
+
+  const handleToggleSave = async (e: React.MouseEvent, tutorId: number) => {
+    e.stopPropagation();
+
+    try {
+      await favorites.removeFavorite(tutorId);
+
+      // Update local state
+      setFavoritesList(prev => prev.filter(fav => fav.tutor_profile_id !== tutorId));
+      setSavedTutors(prev => prev.filter(tutor => tutor.id !== tutorId));
+
+      // Show success message would be handled by toast if needed
+    } catch (error: any) {
+      console.error("Error removing favorite:", error);
+      showError(error.response?.data?.detail || "Failed to remove from favorites");
+    }
+  };
+
+  const handleBook = (e: React.MouseEvent, tutor: TutorPublicSummary) => {
+    e.stopPropagation();
+    router.push(`/tutors/${tutor.id}`);
+  };
+
+  const handleQuickBook = (e: React.MouseEvent, tutor: TutorPublicSummary) => {
+    e.stopPropagation();
+    router.push(`/tutors/${tutor.id}?quick-book=true`);
+  };
+
+  const handleSlotBook = (e: React.MouseEvent, tutor: TutorPublicSummary, slot: string) => {
+    e.stopPropagation();
+    router.push(`/tutors/${tutor.id}?slot=${slot}`);
+  };
+
+  const handleMessage = (e: React.MouseEvent, tutor: TutorPublicSummary) => {
+    e.stopPropagation();
+    router.push(`/messages?user=${tutor.user_id}`);
+  };
+
+  const handleTopUp = () => {
+    // TODO: Implement wallet top-up functionality
+    router.push("/wallet");
+  };
+
+  // Get balance from student profile (in cents, convert to dollars)
+  const balance = studentProfile?.credit_balance_cents ? (studentProfile.credit_balance_cents / 100).toFixed(2) : "0.00";
+
   return (
-    <AppShell user={user}>
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <h1 className="text-3xl font-bold mb-2 text-slate-900 dark:text-white">
-          Student Dashboard
-        </h1>
-        <p className="text-slate-600 dark:text-slate-400 mb-8">
-          Welcome back, {getUserDisplayName()}
-        </p>
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Header/Navbar */}
+      <Navbar user={user} />
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8 max-w-6xl flex-grow">
+        <h1 className="text-3xl font-bold mb-2 text-slate-900 dark:text-white">Student Dashboard</h1>
+        <p className="text-slate-600 dark:text-slate-400 mb-8">Welcome back, {getUserDisplayName()}</p>
 
+      <div className="grid grid-cols-1 gap-8 mb-12">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-slate-500 dark:text-slate-400 font-medium mb-1">Available Credits</h3>
+            <div className="text-3xl font-bold text-slate-900 dark:text-white">${balance}</div>
+          </div>
           <button
-            onClick={() => router.push("/bookings")}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex items-center gap-4 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all hover:shadow-lg group"
+            onClick={handleTopUp}
+            className="self-start text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 font-medium flex items-center gap-1 mt-4 hover:underline transition-all"
           >
-            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-              <FiCalendar size={24} />
-            </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                View All Sessions
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Manage your upcoming and past sessions
-              </p>
-            </div>
+            <Wallet size={16} /> Top up wallet
           </button>
         </div>
+      </div>
 
-        {/* Sessions Section */}
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-          <FiCalendar size={20} /> Your Sessions
-        </h2>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-          {bookings.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 dark:text-slate-400">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiCalendar size={28} className="text-slate-400" />
-              </div>
-              <p className="mb-4">No sessions booked yet.</p>
-            </div>
-          ) : (
-            bookings.map((booking, idx) => {
-              const isUpcoming =
-                booking.status === "CONFIRMED" ||
-                booking.status === "confirmed" ||
-                booking.status === "PENDING" ||
-                booking.status === "pending";
-              const isCompleted =
-                booking.status === "COMPLETED" || booking.status === "completed";
-              const canJoin =
-                isUpcoming &&
-                (booking.status === "CONFIRMED" || booking.status === "confirmed") &&
-                isJoinable(booking.start_at);
+      {!loadingSavedTutors && savedTutors.length > 0 && (
+        <div className="mb-12">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white"><Heart size={20} className="text-emerald-500"/> Saved Tutors</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {savedTutors.map(tutor => (
+              <TutorCard
+                key={tutor.id}
+                tutor={tutor}
+                onViewProfile={() => handleViewProfile(tutor)}
+                onToggleSave={handleToggleSave}
+                onBook={handleBook}
+                onQuickBook={handleQuickBook}
+                onSlotBook={handleSlotBook}
+                onMessage={handleMessage}
+                isSaved={true}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-              return (
-                <div
-                  key={booking.id}
-                  className={`p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                    idx !== bookings.length - 1
-                      ? "border-b border-slate-200 dark:border-slate-800"
-                      : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    {/* Subject Icon */}
-                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 text-lg">
-                      {getSubjectIcon(booking.subject_name)}
-                    </div>
-                    {/* Session Info */}
-                    <div>
-                      <h4 className="font-semibold text-slate-900 dark:text-white">
-                        {booking.subject_name || booking.topic || "Session"} with{" "}
-                        {booking.tutor?.name || "Tutor"}
-                      </h4>
-                      <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        <span className="flex items-center gap-1">
-                          <FiCalendar size={14} />
-                          {new Date(booking.start_at).toLocaleDateString("en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FiClock size={14} />
-                          {new Date(booking.start_at).toLocaleTimeString("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+      <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white"><Calendar size={20}/> Your Sessions</h2>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+        {mySessions.length === 0 ? (
+          <div className="p-8 text-center text-slate-500">No sessions booked yet.</div>
+        ) : mySessions.map((booking, idx) => {
+          const isUpcoming =
+            booking.status === "CONFIRMED" ||
+            booking.status === "confirmed" ||
+            booking.status === "PENDING" ||
+            booking.status === "pending";
+          const isCompleted =
+            booking.status === "COMPLETED" || booking.status === "completed";
+          const canJoin =
+            isUpcoming &&
+            (booking.status === "CONFIRMED" || booking.status === "confirmed") &&
+            isJoinable(booking.start_at) &&
+            booking.join_url;
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2">
-                    {canJoin && booking.join_url ? (
-                      <a
-                        href={booking.join_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(5,150,105,0.4)] hover:-translate-y-0.5"
-                      >
-                        <FiVideo size={18} /> Join Classroom
-                      </a>
-                    ) : isCompleted ? (
-                      <button
-                        onClick={() =>
-                          router.push(`/bookings/${booking.id}/review`)
-                        }
-                        className="w-full md:w-auto border border-emerald-500/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                      >
-                        <FiStar size={18} /> Rate & Review
-                      </button>
-                    ) : (
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                          booking.status === "CONFIRMED" ||
-                          booking.status === "confirmed"
-                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                            : booking.status === "PENDING" ||
-                              booking.status === "pending"
-                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                            : booking.status === "COMPLETED" ||
-                              booking.status === "completed"
-                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                        }`}
-                      >
-                        {booking.status.charAt(0).toUpperCase() +
-                          booking.status.slice(1).toLowerCase()}
-                      </span>
-                    )}
+          return (
+            <div key={booking.id} className={`p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 ${idx !== mySessions.length - 1 ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                  {getSubjectIcon(booking.subject_name)}
+                </div>
+                <div>
+                  <h4 className="font-semibold text-slate-900 dark:text-white">{booking.subject_name || booking.topic || "Session"} with {booking.tutor.name}</h4>
+                  <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <span className="flex items-center gap-1"><Calendar size={14}/> {new Date(booking.start_at).toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1"><Clock size={14}/> {new Date(booking.start_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                   </div>
                 </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Stats Summary */}
-        {bookings.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                {upcomingBookings.length}
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Upcoming Sessions
-              </p>
+              </div>
+              <div>
+                {canJoin ? (
+                  <button
+                    onClick={() => handleStartSession(booking)}
+                    className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(5,150,105,0.4)] hover:-translate-y-0.5"
+                  >
+                    <Video size={18} /> Join Classroom
+                  </button>
+                ) : isCompleted ? (
+                  <button
+                    onClick={() => handleReviewSession(booking.id)}
+                    className="w-full md:w-auto border border-emerald-500/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-6 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Rate & Review
+                  </button>
+                ) : (
+                  <span className="inline-block px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-sm">
+                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1).toLowerCase()}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                {completedBookings.length}
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Completed Lessons
-              </p>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center col-span-2 md:col-span-1">
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {bookings.length}
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Total Sessions
-              </p>
-            </div>
-          </div>
-        )}
+          );
+        })}
       </div>
-    </AppShell>
+
+      </div>
+
+      {/* Footer */}
+      <Footer />
+    </div>
   );
 }

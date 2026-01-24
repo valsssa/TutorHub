@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import axios from 'axios'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { getApiBaseUrl } from '@/shared/utils/url'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL)
 
 export default function ReferralPage() {
   const router = useRouter()

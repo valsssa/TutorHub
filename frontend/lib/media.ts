@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "@/shared/utils/url";
+
 export const resolveAssetUrl = (value?: string | null): string => {
   if (!value) return "";
   if (
@@ -9,7 +11,7 @@ export const resolveAssetUrl = (value?: string | null): string => {
     return value;
   }
 
-  const base = (process.env.NEXT_PUBLIC_API_URL || "https://api.valsa.solutions").replace(/\/+$/, "");
+  const base = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
   const path = value.startsWith("/") ? value : `/${value}`;
   return `${base}${path}`;
 };

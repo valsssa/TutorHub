@@ -22,6 +22,7 @@ import { useToast } from "./ToastContainer";
 import axios from "axios";
 import { bookings } from "@/lib/api";
 import type { BookingCreateRequest } from "@/types/booking";
+import { getApiBaseUrl } from "@/shared/utils/url";
 
 interface ModernBookingModalProps {
   tutor: TutorProfile;
@@ -138,7 +139,7 @@ export default function ModernBookingModal({
       const startDateStr = `${dateKey}T00:00:00`;
       const endDateStr = `${dateKey}T23:59:59`;
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+      const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
       if (!API_URL) {
         setAvailableSlots([]);
         return;

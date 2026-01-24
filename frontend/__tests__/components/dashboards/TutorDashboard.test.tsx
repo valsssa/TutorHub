@@ -1,182 +1,92 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { TutorDashboard } from '@/components/dashboards/TutorDashboard'
-import { mockUser, mockBookings } from '@/test-utils/mocks'
+import { screen } from '@testing-library/react'
+import { render } from '../../test-utils'
+import TutorDashboard from '@/components/dashboards/TutorDashboard'
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() })
 }))
 
-jest.mock('@/lib/api', () => ({
-  bookings: {
-    list: jest.fn(),
-    listTutorBookings: jest.fn()
-  }
-}))
-
 describe('TutorDashboard', () => {
-  const mockTutor = mockUser({ role: 'tutor', first_name: 'Alice' })
+  const mockUser = {
+    id: 1,
+    email: 'alice@example.com',
+    role: 'tutor' as const,
+    is_active: true,
+    is_verified: true,
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+    avatar_url: null,
+    avatarUrl: null,
+    currency: 'USD',
+    timezone: 'UTC',
+    first_name: 'Alice',
+    last_name: 'Smith',
+    country: null,
+    bio: null,
+    learning_goal: null,
+  }
+
+  const mockBookingsList = []
+
+  const mockProfile = {
+    id: 1,
+    user_id: 1,
+    name: 'Alice Smith',
+    title: 'Math Tutor',
+    headline: 'Expert Math Tutor',
+    bio: 'I love teaching math',
+    description: 'Experienced math tutor',
+    hourly_rate: 50,
+    experience_years: 5,
+    education: 'Masters in Mathematics',
+    languages: ['English'],
+    video_url: null,
+    profile_photo_url: null,
+    average_rating: 4.8,
+    total_reviews: 25,
+    total_sessions: 100,
+    is_approved: true,
+    profile_status: 'approved' as const,
+    rejection_reason: null,
+    subjects: [],
+    certifications: [],
+    educations: [],
+    pricing_options: [],
+    availabilities: [],
+    timezone: 'UTC',
+    version: 1,
+    created_at: '2025-01-01T00:00:00Z',
+    updated_at: '2025-01-01T00:00:00Z',
+  }
 
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('renders welcome message with tutor name', async () => {
-    // Given
-    const { bookings } = await import('@/lib/api')
-    ;(bookings.listTutorBookings as jest.Mock).mockResolvedValue({
-      data: [],
-      meta: { total_earnings: 0, sessions_completed: 0 }
-    })
+  it('renders welcome message with tutor name', () => {
+    render(<TutorDashboard user={mockUser} bookings={mockBookingsList} profile={mockProfile} />)
 
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    expect(screen.getByText(/Welcome back, Alice/i)).toBeInTheDocument()
+    expect(screen.getByText(/Welcome, Alice Smith/i)).toBeInTheDocument()
   })
 
-  it('displays earnings summary', async () => {
-    // Given
-    const { bookings } = await import('@/lib/api')
-    ;(bookings.listTutorBookings as jest.Mock).mockResolvedValue({
-      data: [],
-      meta: { total_earnings: 1250.50, sessions_completed: 25 }
-    })
+  it('shows verified tutor badge', () => {
+    render(<TutorDashboard user={mockUser} bookings={mockBookingsList} profile={mockProfile} />)
 
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    await waitFor(() => {
-      expect(screen.getByText('$1,250.50')).toBeInTheDocument()
-      expect(screen.getByText('25 sessions')).toBeInTheDocument()
-    })
+    expect(screen.getByText('Verified Tutor')).toBeInTheDocument()
   })
 
-  it('displays pending booking requests count', async () => {
-    // Given
-    const pendingBookings = [
-      mockBookings({ status: 'pending', id: 1 }),
-      mockBookings({ status: 'pending', id: 2 }),
-      mockBookings({ status: 'confirmed', id: 3 })
-    ]
-    const { bookings } = await import('@/lib/api')
-    ;(bookings.listTutorBookings as jest.Mock).mockResolvedValue({
-      data: pendingBookings,
-      meta: { total_earnings: 0, sessions_completed: 0 }
-    })
+  it('shows quick schedule buttons', () => {
+    render(<TutorDashboard user={mockUser} bookings={mockBookingsList} profile={mockProfile} />)
 
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    await waitFor(() => {
-      expect(screen.getByText('2 Pending Requests')).toBeInTheDocument()
-    })
+    expect(screen.getByText('Schedule lesson')).toBeInTheDocument()
+    expect(screen.getByText('Add time off')).toBeInTheDocument()
+    expect(screen.getByText('Add extra slots')).toBeInTheDocument()
+    expect(screen.getByText('Set up availability')).toBeInTheDocument()
   })
 
-  it('shows approve/decline buttons for pending bookings', async () => {
-    // Given
-    const pendingBookings = [mockBookings({ status: 'pending' })]
-    const { bookings } = await import('@/lib/api')
-    ;(bookings.listTutorBookings as jest.Mock).mockResolvedValue({
-      data: pendingBookings,
-      meta: { total_earnings: 0, sessions_completed: 0 }
-    })
+  it('shows Tutor Command Center title', () => {
+    render(<TutorDashboard user={mockUser} bookings={mockBookingsList} profile={mockProfile} />)
 
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    await waitFor(() => {
-      expect(screen.getAllByText('Approve').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('Decline').length).toBeGreaterThan(0)
-    })
-  })
-
-  it('displays upcoming confirmed sessions', async () => {
-    // Given
-    const upcomingBookings = [
-      mockBookings({ status: 'confirmed', start_time: '2025-01-25T10:00:00Z' })
-    ]
-    const { bookings } = await import('@/lib/api')
-    ;(bookings.listTutorBookings as jest.Mock).mockResolvedValue({
-      data: upcomingBookings,
-      meta: { total_earnings: 0, sessions_completed: 0 }
-    })
-
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    await waitFor(() => {
-      expect(screen.getByText('Upcoming Sessions')).toBeInTheDocument()
-      expect(screen.getByText('Jan 25, 2025')).toBeInTheDocument()
-    })
-  })
-
-  it('shows availability calendar link', async () => {
-    // Given
-    const { bookings } = await import('@/lib/api')
-    ;(bookings.listTutorBookings as jest.Mock).mockResolvedValue({
-      data: [],
-      meta: { total_earnings: 0, sessions_completed: 0 }
-    })
-
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    await waitFor(() => {
-      expect(screen.getByText('Manage Availability')).toBeInTheDocument()
-    })
-  })
-
-  it('displays recent reviews section', async () => {
-    // Given
-    const { bookings } = await import('@/lib/api')
-    ;(bookings.listTutorBookings as jest.Mock).mockResolvedValue({
-      data: [],
-      meta: {
-        total_earnings: 0,
-        sessions_completed: 0,
-        recent_reviews: [
-          { rating: 5, comment: 'Great tutor!', student_name: 'John' }
-        ]
-      }
-    })
-
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    await waitFor(() => {
-      expect(screen.getByText('Recent Reviews')).toBeInTheDocument()
-      expect(screen.getByText('Great tutor!')).toBeInTheDocument()
-    })
-  })
-
-  it('handles loading state', () => {
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
-  })
-
-  it('handles error state', async () => {
-    // Given
-    const { bookings } = await import('@/lib/api')
-    ;(bookings.listTutorBookings as jest.Mock).mockRejectedValue(
-      new Error('Failed to load dashboard')
-    )
-
-    // When
-    render(<TutorDashboard user={mockTutor} />)
-
-    // Then
-    await waitFor(() => {
-      expect(screen.getByText('Failed to load dashboard')).toBeInTheDocument()
-    })
+    expect(screen.getByText('Tutor Command Center')).toBeInTheDocument()
   })
 })

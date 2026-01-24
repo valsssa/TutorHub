@@ -7,6 +7,7 @@ import {
   FiCalendar,
   FiClock,
 } from "react-icons/fi";
+import { getApiBaseUrl } from "@/shared/utils/url";
 
 interface TimeSlot {
   start_time: string;
@@ -104,7 +105,7 @@ export default function TimeSlotPicker({
         const startDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00`;
         const endDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T23:59:59`;
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
         if (!API_URL) {
           setAvailableSlots([]);
           return;

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { TutorProfile, Subject, Review } from "@/types";
 import { resolveAssetUrl } from "@/lib/media";
+import { getApiBaseUrl } from "@/shared/utils/url";
 
 interface TutorProfileViewProps {
   tutor: TutorProfile;
@@ -176,7 +177,7 @@ export default function TutorProfileView({
     const fetchWeekSlots = async () => {
       setLoadingSlots(true);
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
+        const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
         if (!API_URL) {
           setAvailableSlots({});
           return;

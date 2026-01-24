@@ -41,6 +41,12 @@ class TutorProfileService:
             return None
         return aggregate_to_profile_response(aggregate)
 
+    def get_public_profile_by_id(self, db: Session, tutor_id: int):
+        aggregate = self.repository.get_by_id(db, tutor_id)
+        if not aggregate:
+            return None
+        return aggregate_to_public_profile(aggregate)
+
     def list_public_profiles(
         self,
         db: Session,

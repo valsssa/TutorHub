@@ -22,6 +22,11 @@ interface TutorCardProps {
   variant?: "default" | "compact" | "featured";
   isSaved?: boolean;
   onToggleSave?: (e: React.MouseEvent, id: number) => void;
+  onViewProfile?: () => void;
+  onBook?: (e: React.MouseEvent, tutor: TutorPublicSummary) => void;
+  onQuickBook?: (e: React.MouseEvent, tutor: TutorPublicSummary) => void;
+  onSlotBook?: (e: React.MouseEvent, tutor: TutorPublicSummary, slot: string) => void;
+  onMessage?: (e: React.MouseEvent, tutor: TutorPublicSummary) => void;
 }
 
 export default function TutorCard({
@@ -29,6 +34,8 @@ export default function TutorCard({
   variant = "default",
   isSaved = false,
   onToggleSave,
+  onViewProfile,
+  onMessage,
 }: TutorCardProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -83,7 +90,7 @@ export default function TutorCard({
     return (
       <div
         className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:shadow-lg transition-all cursor-pointer"
-        onClick={() => router.push(`/tutors/${tutor.id}`)}
+        onClick={() => (onViewProfile ? onViewProfile() : router.push(`/tutors/${tutor.id}`))}
       >
         <div className="flex items-start gap-4">
           {tutor.profile_photo_url && (
@@ -219,6 +226,10 @@ export default function TutorCard({
             className="w-full"
             onClick={(e) => {
               e.stopPropagation();
+              if (onViewProfile) {
+                onViewProfile();
+                return;
+              }
               router.push(`/tutors/${tutor.id}`);
             }}
           >
@@ -233,7 +244,7 @@ export default function TutorCard({
   return (
     <div
       className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] cursor-pointer overflow-hidden flex flex-col"
-      onClick={() => router.push(`/tutors/${tutor.id}`)}
+      onClick={() => (onViewProfile ? onViewProfile() : router.push(`/tutors/${tutor.id}`))}
     >
       <div className="p-5 flex-1 relative flex flex-col">
         {/* Save Button */}
@@ -328,6 +339,10 @@ export default function TutorCard({
             e.stopPropagation();
             if (!user) {
               router.push("/login");
+              return;
+            }
+            if (onMessage) {
+              onMessage(e, tutor);
               return;
             }
             router.push(`/messages?user=${tutor.user_id}`);

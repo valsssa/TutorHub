@@ -152,7 +152,7 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Saved Tutors */}
           {authUtils.isStudent(user) && (
             <button
-              onClick={() => router.push('/tutors?saved=true')}
+              onClick={() => router.push('/saved-tutors')}
               className="p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label="Saved tutors"
             >
@@ -245,7 +245,7 @@ export default function Navbar({ user }: NavbarProps) {
                           <FiBook className="w-4 h-4" /> My Lessons
                         </Link>
                         <Link
-                          href="/tutors?saved=true"
+                          href="/saved-tutors"
                           onClick={() => setUserDropdownOpen(false)}
                           className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
                         >

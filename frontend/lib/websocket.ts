@@ -16,6 +16,8 @@
  * - Clean disconnect handling
  */
 
+import { getWebSocketBaseUrl } from "@/shared/utils/url";
+
 export interface WebSocketMessage {
   type: string;
   [key: string]: any;
@@ -58,10 +60,8 @@ export class WebSocketClient {
     this.token = token;
     
     // Build WebSocket URL from API URL
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
-    const wsHost = apiUrl.replace(/^https?:\/\//, '');
-    this.url = `${wsProtocol}://${wsHost}/ws/messages?token=${token}`;
+    const wsBaseUrl = getWebSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+    this.url = `${wsBaseUrl}/ws/messages?token=${token}`;
     
     console.log(`[WebSocket] Initialized with URL: ${this.url.replace(/token=.*/, 'token=***')}`);
   }

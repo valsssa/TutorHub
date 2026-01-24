@@ -769,6 +769,28 @@ class TutorRejectionRequest(BaseModel):
 
 
 # ============================================================================
+# Favorite Tutor Schemas
+# ============================================================================
+
+
+class FavoriteTutorResponse(BaseModel):
+    """Favorite tutor response."""
+
+    id: int
+    student_id: int
+    tutor_profile_id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FavoriteTutorCreate(BaseModel):
+    """Create favorite tutor."""
+
+    tutor_profile_id: int = Field(..., gt=0)
+
+
+# ============================================================================
 # Generic Response
 # ============================================================================
 
