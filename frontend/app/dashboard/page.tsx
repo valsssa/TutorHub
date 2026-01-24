@@ -109,8 +109,8 @@ function DashboardContent() {
         onProfileUpdate={(updated) => setTutorProfile(updated)}
         onEditProfile={() => router.push("/tutor/profile")}
         onViewProfile={() => router.push("/tutor/profile")}
-        onUpdateSchedule={(mode) => router.push("/tutor/availability")}
-        onViewCalendar={() => router.push("/bookings")}
+        onUpdateSchedule={(mode) => router.push("/tutor/schedule")}
+        onViewCalendar={() => router.push("/tutor/schedule")}
         onManageVerification={() => router.push("/tutor/profile")}
         onViewEarnings={() => router.push("/bookings")}
         onViewStudents={() => router.push("/bookings")}

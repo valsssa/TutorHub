@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { User, TutorProfile } from "@/types";
 import { BookingDTO } from "@/types/booking";
+import Avatar from "@/components/Avatar";
 import AppShell from "@/components/AppShell";
 import Badge from "@/components/Badge";
 
@@ -376,9 +377,7 @@ export default function TutorDashboard({
                   return (
                     <div key={req.id} className="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center text-sm font-bold shadow-sm`}>
-                          {studentName.charAt(0).toUpperCase()}
-                        </div>
+                        <Avatar name={studentName} variant="gradient" size="md" />
                         <div>
                           <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{studentName}</div>
                           <div className="text-sm text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -420,7 +419,7 @@ export default function TutorDashboard({
                   <Video size={20} className="text-emerald-500" /> Upcoming Sessions
                 </h3>
                 <button
-                  onClick={onViewCalendar || (() => router.push("/bookings"))}
+                  onClick={onViewCalendar || (() => router.push("/tutor/schedule"))}
                   className="text-sm font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
                 >
                   View Calendar
@@ -440,9 +439,7 @@ export default function TutorDashboard({
                       <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl hover:shadow-md transition-all border border-transparent hover:border-emerald-100 dark:hover:border-emerald-900/30 group gap-4">
                         <div className="flex items-center gap-4">
                           {/* Avatar */}
-                          <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-200 font-bold text-xl shadow-sm border border-slate-300 dark:border-slate-600">
-                            {studentName.charAt(0).toUpperCase()}
-                          </div>
+                          <Avatar name={studentName} variant="gradient" size="md" />
                           <div>
                             <h4 className="font-bold text-slate-900 dark:text-white text-base">
                               {studentName}

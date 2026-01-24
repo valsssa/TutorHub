@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { messages, auth } from "@/lib/api";
+import Avatar from "@/components/Avatar";
 import { MessageThread, User, Message } from "@/types";
 import { useToast } from "@/components/ToastContainer";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -472,9 +473,11 @@ function MessagesContent() {
                             : ''
                       }`}
                     >
-                      <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center flex-shrink-0">
-                        <FiUser className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                      </div>
+                      <Avatar 
+                        name={getThreadDisplayName(thread)} 
+                        variant="gradient" 
+                        size="sm" 
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-1">
                           <h4 className={`text-sm truncate ${
@@ -530,9 +533,11 @@ function MessagesContent() {
                     >
                       <FiChevronLeft size={24} />
                     </button>
-                    <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center">
-                      <FiUser className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-                    </div>
+                    <Avatar 
+                      name={getThreadDisplayName(selectedThread)} 
+                      variant="gradient" 
+                      size="sm" 
+                    />
                     <div>
                       <h3 className="font-bold text-slate-900 dark:text-white">
                         {getThreadDisplayName(selectedThread)}

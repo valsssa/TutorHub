@@ -29,6 +29,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import Button from './Button'
 import LocaleDropdown from './LocaleDropdown'
 import NotificationBell from './NotificationBell'
+import Avatar from './Avatar'
 
 interface NavbarProps {
   user: User
@@ -65,29 +66,15 @@ export default function Navbar({ user }: NavbarProps) {
     setMobileMenuOpen(false)
   }
 
-  const renderAvatar = (size: string = "w-9 h-9", fontSize: string = "text-sm") => {
-    const hasAvatar = user.avatarUrl || user.avatar_url
+  const renderAvatar = (sizeVariant: 'xs' | 'sm' | 'md' = 'sm') => {
     const avatarUrl = user.avatarUrl ?? user.avatar_url
-
-    if (hasAvatar && avatarUrl && !avatarUrl.includes('ui-avatars.com')) {
-      return (
-        <Image
-          src={avatarUrl}
-          alt={user.email}
-          width={36}
-          height={36}
-          className={`${size} rounded-full object-cover border border-slate-200 dark:border-slate-700`}
-          unoptimized
-        />
-      )
-    }
-
-    // Fallback initial avatar
-    const initial = user.email?.charAt(0).toUpperCase() || 'U'
     return (
-      <div className={`${size} rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 font-bold ${fontSize} border border-emerald-200 dark:border-emerald-800 shadow-sm`}>
-        {initial}
-      </div>
+      <Avatar 
+        name={user.email} 
+        avatarUrl={avatarUrl}
+        variant="emerald"
+        size={sizeVariant}
+      />
     )
   }
 
@@ -190,7 +177,7 @@ export default function Navbar({ user }: NavbarProps) {
                 >
                   {/* User Info */}
                   <div className="px-5 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
-                    {renderAvatar("w-10 h-10", "text-lg")}
+                    {renderAvatar('sm')}
                     <div className="overflow-hidden">
                       <p className="font-bold text-slate-900 dark:text-white truncate">{user.email}</p>
                       <p className="text-xs text-slate-500 capitalize">{user.role?.toLowerCase()}</p>
