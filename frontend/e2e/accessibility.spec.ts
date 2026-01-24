@@ -7,7 +7,7 @@ import AxeBuilder from '@axe-core/playwright';
  * Tests WCAG compliance and accessibility features across the application
  */
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
 
 test.describe('Accessibility Tests', () => {
   test('login page should not have accessibility violations', async ({ page }) => {

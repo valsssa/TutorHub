@@ -9,7 +9,7 @@ export class TestHelpers {
    * Login helper - logs in a user with the given credentials
    */
   static async login(page: Page, email: string, password: string) {
-    const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+    const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
     
     await page.goto(`${FRONTEND_URL}/login`);
     await page.getByRole('textbox', { name: /email/i }).fill(email);

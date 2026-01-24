@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
  * Tests the complete booking process from tutor selection to confirmation
  */
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
 
 test.describe('Booking Flow', () => {
   test.beforeEach(async ({ page }) => {

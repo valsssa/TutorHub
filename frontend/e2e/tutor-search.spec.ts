@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
  * Tests tutor browsing, filtering, and search functionality
  */
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
 
 test.describe('Tutor Search and Browsing', () => {
   test.beforeEach(async ({ page }) => {

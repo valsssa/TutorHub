@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { TestHelpers } from './helpers';
+import { getApiBaseUrl } from '../shared/utils/url';
 
 /**
  * Comprehensive Authentication Flow E2E Tests
@@ -15,8 +16,8 @@ import { TestHelpers } from './helpers';
  * - Form Validations
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
 
 test.describe('Authentication Flow - Complete E2E Tests', () => {
   test.beforeEach(async ({ page }) => {

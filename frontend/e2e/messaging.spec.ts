@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
  * Tests real-time messaging functionality between students and tutors
  */
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
 
 test.describe('Messaging System', () => {
   test.beforeEach(async ({ page }) => {

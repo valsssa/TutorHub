@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { getApiBaseUrl } from './shared/utils/url';
 
 /**
  * Playwright Configuration for E2E Testing
@@ -26,8 +27,8 @@ export default defineConfig({
   
   // Shared settings for all tests
   use: {
-    // Base URL for navigation
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+    // Base URL for navigation - use production URLs by default
+    baseURL: process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions',
     
     // Screenshot on failure
     screenshot: 'only-on-failure',
@@ -70,11 +71,14 @@ export default defineConfig({
     // },
   ],
 
-  // Run local dev server before starting tests
-  webServer: process.env.CI ? undefined : {
+  // Run local dev server before starting tests (only if not using external URLs)
+  webServer: (process.env.CI || process.env.USE_EXTERNAL_URLS === 'true') ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      NEXT_PUBLIC_API_URL: getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL),
+    },
   },
 });

@@ -54,7 +54,7 @@ docker run --rm \
 # Run with volume mount to preserve reports
 docker run --rm \
   -v $(pwd)/playwright-report:/app/playwright-report \
-  -e NEXT_PUBLIC_API_URL=http://test-backend:8000 \
+  -e NEXT_PUBLIC_API_URL=https://api.valsa.solutions/\
   --network project1-splitversion_default \
   playwright-tests
 ```

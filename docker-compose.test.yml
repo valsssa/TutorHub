@@ -220,22 +220,18 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.playwright
     environment:
-      NEXT_PUBLIC_API_URL: http://test-backend:8000
-      NEXT_PUBLIC_FRONTEND_URL: http://test-frontend:3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions}
+      NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL:-https://edustream.valsa.solutions}
+      USE_EXTERNAL_URLS: "true"
       CI: "true"
-    depends_on:
-      test-db:
-        condition: service_healthy
-      test-backend:
-        condition: service_healthy
-      test-frontend:
-        condition: service_healthy
     volumes:
       - ./frontend/playwright-report:/app/playwright-report
       - ./frontend/test-results:/app/test-results
     command: >
       sh -c "
         echo '🎭 Running Playwright E2E tests...' &&
+        echo 'Using API URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions}' &&
+        echo 'Using Frontend URL: ${NEXT_PUBLIC_FRONTEND_URL:-https://edustream.valsa.solutions}' &&
         npx playwright test --reporter=list,html
       "
 
