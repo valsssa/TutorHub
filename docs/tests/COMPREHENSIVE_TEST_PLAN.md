@@ -713,7 +713,7 @@ Step 11: Disconnect & Reconnect
 └─────────────────────────────────────────────────────────────────────┘
 
 Step 1: Access Availability Manager
-  → Tutor navigates to /tutor/availability
+  → Tutor navigates to /tutor/schedule
   → Backend: GET /api/tutors/me/availability
   → Returns:
     - TutorAvailability records (recurring)

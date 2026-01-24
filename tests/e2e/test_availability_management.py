@@ -23,7 +23,7 @@ class TestAvailabilityManagement:
         page.click('button:has-text("Sign In")')
 
         # Navigate to availability management
-        page.goto('http://localhost:3000/tutor/availability')
+        page.goto('http://localhost:3000/tutor/schedule')
 
         # Verify calendar view loads
         expect(page.locator('.availability-calendar')).to_be_visible()
@@ -74,7 +74,7 @@ class TestAvailabilityManagement:
         page.click('button:has-text("Sign In")')
 
         # Navigate to availability
-        page.goto('http://localhost:3000/tutor/availability')
+        page.goto('http://localhost:3000/tutor/schedule')
 
         # Click "Block Time"
         page.click('button:has-text("Block Time"]')
@@ -107,7 +107,7 @@ class TestAvailabilityManagement:
         page.click('button:has-text("Sign In")')
 
         # Set availability first
-        page.goto('http://localhost:3000/tutor/availability')
+        page.goto('http://localhost:3000/tutor/schedule')
         page.click('button:has-text("Add Time Slot"]')
 
         modal = page.locator('[role="dialog"]')
@@ -162,7 +162,7 @@ class TestAvailabilityManagement:
         page.fill('input[name="password"]', test_tutor_credentials['password'])
         page.click('button:has-text("Sign In")')
 
-        page.goto('http://localhost:3000/tutor/availability')
+        page.goto('http://localhost:3000/tutor/schedule')
         page.click('button:has-text("Add Time Slot"]')
 
         modal = page.locator('[role="dialog"]')
@@ -221,7 +221,7 @@ class TestAvailabilityManagement:
         modal.click('button:has-text("Save")')
 
         # Set availability for 9am-5pm EST
-        page.goto('http://localhost:3000/tutor/availability')
+        page.goto('http://localhost:3000/tutor/schedule')
         page.click('button:has-text("Add Time Slot"]')
 
         modal = page.locator('[role="dialog"]')

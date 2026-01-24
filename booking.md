@@ -434,7 +434,7 @@ When creating or rescheduling a booking:
     /student/bookings/page.tsx              ← list with tabs: Upcoming, Completed, Cancelled
     /student/bookings/[id]/page.tsx         ← details + Join/Reschedule/Cancel
     /tutor/bookings/page.tsx                ← list with tabs: Pending, Upcoming, Completed, Cancelled
-    /tutor/availability/page.tsx            ← weekly grid + blackouts
+    /tutor/schedule/page.tsx                ← weekly grid + blackouts
   /components/bookings
     BookingCardStudent.tsx
     BookingCardTutor.tsx

@@ -19,6 +19,7 @@ import BookingCardStudent from "@/components/bookings/BookingCardStudent";
 import BookingCardTutor from "@/components/bookings/BookingCardTutor";
 import RescheduleBookingModal from "@/components/modals/RescheduleBookingModal";
 import ViewNotesModal from "@/components/modals/ViewNotesModal";
+import CancelBookingModal from "@/components/modals/CancelBookingModal";
 
 type StatusFilter = "upcoming" | "pending" | "completed" | "cancelled";
 
@@ -35,6 +36,8 @@ export default function BookingsPageContent() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [notesBooking, setNotesBooking] = useState<BookingDTO | null>(null);
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const [cancelBooking, setCancelBooking] = useState<BookingDTO | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const statusParam = searchParams?.get("status") as StatusFilter | null;
   const [selectedTab, setSelectedTab] = useState<StatusFilter>(
@@ -78,19 +81,32 @@ export default function BookingsPageContent() {
 
   // Student action handlers
   const handleCancelBooking = useCallback(
-    async (bookingId: number) => {
-      const reason = prompt("Please provide a reason for cancellation (optional):");
-      if (reason === null) return; // User clicked cancel
+    (bookingId: number) => {
+      const booking = bookingsList.find((b) => b.id === bookingId);
+      if (booking) {
+        setCancelBooking(booking);
+        setShowCancelModal(true);
+      }
+    },
+    [bookingsList]
+  );
+
+  const handleConfirmCancel = useCallback(
+    async (reason?: string) => {
+      if (!cancelBooking) return;
 
       try {
-        await bookings.cancel(bookingId, { reason: reason || undefined });
+        await bookings.cancel(cancelBooking.id, { reason });
         showSuccess("Booking cancelled successfully");
+        setShowCancelModal(false);
+        setCancelBooking(null);
         loadData();
       } catch (error) {
         showError("Failed to cancel booking");
+        throw error; // Re-throw so modal can handle it
       }
     },
-    [loadData, showError, showSuccess]
+    [cancelBooking, loadData, showError, showSuccess]
   );
 
   const handleReschedule = useCallback(
@@ -347,6 +363,18 @@ export default function BookingsPageContent() {
           setNotesBooking(null);
         }}
         userRole={user?.role || "student"}
+      />
+
+      {/* Cancel Booking Modal */}
+      <CancelBookingModal
+        isOpen={showCancelModal}
+        onClose={() => {
+          setShowCancelModal(false);
+          setCancelBooking(null);
+        }}
+        onConfirm={handleConfirmCancel}
+        bookingId={cancelBooking?.id}
+        tutorName={cancelBooking?.tutor?.name}
       />
     </div>
   );

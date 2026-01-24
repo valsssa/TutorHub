@@ -86,7 +86,7 @@ PATCH  /api/users/{user_id}/avatar (admin only)
 - `/frontend/app/tutors/[id]/` - Tutor detail page with reviews
 - `/frontend/app/tutor/profile/` - Tutor's own profile editor
 - `/frontend/app/tutor/onboarding/` - Tutor signup flow
-- `/frontend/app/tutor/availability/` - Availability calendar
+- `/frontend/app/tutor/schedule/` - Availability calendar
 
 **Endpoints:**
 ```
