@@ -2,6 +2,7 @@
 'use client'
 
 import React from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Check, DollarSign, Calendar, Globe, Users } from 'lucide-react';
 
@@ -38,11 +39,15 @@ export default function BecomeTutorPage() {
                         </div>
                         <div className="flex-1 relative">
                             <div className="relative z-10 bg-white dark:bg-slate-800 p-2 rounded-3xl shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
-                                <img 
-                                    src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=1000&auto=format&fit=crop" 
-                                    alt="Happy Tutor" 
-                                    className="rounded-2xl w-full h-[400px] object-cover object-top"
-                                />
+                                <div className="relative w-full h-[400px]">
+                                    <Image 
+                                        src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=1000&auto=format&fit=crop" 
+                                        alt="Happy Tutor" 
+                                        fill
+                                        className="rounded-2xl object-cover object-top"
+                                        unoptimized
+                                    />
+                                </div>
                                 <div className="absolute -bottom-6 -left-6 bg-white dark:bg-slate-700 p-4 rounded-xl shadow-xl flex items-center gap-4">
                                     <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xl">
                                         $

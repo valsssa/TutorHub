@@ -173,22 +173,33 @@ function MessagesContent() {
         // Select existing thread
         selectThread(existingThread);
       } else {
-        // Create a new thread with this user (works for all roles: tutor, student, admin)
-        const tempThread: MessageThread = {
-          other_user_id: targetUserId,
-          other_user_email: `User #${targetUserId}`,
-          other_user_role: "student", // Will be updated when first message is sent/received
-          booking_id: undefined,
-          last_message: "Start a new conversation",
-          last_message_time: new Date().toISOString(),
-          total_messages: 0,
-          unread_count: 0,
+        // Fetch user information and create a new thread
+        const fetchUserAndCreateThread = async () => {
+          try {
+            const userInfo = await messages.getUserBasicInfo(targetUserId);
+            const tempThread: MessageThread = {
+              other_user_id: targetUserId,
+              other_user_email: userInfo.email,
+              other_user_first_name: userInfo.first_name || null,
+              other_user_last_name: userInfo.last_name || null,
+              other_user_role: userInfo.role,
+              booking_id: undefined,
+              last_message: "Start a new conversation",
+              last_message_time: new Date().toISOString(),
+              total_messages: 0,
+              unread_count: 0,
+            };
+            setSelectedThread(tempThread);
+            setMessages([]);
+          } catch (error) {
+            showError("Failed to load user information");
+            console.error("Error fetching user info:", error);
+          }
         };
-        setSelectedThread(tempThread);
-        setMessages([]);
+        fetchUserAndCreateThread();
       }
     }
-  }, [searchParams, currentUser, threads, selectThread, setMessages]);
+  }, [searchParams, currentUser, threads, selectThread, setMessages, showError]);
 
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
@@ -363,8 +374,9 @@ function MessagesContent() {
 
   // Cleanup timeouts
   useEffect(() => {
+    const timeouts = messageTimeoutsRef.current;
     return () => {
-      Object.values(messageTimeoutsRef.current).forEach(clearTimeout);
+      Object.values(timeouts).forEach(clearTimeout);
     };
   }, []);
 

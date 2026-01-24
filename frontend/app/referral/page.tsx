@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import axios from 'axios'
@@ -56,7 +57,7 @@ export default function ReferralPage() {
             </h1>
             <p className="text-lg md:text-xl text-slate-800 dark:text-emerald-50 mb-8 font-medium leading-relaxed max-w-xl mx-auto md:mx-0">
               To give a friend <span className="font-bold">70% off</span> in their trial lesson, book a lesson for yourself, then return to this page to get your referral link.
-              If they confirm their first subscription lesson, you'll get <span className="font-bold">$50</span>.
+              If they confirm their first subscription lesson, you&apos;ll get <span className="font-bold">$50</span>.
             </p>
 
             {/* Call to Action Button */}
@@ -73,11 +74,15 @@ export default function ReferralPage() {
             {/* Photo 1: Top Left */}
             <div className="absolute top-0 left-0 z-10">
               <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1580894732444-8ecded7900cd?q=80&w=400&auto=format&fit=crop"
-                  className="w-48 h-48 object-cover rounded-2xl shadow-2xl border-4 border-white transform -rotate-3 hover:rotate-0 transition-transform duration-500"
-                  alt="Happy Student"
-                />
+                <div className="relative w-48 h-48">
+                  <Image
+                    src="https://images.unsplash.com/photo-1580894732444-8ecded7900cd?q=80&w=400&auto=format&fit=crop"
+                    alt="Happy Student"
+                    fill
+                    className="object-cover rounded-2xl shadow-2xl border-4 border-white transform -rotate-3 hover:rotate-0 transition-transform duration-500"
+                    unoptimized
+                  />
+                </div>
                 <div className="absolute -top-4 -right-8 bg-white text-slate-900 px-3 py-1.5 rounded-lg shadow-lg text-sm font-bold animate-bounce" style={{animationDuration: '3s'}}>
                   Thank you!
                   <div className="absolute bottom-0 left-2 w-3 h-3 bg-white transform translate-y-1/2 rotate-45"></div>
@@ -88,11 +93,15 @@ export default function ReferralPage() {
             {/* Photo 2: Bottom Right */}
             <div className="absolute bottom-10 right-0 z-20">
               <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=400&auto=format&fit=crop"
-                  className="w-64 h-52 object-cover rounded-2xl shadow-2xl border-4 border-white transform rotate-3 hover:rotate-0 transition-transform duration-500"
-                  alt="Friends Learning"
-                />
+                <div className="relative w-64 h-52">
+                  <Image
+                    src="https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=400&auto=format&fit=crop"
+                    alt="Friends Learning"
+                    fill
+                    className="object-cover rounded-2xl shadow-2xl border-4 border-white transform rotate-3 hover:rotate-0 transition-transform duration-500"
+                    unoptimized
+                  />
+                </div>
                 <div className="absolute -top-6 -left-4 bg-white text-slate-900 px-4 py-2 rounded-lg shadow-lg text-sm font-bold">
                   Gracias!
                   <div className="absolute bottom-0 right-4 w-3 h-3 bg-white transform translate-y-1/2 rotate-45"></div>
@@ -181,7 +190,7 @@ export default function ReferralPage() {
             <div>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">You get $50</h3>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                You'll receive <span className="font-semibold text-emerald-600 dark:text-emerald-400">$50 in credits</span> automatically when they confirm their first subscription lesson.
+                You&apos;ll receive <span className="font-semibold text-emerald-600 dark:text-emerald-400">$50 in credits</span> automatically when they confirm their first subscription lesson.
               </p>
             </div>
           </div>

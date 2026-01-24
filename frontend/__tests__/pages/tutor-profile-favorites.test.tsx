@@ -5,6 +5,10 @@ import { tutors, favorites, auth } from '@/lib/api'
 import { authUtils } from '@/lib/auth'
 import { useToast } from '@/components/ToastContainer'
 
+// Create mock functions
+const mockShowError = jest.fn()
+const mockShowSuccess = jest.fn()
+
 // Mock the API
 jest.mock('@/lib/api', () => ({
   tutors: {
@@ -33,15 +37,30 @@ jest.mock('@/lib/auth', () => ({
   },
 }))
 
-// Mock toast
+// Mock toast - return the mock functions directly
 jest.mock('@/components/ToastContainer', () => ({
-  useToast: jest.fn(),
+  useToast: () => ({
+    showError: mockShowError,
+    showSuccess: mockShowSuccess,
+  }),
 }))
 
-// Mock router and params
+// Mock router and params (extend global mock)
+const mockRouter = {
+  push: jest.fn(),
+  replace: jest.fn(),
+  prefetch: jest.fn(),
+  back: jest.fn(),
+  pathname: '/',
+  query: {},
+  asPath: '/',
+}
+const mockParams = { id: '1' }
+
 jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
-  useParams: jest.fn(),
+  ...jest.requireActual('next/navigation'),
+  useRouter: jest.fn(() => mockRouter),
+  useParams: jest.fn(() => mockParams),
 }))
 
 // Mock cookies
@@ -50,10 +69,6 @@ jest.mock('js-cookie', () => ({
 }))
 
 // Mock components
-jest.mock('@/components/TutorProfileSkeleton', () => ({
-  TutorProfileSkeleton: () => <div data-testid="skeleton">Loading...</div>,
-}))
-
 jest.mock('@/components/TutorProfileView', () => ({
   default: ({ onToggleSave, isSaved }: any) => (
     <div data-testid="tutor-profile-view">
@@ -109,22 +124,6 @@ describe('TutorDetailPage - Favorites', () => {
   beforeEach(() => {
     jest.clearAllMocks()
 
-    // Setup mocks
-    const mockRouter = {
-      push: jest.fn(),
-    }
-    const mockParams = {
-      id: '1',
-    }
-
-    require('next/navigation').useRouter.mockReturnValue(mockRouter)
-    require('next/navigation').useParams.mockReturnValue(mockParams)
-
-    ;(useToast as jest.Mock).mockReturnValue({
-      showError: jest.fn(),
-      showSuccess: jest.fn(),
-    })
-
     // Mock API responses
     ;(tutors.get as jest.Mock).mockResolvedValue(mockTutor)
     ;(tutors.getReviews as jest.Mock).mockResolvedValue(mockReviews)
@@ -160,12 +159,6 @@ describe('TutorDetailPage - Favorites', () => {
   })
 
   it('adds tutor to favorites when save button is clicked', async () => {
-    const mockShowSuccess = jest.fn()
-    ;(useToast as jest.Mock).mockReturnValue({
-      showError: jest.fn(),
-      showSuccess: mockShowSuccess,
-    })
-
     ;(favorites.checkFavorite as jest.Mock).mockRejectedValue(new Error('Not found'))
     ;(favorites.addFavorite as jest.Mock).mockResolvedValue({ id: 1, tutor_profile_id: 1 })
 
@@ -186,12 +179,6 @@ describe('TutorDetailPage - Favorites', () => {
   })
 
   it('removes tutor from favorites when remove button is clicked', async () => {
-    const mockShowSuccess = jest.fn()
-    ;(useToast as jest.Mock).mockReturnValue({
-      showError: jest.fn(),
-      showSuccess: mockShowSuccess,
-    })
-
     ;(favorites.checkFavorite as jest.Mock).mockResolvedValue({ id: 1, tutor_profile_id: 1 })
     ;(favorites.removeFavorite as jest.Mock).mockResolvedValue(undefined)
 
@@ -212,12 +199,6 @@ describe('TutorDetailPage - Favorites', () => {
   })
 
   it('handles favorite API errors gracefully', async () => {
-    const mockShowError = jest.fn()
-    ;(useToast as jest.Mock).mockReturnValue({
-      showError: mockShowError,
-      showSuccess: jest.fn(),
-    })
-
     ;(favorites.checkFavorite as jest.Mock).mockRejectedValue(new Error('Not found'))
     ;(favorites.addFavorite as jest.Mock).mockRejectedValue({
       response: { data: { detail: 'API Error' } }

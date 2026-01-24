@@ -5,6 +5,10 @@ import { favorites } from '@/lib/api'
 import { authUtils } from '@/lib/auth'
 import { useToast } from '@/components/ToastContainer'
 
+// Create mock functions
+const mockShowError = jest.fn()
+const mockShowSuccess = jest.fn()
+
 // Mock the API
 jest.mock('@/lib/api', () => ({
   favorites: {
@@ -23,14 +27,29 @@ jest.mock('@/lib/auth', () => ({
   },
 }))
 
-// Mock toast
+// Mock toast - return the mock functions directly
 jest.mock('@/components/ToastContainer', () => ({
-  useToast: jest.fn(),
+  useToast: () => ({
+    showError: mockShowError,
+    showSuccess: mockShowSuccess,
+  }),
 }))
 
 // Mock router
+const mockRouter = {
+  push: jest.fn(),
+  replace: jest.fn(),
+  prefetch: jest.fn(),
+  back: jest.fn(),
+  pathname: '/',
+  query: {},
+  asPath: '/',
+}
+
+// Mock router (extend global mock)
 jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
+  ...jest.requireActual('next/navigation'),
+  useRouter: jest.fn(() => mockRouter),
 }))
 
 // Mock cookies
@@ -112,17 +131,6 @@ describe('SavedTutorsPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-
-    // Setup mocks
-    ;(useToast as jest.Mock).mockReturnValue({
-      showError: jest.fn(),
-      showSuccess: jest.fn(),
-    })
-
-    const mockRouter = {
-      push: jest.fn(),
-    }
-    require('next/navigation').useRouter.mockReturnValue(mockRouter)
 
     // Mock auth
     require('js-cookie').get.mockReturnValue('mock-token')

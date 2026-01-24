@@ -75,7 +75,8 @@ function SavedTutorsContent() {
     };
 
     checkAuth();
-  }, [router, showError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   const handleRemoveFavorite = async (e: React.MouseEvent, tutorId: number) => {
     e.stopPropagation();
@@ -151,7 +152,7 @@ function SavedTutorsContent() {
 
             {/* Subheading */}
             <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              Keep track of tutors you're interested in and easily access them later. Save tutors while browsing to build your personalized list.
+              Keep track of tutors you&apos;re interested in and easily access them later. Save tutors while browsing to build your personalized list.
             </p>
           </motion.div>
         </div>
@@ -181,7 +182,7 @@ function SavedTutorsContent() {
                   </h2>
                 </div>
                 <p className="text-slate-600 dark:text-slate-400">
-                  Keep track of tutors you're interested in and easily access them later.
+                  Keep track of tutors you&apos;re interested in and easily access them later.
                 </p>
               </motion.div>
 
@@ -222,7 +223,7 @@ function SavedTutorsContent() {
 
               {/* Description */}
               <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">
-                Start exploring tutors and save the ones you're interested in. They'll appear here for easy access.
+                Start exploring tutors and save the ones you&apos;re interested in. They&apos;ll appear here for easy access.
               </p>
 
               {/* CTA Buttons */}

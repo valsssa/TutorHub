@@ -116,10 +116,11 @@ export default function HomePage() {
 
   // Effect to trigger filtering when filters change
   useEffect(() => {
-    if (!loading) {
+    if (!loading && fetchFilteredTutors) {
       fetchFilteredTutors();
     }
-  }, [selectedSubject, priceRange, minRating, minExperience, sortBy, searchQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubject, priceRange, minRating, minExperience, sortBy, searchQuery, loading]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {

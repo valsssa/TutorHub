@@ -22,7 +22,7 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const router = useRouter();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [userBookings, setUserBookings] = useState<BookingDTO[]>([]);
   const [tutorProfile, setTutorProfile] = useState<TutorProfile | null>(null);
@@ -38,6 +38,62 @@ function DashboardContent() {
           }
         : prev,
     );
+  };
+
+  const handleAcceptRequest = async (id: number) => {
+    try {
+      await bookings.confirm(id);
+      showSuccess("Booking request accepted");
+      // Refresh bookings
+      const bookingData = await bookings.list({
+        role: user?.role as "student" | "tutor",
+        page: 1,
+        page_size: 20,
+      });
+      setUserBookings(bookingData.bookings || []);
+    } catch (error) {
+      showError("Failed to accept booking request");
+    }
+  };
+
+  const handleDeclineRequest = async (id: number) => {
+    try {
+      await bookings.decline(id);
+      showSuccess("Booking request declined");
+      // Refresh bookings
+      const bookingData = await bookings.list({
+        role: user?.role as "student" | "tutor",
+        page: 1,
+        page_size: 20,
+      });
+      setUserBookings(bookingData.bookings || []);
+    } catch (error) {
+      showError("Failed to decline booking request");
+    }
+  };
+
+  const handleStartSession = (session: BookingDTO) => {
+    if (session.join_url) {
+      window.open(session.join_url, '_blank');
+    } else {
+      showError("No meeting link available");
+    }
+  };
+
+  const handleCancelSession = async (sessionId: string) => {
+    try {
+      await bookings.cancel(Number(sessionId), { reason: "Cancelled by tutor" });
+      showSuccess("Session cancelled");
+      // Refresh bookings
+      const bookingData = await bookings.list({
+        role: user?.role as "student" | "tutor",
+        page: 1,
+        page_size: 20,
+      });
+      setUserBookings(bookingData.bookings || []);
+    } catch (error) {
+      showError("Failed to cancel session");
+    }
   };
 
   useEffect(() => {
@@ -110,6 +166,17 @@ function DashboardContent() {
         onEditProfile={() => router.push("/tutor/profile")}
         onViewProfile={() => router.push("/tutor/profile")}
         onUpdateSchedule={(mode) => router.push("/tutor/schedule")}
+        onQuickAction={(action) => {
+          if (action === 'schedule') {
+            router.push("/bookings");
+          } else if (action === 'timeoff' || action === 'extraslots') {
+            router.push("/tutor/schedule");
+          }
+        }}
+        onStartSession={handleStartSession}
+        onCancelSession={handleCancelSession}
+        onAcceptRequest={handleAcceptRequest}
+        onDeclineRequest={handleDeclineRequest}
         onViewCalendar={() => router.push("/tutor/schedule")}
         onManageVerification={() => router.push("/tutor/profile")}
         onViewEarnings={() => router.push("/bookings")}

@@ -198,7 +198,7 @@ function SupportContent() {
                     <div className="space-y-4">
                         {filteredFaqs.length === 0 ? (
                             <div className="text-center py-12 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                <p className="text-slate-500 dark:text-slate-400">No results found for "{searchQuery}". Try a different keyword.</p>
+                                <p className="text-slate-500 dark:text-slate-400">No results found for &quot;{searchQuery}&quot;. Try a different keyword.</p>
                             </div>
                         ) : (
                             filteredFaqs.map((faq, i) => (

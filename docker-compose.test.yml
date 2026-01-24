@@ -164,6 +164,30 @@ services:
         npm run test -- --watchAll=false --coverage
       "
 
+  # Frontend integration tests (uses real API)
+  frontend-integration-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    environment:
+      NEXT_PUBLIC_API_URL: http://test-backend:8000
+      NODE_ENV: test
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      test-backend:
+        condition: service_healthy
+      test-db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '🧪 Waiting for backend to be ready...' &&
+        sleep 5 &&
+        echo '🧪 Running frontend integration tests...' &&
+        npm test -- --config=jest.config.integration.js --watchAll=false --verbose
+      "
+
   # End-to-end integration tests
   e2e-tests:
     build:
@@ -186,6 +210,31 @@ services:
         curl -f http://test-backend:8000/health &&
         curl -f http://test-frontend:3000 &&
         echo '✅ All services are healthy and accessible'
+      "
+
+  # Playwright E2E tests
+  playwright-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.playwright
+    environment:
+      NEXT_PUBLIC_API_URL: http://test-backend:8000
+      NEXT_PUBLIC_FRONTEND_URL: http://test-frontend:3000
+      CI: "true"
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-backend:
+        condition: service_healthy
+      test-frontend:
+        condition: service_healthy
+    volumes:
+      - ./frontend/playwright-report:/app/playwright-report
+      - ./frontend/test-results:/app/test-results
+    command: >
+      sh -c "
+        echo '🎭 Running Playwright E2E tests...' &&
+        npx playwright test --reporter=list,html
       "
 
 volumes:

@@ -89,7 +89,7 @@ export default function PrivacyPage() {
                         </div>
                         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                             <h5 className="font-bold text-slate-900 dark:text-white mb-1">Deletion</h5>
-                            <p className="text-sm text-slate-500">Request the permanent deletion of your account and data ("Right to be forgotten").</p>
+                            <p className="text-sm text-slate-500">Request the permanent deletion of your account and data (&quot;Right to be forgotten&quot;).</p>
                         </div>
                         <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                             <h5 className="font-bold text-slate-900 dark:text-white mb-1">Opt-Out</h5>

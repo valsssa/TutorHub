@@ -291,7 +291,13 @@ export default function TutorDashboard({
 
               <div className="flex gap-4 w-full md:w-auto">
                 <button
-                  onClick={() => onQuickAction?.('schedule') || (() => router.push("/bookings"))}
+                  onClick={() => {
+                    if (onQuickAction) {
+                      onQuickAction('schedule');
+                    } else {
+                      router.push("/tutor/schedule-manager?tab=Lesson");
+                    }
+                  }}
                   className="px-6 py-3 rounded-xl border border-white/20 text-white font-semibold hover:bg-white/10 transition-colors flex-1 md:flex-initial text-center"
                 >
                   Reschedule
@@ -472,7 +478,13 @@ export default function TutorDashboard({
 
                           {/* Text Actions */}
                           <button
-                            onClick={() => onQuickAction?.('schedule') || (() => router.push("/bookings"))}
+                            onClick={() => {
+                              if (onQuickAction) {
+                                onQuickAction('schedule');
+                              } else {
+                                router.push("/tutor/schedule-manager?tab=Lesson");
+                              }
+                            }}
                             className="text-xs font-medium text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors px-1"
                           >
                             Reschedule
@@ -503,28 +515,52 @@ export default function TutorDashboard({
 
               <div className="space-y-3">
                 <button
-                  onClick={() => onQuickAction?.('schedule') || (() => router.push("/bookings"))}
+                  onClick={() => {
+                    if (onQuickAction) {
+                      onQuickAction('schedule');
+                    } else {
+                      router.push("/tutor/schedule-manager?tab=Lesson");
+                    }
+                  }}
                   className="w-full py-3.5 px-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2"
                 >
                   <Calendar size={18} /> Schedule lesson
                 </button>
 
                 <button
-                  onClick={() => onQuickAction?.('timeoff') || (() => router.push("/tutor/schedule"))}
+                  onClick={() => {
+                    if (onQuickAction) {
+                      onQuickAction('timeoff');
+                    } else {
+                      router.push("/tutor/schedule-manager?tab=Time off");
+                    }
+                  }}
                   className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <CalendarX size={18} /> Add time off
                 </button>
 
                 <button
-                  onClick={() => onQuickAction?.('extraslots') || (() => router.push("/tutor/schedule"))}
+                  onClick={() => {
+                    if (onQuickAction) {
+                      onQuickAction('extraslots');
+                    } else {
+                      router.push("/tutor/schedule-manager?tab=Extra slots");
+                    }
+                  }}
                   className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus size={18} /> Add extra slots
                 </button>
 
                 <button
-                  onClick={() => onUpdateSchedule?.('setup') || (() => router.push("/tutor/schedule"))}
+                  onClick={() => {
+                    if (onUpdateSchedule) {
+                      onUpdateSchedule('setup');
+                    } else {
+                      router.push("/tutor/schedule");
+                    }
+                  }}
                   className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <Settings size={18} /> Set up availability

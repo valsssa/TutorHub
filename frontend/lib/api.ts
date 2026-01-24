@@ -893,6 +893,17 @@ export const messages = {
     return data;
   },
 
+  async getUserBasicInfo(userId: number): Promise<{
+    id: number;
+    email: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    role: string;
+  }> {
+    const { data } = await api.get(`/api/messages/users/${userId}`);
+    return data;
+  },
+
   async getThreadMessages(
     otherUserId: number,
     bookingId?: number,
