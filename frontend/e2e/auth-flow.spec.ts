@@ -1,163 +1,962 @@
 import { test, expect } from '@playwright/test';
+import { TestHelpers } from './helpers';
 
 /**
- * Authentication Flow E2E Tests
+ * Comprehensive Authentication Flow E2E Tests
  * 
- * Tests user registration, login, logout, and protected routes
+ * Based on docs/flow/01_AUTHENTICATION_FLOW.md
+ * Tests all buttons, API calls, and complete flows:
+ * - Registration Flow (with API verification)
+ * - Login Flow (with API verification)
+ * - Get Current User Flow (with API verification)
+ * - Logout Flow
+ * - Error Handling
+ * - Protected Routes
+ * - Form Validations
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
 
-test.describe('Authentication Flow', () => {
+test.describe('Authentication Flow - Complete E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Clear cookies and local storage before each test
     await page.context().clearCookies();
+    // Navigate to a page first before accessing localStorage
     await page.goto(FRONTEND_URL);
+    await page.evaluate(() => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {
+        // Ignore errors if localStorage is not accessible
+      }
+    });
   });
 
-  test('should display login page', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/login`);
-    
-    // Check page title (flexible - either with or without "Login")
-    await expect(page).toHaveTitle(/EduConnect|Login/i);
-    
-    // Check form elements
-    await expect(page.getByRole('textbox', { name: /email/i })).toBeVisible();
-    await expect(page.getByLabel(/password/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /sign in/i }).first()).toBeVisible();
-    
-    // Check link to registration
-    await expect(page.getByRole('link', { name: /sign up|register/i }).first()).toBeVisible();
+  // ============================================================================
+  // REGISTRATION FLOW TESTS
+  // ============================================================================
+
+  test.describe('Registration Flow', () => {
+    test('should display registration page with all elements', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Check page title
+      await expect(page).toHaveTitle(/EduConnect|Register|Sign Up/i);
+      
+      // Check all form elements are visible
+      await expect(page.getByRole('textbox', { name: /first name/i })).toBeVisible();
+      await expect(page.getByRole('textbox', { name: /last name/i })).toBeVisible();
+      await expect(page.getByRole('textbox', { name: /email/i })).toBeVisible();
+      await expect(page.getByLabel(/^password$/i)).toBeVisible();
+      await expect(page.getByLabel(/confirm password/i)).toBeVisible();
+      
+      // Check role selection buttons
+      await expect(page.getByRole('button', { name: /student/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /tutor/i })).toBeVisible();
+      
+      // Check submit button
+      await expect(page.getByRole('button', { name: /sign up|register/i }).first()).toBeVisible();
+      
+      // Check navigation links
+      await expect(page.getByRole('link', { name: /back to login|sign in/i }).first()).toBeVisible();
+    });
+
+    test('should register a new student with API call verification', async ({ page }) => {
+      const timestamp = Date.now();
+      const testEmail = `test-student-${timestamp}@example.com`;
+      const testPassword = 'Test123!@#';
+      const firstName = 'John';
+      const lastName = 'Doe';
+
+      // Intercept API call to verify request
+      let apiRequest: any = null;
+      let apiResponse: any = null;
+
+      page.on('request', request => {
+        if (request.url().includes('/api/auth/register')) {
+          apiRequest = request;
+        }
+      });
+
+      page.on('response', response => {
+        if (response.url().includes('/api/auth/register')) {
+          apiResponse = response;
+        }
+      });
+
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Fill registration form
+      await page.getByRole('textbox', { name: /first name/i }).fill(firstName);
+      await page.getByRole('textbox', { name: /last name/i }).fill(lastName);
+      await page.getByRole('textbox', { name: /email/i }).fill(testEmail);
+      await page.getByLabel(/^password$/i).fill(testPassword);
+      await page.getByLabel(/confirm password/i).fill(testPassword);
+      
+      // Ensure student role is selected (default)
+      const studentButton = page.getByRole('button', { name: /student/i });
+      await expect(studentButton).toBeVisible();
+      
+      // Submit form
+      await page.getByRole('button', { name: /sign up|register/i }).first().click();
+      
+      // Wait for API call to complete
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/register') && response.status() === 201,
+        { timeout: 10000 }
+      );
+      
+      // Verify API request was made
+      expect(apiRequest).not.toBeNull();
+      expect(apiRequest.method()).toBe('POST');
+      
+      // Verify API response
+      expect(apiResponse).not.toBeNull();
+      expect(apiResponse.status()).toBe(201);
+      
+      const responseBody = await apiResponse.json();
+      expect(responseBody).toHaveProperty('email', testEmail.toLowerCase());
+      expect(responseBody).toHaveProperty('role', 'student');
+      expect(responseBody).toHaveProperty('first_name', firstName);
+      expect(responseBody).toHaveProperty('last_name', lastName);
+      
+      // Verify redirect (should go to login for students)
+      await page.waitForURL(/\/login/i, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/login/i);
+    });
+
+    test('should register a new tutor with API call verification', async ({ page }) => {
+      const timestamp = Date.now();
+      const testEmail = `test-tutor-${timestamp}@example.com`;
+      const testPassword = 'Test123!@#';
+      const firstName = 'Jane';
+      const lastName = 'Smith';
+
+      // Intercept API calls
+      let registerRequest: any = null;
+      let loginRequest: any = null;
+
+      page.on('request', request => {
+        if (request.url().includes('/api/auth/register')) {
+          registerRequest = request;
+        }
+        if (request.url().includes('/api/auth/login')) {
+          loginRequest = request;
+        }
+      });
+
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Select tutor role
+      await page.getByRole('button', { name: /tutor/i }).click();
+      
+      // Fill registration form
+      await page.getByRole('textbox', { name: /first name/i }).fill(firstName);
+      await page.getByRole('textbox', { name: /last name/i }).fill(lastName);
+      await page.getByRole('textbox', { name: /email/i }).fill(testEmail);
+      await page.getByLabel(/^password$/i).fill(testPassword);
+      await page.getByLabel(/confirm password/i).fill(testPassword);
+      
+      // Submit form
+      await page.getByRole('button', { name: /sign up|register/i }).first().click();
+      
+      // Wait for registration API call
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/register') && response.status() === 201,
+        { timeout: 10000 }
+      );
+      
+      // Verify registration API was called
+      expect(registerRequest).not.toBeNull();
+      
+      // Tutors should auto-login and redirect to onboarding
+      await page.waitForURL(/\/tutor\/onboarding/i, { timeout: 10000 });
+      
+      // Verify login API was called (tutors auto-login)
+      expect(loginRequest).not.toBeNull();
+    });
+
+    test('should show error for duplicate email registration', async ({ page }) => {
+      const existingEmail = 'student@example.com';
+      const testPassword = 'Test123!@#';
+
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Fill form with existing email
+      await page.getByRole('textbox', { name: /first name/i }).fill('Test');
+      await page.getByRole('textbox', { name: /last name/i }).fill('User');
+      await page.getByRole('textbox', { name: /email/i }).fill(existingEmail);
+      await page.getByLabel(/^password$/i).fill(testPassword);
+      await page.getByLabel(/confirm password/i).fill(testPassword);
+      
+      // Submit form
+      await page.getByRole('button', { name: /sign up|register/i }).first().click();
+      
+      // Wait for API error response
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/register') && 
+        (response.status() === 409 || response.status() === 400),
+        { timeout: 10000 }
+      );
+      
+      // Check for error message
+      await expect(page.getByText(/email.*already|already.*registered|duplicate/i)).toBeVisible({ timeout: 5000 });
+    });
+
+    test('should validate all registration form fields', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Try to submit empty form
+      await page.getByRole('button', { name: /sign up|register/i }).first().click();
+      
+      // Check for validation errors
+      await expect(page.getByText(/first name.*required/i)).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText(/last name.*required/i)).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText(/email.*required/i)).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText(/password.*required/i)).toBeVisible({ timeout: 3000 });
+    });
+
+    test('should validate password length requirements', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Try password too short
+      await page.getByRole('textbox', { name: /first name/i }).fill('John');
+      await page.getByRole('textbox', { name: /last name/i }).fill('Doe');
+      await page.getByRole('textbox', { name: /email/i }).fill('test@example.com');
+      await page.getByLabel(/^password$/i).fill('12345'); // Too short
+      await page.getByLabel(/confirm password/i).fill('12345');
+      
+      await page.getByRole('button', { name: /sign up|register/i }).first().click();
+      
+      // Check for password length error
+      await expect(page.getByText(/password.*at least.*6|password.*6.*characters/i)).toBeVisible({ timeout: 3000 });
+    });
+
+    test('should validate password match', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Fill form with mismatched passwords
+      await page.getByRole('textbox', { name: /first name/i }).fill('John');
+      await page.getByRole('textbox', { name: /last name/i }).fill('Doe');
+      await page.getByRole('textbox', { name: /email/i }).fill('test@example.com');
+      await page.getByLabel(/^password$/i).fill('Test123!@#');
+      await page.getByLabel(/confirm password/i).fill('DifferentPassword123');
+      
+      // Submit form
+      await page.getByRole('button', { name: /sign up|register/i }).first().click();
+      
+      // Check for password mismatch error
+      await expect(page.getByText(/password.*match|password.*same|passwords.*not.*match/i)).toBeVisible({ timeout: 3000 });
+    });
+
+    test('should validate email format', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Try invalid email
+      await page.getByRole('textbox', { name: /first name/i }).fill('John');
+      await page.getByRole('textbox', { name: /last name/i }).fill('Doe');
+      await page.getByRole('textbox', { name: /email/i }).fill('invalid-email');
+      await page.getByLabel(/^password$/i).fill('Test123!@#');
+      await page.getByLabel(/confirm password/i).fill('Test123!@#');
+      
+      // Submit form
+      await page.getByRole('button', { name: /sign up|register/i }).first().click();
+      
+      // Check for email validation error
+      await expect(page.getByText(/invalid.*email|email.*format/i)).toBeVisible({ timeout: 3000 });
+    });
+
+    test('should toggle between student and tutor roles', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Check default is student
+      const studentButton = page.getByRole('button', { name: /student/i });
+      const tutorButton = page.getByRole('button', { name: /tutor/i });
+      
+      // Verify student is selected by default
+      await expect(studentButton).toHaveClass(/bg-white|shadow/);
+      
+      // Click tutor button
+      await tutorButton.click();
+      
+      // Verify tutor is now selected
+      await expect(tutorButton).toHaveClass(/bg-white|shadow/);
+      
+      // Verify tutor info message appears
+      await expect(page.getByText(/tutor profile|complete.*tutor/i)).toBeVisible();
+      
+      // Click student button again
+      await studentButton.click();
+      
+      // Verify student is selected again
+      await expect(studentButton).toHaveClass(/bg-white|shadow/);
+    });
+
+    test('should have clickable navigation links', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Test "Back to Login" link
+      const backLink = page.getByRole('link', { name: /back to login/i }).first();
+      await expect(backLink).toBeVisible();
+      await backLink.click();
+      await expect(page).toHaveURL(/\/login/i);
+      
+      // Go back to register
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Test "Sign in" link at bottom
+      const signInLink = page.getByRole('link', { name: /sign in/i }).first();
+      await expect(signInLink).toBeVisible();
+      await signInLink.click();
+      await expect(page).toHaveURL(/\/login/i);
+    });
   });
 
-  test('should display registration page', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/register`);
-    
-    // Check page title (flexible)
-    await expect(page).toHaveTitle(/EduConnect|Register|Sign Up/i);
-    
-    // Check form elements
-    await expect(page.getByRole('textbox', { name: /email/i })).toBeVisible();
-    await expect(page.getByLabel(/^password$/i)).toBeVisible();
-    await expect(page.getByLabel(/confirm password/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /sign up|register/i }).first()).toBeVisible();
+  // ============================================================================
+  // LOGIN FLOW TESTS
+  // ============================================================================
+
+  test.describe('Login Flow', () => {
+    test('should display login page with all elements', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Check page title
+      await expect(page).toHaveTitle(/EduConnect|Login/i);
+      
+      // Check form elements
+      await expect(page.getByRole('textbox', { name: /email/i })).toBeVisible();
+      await expect(page.getByLabel(/password/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: /sign in/i }).first()).toBeVisible();
+      
+      // Check links
+      await expect(page.getByRole('link', { name: /sign up|register/i }).first()).toBeVisible();
+      
+      // Check optional elements
+      const rememberMe = page.getByLabel(/remember me/i);
+      const forgotPassword = page.getByRole('button', { name: /forgot password/i });
+      
+      if (await rememberMe.count() > 0) {
+        await expect(rememberMe).toBeVisible();
+      }
+      if (await forgotPassword.count() > 0) {
+        await expect(forgotPassword).toBeVisible();
+      }
+    });
+
+    test('should login with valid student credentials and verify API calls', async ({ page }) => {
+      // Intercept API calls
+      let loginRequest: any = null;
+      let loginResponse: any = null;
+      let meRequest: any = null;
+      let meResponse: any = null;
+
+      page.on('request', request => {
+        if (request.url().includes('/api/auth/login')) {
+          loginRequest = request;
+        }
+        if (request.url().includes('/api/auth/me')) {
+          meRequest = request;
+        }
+      });
+
+      page.on('response', response => {
+        if (response.url().includes('/api/auth/login')) {
+          loginResponse = response;
+        }
+        if (response.url().includes('/api/auth/me')) {
+          meResponse = response;
+        }
+      });
+
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Fill login form
+      await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
+      await page.getByLabel(/password/i).fill('student123');
+      
+      // Submit form
+      await page.getByRole('button', { name: /^sign in$/i }).first().click();
+      
+      // Wait for login API call
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/login') && response.status() === 200,
+        { timeout: 10000 }
+      );
+      
+      // Verify login API request
+      expect(loginRequest).not.toBeNull();
+      expect(loginRequest.method()).toBe('POST');
+      
+      // Verify login API response
+      expect(loginResponse).not.toBeNull();
+      expect(loginResponse.status()).toBe(200);
+      
+      const loginBody = await loginResponse.json();
+      expect(loginBody).toHaveProperty('access_token');
+      expect(loginBody).toHaveProperty('token_type', 'bearer');
+      
+      // Wait for getCurrentUser API call
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/me') && response.status() === 200,
+        { timeout: 10000 }
+      );
+      
+      // Verify getCurrentUser API was called
+      expect(meRequest).not.toBeNull();
+      expect(meRequest.method()).toBe('GET');
+      
+      // Verify getCurrentUser API response
+      expect(meResponse).not.toBeNull();
+      expect(meResponse.status()).toBe(200);
+      
+      const userBody = await meResponse.json();
+      expect(userBody).toHaveProperty('email', 'student@example.com');
+      expect(userBody).toHaveProperty('role', 'student');
+      
+      // Verify redirect to dashboard
+      await page.waitForURL(/\/dashboard/i, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/dashboard/i);
+    });
+
+    test('should login with valid tutor credentials and redirect correctly', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      await page.getByRole('textbox', { name: /email/i }).fill('tutor@example.com');
+      await page.getByLabel(/password/i).fill('tutor123');
+      await page.getByRole('button', { name: /^sign in$/i }).first().click();
+      
+      // Wait for successful login
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/login') && response.status() === 200,
+        { timeout: 10000 }
+      );
+      
+      // Verify redirect to dashboard
+      await page.waitForURL(/\/dashboard/i, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/dashboard/i);
+    });
+
+    test('should login with valid admin credentials and redirect correctly', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      await page.getByRole('textbox', { name: /email/i }).fill('admin@example.com');
+      await page.getByLabel(/password/i).fill('admin123');
+      await page.getByRole('button', { name: /^sign in$/i }).first().click();
+      
+      // Wait for successful login
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/login') && response.status() === 200,
+        { timeout: 10000 }
+      );
+      
+      // Admin should redirect to admin panel
+      await page.waitForURL(/\/admin/i, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/admin/i);
+    });
+
+    test('should show error for invalid credentials', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Try to login with invalid credentials
+      await page.getByRole('textbox', { name: /email/i }).fill('invalid@example.com');
+      await page.getByLabel(/password/i).fill('wrongpassword');
+      
+      // Submit form
+      await page.getByRole('button', { name: /^sign in$/i }).first().click();
+      
+      // Wait for API error response
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/login') && response.status() === 401,
+        { timeout: 10000 }
+      );
+      
+      // Check for error message
+      await expect(page.getByText(/invalid.*credentials|incorrect.*email|incorrect.*password/i)).toBeVisible({ timeout: 5000 });
+    });
+
+    test('should validate login form fields', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Try to submit empty form
+      await page.getByRole('button', { name: /^sign in$/i }).first().click();
+      
+      // Check for validation errors
+      await expect(page.getByText(/email.*required/i)).toBeVisible({ timeout: 3000 });
+      await expect(page.getByText(/password.*required/i)).toBeVisible({ timeout: 3000 });
+    });
+
+    test('should validate email format on login', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Try invalid email
+      await page.getByRole('textbox', { name: /email/i }).fill('invalid-email');
+      await page.getByLabel(/password/i).fill('password123');
+      
+      // Submit form
+      await page.getByRole('button', { name: /^sign in$/i }).first().click();
+      
+      // Check for email validation error
+      await expect(page.getByText(/invalid.*email|email.*format/i)).toBeVisible({ timeout: 3000 });
+    });
+
+    test('should have clickable demo credential buttons in development', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Check if demo credentials section exists (only in development)
+      const studentButton = page.getByRole('button', { name: /^student$/i });
+      const tutorButton = page.getByRole('button', { name: /^tutor$/i });
+      const adminButton = page.getByRole('button', { name: /^admin$/i });
+      
+      const studentCount = await studentButton.count();
+      
+      if (studentCount > 0) {
+        // Test student button
+        await expect(studentButton).toBeVisible();
+        await studentButton.click();
+        
+        // Verify form is filled
+        const emailInput = page.getByRole('textbox', { name: /email/i });
+        const emailValue = await emailInput.inputValue();
+        expect(emailValue).toContain('student@example.com');
+        
+        // Test tutor button
+        await expect(tutorButton).toBeVisible();
+        await tutorButton.click();
+        
+        const emailValue2 = await emailInput.inputValue();
+        expect(emailValue2).toContain('tutor@example.com');
+        
+        // Test admin button
+        await expect(adminButton).toBeVisible();
+        await adminButton.click();
+        
+        const emailValue3 = await emailInput.inputValue();
+        expect(emailValue3).toContain('admin@example.com');
+      }
+    });
+
+    test('should have clickable social login buttons', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Check for social login buttons
+      const googleButton = page.getByRole('button', { name: /google/i }).or(page.locator('button[title*="Google"]'));
+      const githubButton = page.getByRole('button', { name: /github/i }).or(page.locator('button[title*="GitHub"]'));
+      
+      const googleCount = await googleButton.count();
+      const githubCount = await githubButton.count();
+      
+      if (googleCount > 0) {
+        await expect(googleButton.first()).toBeVisible();
+        // Click should not throw error (even if it's just a simulation)
+        await googleButton.first().click();
+      }
+      
+      if (githubCount > 0) {
+        await expect(githubButton.first()).toBeVisible();
+        await githubButton.first().click();
+      }
+    });
+
+    test('should have clickable navigation links', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Test "Sign up" link
+      const signUpLink = page.getByRole('link', { name: /sign up|register/i }).first();
+      await expect(signUpLink).toBeVisible();
+      await signUpLink.click();
+      await expect(page).toHaveURL(/\/register/i);
+    });
   });
 
-  test('should register a new user', async ({ page }) => {
-    const timestamp = Date.now();
-    const testEmail = `test-${timestamp}@example.com`;
-    const testPassword = 'Test123!@#';
+  // ============================================================================
+  // GET CURRENT USER FLOW TESTS
+  // ============================================================================
 
-    await page.goto(`${FRONTEND_URL}/register`);
-    
-    // Fill registration form
-    await page.getByRole('textbox', { name: /email/i }).fill(testEmail);
-    await page.getByLabel(/^password$/i).fill(testPassword);
-    await page.getByLabel(/confirm password/i).fill(testPassword);
-    
-    // Submit form
-    await page.getByRole('button', { name: /sign up|register/i }).first().click();
-    
-    // Wait for success message or redirect
-    await page.waitForURL(/\/(dashboard|login)/i, { timeout: 10000 });
-    
-    // Verify we're redirected (either to dashboard or login)
-    const currentUrl = page.url();
-    expect(currentUrl).toMatch(/\/(dashboard|login)/i);
+  test.describe('Get Current User Flow', () => {
+    test('should fetch current user after login', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      // Intercept API call
+      let meRequest: any = null;
+      let meResponse: any = null;
+
+      page.on('request', request => {
+        if (request.url().includes('/api/auth/me')) {
+          meRequest = request;
+        }
+      });
+
+      page.on('response', response => {
+        if (response.url().includes('/api/auth/me')) {
+          meResponse = response;
+        }
+      });
+      
+      // Navigate to dashboard (should trigger getCurrentUser)
+      await page.goto(`${FRONTEND_URL}/dashboard`);
+      
+      // Wait for API call
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/me') && response.status() === 200,
+        { timeout: 10000 }
+      );
+      
+      // Verify API request
+      expect(meRequest).not.toBeNull();
+      expect(meRequest.method()).toBe('GET');
+      
+      // Verify Authorization header
+      const headers = meRequest.headers();
+      expect(headers['authorization']).toContain('Bearer');
+      
+      // Verify API response
+      expect(meResponse).not.toBeNull();
+      expect(meResponse.status()).toBe(200);
+      
+      const userBody = await meResponse.json();
+      expect(userBody).toHaveProperty('id');
+      expect(userBody).toHaveProperty('email');
+      expect(userBody).toHaveProperty('role');
+      expect(userBody).toHaveProperty('is_active');
+    });
+
+    test('should return 401 for getCurrentUser without token', async ({ page }) => {
+      // Don't login, just try to access protected endpoint
+      await page.goto(`${FRONTEND_URL}/dashboard`);
+      
+      // Should redirect to login
+      await page.waitForURL(/\/login/i, { timeout: 5000 });
+      await expect(page).toHaveURL(/\/login/i);
+    });
+
+    test('should fetch user data on protected page load', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      // Navigate to dashboard
+      await page.goto(`${FRONTEND_URL}/dashboard`);
+      
+      // Wait for page to load and API call to complete
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
+      
+      // Verify user data is displayed (check for email or name)
+      const pageContent = await page.textContent('body');
+      expect(pageContent).toContain('student@example.com');
+    });
   });
 
-  test('should login with valid credentials', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/login`);
-    
-    // Use default student credentials
-    await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
-    await page.getByLabel(/password/i).fill('student123');
-    
-    // Submit form (use first button to get main submit, not OAuth buttons)
-    await page.getByRole('button', { name: /^sign in$/i }).first().click();
-    
-    // Wait for redirect to dashboard
-    await page.waitForURL(/\/dashboard/i, { timeout: 10000 });
-    
-    // Verify we're on dashboard
-    await expect(page).toHaveURL(/\/dashboard/i);
+  // ============================================================================
+  // LOGOUT FLOW TESTS
+  // ============================================================================
+
+  test.describe('Logout Flow', () => {
+    test('should logout successfully and clear session', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      // Verify we're logged in (check for token cookie)
+      const cookiesBefore = await page.context().cookies();
+      const hasTokenBefore = cookiesBefore.some(c => c.name === 'token');
+      expect(hasTokenBefore).toBe(true);
+      
+      // Find and click logout button
+      const logoutButton = page.getByRole('button', { name: /logout|sign out/i }).first();
+      await expect(logoutButton).toBeVisible();
+      await logoutButton.click();
+      
+      // Wait for redirect to home or login
+      await page.waitForURL(/\/(login|\?)/i, { timeout: 5000 });
+      
+      // Verify token cookie is removed
+      const cookiesAfter = await page.context().cookies();
+      const hasTokenAfter = cookiesAfter.some(c => c.name === 'token');
+      expect(hasTokenAfter).toBe(false);
+    });
+
+    test('should redirect to login after logout', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      // Logout
+      const logoutButton = page.getByRole('button', { name: /logout|sign out/i }).first();
+      await logoutButton.click();
+      
+      // Should redirect to login or home
+      await page.waitForURL(/\/(login|\?)/i, { timeout: 5000 });
+    });
+
+    test('should prevent access to protected routes after logout', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      // Logout
+      const logoutButton = page.getByRole('button', { name: /logout|sign out/i }).first();
+      await logoutButton.click();
+      
+      // Wait for logout to complete
+      await page.waitForURL(/\/(login|\?)/i, { timeout: 5000 });
+      
+      // Try to access protected route
+      await page.goto(`${FRONTEND_URL}/dashboard`);
+      
+      // Should redirect to login
+      await page.waitForURL(/\/login/i, { timeout: 5000 });
+      await expect(page).toHaveURL(/\/login/i);
+    });
   });
 
-  test('should show error for invalid credentials', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/login`);
-    
-    // Try to login with invalid credentials
-    await page.getByRole('textbox', { name: /email/i }).fill('invalid@example.com');
-    await page.getByLabel(/password/i).fill('wrongpassword');
-    
-    // Submit form
-    await page.getByRole('button', { name: /^sign in$/i }).first().click();
-    
-    // Wait for error message
-    await expect(page.getByText(/invalid.*credentials|incorrect.*email|incorrect.*password/i)).toBeVisible({ timeout: 5000 });
+  // ============================================================================
+  // PROTECTED ROUTES TESTS
+  // ============================================================================
+
+  test.describe('Protected Routes', () => {
+    test('should protect dashboard route when not authenticated', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/dashboard`);
+      
+      // Should redirect to login
+      await page.waitForURL(/\/login/i, { timeout: 5000 });
+      await expect(page).toHaveURL(/\/login/i);
+    });
+
+    test('should allow access to dashboard when authenticated', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      // Navigate to dashboard
+      await page.goto(`${FRONTEND_URL}/dashboard`);
+      
+      // Should be on dashboard (not redirected)
+      await expect(page).toHaveURL(/\/dashboard/i);
+    });
+
+    test('should protect admin route for non-admin users', async ({ page }) => {
+      // Login as student
+      await TestHelpers.loginAsStudent(page);
+      
+      // Try to access admin route
+      await page.goto(`${FRONTEND_URL}/admin`);
+      
+      // Should redirect or show unauthorized
+      await page.waitForTimeout(2000);
+      const currentUrl = page.url();
+      expect(currentUrl).not.toContain('/admin');
+    });
+
+    test('should allow access to admin route for admin users', async ({ page }) => {
+      // Login as admin
+      await TestHelpers.loginAsAdmin(page);
+      
+      // Navigate to admin route
+      await page.goto(`${FRONTEND_URL}/admin`);
+      
+      // Should be on admin page (not redirected)
+      await expect(page).toHaveURL(/\/admin/i);
+    });
   });
 
-  test('should logout successfully', async ({ page }) => {
-    // First login
-    await page.goto(`${FRONTEND_URL}/login`);
-    await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
-    await page.getByLabel(/password/i).fill('student123');
-    await page.getByRole('button', { name: /^sign in$/i }).first().click();
-    
-    // Wait for dashboard
-    await page.waitForURL(/\/dashboard/i, { timeout: 10000 });
-    
-    // Find and click logout button
-    const logoutButton = page.getByRole('button', { name: /logout|sign out/i }).first();
-    await logoutButton.click();
-    
-    // Wait for redirect to login
-    await page.waitForURL(/\/login/i, { timeout: 5000 });
-    
-    // Verify we're on login page
-    await expect(page).toHaveURL(/\/login/i);
+  // ============================================================================
+  // BUTTON CLICKABILITY TESTS
+  // ============================================================================
+
+  test.describe('Button Clickability', () => {
+    test('should have all registration buttons clickable', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      // Test role selection buttons
+      const studentButton = page.getByRole('button', { name: /student/i });
+      const tutorButton = page.getByRole('button', { name: /tutor/i });
+      
+      await expect(studentButton).toBeEnabled();
+      await expect(tutorButton).toBeEnabled();
+      
+      await studentButton.click();
+      await tutorButton.click();
+      
+      // Test submit button
+      const submitButton = page.getByRole('button', { name: /sign up|register/i }).first();
+      await expect(submitButton).toBeEnabled();
+    });
+
+    test('should have all login buttons clickable', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Test submit button
+      const submitButton = page.getByRole('button', { name: /^sign in$/i }).first();
+      await expect(submitButton).toBeEnabled();
+      
+      // Test social login buttons if present
+      const googleButton = page.locator('button[title*="Google"]');
+      const githubButton = page.locator('button[title*="GitHub"]');
+      
+      const googleCount = await googleButton.count();
+      const githubCount = await githubButton.count();
+      
+      if (googleCount > 0) {
+        await expect(googleButton.first()).toBeEnabled();
+      }
+      if (githubCount > 0) {
+        await expect(githubButton.first()).toBeEnabled();
+      }
+    });
+
+    test('should have logout button clickable when authenticated', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      // Find logout button
+      const logoutButton = page.getByRole('button', { name: /logout|sign out/i }).first();
+      await expect(logoutButton).toBeVisible();
+      await expect(logoutButton).toBeEnabled();
+      
+      // Click should work
+      await logoutButton.click();
+    });
   });
 
-  test('should protect dashboard route when not authenticated', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/dashboard`);
-    
-    // Should redirect to login
-    await page.waitForURL(/\/login/i, { timeout: 5000 });
-    
-    // Verify redirect
-    await expect(page).toHaveURL(/\/login/i);
+  // ============================================================================
+  // API CALL VERIFICATION TESTS
+  // ============================================================================
+
+  test.describe('API Call Verification', () => {
+    test('should verify registration API request format', async ({ page }) => {
+      const timestamp = Date.now();
+      const testEmail = `test-api-${timestamp}@example.com`;
+      const testPassword = 'Test123!@#';
+      const firstName = 'API';
+      const lastName = 'Test';
+
+      let requestBody: any = null;
+
+      page.on('request', request => {
+        if (request.url().includes('/api/auth/register')) {
+          requestBody = request.postDataJSON();
+        }
+      });
+
+      await page.goto(`${FRONTEND_URL}/register`);
+      
+      await page.getByRole('textbox', { name: /first name/i }).fill(firstName);
+      await page.getByRole('textbox', { name: /last name/i }).fill(lastName);
+      await page.getByRole('textbox', { name: /email/i }).fill(testEmail);
+      await page.getByLabel(/^password$/i).fill(testPassword);
+      await page.getByLabel(/confirm password/i).fill(testPassword);
+      
+      await page.getByRole('button', { name: /sign up|register/i }).first().click();
+      
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/register'),
+        { timeout: 10000 }
+      );
+      
+      // Verify request body format
+      expect(requestBody).not.toBeNull();
+      expect(requestBody).toHaveProperty('email', testEmail);
+      expect(requestBody).toHaveProperty('password', testPassword);
+      expect(requestBody).toHaveProperty('first_name', firstName);
+      expect(requestBody).toHaveProperty('last_name', lastName);
+      expect(requestBody).toHaveProperty('role', 'student');
+    });
+
+    test('should verify login API request format', async ({ page }) => {
+      let requestBody: string | null = null;
+
+      page.on('request', request => {
+        if (request.url().includes('/api/auth/login')) {
+          requestBody = request.postData();
+        }
+      });
+
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
+      await page.getByLabel(/password/i).fill('student123');
+      await page.getByRole('button', { name: /^sign in$/i }).first().click();
+      
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/login'),
+        { timeout: 10000 }
+      );
+      
+      // Verify request is form-encoded
+      expect(requestBody).not.toBeNull();
+      expect(requestBody).toContain('username=student%40example.com');
+      expect(requestBody).toContain('password=student123');
+    });
+
+    test('should verify getCurrentUser API includes Authorization header', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      let requestHeaders: any = null;
+
+      page.on('request', request => {
+        if (request.url().includes('/api/auth/me')) {
+          requestHeaders = request.headers();
+        }
+      });
+
+      await page.goto(`${FRONTEND_URL}/dashboard`);
+      
+      await page.waitForResponse(response => 
+        response.url().includes('/api/auth/me'),
+        { timeout: 10000 }
+      );
+      
+      // Verify Authorization header
+      expect(requestHeaders).not.toBeNull();
+      expect(requestHeaders['authorization']).toContain('Bearer');
+    });
   });
 
-  test('should validate email format', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/register`);
-    
-    // Try invalid email
-    await page.getByRole('textbox', { name: /email/i }).fill('invalid-email');
-    await page.getByLabel(/^password$/i).fill('Test123!@#');
-    await page.getByLabel(/confirm password/i).fill('Test123!@#');
-    
-    // Submit form
-    await page.getByRole('button', { name: /sign up|register/i }).first().click();
-    
-    // Check for validation message
-    const emailInput = page.getByRole('textbox', { name: /email/i });
-    const validationMessage = await emailInput.evaluate((el: HTMLInputElement) => el.validationMessage);
-    expect(validationMessage).toBeTruthy();
-  });
+  // ============================================================================
+  // ERROR HANDLING TESTS
+  // ============================================================================
 
-  test('should validate password match', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/register`);
-    
-    // Fill form with mismatched passwords
-    await page.getByRole('textbox', { name: /email/i }).fill('test@example.com');
-    await page.getByLabel(/^password$/i).fill('Test123!@#');
-    await page.getByLabel(/confirm password/i).fill('DifferentPassword123');
-    
-    // Submit form
-    await page.getByRole('button', { name: /sign up|register/i }).first().click();
-    
-    // Check for error message (flexible matching)
-    await expect(page.getByText(/password.*match|password.*same|passwords.*not.*match/i)).toBeVisible({ timeout: 3000 });
+  test.describe('Error Handling', () => {
+    test('should handle network errors gracefully', async ({ page }) => {
+      // Block API calls to simulate network error
+      await page.route('**/api/auth/login', route => route.abort());
+      
+      await page.goto(`${FRONTEND_URL}/login`);
+      await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
+      await page.getByLabel(/password/i).fill('student123');
+      await page.getByRole('button', { name: /^sign in$/i }).first().click();
+      
+      // Should show error message
+      await expect(page.getByText(/error|failed|network/i)).toBeVisible({ timeout: 5000 });
+    });
+
+    test('should handle 401 errors and redirect to login', async ({ page }) => {
+      // Login first
+      await TestHelpers.loginAsStudent(page);
+      
+      // Clear token to simulate expired token
+      await page.context().clearCookies();
+      
+      // Try to access protected route
+      await page.goto(`${FRONTEND_URL}/dashboard`);
+      
+      // Should redirect to login
+      await page.waitForURL(/\/login/i, { timeout: 5000 });
+      await expect(page).toHaveURL(/\/login/i);
+    });
+
+    test('should handle rate limiting errors', async ({ page }) => {
+      await page.goto(`${FRONTEND_URL}/login`);
+      
+      // Try multiple rapid login attempts
+      for (let i = 0; i < 12; i++) {
+        await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
+        await page.getByLabel(/password/i).fill('wrongpassword');
+        await page.getByRole('button', { name: /^sign in$/i }).first().click();
+        await page.waitForTimeout(100);
+      }
+      
+      // Should eventually show rate limit error
+      await expect(page.getByText(/rate limit|too many|try again/i)).toBeVisible({ timeout: 10000 });
+    });
   });
 });

@@ -1,0 +1,113 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e4]:
+        - link "EduConnect" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - img [ref=e7]
+          - generic [ref=e10]: EduConnect
+        - generic [ref=e11]:
+          - button "Toggle theme" [ref=e13] [cursor=pointer]:
+            - img [ref=e14]
+          - generic [ref=e16]:
+            - button "Log in" [ref=e17] [cursor=pointer]
+            - button "Sign up" [active] [ref=e18] [cursor=pointer]
+    - main [ref=e19]:
+      - generic [ref=e22]:
+        - link "Back to Login" [ref=e23] [cursor=pointer]:
+          - /url: /login
+          - img [ref=e24]
+          - text: Back to Login
+        - generic [ref=e26]:
+          - img [ref=e28]
+          - heading "Create Account" [level=2] [ref=e31]
+          - paragraph [ref=e32]: Join EduConnect today
+        - generic [ref=e33]:
+          - button "Student" [ref=e34] [cursor=pointer]
+          - button "Tutor" [ref=e35] [cursor=pointer]
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - generic [ref=e39]: First Name
+              - textbox "First Name" [ref=e40]:
+                - /placeholder: John
+            - generic [ref=e41]:
+              - generic [ref=e42]: Last Name
+              - textbox "Last Name" [ref=e43]:
+                - /placeholder: Doe
+          - generic [ref=e44]:
+            - generic [ref=e45]: Email Address
+            - textbox "Email Address" [ref=e46]:
+              - /placeholder: name@example.com
+          - generic [ref=e47]:
+            - generic [ref=e48]: Password
+            - textbox "Password" [ref=e49]:
+              - /placeholder: Create a password
+            - paragraph [ref=e50]: 6-128 characters
+          - generic [ref=e51]:
+            - generic [ref=e52]: Confirm Password
+            - textbox "Confirm Password" [ref=e53]:
+              - /placeholder: Confirm your password
+          - generic [ref=e55]:
+            - img [ref=e56]
+            - paragraph [ref=e58]:
+              - text: Creating a
+              - strong [ref=e59]: Student
+              - text: account. You can browse and book tutors.
+          - button "Sign Up" [ref=e60] [cursor=pointer]:
+            - text: Sign Up
+            - img [ref=e61]
+        - paragraph [ref=e64]:
+          - text: Already have an account?
+          - link "Sign in" [ref=e65] [cursor=pointer]:
+            - /url: /login
+    - contentinfo [ref=e66]:
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - link "EduConnect" [ref=e70] [cursor=pointer]:
+              - /url: /
+              - img [ref=e72]
+              - generic [ref=e75]: EduConnect
+            - paragraph [ref=e76]: Connecting students with elite educators for personalized 1-on-1 learning. Master any subject, anytime, anywhere.
+          - generic [ref=e77]:
+            - heading "Product" [level=4] [ref=e78]
+            - list [ref=e79]:
+              - listitem [ref=e80]:
+                - link "Find a Tutor" [ref=e81] [cursor=pointer]:
+                  - /url: /tutors
+              - listitem [ref=e82]:
+                - link "Refer a friend" [ref=e83] [cursor=pointer]:
+                  - /url: /referral
+              - listitem [ref=e84]:
+                - link "Affiliate Program" [ref=e85] [cursor=pointer]:
+                  - /url: /affiliate-program
+          - generic [ref=e86]:
+            - heading "Support" [level=4] [ref=e87]
+            - list [ref=e88]:
+              - listitem [ref=e89]:
+                - link "Help & Support" [ref=e90] [cursor=pointer]:
+                  - /url: /support
+          - generic [ref=e91]:
+            - heading "For Tutors" [level=4] [ref=e92]
+            - list [ref=e93]:
+              - listitem [ref=e94]:
+                - link "Become a Tutor" [ref=e95] [cursor=pointer]:
+                  - /url: /become-a-tutor
+        - generic [ref=e96]:
+          - paragraph [ref=e97]:
+            - text: © 2026 EduConnect Inc. Made with
+            - img [ref=e98]
+            - text: globally.
+          - generic [ref=e100]:
+            - link "Privacy" [ref=e101] [cursor=pointer]:
+              - /url: /privacy
+            - link "Terms" [ref=e102] [cursor=pointer]:
+              - /url: /terms
+            - link "Cookies" [ref=e103] [cursor=pointer]:
+              - /url: /cookie-policy
+  - alert [ref=e104]
+```

@@ -99,10 +99,10 @@ export default function Navbar({ user }: NavbarProps) {
           <div className="flex gap-6">
             {authUtils.isTutor(user) && (
               <Link
-                href="/tutor/schedule"
+                href="/dashboard"
                 className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
               >
-                Availability
+                Dashboard
               </Link>
             )}
             {authUtils.isAdmin(user) && (
@@ -211,11 +211,11 @@ export default function Navbar({ user }: NavbarProps) {
                           <FiUser className="w-4 h-4" /> My Profile
                         </Link>
                         <Link
-                          href="/tutor/schedule"
+                          href="/dashboard"
                           onClick={() => setUserDropdownOpen(false)}
                           className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
                         >
-                          <FiCalendar className="w-4 h-4" /> Availability
+                          <FiCalendar className="w-4 h-4" /> Dashboard
                         </Link>
                       </>
                     )}
@@ -311,11 +311,11 @@ export default function Navbar({ user }: NavbarProps) {
                         My Profile
                       </Link>
                       <Link 
-                        href="/tutor/schedule"
+                        href="/dashboard"
                         onClick={() => setMobileMenuOpen(false)}
                         className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
                       >
-                        Availability
+                        Dashboard
                       </Link>
                     </>
                   )}
