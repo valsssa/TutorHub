@@ -98,6 +98,10 @@ class UserResponse(BaseModel):
 
     id: int
     email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    preferred_language: str | None = None
+    locale: str | None = None
     first_name: str | None = Field(None, min_length=1, max_length=100)
     last_name: str | None = Field(None, min_length=1, max_length=100)
     role: str
@@ -108,6 +112,8 @@ class UserResponse(BaseModel):
     avatar_url: str | None = None
     currency: str = "USD"
     timezone: str = "UTC"
+    preferred_language: str | None = None
+    locale: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -171,6 +177,7 @@ class SubjectResponse(BaseModel):
     id: int
     name: str
     description: str | None
+    category: str | None
     is_active: bool
 
     model_config = {"from_attributes": True}
@@ -545,10 +552,20 @@ class BookingStatusUpdate(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
-        allowed = ["confirmed", "cancelled", "completed", "no_show"]
-        if v not in allowed:
+        allowed = [
+            "PENDING",
+            "CONFIRMED",
+            "CANCELLED_BY_STUDENT",
+            "CANCELLED_BY_TUTOR",
+            "NO_SHOW_STUDENT",
+            "NO_SHOW_TUTOR",
+            "COMPLETED",
+            "REFUNDED",
+        ]
+        v_upper = v.upper()
+        if v_upper not in allowed:
             raise ValueError(f"Status must be one of: {', '.join(allowed)}")
-        return v
+        return v_upper
 
 
 class BookingResponse(BaseModel):

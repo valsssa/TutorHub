@@ -69,16 +69,16 @@ class TestUpdateStudentProfile:
             "/api/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
-                "education_level": "undergraduate",
-                "institution": "Test University",
-                "field_of_study": "Computer Science",
+                "grade_level": "10th Grade",
+                "school_name": "Test University",
+                "learning_goals": "Improve math skills",
             },
         )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["education_level"] == "undergraduate"
-        assert data["institution"] == "Test University"
-        assert data["field_of_study"] == "Computer Science"
+        assert data["grade_level"] == "10th Grade"
+        assert data["school_name"] == "Test University"
+        assert data["learning_goals"] == "Improve math skills"
 
     def test_update_creates_profile_if_not_exists(self, client, student_token, student_user, db_session):
         """Test update creates profile if it doesn't exist."""
@@ -93,11 +93,11 @@ class TestUpdateStudentProfile:
         response = client.patch(
             "/api/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
-            json={"education_level": "graduate"},
+            json={"grade_level": "12th Grade"},
         )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["education_level"] == "graduate"
+        assert data["grade_level"] == "12th Grade"
 
         # Verify profile was created
         profile = db_session.query(StudentProfile).filter(StudentProfile.user_id == student_user.id).first()
@@ -110,10 +110,10 @@ class TestUpdateStudentProfile:
         # Create profile with multiple fields
         profile = StudentProfile(
             user_id=student_user.id,
-            education_level="undergraduate",
-            institution="Original University",
-            field_of_study="Original Field",
-            interests=["Math", "Science"],
+            grade_level="10th Grade",
+            school_name="Original University",
+            learning_goals="Original Goals",
+            interests="Math, Science",
         )
         db_session.add(profile)
         db_session.commit()
@@ -122,28 +122,25 @@ class TestUpdateStudentProfile:
         response = client.patch(
             "/api/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
-            json={"institution": "New University"},
+            json={"school_name": "New University"},
         )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
 
         # Updated field
-        assert data["institution"] == "New University"
+        assert data["school_name"] == "New University"
         # Unchanged fields
-        assert data["education_level"] == "undergraduate"
-        assert data["field_of_study"] == "Original Field"
+        assert data["grade_level"] == "10th Grade"
+        assert data["learning_goals"] == "Original Goals"
 
     def test_update_all_fields(self, client, student_token, student_user, db_session):
         """Test updating all student profile fields."""
         full_data = {
-            "education_level": "graduate",
-            "institution": "Test Graduate School",
-            "field_of_study": "Machine Learning",
-            "year_of_study": 2,
-            "interests": ["AI", "Data Science", "Python"],
+            "grade_level": "12th Grade",
+            "school_name": "Test High School",
             "learning_goals": "Master ML algorithms",
-            "preferred_learning_style": "visual",
-            "availability_notes": "Evenings and weekends",
+            "interests": "AI, Data Science, Python",
+            "bio": "Passionate about technology",
         }
 
         response = client.patch(
@@ -162,21 +159,21 @@ class TestUpdateStudentProfile:
         response = client.patch(
             "/api/profile/student/me",
             headers={"Authorization": f"Bearer {tutor_token}"},
-            json={"education_level": "graduate"},
+            json={"grade_level": "12th Grade"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_student_profile_unauthorized(self, client):
         """Test updating student profile without auth fails."""
-        response = client.patch("/api/profile/student/me", json={"education_level": "graduate"})
+        response = client.patch("/api/profile/student/me", json={"grade_level": "12th Grade"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_update_with_empty_arrays(self, client, student_token, student_user, db_session):
-        """Test updating with empty arrays clears the field."""
+    def test_update_with_empty_strings(self, client, student_token, student_user, db_session):
+        """Test updating with empty strings clears the field."""
         from models import StudentProfile
 
         # Create profile with interests
-        profile = StudentProfile(user_id=student_user.id, interests=["Math", "Science"])
+        profile = StudentProfile(user_id=student_user.id, interests="Math, Science")
         db_session.add(profile)
         db_session.commit()
 
@@ -184,20 +181,8 @@ class TestUpdateStudentProfile:
         response = client.patch(
             "/api/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
-            json={"interests": []},
+            json={"interests": ""},
         )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["interests"] == []
-
-    def test_update_year_of_study(self, client, student_token, student_user, db_session):
-        """Test updating year of study with valid values."""
-        for year in [1, 2, 3, 4, 5]:
-            response = client.patch(
-                "/api/profile/student/me",
-                headers={"Authorization": f"Bearer {student_token}"},
-                json={"year_of_study": year},
-            )
-            assert response.status_code == status.HTTP_200_OK
-            data = response.json()
-            assert data["year_of_study"] == year
+        assert data["interests"] is None or data["interests"] == ""

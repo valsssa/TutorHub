@@ -147,16 +147,23 @@ class BookingService:
             tutor_profile_id=tutor_profile.id,
             student_id=student_id,
             subject_id=subject_id,
-            # package_id not in production schema (requires migration)
+            package_id=package_id,
             start_time=start_at,
             end_time=end_at,
             status=initial_status,
             lesson_type=lesson_type,
-            notes=notes_student,
+            notes_student=notes_student,
             # Use actual schema fields for pricing
             hourly_rate=tutor_profile.hourly_rate,
             total_amount=Decimal(rate_cents) / 100,
+            rate_cents=rate_cents,
+            currency=tutor_profile.currency or "USD",
+            platform_fee_pct=self.PLATFORM_FEE_PCT,
+            platform_fee_cents=platform_fee_cents,
+            tutor_earnings_cents=tutor_earnings_cents,
             pricing_type="hourly",
+            student_tz=student_tz,
+            tutor_tz=tutor_tz,
             created_by="STUDENT",
             # Snapshot fields - names now accessed directly from users table
             tutor_name=StringUtils.format_display_name(
@@ -492,34 +499,34 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
         level=None,  # TODO: Add student level field if needed
     )
 
-    # Get timezones from user profiles
-    student_tz = student.timezone if student else "UTC"
-    tutor_tz = tutor_user.timezone if tutor_user else "UTC"
+    # Get timezones from booking (stored at creation time)
+    student_tz = booking.student_tz or "UTC"
+    tutor_tz = booking.tutor_tz or "UTC"
 
-    # Calculate pricing fields from actual schema fields
-    hourly_rate_cents = int((booking.hourly_rate or Decimal("0")) * 100)
-    total_amount_cents = int((booking.total_amount or Decimal("0")) * 100)
-    platform_fee_pct = Decimal("20.0")
-    platform_fee_cents = int(total_amount_cents * platform_fee_pct / 100)
-    tutor_earnings_cents = total_amount_cents - platform_fee_cents
+    # Use pricing fields directly from booking (already calculated and stored)
+    rate_cents = booking.rate_cents or int((booking.hourly_rate or Decimal("0")) * 100)
+    platform_fee_pct = booking.platform_fee_pct or Decimal("20.0")
+    platform_fee_cents = booking.platform_fee_cents or 0
+    tutor_earnings_cents = booking.tutor_earnings_cents or 0
+    currency = booking.currency or "USD"
 
     # Use booking fields directly (they are already denormalized/calculated)
     return BookingDTO(
         id=booking.id,
         lesson_type=booking.lesson_type or "REGULAR",
-        status=booking.status or "pending",
+        status=booking.status or "PENDING",  # Keep uppercase status
         start_at=booking.start_time,
         end_at=booking.end_time,
         student_tz=student_tz,
         tutor_tz=tutor_tz,
-        rate_cents=hourly_rate_cents,
-        currency="USD",  # Default currency (should be in config)
+        rate_cents=rate_cents,
+        currency=currency,
         platform_fee_pct=platform_fee_pct,
         platform_fee_cents=platform_fee_cents,
         tutor_earnings_cents=tutor_earnings_cents,
         join_url=booking.join_url,
-        notes_student=booking.notes,
-        notes_tutor=None,  # Not in current schema
+        notes_student=booking.notes_student or booking.notes,  # Prefer notes_student, fallback to notes
+        notes_tutor=booking.notes_tutor,
         tutor=tutor_info,
         student=student_info,
         subject_name=booking.subject_name or (booking.subject.name if booking.subject else None),

@@ -289,6 +289,8 @@ async def get_me(
         timezone=current_user.timezone,
         updated_at=current_user.updated_at,
         avatar_url=avatar.avatar_url,
+        preferred_language=getattr(current_user, "preferred_language", None),
+        locale=getattr(current_user, "locale", None),
     )
 
 
@@ -336,6 +338,8 @@ async def update_me(
             timezone=current_user.timezone,
             updated_at=current_user.updated_at,
             avatar_url=avatar.avatar_url,
+            preferred_language=getattr(current_user, "preferred_language", None),
+            locale=getattr(current_user, "locale", None),
         )
     except Exception as e:
         db.rollback()
