@@ -69,6 +69,8 @@ services:
       AVATAR_STORAGE_USE_SSL: ${AVATAR_STORAGE_USE_SSL:-false}
       AVATAR_STORAGE_URL_TTL_SECONDS: ${AVATAR_STORAGE_URL_TTL_SECONDS:-300}
       AVATAR_STORAGE_DEFAULT_URL: ${AVATAR_STORAGE_DEFAULT_URL:-https://placehold.co/300x300?text=Avatar}
+    volumes:
+      - ./backend:/app/backend
     depends_on:
       test-db:
         condition: service_healthy
