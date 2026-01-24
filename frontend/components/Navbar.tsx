@@ -27,7 +27,6 @@ import { authUtils } from '@/lib/auth'
 import { useToast } from './ToastContainer'
 import { useTheme } from '@/contexts/ThemeContext'
 import Button from './Button'
-import LocaleDropdown from './LocaleDropdown'
 import NotificationBell from './NotificationBell'
 import Avatar from './Avatar'
 
@@ -127,6 +126,8 @@ export default function Navbar({ user }: NavbarProps) {
             {theme === 'dark' ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
           </button>
 
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
+
           {/* Messages */}
           <Link
             href="/messages"
@@ -149,9 +150,6 @@ export default function Navbar({ user }: NavbarProps) {
 
           {/* Notifications */}
           <NotificationBell />
-
-          {/* Locale Dropdown */}
-          <LocaleDropdown />
 
           {/* User Avatar Dropdown */}
           <div className="relative pl-2 border-l border-slate-200 dark:border-slate-800" ref={dropdownRef}>
