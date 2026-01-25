@@ -27,8 +27,11 @@ export default defineConfig({
   
   // Shared settings for all tests
   use: {
-    // Base URL for navigation - use production URLs by default
-    baseURL: process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions',
+    // Base URL for navigation - use localhost for local dev, external URLs for CI/Docker
+    baseURL: process.env.NEXT_PUBLIC_FRONTEND_URL || 
+             (process.env.CI || process.env.USE_EXTERNAL_URLS === 'true' 
+               ? 'https://edustream.valsa.solutions' 
+               : 'http://localhost:3000'),
     
     // Screenshot on failure
     screenshot: 'only-on-failure',

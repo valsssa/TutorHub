@@ -6,12 +6,12 @@ import { test, expect } from '@playwright/test';
  * Tests the complete booking process from tutor selection to confirmation
  */
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
+// Using baseURL from playwright.config.ts
 
 test.describe('Booking Flow', () => {
   test.beforeEach(async ({ page }) => {
     // Login as student
-    await page.goto(`${FRONTEND_URL}/login`);
+    await page.goto('/login');
     await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
     await page.getByLabel(/password/i).fill('student123');
     await page.getByRole('button', { name: /sign in/i }).click();
@@ -20,7 +20,7 @@ test.describe('Booking Flow', () => {
 
   test('should display booking modal from tutor profile', async ({ page }) => {
     // Navigate to a tutor profile (assuming tutor ID 1 exists)
-    await page.goto(`${FRONTEND_URL}/tutor/1`);
+    await page.goto('/tutor/1');
     await page.waitForTimeout(2000);
     
     // Find and click book button
@@ -35,7 +35,7 @@ test.describe('Booking Flow', () => {
   });
 
   test('should select date and time for booking', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/tutor/1`);
+    await page.goto('/tutor/1');
     await page.waitForTimeout(2000);
     
     const bookButton = page.getByRole('button', { name: /book.*session|schedule|reserve/i }).first();
@@ -66,14 +66,14 @@ test.describe('Booking Flow', () => {
   });
 
   test('should view bookings page', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/bookings`);
+    await page.goto('/bookings');
     
     // Check page loaded
     await expect(page.getByText(/booking|session|appointment/i)).toBeVisible();
   });
 
   test('should display upcoming bookings', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/bookings`);
+    await page.goto('/bookings');
     await page.waitForTimeout(2000);
     
     // Look for bookings list or empty state
@@ -84,7 +84,7 @@ test.describe('Booking Flow', () => {
   });
 
   test('should filter bookings by status', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/bookings`);
+    await page.goto('/bookings');
     await page.waitForTimeout(2000);
     
     // Look for status filter tabs
@@ -101,7 +101,7 @@ test.describe('Booking Flow', () => {
   });
 
   test('should cancel a booking', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/bookings`);
+    await page.goto('/bookings');
     await page.waitForTimeout(2000);
     
     // Find cancel button for first booking
@@ -123,7 +123,7 @@ test.describe('Booking Flow', () => {
   });
 
   test('should reschedule a booking', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/bookings`);
+    await page.goto('/bookings');
     await page.waitForTimeout(2000);
     
     // Find reschedule button

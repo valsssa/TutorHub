@@ -6,12 +6,12 @@ import { test, expect } from '@playwright/test';
  * Tests tutor browsing, filtering, and search functionality
  */
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
+// Using baseURL from playwright.config.ts
 
 test.describe('Tutor Search and Browsing', () => {
   test.beforeEach(async ({ page }) => {
     // Login as student
-    await page.goto(`${FRONTEND_URL}/login`);
+    await page.goto('/login');
     await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
     await page.getByLabel(/password/i).fill('student123');
     await page.getByRole('button', { name: /sign in/i }).click();
@@ -19,14 +19,14 @@ test.describe('Tutor Search and Browsing', () => {
   });
 
   test('should display tutors page', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/tutors`);
+    await page.goto('/tutors');
     
     // Check for tutors list or search interface
     await expect(page.getByText(/find.*tutor|tutors|search/i)).toBeVisible();
   });
 
   test('should search tutors by subject', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/tutors`);
+    await page.goto('/tutors');
     
     // Find search input
     const searchInput = page.getByPlaceholder(/search.*subject|find.*tutor/i).first();
@@ -45,7 +45,7 @@ test.describe('Tutor Search and Browsing', () => {
   });
 
   test('should filter tutors by price range', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/tutors`);
+    await page.goto('/tutors');
     
     // Look for price filter
     const priceFilter = page.getByLabel(/price|rate/i).first();
@@ -61,7 +61,7 @@ test.describe('Tutor Search and Browsing', () => {
   });
 
   test('should view tutor profile', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/tutors`);
+    await page.goto('/tutors');
     
     // Wait for tutor cards to load
     await page.waitForTimeout(2000);
@@ -81,7 +81,7 @@ test.describe('Tutor Search and Browsing', () => {
   });
 
   test('should save a tutor to favorites', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/tutors`);
+    await page.goto('/tutors');
     
     await page.waitForTimeout(2000);
     
@@ -97,14 +97,14 @@ test.describe('Tutor Search and Browsing', () => {
   });
 
   test('should display saved tutors page', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/saved-tutors`);
+    await page.goto('/saved-tutors');
     
     // Check page loaded
     await expect(page.getByText(/saved.*tutors|favorites|bookmarks/i)).toBeVisible();
   });
 
   test('should paginate tutor results', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/tutors`);
+    await page.goto('/tutors');
     
     await page.waitForTimeout(2000);
     

@@ -9,9 +9,8 @@ export class TestHelpers {
    * Login helper - logs in a user with the given credentials
    */
   static async login(page: Page, email: string, password: string) {
-    const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
-    
-    await page.goto(`${FRONTEND_URL}/login`);
+    // Use relative URL which will use baseURL from playwright.config.ts
+    await page.goto('/login');
     await page.getByRole('textbox', { name: /email/i }).fill(email);
     await page.getByLabel(/password/i).fill(password);
     await page.getByRole('button', { name: /sign in/i }).click();
@@ -43,9 +42,48 @@ export class TestHelpers {
    * Logout helper
    */
   static async logout(page: Page) {
-    const logoutButton = page.getByRole('button', { name: /logout|sign out/i });
+    // First, try to find logout button directly (might be visible in mobile menu)
+    let logoutButton = page.getByRole('button', { name: /log out|logout|sign out/i }).first();
+    
+    // If button is not visible, need to open user dropdown menu
+    if (!(await logoutButton.isVisible({ timeout: 2000 }).catch(() => false))) {
+      // The user dropdown is triggered by clicking a button that contains the avatar
+      // Look for buttons in nav, especially ones that might contain images or user info
+      try {
+        // Try to find button with avatar image inside
+        const buttonsWithImg = await page.locator('nav button').all();
+        for (const btn of buttonsWithImg) {
+          const hasImg = await btn.locator('img').count() > 0;
+          const text = await btn.textContent();
+          // If button has image or contains @ (email), it's likely the user menu
+          if (hasImg || (text && text.includes('@'))) {
+            await btn.click();
+            await page.waitForTimeout(800); // Wait for dropdown animation
+            break;
+          }
+        }
+      } catch (e) {
+        // Fallback: try clicking the last visible button in nav
+        const navButtons = page.locator('nav button:visible');
+        const count = await navButtons.count();
+        if (count > 0) {
+          await navButtons.nth(count - 1).click();
+          await page.waitForTimeout(800);
+        }
+      }
+      
+      // Now try finding logout button again
+      logoutButton = page.getByRole('button', { name: /log out|logout|sign out/i }).first();
+    }
+    
+    await expect(logoutButton).toBeVisible({ timeout: 5000 });
     await logoutButton.click();
-    await page.waitForURL(/\/login/i, { timeout: 5000 });
+    
+    // Logout redirects to "/" (home page), not "/login"
+    // Wait for navigation to complete
+    await page.waitForURL(/\/(|\?)/, { timeout: 10000 });
+    // Wait for page to fully reload (logout uses window.location.href)
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
   }
 
   /**

@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FiMail, FiSmartphone, FiBell, FiSave } from "react-icons/fi";
+import { useState } from "react";
+import { Mail, Bell } from "lucide-react";
 import { useToast } from "@/components/ToastContainer";
-import Button from "@/components/Button";
-import SettingsCard from "@/components/settings/SettingsCard";
 import Toggle from "@/components/settings/Toggle";
 
 export default function NotificationsPage() {
@@ -43,135 +41,52 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="max-w-2xl space-y-8 animate-in fade-in duration-300">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">
-          🔔 Notifications
-        </h2>
-        <p className="text-slate-600">
-          Choose how and when you want to be notified
-        </p>
-      </div>
+        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Notification Preferences</h3>
+        <p className="text-slate-500 dark:text-slate-400 mb-8">Manage how and when you hear from us.</p>
 
-      {/* Notification Channels */}
-      <SettingsCard
-        title="Notification Channels"
-        description="Select which channels we can use to reach you"
-      >
-        <div className="divide-y divide-slate-100">
-          <Toggle
-            enabled={notifications.email_enabled}
-            onChange={() => handleToggle("email_enabled")}
-            label="📧 Email Notifications"
-            description="Receive updates via email"
-          />
-          <Toggle
-            enabled={notifications.push_enabled}
-            onChange={() => handleToggle("push_enabled")}
-            label="📱 Push Notifications"
-            description="Get alerts in your browser or app"
-          />
-          <Toggle
-            enabled={notifications.sms_enabled}
-            onChange={() => handleToggle("sms_enabled")}
-            label="💬 SMS Messages"
-            description="Text message alerts for urgent updates"
-          />
+        <div className="flex items-center gap-2 mb-2 text-slate-900 dark:text-white font-bold text-lg">
+          <Mail size={20} /> Email notifications
         </div>
-      </SettingsCard>
+        <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">Manage the emails you receive from us.</p>
 
-      {/* Lesson & Booking Updates */}
-      <SettingsCard
-        title="Lessons & Bookings"
-        description="Stay updated about your tutoring sessions"
-      >
-        <div className="divide-y divide-slate-100">
-          <Toggle
-            enabled={notifications.lesson_reminders}
-            onChange={() => handleToggle("lesson_reminders")}
-            label="Lesson Reminders"
-            description="Get reminded 1 hour before your lesson starts"
-          />
-          <Toggle
-            enabled={notifications.booking_updates}
-            onChange={() => handleToggle("booking_updates")}
-            label="Booking Updates"
-            description="Notifications about new, changed, or cancelled bookings"
-          />
-        </div>
-      </SettingsCard>
+        <div className="space-y-6">
+          {/* Transactional */}
+          <div className="flex items-start justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h4 className="font-bold text-slate-900 dark:text-white mb-1">Transactional</h4>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">Important updates about your account and activity.</p>
+            </div>
+            <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold px-3 py-1.5 rounded">Always active</span>
+          </div>
 
-      {/* Communication */}
-      <SettingsCard
-        title="Messages & Communication"
-        description="Control message notifications"
-      >
-        <div className="divide-y divide-slate-100">
-          <Toggle
-            enabled={notifications.new_messages}
-            onChange={() => handleToggle("new_messages")}
-            label="New Messages"
-            description="Get notified when you receive a new message"
-          />
-        </div>
-      </SettingsCard>
-
-      {/* Financial */}
-      <SettingsCard
-        title="Payments & Billing"
-        description="Financial transaction notifications"
-      >
-        <div className="divide-y divide-slate-100">
-          <Toggle
-            enabled={notifications.payment_confirmations}
-            onChange={() => handleToggle("payment_confirmations")}
-            label="Payment Confirmations"
-            description="Receipts and payment confirmations 🔒"
-          />
-        </div>
-        <div className="mt-4 p-3 bg-sky-50 border border-sky-100 rounded-lg">
-          <p className="text-xs text-sky-800">
-            <strong>Note:</strong> Payment notifications cannot be disabled for security and compliance reasons.
-          </p>
-        </div>
-      </SettingsCard>
-
-      {/* Tips & Updates */}
-      <SettingsCard
-        title="Tips & Updates"
-        description="Stay informed about platform news"
-      >
-        <div className="divide-y divide-slate-100">
-          <Toggle
-            enabled={notifications.weekly_summary}
-            onChange={() => handleToggle("weekly_summary")}
-            label="Weekly Summary"
-            description="Get a weekly roundup of your activity"
-          />
+          {/* Tips and discounts */}
           <Toggle
             enabled={notifications.promotions}
             onChange={() => handleToggle("promotions")}
-            label="Promotions & Offers"
-            description="Special deals and platform updates"
+            label="Tips and discounts"
+            description="Get learning resources and exclusive offers to support your progress."
+          />
+
+          {/* Surveys and interviews */}
+          <Toggle
+            enabled={notifications.weekly_summary}
+            onChange={() => handleToggle("weekly_summary")}
+            label="Surveys and interviews"
+            description="Take part in research studies to help us improve the platform."
           />
         </div>
-        <div className="mt-4 text-xs text-slate-500">
-          You can unsubscribe anytime from our emails.
-        </div>
-      </SettingsCard>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button
-          variant="primary"
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600"
-        >
-          <FiSave className="w-4 h-4" />
-          {saving ? "Saving..." : "Save Preferences"}
-        </Button>
+        <div className="pt-8">
+          <button 
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+          >
+            {saving ? 'Saving...' : 'Save changes'}
+          </button>
+        </div>
       </div>
     </div>
   );

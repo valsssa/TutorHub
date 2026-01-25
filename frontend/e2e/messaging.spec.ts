@@ -6,12 +6,12 @@ import { test, expect } from '@playwright/test';
  * Tests real-time messaging functionality between students and tutors
  */
 
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://edustream.valsa.solutions';
+// Using baseURL from playwright.config.ts
 
 test.describe('Messaging System', () => {
   test.beforeEach(async ({ page }) => {
     // Login as student
-    await page.goto(`${FRONTEND_URL}/login`);
+    await page.goto('/login');
     await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');
     await page.getByLabel(/password/i).fill('student123');
     await page.getByRole('button', { name: /sign in/i }).click();
@@ -19,14 +19,14 @@ test.describe('Messaging System', () => {
   });
 
   test('should display messages page', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/messages`);
+    await page.goto('/messages');
     
     // Check page loaded
     await expect(page.getByText(/message|conversation|chat/i)).toBeVisible();
   });
 
   test('should display conversation list', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/messages`);
+    await page.goto('/messages');
     await page.waitForTimeout(2000);
     
     // Look for conversations or empty state
@@ -37,7 +37,7 @@ test.describe('Messaging System', () => {
   });
 
   test('should open a conversation', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/messages`);
+    await page.goto('/messages');
     await page.waitForTimeout(2000);
     
     // Click first conversation
@@ -53,7 +53,7 @@ test.describe('Messaging System', () => {
   });
 
   test('should send a message', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/messages`);
+    await page.goto('/messages');
     await page.waitForTimeout(2000);
     
     // Open first conversation
@@ -76,7 +76,7 @@ test.describe('Messaging System', () => {
   });
 
   test('should display unread message count', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/messages`);
+    await page.goto('/messages');
     await page.waitForTimeout(2000);
     
     // Look for unread badge/count
@@ -87,7 +87,7 @@ test.describe('Messaging System', () => {
   });
 
   test('should search conversations', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/messages`);
+    await page.goto('/messages');
     await page.waitForTimeout(2000);
     
     // Look for search input
@@ -103,7 +103,7 @@ test.describe('Messaging System', () => {
   });
 
   test('should display message timestamp', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/messages`);
+    await page.goto('/messages');
     await page.waitForTimeout(2000);
     
     const firstConversation = page.getByTestId('conversation-item').first();
@@ -119,7 +119,7 @@ test.describe('Messaging System', () => {
   });
 
   test('should handle long messages', async ({ page }) => {
-    await page.goto(`${FRONTEND_URL}/messages`);
+    await page.goto('/messages');
     await page.waitForTimeout(2000);
     
     const firstConversation = page.getByTestId('conversation-item').first();
