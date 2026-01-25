@@ -1,15 +1,47 @@
 
 'use client'
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Check, DollarSign, Calendar, Globe, Users } from 'lucide-react';
+import Cookies from 'js-cookie';
+import axios from 'axios';
+import PublicHeader from '@/components/PublicHeader';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { User } from '@/types';
+import { getApiBaseUrl } from '@/shared/utils/url';
+
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export default function BecomeTutorPage() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = Cookies.get('token');
+      if (token) {
+        try {
+          const response = await axios.get(`${API_URL}/users/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setUser(response.data);
+        } catch (error) {
+          Cookies.remove('token');
+          setUser(null);
+        }
+      }
+    };
+
+    checkAuth();
+  }, []);
+
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-16">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+            {/* Navigation Header */}
+            {user ? <Navbar user={user} /> : <PublicHeader />}
             <div className="bg-slate-900 text-white relative overflow-hidden">
                 <div className="absolute inset-0 bg-emerald-600/10 pattern-dots"></div>
                 <div className="container mx-auto px-4 py-8 relative z-10">
@@ -113,6 +145,9 @@ export default function BecomeTutorPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Footer */}
+            <Footer />
         </div>
     );
 }

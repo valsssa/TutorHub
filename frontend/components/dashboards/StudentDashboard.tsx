@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Wallet, Heart, Calendar, Clock, Video } from "lucide-react";
+import { Wallet, Heart, Calendar, Clock, Video, Eye, Search } from "lucide-react";
 import { User, FavoriteTutor, TutorPublicSummary, StudentProfile } from "@/types";
 import { BookingDTO } from "@/types/booking";
 import TutorCard from "@/components/TutorCard";
@@ -174,8 +174,27 @@ export default function StudentDashboard({
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8 max-w-6xl flex-grow">
-        <h1 className="text-3xl font-bold mb-2 text-slate-900 dark:text-white">Student Dashboard</h1>
-        <p className="text-slate-600 dark:text-slate-400 mb-8">Welcome back, {getUserDisplayName()}</p>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome, {getUserDisplayName()}</h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">Student Dashboard</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => router.push("/profile")}
+              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
+            >
+              <Eye size={16} /> View Profile
+            </button>
+            <button
+              onClick={() => router.push("/tutors")}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-50 shadow-lg shadow-emerald-500/20 transition-colors flex items-center gap-2"
+            >
+              <Search size={16} /> Find Tutors
+            </button>
+          </div>
+        </div>
 
       <div className="grid grid-cols-1 gap-8 mb-12">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col justify-between">

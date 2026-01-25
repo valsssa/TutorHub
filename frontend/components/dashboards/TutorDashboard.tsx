@@ -228,16 +228,6 @@ export default function TutorDashboard({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <button
-                onClick={onManageVerification || (() => router.push("/tutor/profile"))}
-                className="text-emerald-600 dark:text-emerald-400 hover:underline hover:text-emerald-700 dark:hover:text-emerald-300 font-medium"
-              >
-                {actualVerificationStatus === 'verified' ? 'View Documents' : 'Manage Documents'}
-              </button>
-              <span className="text-slate-300 dark:text-slate-600">•</span>
-              <p className="text-slate-500 dark:text-slate-400">You have {upcomingSessions.length} upcoming sessions.</p>
-            </div>
           </div>
           <div className="flex gap-3">
             <button

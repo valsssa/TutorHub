@@ -501,9 +501,15 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         first_name = None
         last_name = None
+        profile_photo_url = None
         if profile.user:
             first_name = getattr(profile.user, "first_name", None)
             last_name = getattr(profile.user, "last_name", None)
+            avatar_key = getattr(profile.user, "avatar_key", None)
+            # avatar_key should contain the full public URL from MinIO storage
+            # Format: {MINIO_PUBLIC_ENDPOINT}/{MINIO_BUCKET}/tutor_profiles/{user_id}/photo/{filename}
+            # If it's an old avatar URL format, it will need to be re-uploaded to get the correct URL
+            profile_photo_url = avatar_key
 
         return TutorProfileAggregate(
             id=profile.id,
@@ -529,6 +535,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             total_sessions=profile.total_sessions or 0,
             timezone=timezone,
             version=profile.version or 1,
+            profile_photo_url=profile_photo_url,
             subjects=subjects,
             availabilities=availabilities,
             certifications=certifications,

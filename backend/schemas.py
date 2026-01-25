@@ -451,6 +451,7 @@ class TutorProfileResponse(BaseModel):
     created_at: datetime
     timezone: str | None
     version: int
+    profile_photo_url: str | None = None
     subjects: list[TutorSubjectResponse] = []
     availabilities: list[TutorAvailabilityResponse] = []
     certifications: list[TutorCertificationResponse] = []
@@ -478,6 +479,7 @@ class TutorPublicProfile(BaseModel):
     subjects: list[str] = []
     education: list[str] = []
     teaching_philosophy: str | None = None
+    profile_photo_url: str | None = None
     recent_review: str | None = None
     next_available_slots: list[str] = []
 

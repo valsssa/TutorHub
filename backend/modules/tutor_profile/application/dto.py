@@ -116,6 +116,7 @@ def aggregate_to_profile_response(
         "created_at": aggregate.created_at,
         "timezone": aggregate.timezone,
         "version": aggregate.version,
+        "profile_photo_url": aggregate.profile_photo_url,
         "subjects": [_subject_to_response(s) for s in aggregate.subjects],
         "availabilities": [_availability_to_response(a) for a in aggregate.availabilities],
         "certifications": [_certification_to_response(c) for c in aggregate.certifications],
@@ -156,6 +157,7 @@ def aggregate_to_public_profile(aggregate: TutorProfileAggregate) -> TutorPublic
         "subjects": subjects,
         "education": education_list,
         "teaching_philosophy": aggregate.teaching_philosophy,
+        "profile_photo_url": aggregate.profile_photo_url,
         "recent_review": None,  # Will be populated by service layer if needed
         "next_available_slots": [],  # Will be populated by service layer if needed
     }

@@ -7,12 +7,16 @@ import Cookies from 'js-cookie'
 import axios from 'axios'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { getApiBaseUrl } from '@/shared/utils/url'
+import PublicHeader from '@/components/PublicHeader'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
+import { User } from '@/types'
 
 const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL)
 
 export default function ReferralPage() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
   const [openFaq, setOpenFaq] = useState<number | null>(0) // Default first open
@@ -45,7 +49,10 @@ export default function ReferralPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 pb-20">
+    <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col">
+      {/* Navigation Header */}
+      {user ? <Navbar user={user} /> : <PublicHeader />}
+
       {/* Hero Section */}
       <div className="bg-[#4ADE80] dark:bg-emerald-600 relative overflow-hidden">
         <div className="container mx-auto px-6 py-16 md:py-24 max-w-6xl flex flex-col md:flex-row items-center">
@@ -248,6 +255,9 @@ export default function ReferralPage() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }
