@@ -247,12 +247,6 @@ export default function TutorDashboard({
               <Eye size={16} /> View Profile
             </button>
             <button
-              onClick={onEditProfile || (() => router.push("/tutor/profile"))}
-              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
-            >
-              <UserIcon size={16} />
-            </button>
-            <button
               onClick={() => onUpdateSchedule?.('calendar') || router.push("/tutor/schedule")}
               className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-50 shadow-lg shadow-emerald-500/20 transition-colors flex items-center gap-2"
             >

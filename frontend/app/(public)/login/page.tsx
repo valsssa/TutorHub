@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FiMail, FiLock, FiBook, FiArrowRight, FiGithub } from "react-icons/fi";
+import { FiMail, FiLock, FiBook, FiArrowRight } from "react-icons/fi";
 import { auth } from "@/lib/api";
 import { useToast } from "@/components/ToastContainer";
 import { useFormValidation } from "@/hooks/useFormValidation";
@@ -185,14 +185,6 @@ export default function LoginPage() {
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
-              </button>
-              <button
-                type="button"
-                onClick={() => showSuccess("GitHub login simulated")}
-                className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-slate-800 border border-slate-800 dark:border-slate-700 rounded-full hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors text-white shadow-sm"
-                title="Sign in with GitHub"
-              >
-                <FiGithub className="w-5 h-5" />
               </button>
             </div>
           </div>

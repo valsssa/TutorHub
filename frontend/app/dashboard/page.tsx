@@ -179,7 +179,7 @@ function DashboardContent() {
         onDeclineRequest={handleDeclineRequest}
         onViewCalendar={() => router.push("/tutor/schedule")}
         onManageVerification={() => router.push("/tutor/profile")}
-        onViewEarnings={() => router.push("/bookings")}
+        onViewEarnings={() => router.push("/tutor/earnings")}
         onViewStudents={() => router.push("/bookings")}
         onOpenChat={(userId, userName) => router.push(`/messages?user=${userId}`)}
       />
