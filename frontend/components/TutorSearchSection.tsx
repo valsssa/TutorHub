@@ -113,7 +113,7 @@ export default function TutorSearchSection({
     (minExperience ? 1 : 0);
 
   return (
-    <section className="sticky top-0 z-[10000] bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+    <section className="sticky top-0 z-[10000] bg-slate-50 dark:bg-slate-950 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 py-2" ref={dropdownRef}>
 
 

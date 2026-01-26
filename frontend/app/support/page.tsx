@@ -35,7 +35,7 @@ export default function SupportPage() {
                   <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
                     <FiClock className="w-5 h-5 text-slate-600 dark:text-slate-400 mb-2" />
                     <h4 className="font-semibold text-slate-900 dark:text-white mb-1">Response Time</h4>
-                    <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-2">~5 minutes</p>
+                    <p className="text-sm text-green-600 dark:text-green-400 font-medium mb-2">24h</p>
                     <p className="text-xs text-slate-500 dark:text-slate-500">Average response time</p>
                   </div>
                 </div>

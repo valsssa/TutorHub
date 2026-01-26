@@ -240,11 +240,11 @@ export default function HomePage() {
                     Get Started Free
                   </Button>
                   <Button
-                    onClick={() => router.push("/tutors")}
+                    onClick={() => router.push("/become-a-tutor")}
                     variant="outline"
                     className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg w-full sm:w-auto"
                   >
-                    Browse Tutors
+                    Become a Tutor
                   </Button>
                 </div>
               )}
@@ -316,7 +316,7 @@ export default function HomePage() {
       </section>
 
       {/* Advanced Search Section */}
-      <section className="py-1 md:py-2 lg:py-4 bg-slate-50 dark:bg-slate-900">
+      <section className="pt-12 md:pt-16 lg:pt-20 pb-4 md:pb-6 lg:pb-8 mb-4 md:mb-6 lg:mb-8 bg-slate-50 dark:bg-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <TutorSearchSection
