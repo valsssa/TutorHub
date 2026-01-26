@@ -2,12 +2,13 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { X, Save, FileText } from "lucide-react";
+import { X, Save } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppShell from "@/components/AppShell";
 import { auth } from "@/lib/api";
 import { User } from "@/types";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import TextArea from "@/components/TextArea";
 import { useToast } from "@/components/ToastContainer";
 
 export default function EditStudentNotesPage() {
@@ -119,25 +120,16 @@ function EditStudentNotesContent() {
         {/* Edit Form */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
           <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Student Notes
-            </label>
-            <div className="relative">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={12}
-                className="w-full p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
-                placeholder="Add notes about this student, their learning style, preferences, progress, or any other relevant information..."
-              />
-              <div className="absolute top-4 right-4">
-                <FileText size={20} className="text-slate-400" />
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-              These notes are private and only visible to you. Use them to track student progress,
-              preferences, or important information.
-            </p>
+            <TextArea
+              label="Private notes about this student (only visible to you)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="What's their learning style? What topics have you covered? What areas need more work? What motivates them?"
+              minRows={10}
+              maxRows={15}
+              maxLength={3000}
+              helperText="Track progress, preferences, and important details to personalize future lessons"
+            />
           </div>
 
           {/* Action Buttons */}

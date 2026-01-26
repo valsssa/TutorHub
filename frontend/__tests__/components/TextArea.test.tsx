@@ -31,9 +31,9 @@ describe('TextArea Component', () => {
 
   it('does not display helper text when error is present', () => {
     render(
-      <TextArea 
-        helperText="Helper text" 
-        error="Error message" 
+      <TextArea
+        helperText="Helper text"
+        error="Error message"
       />
     )
     expect(screen.queryByText('Helper text')).not.toBeInTheDocument()
@@ -43,10 +43,10 @@ describe('TextArea Component', () => {
   it('handles onChange event', () => {
     const mockOnChange = jest.fn()
     render(<TextArea onChange={mockOnChange} />)
-    
+
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'New text' } })
-    
+
     expect(mockOnChange).toHaveBeenCalled()
   })
 
@@ -70,12 +70,11 @@ describe('TextArea Component', () => {
 
   it('passes through native textarea attributes', () => {
     render(
-      <TextArea 
-        disabled 
-        required 
+      <TextArea
+        disabled
+        required
         name="test-textarea"
         placeholder="Enter text"
-        rows={5}
         maxLength={200}
       />
     )
@@ -84,7 +83,6 @@ describe('TextArea Component', () => {
     expect(textarea).toBeRequired()
     expect(textarea).toHaveAttribute('name', 'test-textarea')
     expect(textarea).toHaveAttribute('placeholder', 'Enter text')
-    expect(textarea).toHaveAttribute('rows', '5')
     expect(textarea).toHaveAttribute('maxlength', '200')
   })
 
@@ -117,7 +115,7 @@ describe('TextArea Component', () => {
     render(<TextArea label="Test Label" />)
     const label = screen.getByText('Test Label')
     const textarea = screen.getByRole('textbox')
-    
+
     expect(label).toHaveAttribute('for', textarea.id)
   })
 
@@ -125,12 +123,12 @@ describe('TextArea Component', () => {
     const mockOnFocus = jest.fn()
     const mockOnBlur = jest.fn()
     render(<TextArea onFocus={mockOnFocus} onBlur={mockOnBlur} />)
-    
+
     const textarea = screen.getByRole('textbox')
-    
+
     fireEvent.focus(textarea)
     expect(mockOnFocus).toHaveBeenCalledTimes(1)
-    
+
     fireEvent.blur(textarea)
     expect(mockOnBlur).toHaveBeenCalledTimes(1)
   })
@@ -145,7 +143,7 @@ describe('TextArea Component', () => {
     const { rerender } = render(<TextArea value="Controlled text" onChange={() => {}} />)
     const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
     expect(textarea.value).toBe('Controlled text')
-    
+
     rerender(<TextArea value="Updated text" onChange={() => {}} />)
     expect(textarea.value).toBe('Updated text')
   })
@@ -154,5 +152,120 @@ describe('TextArea Component', () => {
     render(<TextArea />)
     const textarea = screen.getByRole('textbox')
     expect(textarea).toHaveClass('border-gray-300')
+  })
+
+  // Character counter tests
+  describe('Character Counter', () => {
+    it('shows character counter when maxLength is set', () => {
+      render(<TextArea maxLength={100} value="" onChange={() => {}} />)
+      expect(screen.getByText('0/100 characters')).toBeInTheDocument()
+    })
+
+    it('shows counter with showCounter prop even without maxLength', () => {
+      render(<TextArea showCounter value="Hello" onChange={() => {}} />)
+      expect(screen.getByText('5 characters')).toBeInTheDocument()
+    })
+
+    it('updates character count as user types', () => {
+      const { rerender } = render(<TextArea maxLength={100} value="" onChange={() => {}} />)
+      expect(screen.getByText('0/100 characters')).toBeInTheDocument()
+
+      rerender(<TextArea maxLength={100} value="Hello World" onChange={() => {}} />)
+      expect(screen.getByText('11/100 characters')).toBeInTheDocument()
+    })
+
+    it('shows warning styling at 80% threshold', () => {
+      render(<TextArea maxLength={100} value={'x'.repeat(80)} onChange={() => {}} />)
+      const counter = screen.getByText('80/100 characters')
+      expect(counter).toHaveClass('text-amber-600')
+    })
+
+    it('shows error styling at 100% limit', () => {
+      render(<TextArea maxLength={100} value={'x'.repeat(100)} onChange={() => {}} />)
+      const counter = screen.getByText(/100\/100 characters/)
+      expect(counter).toHaveClass('text-red-600')
+    })
+
+    it('shows limit reached message at maxLength', () => {
+      render(<TextArea maxLength={100} value={'x'.repeat(100)} onChange={() => {}} />)
+      expect(screen.getByText(/limit reached/)).toBeInTheDocument()
+    })
+
+    it('respects custom warning threshold', () => {
+      render(<TextArea maxLength={100} warningThreshold={50} value={'x'.repeat(50)} onChange={() => {}} />)
+      const counter = screen.getByText('50/100 characters')
+      expect(counter).toHaveClass('text-amber-600')
+    })
+  })
+
+  // Accessibility tests
+  describe('Accessibility', () => {
+    it('sets aria-invalid when error is present', () => {
+      render(<TextArea error="Error message" />)
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toHaveAttribute('aria-invalid', 'true')
+    })
+
+    it('has aria-describedby linking to error message', () => {
+      render(<TextArea id="test-input" error="Error message" />)
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toHaveAttribute('aria-describedby', expect.stringContaining('test-input-error'))
+    })
+
+    it('has aria-describedby linking to helper text', () => {
+      render(<TextArea id="test-input" helperText="Helper text" />)
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toHaveAttribute('aria-describedby', expect.stringContaining('test-input-helper'))
+    })
+
+    it('error message has role="alert"', () => {
+      render(<TextArea error="Error message" />)
+      expect(screen.getByRole('alert')).toHaveTextContent('Error message')
+    })
+
+    it('character counter has aria-live for screen readers', () => {
+      render(<TextArea maxLength={100} value="" onChange={() => {}} />)
+      const counter = screen.getByText('0/100 characters')
+      expect(counter).toHaveAttribute('aria-live', 'polite')
+    })
+  })
+
+  // Min/max rows tests
+  describe('Row Configuration', () => {
+    it('sets minRows as rows attribute', () => {
+      render(<TextArea minRows={5} />)
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toHaveAttribute('rows', '5')
+    })
+
+    it('defaults to 3 minRows', () => {
+      render(<TextArea />)
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toHaveAttribute('rows', '3')
+    })
+  })
+
+  // Auto-resize tests
+  describe('Auto-resize', () => {
+    it('has resize-none class for controlled resizing', () => {
+      render(<TextArea autoResize />)
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toHaveClass('resize-none')
+    })
+
+    it('has overflow-y-auto for scrolling when content exceeds max height', () => {
+      render(<TextArea autoResize />)
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toHaveClass('overflow-y-auto')
+    })
+  })
+
+  // Line height test
+  describe('Typography', () => {
+    it('has proper line height class for readability', () => {
+      render(<TextArea />)
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toHaveClass('leading-relaxed')
+    })
   })
 })

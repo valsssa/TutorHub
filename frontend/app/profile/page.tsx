@@ -14,6 +14,7 @@ import Input from "@/components/Input";
 import TextArea from "@/components/TextArea";
 import AppShell from "@/components/AppShell";
 import AvatarUploader from "@/components/AvatarUploader";
+import { authUtils } from "@/lib/auth";
 
 export default function ProfilePage() {
   return (
@@ -50,6 +51,12 @@ function ProfileContent() {
         auth.getCurrentUser(),
         students.getProfile().catch(() => null)
       ]);
+
+      // Redirect students away from this page
+      if (currentUser && authUtils.isStudent(currentUser)) {
+        router.replace("/dashboard");
+        return;
+      }
 
       setUser(currentUser);
       setProfile(studentProfile);
@@ -180,24 +187,17 @@ function ProfileContent() {
                 placeholder="+1 (555) 000-0000"
               />
 
-              <div>
-                <TextArea
-                  label="About"
-                  value={bio}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value.length <= 500) {
-                      setBio(value);
-                    }
-                  }}
-                  placeholder="Tell us a bit about yourself..."
-                  rows={4}
-                  maxLength={500}
-                />
-                <p className="mt-1 text-sm text-gray-500 text-right">
-                  {bio.length}/500 characters
-                </p>
-              </div>
+              <TextArea
+                label="About you (shown on your public profile)"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="What are you studying? What motivates you to learn? What do you hope to achieve?"
+                minRows={4}
+                maxRows={8}
+                maxLength={600}
+                minLength={80}
+                helperText="Help tutors understand who you are and how they can best support your learning journey"
+              />
             </div>
           </div>
         </motion.div>
@@ -218,21 +218,25 @@ function ProfileContent() {
 
             <div className="space-y-6">
               <TextArea
-                label="Learning Goals"
+                label="Learning goals (visible to tutors you book)"
                 value={learningGoals}
                 onChange={(e) => setLearningGoals(e.target.value)}
-                placeholder="What do you want to achieve? (e.g., Master Python programming, Improve conversational Spanish, etc.)"
-                rows={4}
-                helperText="Help tutors understand your objectives"
+                placeholder="What skills do you want to develop? What level do you want to reach? What's your timeline?"
+                minRows={4}
+                maxRows={8}
+                maxLength={500}
+                helperText="Specific goals help tutors create a focused learning plan for you"
               />
 
               <TextArea
-                label="Interests & Hobbies"
+                label="Interests and hobbies (helps tutors personalize lessons)"
                 value={interests}
                 onChange={(e) => setInterests(e.target.value)}
-                placeholder="What are your interests? (e.g., Technology, Languages, Music, Sports, etc.)"
-                rows={3}
-                helperText="Tutors can personalize lessons based on your interests"
+                placeholder="What topics excite you? What do you do in your free time? How do you prefer to learn?"
+                minRows={3}
+                maxRows={6}
+                maxLength={300}
+                helperText="Tutors can incorporate your interests to make lessons more engaging"
               />
             </div>
           </div>

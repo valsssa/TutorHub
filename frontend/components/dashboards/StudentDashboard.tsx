@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Wallet, Heart, Calendar, Clock, Video, Eye, Search } from "lucide-react";
+import { Wallet, Heart, Calendar, Clock, Video, Search } from "lucide-react";
 import { User, FavoriteTutor, TutorPublicSummary, StudentProfile } from "@/types";
 import { BookingDTO } from "@/types/booking";
 import TutorCard from "@/components/TutorCard";
@@ -180,12 +180,6 @@ export default function StudentDashboard({
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome, {getUserDisplayName()}</h1>
           </div>
           <div className="flex gap-3">
-            <button
-              onClick={() => router.push("/profile")}
-              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
-            >
-              <Eye size={16} /> View Profile
-            </button>
             <button
               onClick={() => router.push("/tutors")}
               className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 dark:focus:ring-offset-slate-900 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] flex items-center gap-2"
