@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import Cookies from "js-cookie";
-import { FiSearch, FiStar, FiUsers, FiBookOpen, FiAward, FiTrendingUp, FiCheck, FiArrowRight } from "react-icons/fi";
+import { FiStar, FiUsers, FiBookOpen, FiAward, FiTrendingUp, FiCheck, FiArrowRight } from "react-icons/fi";
 import { tutors, subjects, auth } from "@/lib/api";
 import { TutorPublicSummary, Subject, PaginatedResponse, User } from "@/types";
 import { useToast } from "@/components/ToastContainer";
@@ -177,26 +177,6 @@ function TutorsContent(): JSX.Element {
               <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto lg:mx-0 mb-6 sm:mb-8 leading-relaxed px-4 sm:px-0">
                 Book 1-on-1 lessons with verified experts. Master any subject from the comfort of your home.
               </p>
-
-              {/* Search Bar */}
-              <div className="max-w-xl mx-auto lg:mx-0 mb-8">
-                <div className="flex gap-2 bg-white dark:bg-slate-900 rounded-2xl p-2 shadow-xl border border-slate-200 dark:border-slate-800">
-                  <input
-                    type="text"
-                    placeholder="What do you want to learn?"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && fetchTutors()}
-                    className="flex-1 px-4 py-3 bg-transparent text-slate-900 dark:text-white rounded-xl focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
-                  />
-                  <Button
-                    onClick={fetchTutors}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl"
-                  >
-                    <FiSearch className="w-5 h-5" />
-                  </Button>
-                </div>
-              </div>
 
               {/* Subject Pills */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-2 mb-2 lg:mb-0">

@@ -57,33 +57,33 @@ export default function BookingCardStudent({
 
   // Status badge color
   const statusColors: Record<string, string> = {
-    PENDING: "bg-yellow-100 text-yellow-800",
-    pending: "bg-yellow-100 text-yellow-800",
-    CONFIRMED: "bg-green-100 text-green-800",
-    confirmed: "bg-green-100 text-green-800",
-    COMPLETED: "bg-blue-100 text-blue-800",
-    completed: "bg-blue-100 text-blue-800",
-    CANCELLED_BY_STUDENT: "bg-gray-100 text-gray-800",
-    CANCELLED_BY_TUTOR: "bg-red-100 text-red-800",
-    cancelled: "bg-gray-100 text-gray-800",
-    NO_SHOW_STUDENT: "bg-orange-100 text-orange-800",
-    NO_SHOW_TUTOR: "bg-red-100 text-red-800",
+    PENDING: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+    pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+    CONFIRMED: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    confirmed: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    COMPLETED: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+    completed: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+    CANCELLED_BY_STUDENT: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+    CANCELLED_BY_TUTOR: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+    cancelled: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+    NO_SHOW_STUDENT: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+    NO_SHOW_TUTOR: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
   };
 
   // Lesson type badge
   const lessonTypeBadge = {
-    TRIAL: "bg-purple-100 text-purple-800",
-    REGULAR: "bg-blue-100 text-blue-800",
-    PACKAGE: "bg-indigo-100 text-indigo-800",
+    TRIAL: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+    REGULAR: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+    PACKAGE: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300",
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 hover:shadow-md transition-all">
       {/* Header: Tutor Info */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           {/* Tutor Avatar */}
-          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+          <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
             {booking.tutor.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -92,22 +92,22 @@ export default function BookingCardStudent({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <FiUser className="w-6 h-6 text-gray-400" />
+              <FiUser className="w-6 h-6 text-gray-400 dark:text-slate-500" />
             )}
           </div>
 
           {/* Tutor Name and Title */}
           <div>
-            <h3 className="font-semibold text-lg text-gray-900">
+            <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
               {booking.tutor.name}
             </h3>
             {booking.tutor.title && (
-              <p className="text-sm text-gray-600">{booking.tutor.title}</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400">{booking.tutor.title}</p>
             )}
             {/* Rating */}
             <div className="flex items-center gap-1 mt-1">
               <FiStar className="w-4 h-4 text-yellow-500 fill-current" />
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
                 {Number(booking.tutor.rating_avg).toFixed(1)}
               </span>
             </div>
@@ -137,7 +137,7 @@ export default function BookingCardStudent({
       {/* Lesson Details */}
       <div className="space-y-3 mb-4">
         {/* Date and Time */}
-        <div className="flex items-center gap-2 text-gray-700">
+        <div className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
           <FiCalendar className="w-5 h-5" />
           <span className="font-medium">
             {startDate.toLocaleDateString("en-US", {
@@ -149,7 +149,7 @@ export default function BookingCardStudent({
           </span>
         </div>
 
-        <div className="flex items-center gap-2 text-gray-700">
+        <div className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
           <FiClock className="w-5 h-5" />
           <span>
             {startDate.toLocaleTimeString("en-US", {
@@ -160,22 +160,22 @@ export default function BookingCardStudent({
               hour: "2-digit",
               minute: "2-digit",
             })}{" "}
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-500 dark:text-slate-400">
               ({duration} min • {booking.student_tz})
             </span>
           </span>
         </div>
 
         {/* Price */}
-        <div className="flex items-center gap-2 text-gray-700">
+        <div className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
           <FiDollarSign className="w-5 h-5" />
           <span className="font-semibold">{priceDisplay}</span>
-          <span className="text-sm text-gray-500">{booking.currency}</span>
+          <span className="text-sm text-gray-500 dark:text-slate-400">{booking.currency}</span>
         </div>
 
         {/* Subject/Topic */}
         {(booking.subject_name || booking.topic) && (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 dark:text-slate-400">
             <span className="font-medium">Subject:</span>{" "}
             {booking.subject_name || booking.topic}
           </div>
@@ -183,24 +183,28 @@ export default function BookingCardStudent({
 
         {/* Student Notes */}
         {booking.notes_student && (
-          <div className="text-sm bg-gray-50 p-3 rounded">
-            <span className="font-medium text-gray-700">Your notes:</span>
-            <p className="text-gray-600 mt-1">{booking.notes_student}</p>
+          <div className="text-sm bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+            <span className="font-medium text-gray-700 dark:text-slate-300">Your notes:</span>
+            <p className="text-gray-600 dark:text-slate-400 mt-1">{booking.notes_student}</p>
           </div>
         )}
 
         {/* Tutor Notes (if confirmed) */}
         {booking.notes_tutor && (
-          <div className="text-sm bg-blue-50 p-3 rounded">
-            <span className="font-medium text-blue-700">Tutor notes:</span>
-            <p className="text-blue-600 mt-1">{booking.notes_tutor}</p>
+          <div className="text-sm bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+            <span className="font-medium text-blue-700 dark:text-blue-300">Tutor notes:</span>
+            <p className="text-blue-600 dark:text-blue-400 mt-1">{booking.notes_tutor}</p>
           </div>
         )}
       </div>
 
       {/* Policy Hint */}
       {isUpcoming && (
-        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded mb-4">
+        <div className={`text-xs bg-gray-50 dark:bg-slate-800 p-3 rounded-lg mb-4 border ${
+          canCancelFree 
+            ? "text-green-700 dark:text-green-400 border-green-200 dark:border-green-800" 
+            : "text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
+        }`}>
           {canCancelFree
             ? "✓ Free cancellation available (12+ hours before session)"
             : "⚠ No refund if cancelled now (less than 12 hours before)"}

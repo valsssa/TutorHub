@@ -113,7 +113,7 @@ export default function TutorSearchSection({
     (minExperience ? 1 : 0);
 
   return (
-    <section className="bg-slate-50 dark:bg-slate-950">
+    <section className="sticky top-0 z-50 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 py-2" ref={dropdownRef}>
 
 
@@ -192,7 +192,7 @@ export default function TutorSearchSection({
               {activeDropdown === 'subject' && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
-                  <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-[350px] overflow-y-auto py-2">
+                  <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[9999] max-h-[350px] overflow-y-auto py-2">
                     <button
                       onClick={() => {
                         onSubjectChange(undefined);
@@ -243,7 +243,7 @@ export default function TutorSearchSection({
               {activeDropdown === 'price' && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
-                  <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-6 z-30">
+                  <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-6 z-[9999]">
                     <div className="text-center font-bold text-2xl text-slate-900 dark:text-white mb-6">
                       {tempPrice[0] === PRICE_LIMITS.min && tempPrice[1] === PRICE_LIMITS.max 
                         ? 'Any price' 
@@ -348,7 +348,7 @@ export default function TutorSearchSection({
               {activeDropdown === 'rating' && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
-                  <div className="absolute top-[calc(100%+8px)] left-0 w-full md:w-[280px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 py-2">
+                  <div className="absolute top-[calc(100%+8px)] left-0 w-full md:w-[280px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[9999] py-2">
                     <button
                       onClick={() => {
                         onMinRatingChange(undefined);
@@ -402,7 +402,7 @@ export default function TutorSearchSection({
               {activeDropdown === 'experience' && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
-                  <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-[350px] overflow-y-auto py-2">
+                  <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[9999] max-h-[350px] overflow-y-auto py-2">
                     <button
                       onClick={() => {
                         onMinExperienceChange(undefined);
@@ -451,7 +451,7 @@ export default function TutorSearchSection({
               {activeDropdown === 'sort' && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setActiveDropdown(null)} />
-                  <div className="absolute top-[calc(100%+8px)] left-0 w-[220px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 py-2">
+                  <div className="absolute top-[calc(100%+8px)] left-0 w-[220px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-[9999] py-2">
                     {SORT_OPTIONS.map(option => (
                       <button
                         key={option.value}
@@ -482,18 +482,6 @@ export default function TutorSearchSection({
                 Clear filters ({activeFiltersCount})
               </button>
             )}
-
-            {/* Keyword Search */}
-            <div className="flex-1 relative group">
-              <input 
-                type="text"
-                value={searchTerm}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search by name or keyword"
-                className="w-full h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-3 pl-10 pr-4 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-colors"
-              />
-              <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 dark:group-focus-within:text-emerald-400" />
-            </div>
           </div>
         </div>
       </div>

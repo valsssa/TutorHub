@@ -7,7 +7,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FiCalendar } from "react-icons/fi";
+import { motion } from "framer-motion";
+import { FiCalendar, FiClock, FiTrendingUp, FiXCircle } from "react-icons/fi";
 import { auth, bookings } from "@/lib/api";
 import { authUtils } from "@/lib/auth";
 import { User } from "@/types";
@@ -15,6 +16,7 @@ import { BookingDTO, BookingListResponse } from "@/types/booking";
 import { useToast } from "@/components/ToastContainer";
 import Button from "@/components/Button";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import AppShell from "@/components/AppShell";
 import BookingCardStudent from "@/components/bookings/BookingCardStudent";
 import BookingCardTutor from "@/components/bookings/BookingCardTutor";
 import RescheduleBookingModal from "@/components/modals/RescheduleBookingModal";
@@ -223,125 +225,216 @@ export default function BookingsPageContent() {
     [bookingsList]
   );
 
-  // Tab configuration
+  const handleTabChange = useCallback(
+    (tab: StatusFilter) => {
+      setSelectedTab(tab);
+      setPage(1);
+      router.push(`/bookings?status=${tab}`, { scroll: false });
+    },
+    [router]
+  );
+
+  // Tab configuration with icons
   const tabs = [
-    { key: "upcoming" as StatusFilter, label: "Upcoming", count: 0 },
-    { key: "pending" as StatusFilter, label: "Pending", count: 0 },
-    { key: "completed" as StatusFilter, label: "Completed", count: 0 },
-    { key: "cancelled" as StatusFilter, label: "Cancelled", count: 0 },
+    { 
+      key: "upcoming" as StatusFilter, 
+      label: "Upcoming", 
+      icon: FiClock,
+      gradient: "from-blue-600 via-indigo-500 to-purple-600"
+    },
+    { 
+      key: "pending" as StatusFilter, 
+      label: "Pending", 
+      icon: FiClock,
+      gradient: "from-yellow-600 via-orange-500 to-red-600"
+    },
+    { 
+      key: "completed" as StatusFilter, 
+      label: "Completed", 
+      icon: FiTrendingUp,
+      gradient: "from-emerald-600 via-teal-500 to-green-600"
+    },
+    { 
+      key: "cancelled" as StatusFilter, 
+      label: "Cancelled", 
+      icon: FiXCircle,
+      gradient: "from-gray-600 via-slate-500 to-zinc-600"
+    },
   ];
 
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
         <LoadingSpinner />
       </div>
     );
   }
 
   const isTutor = authUtils.isTutor(user);
+  const selectedTabConfig = tabs.find(t => t.key === selectedTab);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-        <p className="text-gray-600 mt-2">
-          {isTutor ? "Manage your tutoring sessions" : "Track your learning sessions"}
-        </p>
-      </div>
+    <AppShell user={user}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Header Card with Gradient */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`bg-gradient-to-r ${selectedTabConfig?.gradient || "from-blue-600 via-indigo-500 to-purple-600"} rounded-2xl shadow-lg p-6 md:p-8 text-white`}
+        >
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-3">
+                <FiCalendar className="w-8 h-8" />
+                My Bookings
+              </h1>
+              <p className="text-white/90 text-sm md:text-base">
+                {isTutor ? "Manage your tutoring sessions" : "Track your learning sessions"}
+              </p>
+            </div>
+            {total > 0 && (
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl px-6 py-4 text-center">
+                <p className="text-white/80 text-sm mb-1">Total {selectedTab}</p>
+                <p className="text-3xl font-bold">{total}</p>
+              </div>
+            )}
+          </div>
+        </motion.div>
 
-      {/* Tabs */}
-      <div className="mb-8">
-        <div className="border-b border-gray-200">
-          <nav className="flex gap-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  setSelectedTab(tab.key);
-                  setPage(1);
-                }}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  selectedTab === tab.key
-                    ? "border-primary-500 text-primary-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+        {/* Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+        >
+          <div className="flex gap-1 p-1">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = selectedTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => handleTabChange(tab.key)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium text-sm transition-all ${
+                    isActive
+                      ? "bg-gradient-to-r " + tab.gradient + " text-white shadow-md"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? "" : ""}`} />
+                  <span>{tab.label}</span>
+                  {isActive && total > 0 && (
+                    <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full text-xs font-bold">
+                      {total}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Bookings List */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <LoadingSpinner />
+          </div>
+        ) : bookingsList.length > 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-4"
+          >
+            {bookingsList.map((booking, index) => (
+              <motion.div
+                key={booking.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
               >
-                {tab.label}
-                {total > 0 && selectedTab === tab.key && (
-                  <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-primary-100 text-primary-600">
-                    {total}
-                  </span>
+                {isTutor ? (
+                  <BookingCardTutor
+                    booking={booking}
+                    onConfirm={handleConfirmBooking}
+                    onDecline={handleDeclineBooking}
+                    onCancel={handleCancelBooking}
+                    onMarkNoShow={handleMarkStudentNoShow}
+                    onAddNotes={handleAddNotes}
+                  />
+                ) : (
+                  <BookingCardStudent
+                    booking={booking}
+                    onCancel={handleCancelBooking}
+                    onReschedule={handleReschedule}
+                    onMarkNoShow={handleMarkTutorNoShow}
+                  />
                 )}
-              </button>
+              </motion.div>
             ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* Bookings List */}
-      <div className="space-y-4">
-        {bookingsList.map((booking) =>
-          isTutor ? (
-            <BookingCardTutor
-              key={booking.id}
-              booking={booking}
-              onConfirm={handleConfirmBooking}
-              onDecline={handleDeclineBooking}
-              onCancel={handleCancelBooking}
-              onMarkNoShow={handleMarkStudentNoShow}
-              onAddNotes={handleAddNotes}
-            />
-          ) : (
-            <BookingCardStudent
-              key={booking.id}
-              booking={booking}
-              onCancel={handleCancelBooking}
-              onReschedule={handleReschedule}
-              onMarkNoShow={handleMarkTutorNoShow}
-            />
-          )
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-12 text-center"
+          >
+            <div className="max-w-md mx-auto">
+              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 flex items-center justify-center">
+                <FiCalendar className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                No {selectedTab} bookings
+              </h3>
+              <p className="text-slate-600 dark:text-slate-400 mb-6">
+                {authUtils.isStudent(user)
+                  ? "Book a tutor to get started with your learning journey"
+                  : "Your tutoring sessions will appear here"}
+              </p>
+              {authUtils.isStudent(user) && (
+                <Button
+                  variant="primary"
+                  onClick={() => router.push("/tutors")}
+                  className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                >
+                  Browse Tutors
+                </Button>
+              )}
+            </div>
+          </motion.div>
         )}
-      </div>
 
-      {/* Pagination */}
-      {total > 20 && (
-        <div className="mt-8 flex justify-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
+        {/* Pagination */}
+        {total > 20 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="flex justify-center items-center gap-4 pt-4"
           >
-            Previous
-          </Button>
-          <span className="px-4 py-2">
-            Page {page} of {Math.ceil(total / 20)}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page >= Math.ceil(total / 20)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {bookingsList.length === 0 && !loading && (
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <FiCalendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-gray-900 mb-2">
-            No {selectedTab} bookings
-          </h3>
-          <p className="text-gray-600 mb-6">
-            {authUtils.isStudent(user)
-              ? "Book a tutor to get started with your learning journey"
-              : "Your tutoring sessions will appear here"}
-          </p>
-        </div>
-      )}
+            <Button
+              variant="outline"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Previous
+            </Button>
+            <span className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">
+              Page {page} of {Math.ceil(total / 20)}
+            </span>
+            <Button
+              variant="outline"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= Math.ceil(total / 20)}
+              className="dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Next
+            </Button>
+          </motion.div>
+        )}
 
       {/* Reschedule Modal */}
       <RescheduleBookingModal
@@ -376,6 +469,7 @@ export default function BookingsPageContent() {
         bookingId={cancelBooking?.id}
         tutorName={cancelBooking?.tutor?.name}
       />
-    </div>
+      </div>
+    </AppShell>
   );
 }

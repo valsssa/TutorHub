@@ -113,14 +113,14 @@ export default function Error({
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link
-              href="/settings/help"
+              href="/support"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
               Contact Support
             </Link>
             <span className="text-gray-300">•</span>
             <Link
-              href="/settings/help"
+              href="/support"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
               Help Center

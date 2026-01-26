@@ -178,7 +178,6 @@ export default function StudentDashboard({
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome, {getUserDisplayName()}</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">Student Dashboard</p>
           </div>
           <div className="flex gap-3">
             <button
@@ -189,7 +188,7 @@ export default function StudentDashboard({
             </button>
             <button
               onClick={() => router.push("/tutors")}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-50 shadow-lg shadow-emerald-500/20 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 dark:focus:ring-offset-slate-900 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98] flex items-center gap-2"
             >
               <Search size={16} /> Find Tutors
             </button>

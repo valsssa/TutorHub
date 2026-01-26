@@ -1,15 +1,19 @@
 """FastAPI router for tutor profile module."""
 
 import json
+from io import BytesIO
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
+from fastapi.responses import StreamingResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_tutor_user, get_current_user
 from core.pagination import PaginatedResponse, PaginationParams
+from core.storage import _extract_key_from_url, _s3_client
 from database import get_db
+from models import User
 from schemas import (
     TutorAboutUpdate,
     TutorAvailabilityBulkUpdate,
@@ -388,3 +392,60 @@ def get_tutor_reviews(
         .all()
     )
     return reviews
+
+
+@router.get("/{tutor_id}/photo")
+@limiter.limit("60/minute")
+async def get_tutor_photo(
+    request: Request,
+    tutor_id: int,
+    db: Session = Depends(get_db),
+):
+    """Serve tutor profile photo from storage."""
+    from core.storage import MINIO_BUCKET
+    
+    # Get tutor profile to find the user
+    profile = service.get_profile_by_id(db, tutor_id)
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor not found")
+    
+    # Get user to find avatar_key
+    user = db.query(User).filter(User.id == profile.user_id).first()
+    if not user or not user.avatar_key:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor photo not found")
+    
+    # Extract storage key from URL
+    from core.storage import _extract_key_from_url
+    storage_key = _extract_key_from_url(user.avatar_key)
+    
+    if not storage_key:
+        # If URL doesn't match expected format, try to construct key from tutor_profiles path
+        # Handle old avatar format: /avatars/{user_id}/{filename}
+        if "/avatars/" in user.avatar_key:
+            # Extract filename from old URL
+            parts = user.avatar_key.split("/avatars/")
+            if len(parts) > 1:
+                filename = parts[-1]
+                storage_key = f"tutor_profiles/{profile.user_id}/photo/{filename}"
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid photo URL format")
+    
+    # Get file from MinIO
+    try:
+        client = _s3_client()
+        response = client.get_object(Bucket=MINIO_BUCKET, Key=storage_key)
+        content = response["Body"].read()
+        content_type = response.get("ContentType", "image/jpeg")
+        
+        return StreamingResponse(
+            BytesIO(content),
+            media_type=content_type,
+            headers={
+                "Cache-Control": "public, max-age=31536000, immutable",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Photo not found in storage"
+        )

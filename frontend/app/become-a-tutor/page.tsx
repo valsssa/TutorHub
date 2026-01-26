@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Check, DollarSign, Calendar, Globe, Users } from 'lucide-react';
+import { Check, DollarSign, Calendar, Globe, Users } from 'lucide-react';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 import PublicHeader from '@/components/PublicHeader';
@@ -45,14 +45,6 @@ export default function BecomeTutorPage() {
             <div className="bg-slate-900 text-white relative overflow-hidden">
                 <div className="absolute inset-0 bg-emerald-600/10 pattern-dots"></div>
                 <div className="container mx-auto px-4 py-8 relative z-10">
-                    <button
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors font-medium mb-12 group"
-                    >
-                        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform"/> 
-                        Back
-                    </button>
-
                     <div className="flex flex-col lg:flex-row items-center gap-12 mb-16">
                         <div className="flex-1 text-center lg:text-left">
                             <h1 className="text-5xl lg:text-6xl font-black mb-6 leading-tight">

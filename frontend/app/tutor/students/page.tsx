@@ -286,7 +286,7 @@ function TutorStudentsContent() {
             </button>
 
             {isFilterMenuOpen && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+              <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-[9999] animate-in fade-in zoom-in-95 duration-200">
                 <div className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   Filter by Type
                 </div>
@@ -474,7 +474,7 @@ function TutorStudentsContent() {
                               <MoreHorizontal size={18} />
                             </button>
                             {openMenuId === student.id && (
-                              <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                              <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 py-1 z-[9999] animate-in fade-in zoom-in-95 duration-200">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();

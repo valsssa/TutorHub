@@ -78,7 +78,7 @@ export default function Navbar({ user }: NavbarProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
+    <nav className="w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link
@@ -100,6 +100,14 @@ export default function Navbar({ user }: NavbarProps) {
             {authUtils.isTutor(user) && (
               <Link
                 href="/dashboard"
+                className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+              >
+                Dashboard
+              </Link>
+            )}
+            {authUtils.isStudent(user) && (
+              <Link
+                href="https://edustream.valsa.solutions/dashboard"
                 className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
               >
                 Dashboard
@@ -171,7 +179,7 @@ export default function Navbar({ user }: NavbarProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
-                  className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-50"
+                  className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-[9999]"
                 >
                   {/* User Info */}
                   <div className="px-5 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
@@ -222,6 +230,13 @@ export default function Navbar({ user }: NavbarProps) {
 
                     {authUtils.isStudent(user) && (
                       <>
+                        <Link
+                          href="https://edustream.valsa.solutions/dashboard"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
+                        >
+                          <FiCalendar className="w-4 h-4" /> Dashboard
+                        </Link>
                         <Link
                           href="/bookings"
                           onClick={() => setUserDropdownOpen(false)}
@@ -318,6 +333,16 @@ export default function Navbar({ user }: NavbarProps) {
                         Dashboard
                       </Link>
                     </>
+                  )}
+
+                  {authUtils.isStudent(user) && (
+                    <Link 
+                      href="https://edustream.valsa.solutions/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      Dashboard
+                    </Link>
                   )}
 
                   <Link 
