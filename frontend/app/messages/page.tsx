@@ -585,7 +585,9 @@ function MessagesContent() {
                       const isMe = msg.sender_id === currentUser.id;
                       const isRecentMessage = recentMessageIds.includes(msg.id);
                       const showDivider = unreadStartIndex === index;
-                      const isRead = isMe && (msg.is_read || msg.delivery_state === "read");
+                      // For sent messages: is_read means recipient has read it
+                      // For received messages: is_read means current user has read it
+                      const isRead = msg.is_read || msg.delivery_state === "read";
 
                       return (
                         <div key={msg.id}>
@@ -607,12 +609,10 @@ function MessagesContent() {
                                 isMe ? 'justify-end text-emerald-100' : 'justify-start text-slate-400'
                               }`}>
                                 <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                {isMe && (
-                                  <span className="flex items-center gap-1">
-                                    <FiCheck size={12} className="opacity-80" />
-                                    {isRead && <FiCheck size={12} className="opacity-80 -ml-2" />}
-                                  </span>
-                                )}
+                                <span className="flex items-center gap-1">
+                                  <FiCheck size={12} className={isMe ? "opacity-80" : "opacity-60"} />
+                                  {isRead && <FiCheck size={12} className={`${isMe ? "opacity-80" : "opacity-60"} -ml-2`} />}
+                                </span>
                               </div>
                             </div>
                           </div>
