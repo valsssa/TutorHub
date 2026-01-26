@@ -17,6 +17,12 @@ interface SelectProps
   placeholder?: string;
 }
 
+const generateId = (seed?: string) =>
+  seed ??
+  (typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `select-${Math.random().toString(36).slice(2, 10)}`);
+
 export default function Select({
   label,
   error,
@@ -27,7 +33,9 @@ export default function Select({
   id,
   ...props
 }: SelectProps) {
-  const inputId = id || (label ? `select-${label.toLowerCase().replace(/\s+/g, "-")}` : crypto.randomUUID());
+  const inputId = generateId(
+    id || (label ? `select-${label.toLowerCase().replace(/\s+/g, "-")}` : undefined),
+  );
 
   return (
     <div className="w-full">

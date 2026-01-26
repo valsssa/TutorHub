@@ -9,6 +9,12 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   helperText?: string;
 }
 
+const generateId = (seed?: string) =>
+  seed ??
+  (typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `input-${Math.random().toString(36).slice(2, 10)}`);
+
 export default function Input({
   label,
   error,
@@ -17,7 +23,9 @@ export default function Input({
   id,
   ...props
 }: InputProps) {
-  const inputId = id || (label ? `input-${label.toLowerCase().replace(/\s+/g, "-")}` : crypto.randomUUID());
+  const inputId = generateId(
+    id || (label ? `input-${label.toLowerCase().replace(/\s+/g, "-")}` : undefined),
+  );
 
   return (
     <div className="w-full">
