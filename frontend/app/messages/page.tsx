@@ -182,6 +182,7 @@ function MessagesContent() {
               other_user_email: userInfo.email,
               other_user_first_name: userInfo.first_name || null,
               other_user_last_name: userInfo.last_name || null,
+              other_user_avatar_url: userInfo.avatar_url || null,
               other_user_role: userInfo.role,
               booking_id: undefined,
               last_message: "Start a new conversation",
@@ -485,10 +486,11 @@ function MessagesContent() {
                             : ''
                       }`}
                     >
-                      <Avatar 
-                        name={getThreadDisplayName(thread)} 
-                        variant="gradient" 
-                        size="sm" 
+                      <Avatar
+                        name={getThreadDisplayName(thread)}
+                        avatarUrl={thread.other_user_avatar_url}
+                        variant="gradient"
+                        size="sm"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-1">
@@ -545,10 +547,11 @@ function MessagesContent() {
                     >
                       <FiChevronLeft size={24} />
                     </button>
-                    <Avatar 
-                      name={getThreadDisplayName(selectedThread)} 
-                      variant="gradient" 
-                      size="sm" 
+                    <Avatar
+                      name={getThreadDisplayName(selectedThread)}
+                      avatarUrl={selectedThread.other_user_avatar_url}
+                      variant="gradient"
+                      size="sm"
                     />
                     <div>
                       <h3 className="font-bold text-slate-900 dark:text-white">
@@ -582,7 +585,7 @@ function MessagesContent() {
                       const isMe = msg.sender_id === currentUser.id;
                       const isRecentMessage = recentMessageIds.includes(msg.id);
                       const showDivider = unreadStartIndex === index;
-                      const isSeen = isMe && seenMessageIds.has(msg.id);
+                      const isRead = isMe && (msg.is_read || msg.delivery_state === "read");
 
                       return (
                         <div key={msg.id}>
@@ -607,7 +610,7 @@ function MessagesContent() {
                                 {isMe && (
                                   <span className="flex items-center gap-1">
                                     <FiCheck size={12} className="opacity-80" />
-                                    {isSeen && <FiCheck size={12} className="opacity-80 -ml-2" />}
+                                    {isRead && <FiCheck size={12} className="opacity-80 -ml-2" />}
                                   </span>
                                 )}
                               </div>

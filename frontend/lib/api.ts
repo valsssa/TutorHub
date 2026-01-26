@@ -899,6 +899,7 @@ export const messages = {
     email: string;
     first_name?: string | null;
     last_name?: string | null;
+    avatar_url?: string | null;
     role: string;
   }> {
     const { data } = await api.get(`/api/messages/users/${userId}`);

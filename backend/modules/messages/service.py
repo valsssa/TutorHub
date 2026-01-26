@@ -297,6 +297,7 @@ class MessageService:
                         "other_user_email": user_obj.email,
                         "other_user_first_name": user_obj.first_name,
                         "other_user_last_name": user_obj.last_name,
+                        "other_user_avatar_url": getattr(user_obj, "avatar_url", None),
                         "other_user_role": user_obj.role,
                         "booking_id": t[2],  # booking_id
                         "last_sender_id": t[3],  # sender_id

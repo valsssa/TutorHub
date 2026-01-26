@@ -56,6 +56,7 @@ class MessageThreadResponse(BaseModel):
     other_user_email: str
     other_user_first_name: str | None = None
     other_user_last_name: str | None = None
+    other_user_avatar_url: str | None = None
     other_user_role: str
     booking_id: int | None = None
     last_message: str
@@ -97,6 +98,7 @@ class UserBasicInfoResponse(BaseModel):
     email: str
     first_name: str | None = None
     last_name: str | None = None
+    avatar_url: str | None = None
     role: str
 
 
@@ -226,6 +228,7 @@ async def list_threads(
                 other_user_email=t["other_user_email"],
                 other_user_first_name=t.get("other_user_first_name"),
                 other_user_last_name=t.get("other_user_last_name"),
+                other_user_avatar_url=t.get("other_user_avatar_url"),
                 other_user_role=t["other_user_role"],
                 booking_id=t["booking_id"],
                 last_message=t["last_message"],
@@ -708,6 +711,7 @@ async def get_user_basic_info(
             email=user.email,
             first_name=getattr(user, "first_name", None),
             last_name=getattr(user, "last_name", None),
+            avatar_url=getattr(user, "avatar_url", None),
             role=user.role,
         )
 

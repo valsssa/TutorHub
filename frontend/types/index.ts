@@ -260,6 +260,7 @@ export interface MessageThread {
   other_user_email: string;
   other_user_first_name?: string | null;
   other_user_last_name?: string | null;
+  other_user_avatar_url?: string | null;
   other_user_role?: string;
   booking_id?: number;
   last_message: string;
