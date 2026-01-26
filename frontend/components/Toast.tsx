@@ -46,20 +46,6 @@ export default function Toast({
   };
 
   return (
-    <div
-      className={`flex items-start gap-3 p-4 border-l-4 rounded-lg shadow-lg animate-slide-up backdrop-blur-sm ${getStyles()}`}
-      role={type === "error" ? "alert" : "status"}
-      aria-live={type === "error" ? "assertive" : "polite"}
-    >
-      <div className="flex-shrink-0">{getIcon()}</div>
-      <p className="flex-1 text-sm font-medium">{message}</p>
-      <button
-        onClick={onClose}
-        className="flex-shrink-0 p-1 hover:bg-white/50 dark:hover:bg-slate-800/50 rounded transition-colors"
-        aria-label="Close"
-      >
-        <FiX className="w-4 h-4" />
-      </button>
-    </div>
+    null
   );
 }

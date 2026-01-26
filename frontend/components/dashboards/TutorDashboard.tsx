@@ -19,7 +19,8 @@ import {
   CheckCircle,
   AlertCircle,
   ChevronRight,
-  Eye
+  Eye,
+  Edit
 } from "lucide-react";
 import { User, TutorProfile } from "@/types";
 import { BookingDTO } from "@/types/booking";
@@ -237,8 +238,14 @@ export default function TutorDashboard({
               <Eye size={16} /> View Profile
             </button>
             <button
+              onClick={onEditProfile || (() => router.push("/tutor/profile"))}
+              className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
+            >
+              <Edit size={16} /> Edit Profile
+            </button>
+            <button
               onClick={() => onUpdateSchedule?.('calendar') || router.push("/tutor/schedule")}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-50 shadow-lg shadow-emerald-500/20 transition-colors flex items-center gap-2"
+              className="px-4 py-3.5 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2"
             >
               <Calendar size={16} /> Update Schedule
             </button>
