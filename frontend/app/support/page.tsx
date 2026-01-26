@@ -2,10 +2,11 @@
 
 import { FiMessageSquare, FiBook, FiClock, FiMail, FiExternalLink } from "react-icons/fi";
 import Button from "@/components/Button";
+import PageLayout from "@/components/PageLayout";
 
 export default function SupportPage() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <PageLayout showHeader={true} showFooter={true}>
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <div className="space-y-6">
           {/* Header */}
@@ -121,6 +122,6 @@ export default function SupportPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

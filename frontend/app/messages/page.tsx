@@ -41,8 +41,10 @@ function MessagesContent() {
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [messageError, setMessageError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [showNewMessagePill, setShowNewMessagePill] = useState(false);
   const [lastReadByThread, setLastReadByThread] = useState<Record<number, number | null>>({});
@@ -208,7 +210,21 @@ function MessagesContent() {
       const messageText = newMessage.trim();
       if (!messageText || !selectedThread || !currentUser) return;
 
+      // Validate message before sending
+      const validationError = validateMessage(newMessage);
+      if (validationError) {
+        setMessageError(validationError);
+        return;
+      }
+
+      // Additional validation: min length
+      if (messageText.length < MESSAGE_MIN_LENGTH) {
+        setMessageError(`Message must be at least ${MESSAGE_MIN_LENGTH} character`);
+        return;
+      }
+
       setSendingMessage(true);
+      setMessageError(null);
       try {
         const sentMessage = await messages.send(
           selectedThread.other_user_id,
@@ -218,6 +234,11 @@ function MessagesContent() {
 
         setMessages((prevMessages) => [...prevMessages, sentMessage]);
         setNewMessage("");
+        setMessageError(null);
+        // Reset textarea height
+        if (messageInputRef.current) {
+          messageInputRef.current.style.height = 'auto';
+        }
 
         // Check if this was a new thread
         const existingThread = threads.find(
@@ -396,6 +417,75 @@ function MessagesContent() {
     return date.toLocaleDateString();
   };
 
+  // Message validation following textarea rules
+  const MESSAGE_MAX_LENGTH = 2000;
+  const MESSAGE_MIN_LENGTH = 1;
+  const MESSAGE_WARNING_THRESHOLD = 0.8; // 80%
+
+  const validateMessage = (text: string): string | null => {
+    const trimmed = text.trim();
+    
+    // Min length check
+    if (trimmed.length < MESSAGE_MIN_LENGTH) {
+      return null; // Empty is allowed (just can't send)
+    }
+
+    // Max length check
+    if (text.length > MESSAGE_MAX_LENGTH) {
+      return `Message must not exceed ${MESSAGE_MAX_LENGTH} characters`;
+    }
+
+    // No ALL CAPS messages over 10 characters
+    if (trimmed.length > 10 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed)) {
+      return "Please avoid typing in all capital letters";
+    }
+
+    // No repeated characters (more than 5 of same char in a row)
+    if (/(.)\1{5,}/.test(trimmed)) {
+      return "Please avoid excessive repeated characters";
+    }
+
+    return null;
+  };
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = messageInputRef.current;
+    if (!textarea) return;
+
+    // Reset height to get correct scrollHeight
+    textarea.style.height = 'auto';
+    
+    // Calculate min and max heights (3-10 lines)
+    const lineHeight = 24; // Approximate line height
+    const padding = 20; // py-2.5 = 10px top + 10px bottom
+    const minHeight = (lineHeight * 3) + padding;
+    const maxHeight = (lineHeight * 10) + padding;
+    
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
+    textarea.style.height = `${newHeight}px`;
+  }, []);
+
+  // Handle message input change
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    
+    // Enforce maxLength
+    if (value.length > MESSAGE_MAX_LENGTH) {
+      return;
+    }
+
+    setNewMessage(value);
+    setMessageError(validateMessage(value));
+    adjustTextareaHeight();
+    handleTyping();
+  };
+
+  // Adjust height when message changes
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [newMessage, adjustTextareaHeight]);
+
   const getTotalUnread = () => {
     return threads.reduce((sum, thread) => sum + thread.unread_count, 0);
   };
@@ -428,45 +518,55 @@ function MessagesContent() {
         onClick={() => window.history.back()}
       />
       
-      <div className="relative w-full md:w-[800px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      {/* Mobile: Full width, Tablet: 90% max-width, Desktop: Fixed 900px */}
+      <div className="relative w-full sm:w-[90%] md:w-[800px] lg:w-[900px] xl:w-[1000px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         {/* Connection status banner */}
         {!isConnected && (
-          <div className="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800 px-4 py-2 text-sm text-yellow-800 dark:text-yellow-300 flex items-center justify-center">
+          <div className="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800 px-3 sm:px-4 py-2 text-xs sm:text-sm text-yellow-800 dark:text-yellow-300 flex items-center justify-center">
             Reconnecting to chat server...
           </div>
         )}
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Sidebar (List of threads) */}
-          <div className={`${selectedThread ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50`}>
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <h2 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                <FiMessageSquare className="w-5 h-5 text-emerald-500" /> Messages
+          {/* Mobile: Full width when no thread selected, hidden when thread selected */}
+          {/* Tablet: 40% width, always visible */}
+          {/* Desktop: 35% width, always visible */}
+          <div className={`${
+            selectedThread 
+              ? 'hidden sm:flex' 
+              : 'flex'
+          } w-full sm:w-[40%] lg:w-[35%] flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 min-h-0`}>
+            <div className="flex-shrink-0 p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <FiMessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" /> 
+                <span className="hidden xs:inline">Messages</span>
               </h2>
               <button 
                 onClick={() => window.history.back()} 
-                className="md:hidden text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                className="sm:hidden p-2 -mr-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 active:scale-95 transition-transform touch-manipulation"
+                aria-label="Close messages"
               >
-                <FiX size={24} />
+                <FiX size={20} />
               </button>
             </div>
             
-            <div className="p-4">
+            <div className="flex-shrink-0 p-3 sm:p-4">
               <div className="relative">
-                <FiSearch className="absolute left-3 top-3 text-slate-400" size={16} />
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input 
                   type="text" 
                   placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-emerald-500 transition-colors text-slate-900 dark:text-white"
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
                 />
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
               {filteredThreads.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-sm">
+                <div className="p-6 sm:p-8 text-center text-slate-500 text-sm sm:text-base">
                   {searchQuery ? "No conversations found" : "No messages yet"}
                 </div>
               ) : (
@@ -478,12 +578,12 @@ function MessagesContent() {
                     <button
                       key={`${thread.other_user_id}-${thread.booking_id || "general"}`}
                       onClick={() => selectThread(thread)}
-                      className={`w-full p-4 flex items-start gap-3 text-left border-b border-slate-100 dark:border-slate-800/50 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                      className={`w-full p-3 sm:p-4 flex items-start gap-2 sm:gap-3 text-left border-b border-slate-100 dark:border-slate-800/50 transition-colors active:bg-slate-100 dark:active:bg-slate-800 touch-manipulation min-h-[72px] sm:min-h-[80px] ${
                         isActive
                           ? 'bg-emerald-50 dark:bg-emerald-900/10'
                           : isUnread
                             ? 'bg-emerald-50/60 dark:bg-emerald-900/5'
-                            : ''
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       <Avatar
@@ -493,8 +593,8 @@ function MessagesContent() {
                         size="sm"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline mb-1">
-                          <h4 className={`text-sm truncate ${
+                        <div className="flex justify-between items-baseline mb-1 gap-2">
+                          <h4 className={`text-sm sm:text-base truncate ${
                             isActive
                               ? 'font-semibold text-emerald-700 dark:text-emerald-400'
                               : isUnread
@@ -503,26 +603,26 @@ function MessagesContent() {
                           }`}>
                             {getThreadDisplayName(thread)}
                           </h4>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] sm:text-xs text-slate-400 flex-shrink-0">
                             {formatTime(thread.last_message_time)}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
                           {thread.other_user_role && (
-                            <span className={`text-xs px-2 py-0.5 rounded ${getRoleBadgeColor(thread.other_user_role)}`}>
+                            <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded ${getRoleBadgeColor(thread.other_user_role)}`}>
                               {thread.other_user_role}
                             </span>
                           )}
                           {isUnread && (
-                            <span className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                              {thread.unread_count}
+                            <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-gradient-to-br from-red-500 to-red-600 rounded-full min-w-[20px] h-5 shadow-lg shadow-red-500/50 ring-2 ring-white dark:ring-slate-950">
+                              {thread.unread_count > 99 ? '99+' : thread.unread_count}
                             </span>
                           )}
                         </div>
-                        <p className={`text-xs leading-snug line-clamp-2 ${
+                        <p className={`text-xs sm:text-sm leading-snug line-clamp-2 ${
                           isUnread
                             ? 'font-semibold text-slate-700 dark:text-slate-200'
-                            : 'text-slate-500'
+                            : 'text-slate-500 dark:text-slate-400'
                         }`}>
                           {thread.last_sender_id === currentUser.id && "You: "}
                           {thread.last_message || 'No messages yet.'}
@@ -536,16 +636,19 @@ function MessagesContent() {
           </div>
 
           {/* Chat Area */}
-          <div className={`${!selectedThread ? 'hidden md:flex' : 'flex'} w-full md:w-2/3 flex-col bg-white dark:bg-slate-900`}>
+          {/* Mobile: Full width when thread selected, hidden when no thread */}
+          {/* Tablet/Desktop: 60-65% width, always visible */}
+          <div className={`${!selectedThread ? 'hidden sm:flex' : 'flex'} w-full sm:w-[60%] lg:w-[65%] flex-col bg-white dark:bg-slate-900 min-h-0`}>
             {selectedThread ? (
               <>
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                     <button 
                       onClick={() => setSelectedThread(null)} 
-                      className="md:hidden text-slate-500"
+                      className="sm:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 active:scale-95 transition-transform touch-manipulation flex-shrink-0"
+                      aria-label="Back to conversations"
                     >
-                      <FiChevronLeft size={24} />
+                      <FiChevronLeft size={20} />
                     </button>
                     <Avatar
                       name={getThreadDisplayName(selectedThread)}
@@ -553,19 +656,20 @@ function MessagesContent() {
                       variant="gradient"
                       size="sm"
                     />
-                    <div>
-                      <h3 className="font-bold text-slate-900 dark:text-white">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
                         {getThreadDisplayName(selectedThread)}
                       </h3>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         {selectedThread.other_user_role && (
-                          <span className={`text-xs px-2 py-0.5 rounded ${getRoleBadgeColor(selectedThread.other_user_role)}`}>
+                          <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded ${getRoleBadgeColor(selectedThread.other_user_role)}`}>
                             {selectedThread.other_user_role}
                           </span>
                         )}
                         {isConnected && (
-                          <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Online
+                          <span className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> 
+                            <span className="hidden sm:inline">Online</span>
                           </span>
                         )}
                       </div>
@@ -573,14 +677,15 @@ function MessagesContent() {
                   </div>
                   <button 
                     onClick={() => window.history.back()} 
-                    className="hidden md:block text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                    className="hidden sm:block p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white active:scale-95 transition-transform touch-manipulation flex-shrink-0"
+                    aria-label="Close messages"
                   >
-                    <FiX size={24} />
+                    <FiX size={20} />
                   </button>
                 </div>
 
-                <div className="relative flex-1 bg-slate-50 dark:bg-slate-950/30">
-                  <div ref={messagesContainerRef} className="h-full overflow-y-auto p-4 space-y-4">
+                <div className="relative flex-1 min-h-0 bg-slate-50 dark:bg-slate-950/30 flex flex-col">
+                  <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-3 sm:space-y-4 min-h-0">
                     {orderedMessages.map((msg, index) => {
                       const isMe = msg.sender_id === currentUser.id;
                       const isRecentMessage = recentMessageIds.includes(msg.id);
@@ -592,26 +697,26 @@ function MessagesContent() {
                       return (
                         <div key={msg.id}>
                           {showDivider && (
-                            <div className="flex items-center gap-3 py-1">
+                            <div className="flex items-center gap-2 sm:gap-3 py-1">
                               <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
                               <span className="text-[10px] uppercase tracking-wide text-emerald-600/70 dark:text-emerald-400/70">New messages</span>
                               <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
                             </div>
                           )}
                           <div className={`group flex ${isMe ? 'justify-end' : 'justify-start'} ${isRecentMessage ? 'animate-in slide-in-from-bottom-1 duration-150 ease-out' : ''}`}>
-                            <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${
+                            <div className={`max-w-[85%] sm:max-w-[75%] lg:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base ${
                               isMe
                                 ? 'bg-emerald-600 text-white rounded-br-sm'
                                 : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-sm'
                             }`}>
-                              <p className="leading-relaxed">{msg.message}</p>
-                              <div className={`mt-1 flex items-center gap-1 text-[10px] ${
-                                isMe ? 'justify-end text-emerald-100' : 'justify-start text-slate-400'
+                              <p className="leading-relaxed break-words">{msg.message}</p>
+                              <div className={`mt-1.5 sm:mt-1 flex items-center gap-1 text-[10px] sm:text-[11px] ${
+                                isMe ? 'justify-end text-emerald-100' : 'justify-start text-slate-400 dark:text-slate-500'
                               }`}>
                                 <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                <span className="flex items-center gap-1">
-                                  <FiCheck size={12} className={isMe ? "opacity-80" : "opacity-60"} />
-                                  {isRead && <FiCheck size={12} className={`${isMe ? "opacity-80" : "opacity-60"} -ml-2`} />}
+                                <span className="flex items-center gap-0.5">
+                                  <FiCheck size={11} className={isMe ? "opacity-80" : "opacity-60"} />
+                                  {isRead && <FiCheck size={11} className={`${isMe ? "opacity-80" : "opacity-60"} -ml-2`} />}
                                 </span>
                               </div>
                             </div>
@@ -626,7 +731,7 @@ function MessagesContent() {
                     <button
                       type="button"
                       onClick={handleJumpToLatest}
-                      className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/90 dark:bg-slate-900/90 px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 shadow-md border border-slate-200 dark:border-slate-800 backdrop-blur-sm transition-colors hover:bg-white"
+                      className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/90 dark:bg-slate-900/90 px-3 sm:px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 shadow-md border border-slate-200 dark:border-slate-800 backdrop-blur-sm transition-colors active:scale-95 touch-manipulation hover:bg-white dark:hover:bg-slate-800 z-10"
                     >
                       New messages ↓
                     </button>
@@ -635,8 +740,8 @@ function MessagesContent() {
 
                 {/* Typing indicator */}
                 {typingUsers.size > 0 && (
-                  <div className="px-4 py-2 opacity-100 max-h-10">
-                    <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1">
+                  <div className="flex-shrink-0 px-3 sm:px-4 py-2 opacity-100">
+                    <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1.5">
                       <span className="typing-dot"></span>
                       <span className="typing-dot"></span>
                       <span className="typing-dot"></span>
@@ -644,36 +749,90 @@ function MessagesContent() {
                   </div>
                 )}
 
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                  <form onSubmit={sendMessage} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={() => handleTyping()}
-                      placeholder="Type a message..."
-                      className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-full px-4 py-3 text-sm focus:ring-1 focus:ring-emerald-500 text-slate-900 dark:text-white placeholder-slate-400"
-                    />
-                    <button 
-                      type="submit"
-                      disabled={!newMessage.trim() || sendingMessage}
-                      className="p-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full disabled:opacity-50 transition-colors"
-                    >
-                      <FiSend size={18} />
-                    </button>
+                <div className="flex-shrink-0 p-3 sm:p-4 border-t border-slate-200 dark:border-slate-800 safe-area-inset-bottom bg-white dark:bg-slate-900">
+                  <form onSubmit={sendMessage} className="space-y-2">
+                    <div className="flex gap-2 sm:gap-3 items-end">
+                      <div className="flex-1 relative">
+                        <textarea
+                          ref={messageInputRef}
+                          value={newMessage}
+                          onChange={handleMessageChange}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              sendMessage(e);
+                            } else {
+                              handleTyping();
+                            }
+                          }}
+                          placeholder="Write your message here (press Enter to send, Shift+Enter for new line)"
+                          maxLength={MESSAGE_MAX_LENGTH}
+                          rows={3}
+                          className={`
+                            w-full bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 
+                            text-sm sm:text-base leading-relaxed
+                            focus:ring-2 focus:ring-emerald-500 focus:outline-none 
+                            text-slate-900 dark:text-white placeholder-slate-400
+                            resize-none overflow-y-auto
+                            ${messageError ? 'ring-2 ring-red-500 dark:ring-red-500' : ''}
+                            ${newMessage.length >= MESSAGE_MAX_LENGTH * MESSAGE_WARNING_THRESHOLD && !messageError 
+                              ? 'ring-2 ring-amber-500 dark:ring-amber-500' 
+                              : ''}
+                          `}
+                          style={{ minHeight: '72px', maxHeight: '240px' }}
+                          aria-label="Message input (visible to the recipient)"
+                          aria-describedby={messageError ? "message-error" : newMessage.length > 0 ? "message-counter" : undefined}
+                        />
+                        {/* Character counter */}
+                        {newMessage.length > 0 && (
+                          <div 
+                            id="message-counter"
+                            className={`absolute bottom-2 right-3 text-[10px] sm:text-xs ${
+                              newMessage.length >= MESSAGE_MAX_LENGTH 
+                                ? 'text-red-600 dark:text-red-400 font-medium' 
+                                : newMessage.length >= MESSAGE_MAX_LENGTH * MESSAGE_WARNING_THRESHOLD
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-slate-400 dark:text-slate-500'
+                            }`}
+                            aria-live="polite"
+                          >
+                            {newMessage.length}/{MESSAGE_MAX_LENGTH}
+                            {newMessage.length >= MESSAGE_MAX_LENGTH && ' (limit reached)'}
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        type="submit"
+                        disabled={!newMessage.trim() || sendingMessage || !!messageError || newMessage.length > MESSAGE_MAX_LENGTH}
+                        className="p-2.5 sm:p-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all touch-manipulation active:scale-95 min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                        aria-label="Send message"
+                      >
+                        <FiSend size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                    </div>
+                    {/* Error message */}
+                    {messageError && (
+                      <p
+                        id="message-error"
+                        className="text-xs sm:text-sm text-red-600 dark:text-red-400 px-1"
+                        role="alert"
+                      >
+                        {messageError}
+                      </p>
+                    )}
                   </form>
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
-                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                  <FiMessageSquare size={40} className="text-slate-300 dark:text-slate-600" />
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-6 sm:p-8">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                  <FiMessageSquare size={32} className="sm:w-10 sm:h-10 text-slate-300 dark:text-slate-600" />
                 </div>
-                <p className="text-lg font-medium text-slate-600 dark:text-slate-300">Your Messages</p>
-                <p className="text-sm">Select a conversation to start chatting.</p>
+                <p className="text-base sm:text-lg font-medium text-slate-600 dark:text-slate-300 mb-1">Your Messages</p>
+                <p className="text-sm sm:text-base text-center px-4">Select a conversation to start chatting.</p>
                 <button 
                   onClick={() => window.history.back()} 
-                  className="md:hidden mt-8 text-emerald-600 font-medium"
+                  className="sm:hidden mt-6 px-4 py-2 text-emerald-600 font-medium active:scale-95 transition-transform touch-manipulation"
                 >
                   Close
                 </button>
