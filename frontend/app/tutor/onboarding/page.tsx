@@ -984,7 +984,7 @@ function TutorOnboardingContent() {
           onChange={(e) => updateFormData('description', e.target.value)}
           rows={8}
           className={`
-            w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
+            w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none
             ${errors.description ? 'border-red-500' : 'border-gray-300'}
           `}
           placeholder="Write your profile description here..."

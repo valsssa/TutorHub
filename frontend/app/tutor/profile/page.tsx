@@ -883,7 +883,7 @@ function TutorProfileContent() {
               onChange={(e) =>
                 setAboutForm({ ...aboutForm, bio: e.target.value })
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               placeholder="Share a brief introduction, teaching philosophy, and what students can expect."
             />
           </div>
@@ -897,7 +897,7 @@ function TutorProfileContent() {
               onChange={(e) =>
                 setAboutForm({ ...aboutForm, teaching_philosophy: e.target.value })
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               placeholder="Explain how you approach teaching, motivate students, and tailor lessons."
             />
           </div>
@@ -1315,7 +1315,7 @@ function TutorProfileContent() {
                     onChange={(e) =>
                       updateEducation(index, "description", e.target.value)
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                     placeholder="Share coursework, achievements, or key learnings."
                   />
                 </div>
@@ -1409,7 +1409,7 @@ function TutorProfileContent() {
               rows={6}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               placeholder="Describe your teaching method, lesson structure, and how you personalise sessions."
             />
             <p className="text-sm text-gray-500 mt-2">
@@ -1675,7 +1675,7 @@ function TutorProfileContent() {
                     onChange={(e) =>
                       updatePricingOption(index, "description", e.target.value)
                     }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                     placeholder="Detail what is included in this package."
                   />
                 </div>

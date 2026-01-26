@@ -217,7 +217,7 @@ function BookingReviewContent() {
               rows={6}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               placeholder="What did you like about this session? How did the tutor help you? Any suggestions for improvement?"
               maxLength={2000}
             />

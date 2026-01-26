@@ -98,7 +98,7 @@ describe('TextArea Component', () => {
       'border',
       'rounded-lg',
       'shadow-sm',
-      'resize-vertical'
+      'resize-none'
     )
   })
 

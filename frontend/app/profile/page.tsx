@@ -181,14 +181,14 @@ function ProfileContent() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="First Name *"
+                  label="First Name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Enter your first name"
                   required
                 />
                 <Input
-                  label="Last Name *"
+                  label="Last Name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Enter your last name"
@@ -204,13 +204,24 @@ function ProfileContent() {
                 placeholder="+1 (555) 000-0000"
               />
 
-              <TextArea
-                label="Bio"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Tell us a bit about yourself..."
-                rows={4}
-              />
+              <div>
+                <TextArea
+                  label="About"
+                  value={bio}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.length <= 500) {
+                      setBio(value);
+                    }
+                  }}
+                  placeholder="Tell us a bit about yourself..."
+                  rows={4}
+                  maxLength={500}
+                />
+                <p className="mt-1 text-sm text-gray-500 text-right">
+                  {bio.length}/500 characters
+                </p>
+              </div>
             </div>
           </div>
         </motion.div>
