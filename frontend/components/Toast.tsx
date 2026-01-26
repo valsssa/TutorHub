@@ -48,7 +48,8 @@ export default function Toast({
   return (
     <div
       className={`flex items-start gap-3 p-4 border-l-4 rounded-lg shadow-lg animate-slide-up backdrop-blur-sm ${getStyles()}`}
-      role="alert"
+      role={type === "error" ? "alert" : "status"}
+      aria-live={type === "error" ? "assertive" : "polite"}
     >
       <div className="flex-shrink-0">{getIcon()}</div>
       <p className="flex-1 text-sm font-medium">{message}</p>

@@ -23,7 +23,7 @@ export default function AppShell({ user, children, showFooter = true }: AppShell
       <RateLimitBanner />
       <Navbar user={user} />
 
-      <main className="flex-1 pb-20 md:pb-0">
+      <main role="main" className="flex-1 pb-20 md:pb-0">
         {children}
       </main>
 

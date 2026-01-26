@@ -151,8 +151,9 @@ export default function NotificationBell() {
       {/* Bell Icon with Badge */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+        className="relative tap-target p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
         aria-label="Notifications"
+        aria-expanded={isOpen}
       >
         <FiBell className="w-6 h-6" />
         {unreadCount > 0 && (
@@ -221,6 +222,7 @@ export default function NotificationBell() {
                             onClick={() => markAsRead(notification.id)}
                             className="p-1 text-gray-400 hover:text-green-600 transition-colors"
                             title="Mark as read"
+                            aria-label="Mark notification as read"
                           >
                             <FiCheck className="w-4 h-4" />
                           </button>
@@ -228,7 +230,8 @@ export default function NotificationBell() {
                         <button
                           onClick={() => deleteNotification(notification.id)}
                           className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Delete"
+                          title="Delete notification"
+                          aria-label="Delete notification"
                         >
                           <FiX className="w-4 h-4" />
                         </button>

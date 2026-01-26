@@ -186,6 +186,7 @@ export default function HomePage() {
       {/* Navigation Header */}
       {currentUser ? <Navbar user={currentUser} /> : <PublicHeader />}
 
+      <main id="main-content" role="main" className="flex-1 flex flex-col">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="container mx-auto px-4 py-8 md:py-12 lg:py-16 max-w-7xl">
@@ -429,6 +430,8 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      </main>
 
       {/* Footer */}
       <Footer />

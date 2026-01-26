@@ -128,8 +128,9 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="tap-target p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
             aria-label="Toggle theme"
+            aria-pressed={theme === 'dark'}
           >
             {theme === 'dark' ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
           </button>
@@ -139,7 +140,7 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Messages */}
           <Link
             href="/messages"
-            className="p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="tap-target p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
             aria-label="Messages"
           >
             <FiMessageSquare className="w-5 h-5" />
@@ -149,7 +150,7 @@ export default function Navbar({ user }: NavbarProps) {
           {authUtils.isStudent(user) && (
             <button
               onClick={() => router.push('/saved-tutors')}
-              className="p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="tap-target p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label="Saved tutors"
             >
               <FiHeart className="w-5 h-5" />
@@ -164,6 +165,9 @@ export default function Navbar({ user }: NavbarProps) {
             <button
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               className="flex items-center gap-3 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+              aria-haspopup="menu"
+              aria-expanded={userDropdownOpen}
+              aria-controls="user-menu"
             >
               {renderAvatar()}
               <span className="hidden sm:block text-sm font-bold text-slate-900 dark:text-white max-w-[120px] truncate">
@@ -180,6 +184,8 @@ export default function Navbar({ user }: NavbarProps) {
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                   className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-[10001]"
+                  id="user-menu"
+                  role="menu"
                 >
                   {/* User Info */}
                   <div className="px-5 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
@@ -282,13 +288,18 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="flex md:hidden items-center gap-4">
           <button
             onClick={toggleTheme}
-            className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full"
+            className="tap-target p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full"
+            aria-label="Toggle theme"
+            aria-pressed={theme === 'dark'}
           >
             {theme === 'dark' ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 text-slate-600 dark:text-slate-300"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
           >
             {mobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
           </button>
@@ -302,6 +313,8 @@ export default function Navbar({ user }: NavbarProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className="absolute top-16 left-0 w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xl md:hidden"
+              id="mobile-menu"
+              role="menu"
             >
               <div className="p-4 space-y-4">
                 {/* User Info */}

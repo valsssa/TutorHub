@@ -37,10 +37,12 @@ interface ToastProviderProps {
 
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [screenReaderMessage, setScreenReaderMessage] = useState<string>("");
 
   const addToast = useCallback((message: string, type: ToastType) => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
+    setScreenReaderMessage(message);
   }, []);
 
   const removeToast = useCallback((id: number) => {
@@ -65,6 +67,9 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ showSuccess, showError, showInfo }}>
       {children}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {screenReaderMessage}
+      </div>
       <div className="fixed top-4 right-4 z-50 space-y-2 max-w-md w-full">
         {toasts.map((toast) => (
           <Toast
