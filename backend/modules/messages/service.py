@@ -16,10 +16,22 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
 
+from core.avatar_storage import get_avatar_storage
+from core.config import settings
 from core.exceptions import ValidationError
 from models import Booking, Message, User
 
 logger = logging.getLogger(__name__)
+
+
+def _build_avatar_url(key: str | None) -> str | None:
+    """Build avatar URL from storage key."""
+    if not key:
+        return None
+    storage = get_avatar_storage()
+    public_endpoint = storage.public_endpoint().rstrip("/")
+    bucket = storage.bucket()
+    return f"{public_endpoint}/{bucket}/{key}"
 
 
 class MessageService:
@@ -291,13 +303,14 @@ class MessageService:
                 # Access by index with User object
                 # Query columns order: other_user_id, User, booking_id, sender_id, message, last_time
                 user_obj = t[1]  # User object
+                avatar_key = getattr(user_obj, "avatar_key", None)
                 threads.append(
                     {
                         "other_user_id": t[0],  # other_user_id
                         "other_user_email": user_obj.email,
                         "other_user_first_name": user_obj.first_name,
                         "other_user_last_name": user_obj.last_name,
-                        "other_user_avatar_url": getattr(user_obj, "avatar_url", None),
+                        "other_user_avatar_url": _build_avatar_url(avatar_key),
                         "other_user_role": user_obj.role,
                         "booking_id": t[2],  # booking_id
                         "last_sender_id": t[3],  # sender_id

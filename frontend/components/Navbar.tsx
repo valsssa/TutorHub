@@ -193,7 +193,7 @@ export default function Navbar({ user }: NavbarProps) {
           >
             <FiMessageSquare className="w-5 h-5" />
             {unreadMessageCount > 0 && (
-              <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full min-w-[18px]">
+              <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-gradient-to-br from-red-500 to-red-600 rounded-full min-w-[20px] h-5 shadow-lg shadow-red-500/50 ring-2 ring-white dark:ring-slate-950">
                 {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
               </span>
             )}
@@ -269,7 +269,7 @@ export default function Navbar({ user }: NavbarProps) {
                         <FiMessageSquare className="w-4 h-4" /> Messages
                       </div>
                       {unreadMessageCount > 0 && (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full min-w-[20px]">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold leading-none text-white bg-gradient-to-br from-red-500 to-red-600 rounded-full min-w-[20px] h-5 shadow-md shadow-red-500/30">
                           {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
                         </span>
                       )}
@@ -425,7 +425,7 @@ export default function Navbar({ user }: NavbarProps) {
                   >
                     <span>Messages</span>
                     {unreadMessageCount > 0 && (
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full min-w-[20px]">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold leading-none text-white bg-gradient-to-br from-red-500 to-red-600 rounded-full min-w-[20px] h-5 shadow-md shadow-red-500/30">
                         {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
                       </span>
                     )}

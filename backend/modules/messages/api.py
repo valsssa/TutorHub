@@ -21,7 +21,7 @@ from core.message_storage import (
 )
 from database import get_db
 from models import Message, MessageAttachment
-from modules.messages.service import MessageService
+from modules.messages.service import MessageService, _build_avatar_url
 from modules.messages.websocket import manager
 from schemas import MessageResponse
 
@@ -706,12 +706,13 @@ async def get_user_basic_info(
                 detail="User not found",
             )
 
+        avatar_key = getattr(user, "avatar_key", None)
         return UserBasicInfoResponse(
             id=user.id,
             email=user.email,
             first_name=getattr(user, "first_name", None),
             last_name=getattr(user, "last_name", None),
-            avatar_url=getattr(user, "avatar_url", None),
+            avatar_url=_build_avatar_url(avatar_key),
             role=user.role,
         )
 
