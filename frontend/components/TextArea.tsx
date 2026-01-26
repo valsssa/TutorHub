@@ -32,7 +32,7 @@ export default function TextArea({
       <textarea
         id={inputId}
         className={clsx(
-          "w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-vertical",
+          "w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none",
           error ? "border-red-500" : "border-gray-300",
           className,
         )}
