@@ -56,31 +56,24 @@
 
 ### 2. Student Profile Field Mismatches
 
-**Status:** 🔴 Not Started  
+**Status:** ✅ Completed  
 **Priority:** High  
 **Estimated Effort:** 3-5 hours
 
 **Tasks:**
-- [ ] **Decision Required:** Choose one approach:
-  - Option A: Fix API to use `grade_level` instead of `education_level`
-  - Option B: Add `education_level` column to `student_profiles` table
-- [ ] **Decision Required:** Choose one approach:
-  - Option A: Add `preferred_learning_style` column to `student_profiles` table
-  - Option B: Remove `preferred_learning_style` from API documentation
-- [ ] Update `GET /api/students/me` endpoint to return correct field names
-- [ ] Update frontend to use correct field names
-- [ ] Document that `timezone` comes from `users` table, not `student_profiles`
-- [ ] Add migration if adding new columns (Option B for either field)
+- [x] **Decision:** Remove `preferred_learning_style` / `education_level` from API docs; keep existing DB fields
+- [x] Update `GET /api/profile/student/me` endpoint to return correct field names and timezone from `users`
+- [x] Update frontend to use correct field names
+- [x] Document that `timezone` comes from `users` table, not `student_profiles`
 
 **Files to Update:**
-- `backend/modules/students/presentation/api.py` - Field mapping
-- `backend/schemas.py` - StudentProfileResponse schema
-- `frontend/lib/api.ts` - Student profile types
-- `docs/API_REFERENCE.md` - Student endpoints section
-- `database/migrations/XXX_fix_student_profile_fields.sql` (if adding columns)
+- `backend/modules/students/presentation/api.py` - Field mapping ✅
+- `backend/schemas.py` - StudentProfileResponse schema ✅
+- `frontend/types/index.ts` - Student profile types ✅
+- `docs/API_REFERENCE.md` - Student endpoints section ✅
 
 **Acceptance Criteria:**
-- API returns fields matching database schema
+- API returns fields matching database schema (+timezone from users)
 - Frontend displays correct field values
 - Documentation accurately reflects data source
 
@@ -88,22 +81,22 @@
 
 ### 3. Teaching Philosophy Field
 
-**Status:** 🔴 Not Started  
+**Status:** ✅ Completed  
 **Priority:** High  
 **Estimated Effort:** 1-2 hours
 
 **Tasks:**
-- [ ] Add `teaching_philosophy` field to `PATCH /api/tutors/me/about` endpoint
-- [ ] Update `TutorAboutUpdate` schema to include `teaching_philosophy`
-- [ ] Update tutor profile response to include `teaching_philosophy`
-- [ ] Update frontend tutor profile form to include teaching philosophy textarea
-- [ ] Document field in API reference
+- [x] Add `teaching_philosophy` field to `PATCH /api/tutors/me/about` endpoint
+- [x] Update `TutorAboutUpdate` schema to include `teaching_philosophy`
+- [x] Update tutor profile response to include `teaching_philosophy`
+- [x] Update frontend tutor profile form to include teaching philosophy textarea
+- [x] Document field in API reference
 
 **Files to Update:**
-- `backend/modules/tutor_profile/presentation/api.py` - About endpoint
-- `backend/schemas.py` - TutorAboutUpdate schema
-- `frontend/app/tutor/profile/page.tsx` - Profile form
-- `docs/API_REFERENCE.md` - Tutor endpoints section
+- `backend/modules/tutor_profile/presentation/api.py` - About endpoint ✅
+- `backend/schemas.py` - TutorAboutUpdate schema ✅
+- `frontend/app/tutor/profile/page.tsx` - Profile form ✅
+- `docs/API_REFERENCE.md` - Tutor endpoints section ✅
 
 **Acceptance Criteria:**
 - Tutors can update teaching philosophy via API
@@ -159,19 +152,19 @@
 
 ### 5. Endpoint Path Documentation Fix
 
-**Status:** 🔴 Not Started  
+**Status:** ✅ Completed  
 **Priority:** High  
 **Estimated Effort:** 30 minutes
 
 **Tasks:**
-- [ ] Update `docs/API_REFERENCE.md` to change `GET /api/tutors/me` to `GET /api/tutors/me/profile`
-- [ ] Verify all other endpoint paths match actual implementation
-- [ ] Update frontend API client if needed
-- [ ] Update any integration tests
+- [x] Update `docs/API_REFERENCE.md` to change `GET /api/tutors/me` to `GET /api/tutors/me/profile`
+- [x] Verify all other endpoint paths match actual implementation
+- [x] Update frontend API client if needed
+- [x] Update any integration tests
 
 **Files to Update:**
-- `docs/API_REFERENCE.md` - Tutor endpoints section
-- `frontend/lib/api.ts` - Verify endpoint paths
+- `docs/API_REFERENCE.md` - Tutor endpoints section ✅
+- `frontend/lib/api.ts` - Verify endpoint paths ✅
 
 **Acceptance Criteria:**
 - All documented endpoints match actual implementation

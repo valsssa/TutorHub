@@ -39,6 +39,9 @@ async def get_student_profile(
             db.add(profile)
             db.commit()
             db.refresh(profile)
+        # Ensure response includes user-level fields
+        profile.timezone = current_user.timezone
+        profile.preferred_language = profile.preferred_language or current_user.preferred_language
         return profile
     except Exception as e:
         logger.error(
@@ -75,6 +78,10 @@ async def update_student_profile(
         for field, value in update_fields.items():
             setattr(profile, field, value)
 
+        # Keep profile preferred_language in sync with user preference if provided
+        if "preferred_language" in update_fields and update_fields["preferred_language"]:
+            current_user.preferred_language = update_fields["preferred_language"]
+
         # Update timestamp in application code (no DB triggers)
         from datetime import datetime
 
@@ -82,6 +89,8 @@ async def update_student_profile(
 
         db.commit()
         db.refresh(profile)
+        # Add derived fields for response
+        profile.timezone = current_user.timezone
         logger.info(f"Student profile updated successfully for user: {current_user.id}")
         return profile
     except Exception as e:

@@ -33,7 +33,7 @@ interface FilterBarProps {
 type FilterDropdown = "subject" | "price" | "rating" | "experience" | null;
 
 export default function FilterBar({
-  subjects,
+  subjects = [],
   selectedSubject,
   priceRange,
   minRating,

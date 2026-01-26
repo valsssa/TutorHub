@@ -24,7 +24,6 @@ import {
 import { User } from '@/types'
 import { auth } from '@/lib/api'
 import { authUtils } from '@/lib/auth'
-import { useToast } from './ToastContainer'
 import { useTheme } from '@/contexts/ThemeContext'
 import Button from './Button'
 import NotificationBell from './NotificationBell'
@@ -36,7 +35,6 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const router = useRouter()
-  const { showSuccess } = useToast()
   const { theme, toggleTheme } = useTheme()
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -55,7 +53,6 @@ export default function Navbar({ user }: NavbarProps) {
 
   const handleLogout = () => {
     auth.logout()
-    showSuccess('Logged out successfully 👋')
     router.push('/')
   }
 

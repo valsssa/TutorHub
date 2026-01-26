@@ -50,7 +50,6 @@ export default function LoginPage() {
     try {
       await auth.login(formValues.email, formValues.password);
       const user = await auth.getCurrentUser();
-      showSuccess("Login successful!");
 
       // Route based on user role
       if (user.role === 'admin') {

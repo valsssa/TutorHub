@@ -500,6 +500,7 @@ class StudentProfileUpdate(BaseModel):
     school_name: str | None = None
     learning_goals: str | None = None
     interests: str | None = None
+    preferred_language: str | None = None
 
 
 class StudentProfileResponse(BaseModel):
@@ -514,6 +515,8 @@ class StudentProfileResponse(BaseModel):
     learning_goals: str | None
     interests: str | None
     total_sessions: int
+    preferred_language: str | None
+    timezone: str
     created_at: datetime
     updated_at: datetime
 

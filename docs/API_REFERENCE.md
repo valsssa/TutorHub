@@ -327,11 +327,27 @@ Authorization: Bearer <your_jwt_token>
 
 ---
 
-### GET /api/tutors/me
+### GET /api/tutors/me/profile
 **Summary:** Get own tutor profile (tutor only)  
 **Authentication:** Required (tutor role)
 
-**Response (200):** Full tutor profile with edit permissions
+**Response (200):**
+```json
+{
+  "id": 10,
+  "user_id": 5,
+  "title": "Expert Math & Physics Tutor",
+  "headline": "15 years of teaching experience",
+  "bio": "I specialize in making complex topics simple...",
+  "teaching_philosophy": "I focus on building intuition first, then practice.",
+  "hourly_rate": 55.00,
+  "experience_years": 15,
+  "languages": ["en", "es"],
+  "profile_status": "approved",
+  "average_rating": 4.9,
+  "total_reviews": 120
+}
+```
 
 ---
 
@@ -344,7 +360,10 @@ Authorization: Bearer <your_jwt_token>
 {
   "title": "Expert Math & Physics Tutor",
   "headline": "15 years of teaching experience",
-  "bio": "I specialize in making complex topics simple..."
+  "bio": "I specialize in making complex topics simple...",
+  "teaching_philosophy": "I focus on building intuition first, then practice.",
+  "experience_years": 12,
+  "languages": ["en", "es"]
 }
 ```
 
@@ -560,7 +579,7 @@ Authorization: Bearer <your_jwt_token>
 
 ## Student Profiles
 
-### GET /api/students/me
+### GET /api/profile/student/me
 **Summary:** Get own student profile  
 **Authentication:** Required (student role)
 
@@ -569,16 +588,23 @@ Authorization: Bearer <your_jwt_token>
 {
   "id": 1,
   "user_id": 42,
+  "phone": "+1-555-123-4567",
+  "bio": "Busy high-schooler prepping for SAT math.",
+  "grade_level": "High School",
+  "school_name": "Roosevelt High",
   "learning_goals": "Improve calculus skills for college entrance",
-  "education_level": "High School",
-  "preferred_learning_style": "Visual",
-  "timezone": "America/New_York"
+  "interests": "Math club, robotics",
+  "preferred_language": "en",
+  "timezone": "America/New_York",
+  "total_sessions": 12,
+  "created_at": "2025-01-10T12:00:00Z",
+  "updated_at": "2025-01-24T09:15:00Z"
 }
 ```
 
 ---
 
-### PATCH /api/students/me
+### PATCH /api/profile/student/me
 **Summary:** Update student profile  
 **Authentication:** Required (student role)
 
@@ -586,10 +612,15 @@ Authorization: Bearer <your_jwt_token>
 ```json
 {
   "learning_goals": "Master linear algebra",
-  "education_level": "Undergraduate",
-  "preferred_learning_style": "Hands-on"
+  "grade_level": "Undergraduate",
+  "preferred_language": "en",
+  "timezone": "America/Los_Angeles"
 }
 ```
+
+**Notes:**
+- `timezone` is sourced from the `users` table and returned for convenience; it is not stored on `student_profiles`.
+- `preferred_learning_style` and `education_level` are not persisted and have been removed.
 
 ---
 

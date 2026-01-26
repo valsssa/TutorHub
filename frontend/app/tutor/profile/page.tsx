@@ -117,6 +117,7 @@ function TutorProfileContent() {
     title: "",
     headline: "",
     bio: "",
+    teaching_philosophy: "",
     experience_years: 0,
   });
   const [languagesInput, setLanguagesInput] = useState("");
@@ -146,6 +147,7 @@ function TutorProfileContent() {
       title: data.title || "",
       headline: data.headline || "",
       bio: data.bio || "",
+      teaching_philosophy: data.teaching_philosophy || "",
       experience_years: data.experience_years || 0,
     });
     setLanguagesInput((data.languages || []).join(", "));
@@ -293,6 +295,7 @@ function TutorProfileContent() {
           title: aboutForm.title.trim(),
           headline: aboutForm.headline?.trim() || undefined,
           bio: aboutForm.bio?.trim() || undefined,
+          teaching_philosophy: aboutForm.teaching_philosophy?.trim() || undefined,
           experience_years: Number(aboutForm.experience_years) || 0,
           languages,
         });
@@ -882,6 +885,20 @@ function TutorProfileContent() {
               }
               className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Share a brief introduction, teaching philosophy, and what students can expect."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Teaching Philosophy
+            </label>
+            <textarea
+              rows={4}
+              value={aboutForm.teaching_philosophy}
+              onChange={(e) =>
+                setAboutForm({ ...aboutForm, teaching_philosophy: e.target.value })
+              }
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Explain how you approach teaching, motivate students, and tailor lessons."
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -73,6 +73,7 @@ export interface TutorProfile {
   headline?: string;
   bio?: string;
   description?: string;
+  teaching_philosophy?: string;
   hourly_rate: number;
   experience_years: number;
   education?: string;
@@ -164,6 +165,8 @@ export interface StudentProfile {
   interests?: string | null;
   total_sessions: number;
   credit_balance_cents?: number;
+   preferred_language?: string | null;
+   timezone: string;
   created_at?: string;
   updated_at?: string;
 }
