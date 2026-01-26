@@ -55,7 +55,7 @@ export default function ReceiptRow({
         </span>
         
         {tooltip && (
-          <div className="relative">
+          <div className="relative z-[10000]">
             <button
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
@@ -72,7 +72,7 @@ export default function ReceiptRow({
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="absolute left-0 top-full mt-2 z-[9999] w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg"
+                className="absolute left-0 top-full mt-2 z-[10001] w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg"
               >
                 {tooltip}
                 <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45" />

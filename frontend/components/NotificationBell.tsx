@@ -147,7 +147,7 @@ export default function NotificationBell() {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative z-[10000]" ref={dropdownRef}>
       {/* Bell Icon with Badge */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -164,7 +164,7 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-[9999] max-h-[600px] flex flex-col">
+        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-[10001] max-h-[600px] flex flex-col">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-200">
             <div className="flex items-center justify-between">
