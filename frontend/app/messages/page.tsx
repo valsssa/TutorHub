@@ -600,7 +600,7 @@ function MessagesContent() {
                                 : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-sm'
                             }`}>
                               <p className="leading-relaxed">{msg.message}</p>
-                              <div className={`mt-1 flex items-center gap-1 text-[10px] transition-opacity opacity-0 group-hover:opacity-100 ${
+                              <div className={`mt-1 flex items-center gap-1 text-[10px] ${
                                 isMe ? 'justify-end text-emerald-100' : 'justify-start text-slate-400'
                               }`}>
                                 <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>

@@ -32,34 +32,34 @@ export default function SettingsSidebar() {
 
   return (
     <aside className="w-full md:w-64 flex-shrink-0">
-      <div className="space-y-1 md:sticky md:top-24 overflow-x-auto md:overflow-visible flex md:block pb-2 md:pb-0 gap-2 md:gap-0 snap-x snap-mandatory md:snap-none">
+      <nav className="md:sticky md:top-24 flex flex-col gap-1">
         {SIDEBAR_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
           const isDanger = item.id === 'danger'
 
+          let linkClasses = 'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors rounded-lg'
+
+          if (isActive) {
+            linkClasses += ' text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
+          } else if (isDanger) {
+            linkClasses += ' text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/10'
+          } else {
+            linkClasses += ' text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+          }
+
           return (
             <Link
               key={item.id}
               href={item.href}
-              className={`
-                flex-shrink-0 md:w-full text-left px-4 py-3 text-sm font-medium transition-all rounded-lg md:rounded-none md:border-l-[3px] border-l-0 snap-center
-                ${isActive
-                  ? 'border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10'
-                  : isDanger
-                  ? 'border-transparent text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/10'
-                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                }
-              `}
+              className={linkClasses}
             >
-              <div className="flex items-center gap-3">
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </div>
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span>{item.label}</span>
             </Link>
           )
         })}
-      </div>
+      </nav>
     </aside>
   )
 }

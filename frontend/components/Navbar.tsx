@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -22,9 +22,10 @@ import {
   FiUsers
 } from 'react-icons/fi'
 import { User } from '@/types'
-import { auth } from '@/lib/api'
+import { auth, messages } from '@/lib/api'
 import { authUtils } from '@/lib/auth'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import Button from './Button'
 import NotificationBell from './NotificationBell'
 import Avatar from './Avatar'
@@ -38,7 +39,9 @@ export default function Navbar({ user }: NavbarProps) {
   const { theme, toggleTheme } = useTheme()
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const { lastMessage } = useWebSocket()
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -50,6 +53,54 @@ export default function Navbar({ user }: NavbarProps) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Load unread message count
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const data = await messages.getUnreadCount()
+      setUnreadMessageCount(data.total || 0)
+    } catch (error) {
+      console.error('Failed to load unread message count:', error)
+      setUnreadMessageCount(0)
+    }
+  }, [])
+
+  // Load unread count on mount and when page becomes visible
+  useEffect(() => {
+    loadUnreadCount()
+
+    // Refresh count when page becomes visible (user returns to tab)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadUnreadCount()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Poll for updates every 30 seconds
+    const interval = setInterval(loadUnreadCount, 30000)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      clearInterval(interval)
+    }
+  }, [loadUnreadCount])
+
+  // Listen to WebSocket for new messages
+  useEffect(() => {
+    if (!lastMessage) return
+
+    if (lastMessage.type === 'new_message') {
+      // Increment count if message is for current user
+      const currentUserId = user?.id
+      if (lastMessage.recipient_id === currentUserId) {
+        setUnreadMessageCount((prev) => prev + 1)
+      }
+    } else if (lastMessage.type === 'thread_read' || lastMessage.type === 'message_read') {
+      // Decrement count when messages are read
+      loadUnreadCount()
+    }
+  }, [lastMessage, user?.id, loadUnreadCount])
 
   const handleLogout = () => {
     auth.logout()
@@ -137,10 +188,15 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Messages */}
           <Link
             href="/messages"
-            className="tap-target p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Messages"
+            className="relative tap-target p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+            aria-label={`Messages${unreadMessageCount > 0 ? ` (${unreadMessageCount} unread)` : ''}`}
           >
             <FiMessageSquare className="w-5 h-5" />
+            {unreadMessageCount > 0 && (
+              <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full min-w-[18px]">
+                {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+              </span>
+            )}
           </Link>
 
           {/* Saved Tutors */}
@@ -207,9 +263,16 @@ export default function Navbar({ user }: NavbarProps) {
                     <Link
                       href="/messages"
                       onClick={() => setUserDropdownOpen(false)}
-                      className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
+                      className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center justify-between"
                     >
-                      <FiMessageSquare className="w-4 h-4" /> Messages
+                      <div className="flex items-center gap-3">
+                        <FiMessageSquare className="w-4 h-4" /> Messages
+                      </div>
+                      {unreadMessageCount > 0 && (
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full min-w-[20px]">
+                          {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                        </span>
+                      )}
                     </Link>
 
                     {authUtils.isTutor(user) && (
@@ -358,9 +421,14 @@ export default function Navbar({ user }: NavbarProps) {
                   <Link 
                     href="/messages"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
+                    className="relative text-left py-2 font-medium text-slate-700 dark:text-slate-300 flex items-center justify-between"
                   >
-                    Messages
+                    <span>Messages</span>
+                    {unreadMessageCount > 0 && (
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full min-w-[20px]">
+                        {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                      </span>
+                    )}
                   </Link>
                   <Link 
                     href="/settings"
