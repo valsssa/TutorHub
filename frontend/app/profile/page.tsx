@@ -137,30 +137,6 @@ function ProfileContent() {
                 allowRemoval={true}
               />
             </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                {firstName || lastName ? `${firstName} ${lastName}` : "Complete Your Profile"}
-              </h2>
-              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 mb-3">
-                <FiMail className="w-4 h-4" />
-                <span>{user.email}</span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  user.role === 'student' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                  user.role === 'tutor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                }`}>
-                  {user.role}
-                </span>
-                {user.is_verified && (
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-semibold flex items-center gap-1">
-                    <FiAward className="w-3 h-3" />
-                    Verified
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
         </motion.div>
 
