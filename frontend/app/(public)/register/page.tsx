@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FiBook, FiCheck, FiArrowRight, FiArrowLeft, FiUser } from "react-icons/fi";
 import { auth } from "@/lib/api";
@@ -22,6 +22,7 @@ interface RegisterFormValues {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showSuccess, showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [detectedPrefs, setDetectedPrefs] = useState({ currency: "USD", timezone: "UTC" });
@@ -32,6 +33,10 @@ export default function RegisterPage() {
     setDetectedPrefs({ currency: prefs.currency, timezone: prefs.timezone });
   }, []);
 
+  // Check for role query parameter
+  const roleParam = searchParams?.get('role');
+  const initialIsTutor = roleParam === 'tutor';
+
   const { values, errors, touched, handleChange, handleBlur, handleSubmit } =
     useFormValidation<RegisterFormValues>(
       {
@@ -40,7 +45,7 @@ export default function RegisterPage() {
         email: "",
         password: "",
         confirmPassword: "",
-        isTutor: false,
+        isTutor: initialIsTutor,
       },
       {
         firstName: {

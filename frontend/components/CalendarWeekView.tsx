@@ -104,6 +104,15 @@ export default function CalendarWeekView({
     (_, i) => `${i.toString().padStart(2, "0")}:00`
   );
 
+  // Constants for consistent grid sizing
+  const HOUR_HEIGHT = 60; // Height in pixels for each hour row
+  const TIME_COLUMN_WIDTH = 60; // Width in pixels for time column
+  
+  // Generate grid template classes based on view
+  const gridColsClass = view === "Day" 
+    ? "grid-cols-[60px_minmax(0,1fr)]"
+    : `grid-cols-[60px_repeat(${days.length},_minmax(0,1fr))]`;
+
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900 overflow-hidden">
       {/* Calendar Navigation - Google Calendar Style */}
@@ -176,14 +185,13 @@ export default function CalendarWeekView({
         >
           {/* Header Row - Google Calendar Style */}
           <div
-            className={`grid ${
-              view === "Day"
-                ? "grid-cols-[60px_1fr]"
-                : `grid-cols-[60px_repeat(${days.length},1fr)]`
-            } border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-30 shadow-sm`}
+            className={`grid ${gridColsClass} border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-30 shadow-sm`}
           >
-            {/* Timezone Column */}
-            <div className="sticky left-0 z-40 bg-white dark:bg-slate-900 px-3 py-3 text-xs font-medium text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700 text-center">
+            {/* Timezone Column - Locked width */}
+            <div 
+              className="sticky left-0 z-40 bg-white dark:bg-slate-900 text-xs font-medium text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700 text-center flex items-center justify-center"
+              style={{ width: `${TIME_COLUMN_WIDTH}px`, minWidth: `${TIME_COLUMN_WIDTH}px`, maxWidth: `${TIME_COLUMN_WIDTH}px` }}
+            >
               {timezone}
             </div>
             {/* Day Headers */}
@@ -213,15 +221,15 @@ export default function CalendarWeekView({
             {hours.map((time, i) => (
               <div
                 key={i}
-                className={`grid ${
-                  view === "Day"
-                    ? "grid-cols-[60px_1fr]"
-                    : `grid-cols-[60px_repeat(${days.length},1fr)]`
-                } min-h-[60px] border-b border-slate-100 dark:border-slate-800`}
+                className={`grid ${gridColsClass} border-b border-slate-100 dark:border-slate-800`}
+                style={{ height: `${HOUR_HEIGHT}px`, minHeight: `${HOUR_HEIGHT}px` }}
               >
-                {/* Time Label - Google Calendar Style */}
-                <div className="sticky left-0 z-20 bg-white dark:bg-slate-900 px-3 py-1 text-xs text-slate-500 dark:text-slate-400 text-right border-r border-slate-200 dark:border-slate-700">
-                  <span className="relative -top-1 block">{time}</span>
+                {/* Time Label - Google Calendar Style - Locked width */}
+                <div 
+                  className="sticky left-0 z-20 bg-white dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400 text-right border-r border-slate-200 dark:border-slate-700 pr-2 flex items-start justify-end pt-1"
+                  style={{ width: `${TIME_COLUMN_WIDTH}px`, minWidth: `${TIME_COLUMN_WIDTH}px`, maxWidth: `${TIME_COLUMN_WIDTH}px` }}
+                >
+                  <span>{time}</span>
                 </div>
 
                 {/* Day Cells - Google Calendar Style */}

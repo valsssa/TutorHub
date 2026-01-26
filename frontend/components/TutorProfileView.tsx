@@ -896,41 +896,6 @@ export default function TutorProfileView({
                 )}
               </div>
 
-              {/* Free Switch Promo */}
-              {!isOwnProfile && (
-                <div className="mt-6 bg-[#E0F2F1] dark:bg-emerald-900/20 rounded-xl p-4 flex items-start gap-4">
-                  <div className="relative shrink-0 mt-1">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm relative z-10">
-                      {tutor.profile_photo_url ? (
-                        <Image
-                          src={resolveAssetUrl(tutor.profile_photo_url)}
-                          alt=""
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
-                          {tutor.title.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    {/* Abstract cards behind */}
-                    <div className="absolute top-0 left-0 w-full h-full bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 rotate-6 scale-90 -z-10"></div>
-                    <div className="absolute top-0 left-0 w-full h-full bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 -rotate-6 scale-90 -z-20"></div>
-
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap z-20 text-slate-900 dark:text-white">
-                      Free switch
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                    If {displayName} isn&apos;t a match, get 2 more free trials
-                    to find the right tutor.
-                  </p>
-                </div>
-              )}
-
               {/* Popularity Stats */}
               <div className="pt-6 space-y-4">
                 <div>

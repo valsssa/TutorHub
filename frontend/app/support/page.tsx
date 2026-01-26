@@ -1,6 +1,6 @@
 "use client";
 
-import { FiMessageSquare, FiBook, FiClock, FiMail, FiExternalLink } from "react-icons/fi";
+import { FiBook, FiClock, FiMail, FiExternalLink } from "react-icons/fi";
 import Button from "@/components/Button";
 import PageLayout from "@/components/PageLayout";
 
@@ -24,24 +24,11 @@ export default function SupportPage() {
             <div className="p-6">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Contact Support</h3>
               <div className="space-y-4">
-                <div className="flex items-start gap-4 p-4 bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-900/20 dark:to-blue-900/20 rounded-xl border border-sky-100 dark:border-sky-800">
-                  <FiMessageSquare className="w-6 h-6 text-sky-600 dark:text-sky-400 mt-1" />
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-slate-900 dark:text-white mb-1">Live Chat</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                      Get instant help from our support team
-                    </p>
-                    <Button variant="primary" className="bg-sky-600 hover:bg-sky-700">
-                      Start Chat
-                    </Button>
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
                     <FiMail className="w-5 h-5 text-slate-600 dark:text-slate-400 mb-2" />
                     <h4 className="font-semibold text-slate-900 dark:text-white mb-1">Email Us</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">support@tutorconnect.com</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">suppot@valsa.solutions</p>
                     <p className="text-xs text-slate-500 dark:text-slate-500">Response within 24 hours</p>
                   </div>
 

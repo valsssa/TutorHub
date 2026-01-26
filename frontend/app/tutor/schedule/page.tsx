@@ -308,6 +308,15 @@ function ScheduleContent() {
     (_, i) => `${i.toString().padStart(2, "0")}:00`
   );
 
+  // Constants for consistent grid sizing
+  const HOUR_HEIGHT = 60; // Height in pixels for each hour row
+  const TIME_COLUMN_WIDTH = 60; // Width in pixels for time column
+  
+  // Generate grid template classes based on view
+  const gridColsClass = view === "Day" 
+    ? "grid-cols-[60px_minmax(0,1fr)]"
+    : `grid-cols-[60px_repeat(${days.length},_minmax(0,1fr))]`;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -436,30 +445,31 @@ function ScheduleContent() {
               <div
                 className={view === "Day" ? "w-full" : "min-w-[600px] md:min-w-[800px]"}
               >
-                {/* Header Row */}
+                {/* Header Row - Days as Columns */}
                 <div
-                  className={`grid ${
-                    view === "Day"
-                      ? "grid-cols-[50px_1fr]"
-                      : `grid-cols-[60px_repeat(${days.length},1fr)]`
-                  } border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-30`}
+                  className={`grid ${gridColsClass} border-b-2 border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-30 shadow-sm`}
                 >
-                  <div className="sticky left-0 z-40 bg-white dark:bg-slate-900 p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-slate-400 border-r border-slate-100 dark:border-slate-800 text-center flex items-end justify-center pb-2">
-                    GMT
+                  {/* Timezone Label - Locked width */}
+                  <div 
+                    className="sticky left-0 z-40 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800 text-center flex items-center justify-center"
+                    style={{ width: `${TIME_COLUMN_WIDTH}px`, minWidth: `${TIME_COLUMN_WIDTH}px`, maxWidth: `${TIME_COLUMN_WIDTH}px` }}
+                  >
+                    {timezone}
                   </div>
+                  {/* Day Headers - Columns (Mon-Sun) */}
                   {days.map((day, i) => (
                     <div
                       key={i}
-                      className="p-2 sm:p-3 text-center border-r border-slate-100 dark:border-slate-800 last:border-r-0"
+                      className="px-3 py-3 text-center border-r border-slate-200 dark:border-slate-800 last:border-r-0 bg-white dark:bg-slate-900"
                     >
-                      <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase">
+                      <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
                         {day.name}
                       </div>
                       <div
-                        className={`text-sm sm:text-xl font-bold inline-block w-7 h-7 sm:w-8 sm:h-8 leading-7 sm:leading-8 rounded-lg ${
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors ${
                           day.isToday
-                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                            : "text-slate-900 dark:text-white"
+                            ? "bg-blue-600 text-white dark:bg-blue-500"
+                            : "text-slate-700 dark:text-slate-300"
                         }`}
                       >
                         {day.date}
@@ -468,29 +478,32 @@ function ScheduleContent() {
                   ))}
                 </div>
 
-                {/* Grid Body */}
+                {/* Grid Body - Time on Y-axis, Days as Columns */}
                 <div className="relative">
                   {hours.map((time, i) => (
                     <div
                       key={i}
-                      className={`grid ${
-                        view === "Day"
-                          ? "grid-cols-[50px_1fr]"
-                          : `grid-cols-[60px_repeat(${days.length},1fr)]`
-                      } h-20 sm:h-24 border-b border-slate-100 dark:border-slate-800`}
+                      className={`grid ${gridColsClass} border-b border-slate-100 dark:border-slate-800`}
+                      style={{ height: `${HOUR_HEIGHT}px`, minHeight: `${HOUR_HEIGHT}px` }}
                     >
-                      {/* Time Label */}
-                      <div className="sticky left-0 z-20 bg-white dark:bg-slate-900 text-[10px] sm:text-xs text-slate-400 text-right pr-2 sm:pr-3 pt-2 border-r border-slate-100 dark:border-slate-800">
-                        <span className="-mt-3 block">{time}</span>
+                      {/* Time Label - Y-axis - Locked width */}
+                      <div 
+                        className="sticky left-0 z-20 bg-white dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400 text-right border-r border-slate-200 dark:border-slate-800 pr-2 flex items-start justify-end pt-1"
+                        style={{ width: `${TIME_COLUMN_WIDTH}px`, minWidth: `${TIME_COLUMN_WIDTH}px`, maxWidth: `${TIME_COLUMN_WIDTH}px` }}
+                      >
+                        <span>{time}</span>
                       </div>
 
-                      {/* Day Cells */}
+                      {/* Day Cells - Columns */}
                       {days.map((day, j) => (
                         <div
                           key={j}
-                          className="border-r border-slate-100 dark:border-slate-800 last:border-r-0 relative group"
+                          className="border-r border-slate-100 dark:border-slate-800 last:border-r-0 relative group cursor-pointer bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                         >
-                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-slate-50 dark:bg-slate-800/30 transition-opacity cursor-pointer"></div>
+                          {/* Hover indicator */}
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-blue-500 dark:bg-blue-400"></div>
+                          </div>
                         </div>
                       ))}
                     </div>
