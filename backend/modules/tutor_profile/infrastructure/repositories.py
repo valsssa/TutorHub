@@ -506,10 +506,16 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             first_name = getattr(profile.user, "first_name", None)
             last_name = getattr(profile.user, "last_name", None)
             avatar_key = getattr(profile.user, "avatar_key", None)
-            # avatar_key should contain the full public URL from MinIO storage
-            # Format: {MINIO_PUBLIC_ENDPOINT}/{MINIO_BUCKET}/tutor_profiles/{user_id}/photo/{filename}
-            # If it's an old avatar URL format, it will need to be re-uploaded to get the correct URL
-            profile_photo_url = avatar_key
+
+            # Convert avatar_key to full public URL if it's a relative path
+            if avatar_key:
+                if avatar_key.startswith("http://") or avatar_key.startswith("https://"):
+                    # Already a full URL
+                    profile_photo_url = avatar_key
+                else:
+                    # Relative path - convert to full MinIO public URL
+                    from core.config import settings
+                    profile_photo_url = f"{settings.AVATAR_STORAGE_PUBLIC_ENDPOINT.rstrip('/')}/{settings.AVATAR_STORAGE_BUCKET}/{avatar_key}"
 
         return TutorProfileAggregate(
             id=profile.id,
