@@ -750,7 +750,7 @@ function ScheduleContent() {
                               {view === "Week" && day.name === "Fri" && time === "00:00" && (
                                 <div className="absolute top-1 left-1 right-1 h-16 sm:h-20 bg-slate-100 dark:bg-slate-800 border-l-4 border-indigo-500 rounded p-1 sm:p-2 z-10 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
                                   <div className="font-bold text-[10px] sm:text-xs text-slate-900 dark:text-white truncate">
-                                    What's new...
+                                    What&apos;s new...
                                   </div>
                                   <div className="text-[9px] sm:text-[10px] text-slate-500">
                                     00:00 - 01:00

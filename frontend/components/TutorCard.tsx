@@ -36,6 +36,9 @@ export default function TutorCard({
   isSaved = false,
   onToggleSave,
   onViewProfile,
+  onBook,
+  onQuickBook,
+  onSlotBook,
   onMessage,
 }: TutorCardProps) {
   const router = useRouter();
@@ -353,7 +356,9 @@ export default function TutorCard({
                     key={idx}
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Handle slot booking
+                      if (onSlotBook) {
+                        onSlotBook(e, tutor, slot);
+                      }
                     }}
                     className="text-[10px] whitespace-nowrap bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
                   >
