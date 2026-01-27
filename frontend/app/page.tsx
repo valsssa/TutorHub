@@ -341,7 +341,7 @@ export default function HomePage() {
 
       {/* Tutors Grid */}
       {(filteredTutors.length > 0 || filtering) && (
-        <section className="py-2 md:py-4 lg:py-6 bg-white dark:bg-slate-900">
+        <section className="py-2 md:py-4 lg:py-6 bg-slate-50 dark:bg-slate-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {filtering ? (

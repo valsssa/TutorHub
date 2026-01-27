@@ -275,6 +275,16 @@ export default function Navbar({ user }: NavbarProps) {
                       )}
                     </Link>
 
+                    {authUtils.isStudent(user) && (
+                      <Link
+                        href="/saved-tutors"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
+                      >
+                        <FiHeart className="w-4 h-4" /> Saved Tutors
+                      </Link>
+                    )}
+
                     {authUtils.isTutor(user) && (
                       <>
                         <Link
@@ -309,13 +319,6 @@ export default function Navbar({ user }: NavbarProps) {
                           className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
                         >
                           <FiBook className="w-4 h-4" /> My Lessons
-                        </Link>
-                        <Link
-                          href="/saved-tutors"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
-                        >
-                          <FiHeart className="w-4 h-4" /> Saved Tutors
                         </Link>
                       </>
                     )}
@@ -430,6 +433,15 @@ export default function Navbar({ user }: NavbarProps) {
                       </span>
                     )}
                   </Link>
+                  {authUtils.isStudent(user) && (
+                    <Link 
+                      href="/saved-tutors"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      Saved Tutors
+                    </Link>
+                  )}
                   <Link 
                     href="/settings"
                     onClick={() => setMobileMenuOpen(false)}

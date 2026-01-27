@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -27,6 +27,7 @@ import { BookingDTO } from "@/types/booking";
 import Avatar from "@/components/Avatar";
 import AppShell from "@/components/AppShell";
 import Badge from "@/components/Badge";
+import ScheduleManagerModal from "@/components/modals/ScheduleManagerModal";
 
 interface TutorDashboardProps {
   user: User;
@@ -74,6 +75,8 @@ export default function TutorDashboard({
   onViewStudents,
 }: TutorDashboardProps) {
   const router = useRouter();
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleModalTab, setScheduleModalTab] = useState<"Lesson" | "Time off" | "Extra slots">("Lesson");
 
   // Memoize filtered bookings
   const pendingBookings = useMemo(
@@ -510,10 +513,11 @@ export default function TutorDashboard({
                     if (onQuickAction) {
                       onQuickAction('schedule');
                     } else {
-                      router.push("/tutor/schedule-manager?tab=Lesson");
+                      setScheduleModalTab("Lesson");
+                      setScheduleModalOpen(true);
                     }
                   }}
-                  className="w-full py-3.5 px-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3.5 px-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
                   <Calendar size={18} /> Schedule lesson
                 </button>
@@ -523,10 +527,11 @@ export default function TutorDashboard({
                     if (onQuickAction) {
                       onQuickAction('timeoff');
                     } else {
-                      router.push("/tutor/schedule-manager?tab=Time off");
+                      setScheduleModalTab("Time off");
+                      setScheduleModalOpen(true);
                     }
                   }}
-                  className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
                   <CalendarX size={18} /> Add time off
                 </button>
@@ -536,10 +541,11 @@ export default function TutorDashboard({
                     if (onQuickAction) {
                       onQuickAction('extraslots');
                     } else {
-                      router.push("/tutor/schedule-manager?tab=Extra slots");
+                      setScheduleModalTab("Extra slots");
+                      setScheduleModalOpen(true);
                     }
                   }}
-                  className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
                   <Plus size={18} /> Add extra slots
                 </button>
@@ -561,6 +567,13 @@ export default function TutorDashboard({
           </div>
         </div>
       </div>
+
+      {/* Schedule Manager Modal */}
+      <ScheduleManagerModal
+        isOpen={scheduleModalOpen}
+        onClose={() => setScheduleModalOpen(false)}
+        initialTab={scheduleModalTab}
+      />
     </AppShell>
   );
 }

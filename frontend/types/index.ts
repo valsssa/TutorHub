@@ -73,7 +73,6 @@ export interface TutorProfile {
   headline?: string;
   bio?: string;
   description?: string;
-  teaching_philosophy?: string;
   hourly_rate: number;
   experience_years: number;
   education?: string;
@@ -124,7 +123,6 @@ export interface TutorPublicSummary {
   subjects: string[];
   profile_photo_url?: string | null;
   education?: string[];
-  teaching_philosophy?: string;
   recent_review?: string;
   next_available_slots?: string[];
 }

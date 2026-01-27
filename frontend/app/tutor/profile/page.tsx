@@ -118,7 +118,6 @@ function TutorProfileContent() {
     title: "",
     headline: "",
     bio: "",
-    teaching_philosophy: "",
     experience_years: 0,
   });
   const [languagesInput, setLanguagesInput] = useState("");
@@ -148,7 +147,6 @@ function TutorProfileContent() {
       title: data.title || "",
       headline: data.headline || "",
       bio: data.bio || "",
-      teaching_philosophy: data.teaching_philosophy || "",
       experience_years: data.experience_years || 0,
     });
     setLanguagesInput((data.languages || []).join(", "));
@@ -296,7 +294,6 @@ function TutorProfileContent() {
           title: aboutForm.title.trim(),
           headline: aboutForm.headline?.trim() || undefined,
           bio: aboutForm.bio?.trim() || undefined,
-          teaching_philosophy: aboutForm.teaching_philosophy?.trim() || undefined,
           experience_years: Number(aboutForm.experience_years) || 0,
           languages,
         });
@@ -779,7 +776,6 @@ function TutorProfileContent() {
     { id: "education", label: "Education", icon: "🎓" },
     { id: "description", label: "Description", icon: "📝" },
     { id: "video", label: "Intro Video", icon: "🎥" },
-    { id: "availability", label: "Availability", icon: "📅" },
     { id: "pricing", label: "Pricing", icon: "💰" },
   ];
 
@@ -886,18 +882,6 @@ function TutorProfileContent() {
             maxLength={600}
             minLength={80}
             helperText="A compelling bio helps students decide if you're the right fit for them"
-          />
-          <TextArea
-            label="Teaching philosophy (helps students understand your methods)"
-            value={aboutForm.teaching_philosophy}
-            onChange={(e) =>
-              setAboutForm({ ...aboutForm, teaching_philosophy: e.target.value })
-            }
-            placeholder="How do you structure lessons? How do you handle different learning styles? How do you measure student progress?"
-            minRows={4}
-            maxRows={8}
-            maxLength={600}
-            helperText="Share what makes your teaching approach unique and effective"
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input

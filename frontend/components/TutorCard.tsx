@@ -316,14 +316,6 @@ export default function TutorCard({
           </div>
         )}
 
-        {/* Teaching Philosophy Snippet */}
-        {tutor.teaching_philosophy && (
-          <div className="mb-3 relative pl-3 border-l-2 border-emerald-500/30">
-            <p className="text-xs italic text-slate-500 dark:text-slate-400 line-clamp-2">
-              &ldquo;{tutor.teaching_philosophy}&rdquo;
-            </p>
-          </div>
-        )}
 
         {/* Subjects */}
         {tutor.subjects && tutor.subjects.length > 0 && (

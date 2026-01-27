@@ -359,7 +359,6 @@ class TutorAboutUpdate(BaseModel):
     title: str = Field(..., min_length=5, max_length=200)
     headline: str | None = Field(None, max_length=255)
     bio: str | None = None
-    teaching_philosophy: str | None = None
     experience_years: int = Field(default=0, ge=0)
     languages: list[str] | None = Field(default=None)
 
@@ -436,7 +435,6 @@ class TutorProfileResponse(BaseModel):
     headline: str | None
     bio: str | None
     description: str | None
-    teaching_philosophy: str | None
     hourly_rate: Decimal
     experience_years: int
     education: str | None
@@ -478,7 +476,6 @@ class TutorPublicProfile(BaseModel):
     total_sessions: int
     subjects: list[str] = []
     education: list[str] = []
-    teaching_philosophy: str | None = None
     profile_photo_url: str | None = None
     recent_review: str | None = None
     next_available_slots: list[str] = []

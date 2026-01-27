@@ -53,9 +53,22 @@ function TutorDetailContent() {
           const currentUser = await auth.getCurrentUser();
           setUser(currentUser);
 
-          // Check if tutor is favorited by current user
-          const favorite = await favorites.checkFavorite(tutorId);
-          setIsSaved(Boolean(favorite));
+          // Check if tutor is favorited by current user (only for students)
+          if (authUtils.isStudent(currentUser)) {
+            try {
+              const favorite = await favorites.checkFavorite(tutorId);
+              setIsSaved(Boolean(favorite));
+            } catch (favoriteError: any) {
+              // If 404, tutor is not favorited (normal case)
+              // If 403, user is not a student (also normal)
+              if (favoriteError.response?.status !== 404 && favoriteError.response?.status !== 403) {
+                console.error("Error checking favorite:", favoriteError);
+              }
+              setIsSaved(false);
+            }
+          } else {
+            setIsSaved(false);
+          }
         }
       } catch (authError) {
         // User is not authenticated, which is fine for public access
@@ -79,6 +92,18 @@ function TutorDetailContent() {
   const handleToggleSave = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
 
+    // Check if user is authenticated
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    // Only students can save favorites
+    if (!authUtils.isStudent(user)) {
+      showError("Only students can save tutors to favorites");
+      return;
+    }
+
     try {
       if (isSaved) {
         await favorites.removeFavorite(id);
@@ -91,7 +116,13 @@ function TutorDetailContent() {
       }
     } catch (error: any) {
       console.error("Error toggling favorite:", error);
-      showError(error.response?.data?.detail || "Failed to update favorites");
+      const errorMessage = error.response?.data?.detail || "Failed to update favorites";
+      showError(errorMessage);
+      
+      // If error is 403, user might not be a student
+      if (error.response?.status === 403) {
+        setIsSaved(false);
+      }
     }
   };
 
@@ -141,6 +172,9 @@ function TutorDetailContent() {
     tutor.user_id === user.id
   );
 
+  // Show save button to all authenticated users (handler will check if they're a student)
+  const canSave = !!user && !isOwnProfile;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
       {/* Navigation Header */}
@@ -155,7 +189,7 @@ function TutorDetailContent() {
           onMessage={handleMessage}
           isOwnProfile={isOwnProfile}
           onEdit={() => router.push("/tutor/profile")}
-          onToggleSave={canBook ? handleToggleSave : undefined}
+          onToggleSave={canSave ? handleToggleSave : undefined}
           isSaved={isSaved}
           backHref="/tutors"
           backLabel="Back to Marketplace"

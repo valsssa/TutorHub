@@ -567,7 +567,6 @@ export const tutors = {
     title: string;
     headline?: string;
     bio?: string;
-    teaching_philosophy?: string;
     experience_years: number;
     languages?: string[];
   }): Promise<TutorProfile> {

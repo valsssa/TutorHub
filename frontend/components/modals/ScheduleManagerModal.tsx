@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
 import {
   User,
   Calendar,
@@ -9,36 +9,19 @@ import {
   ArrowRight,
   Clock,
   ChevronDown,
-  X,
-  ArrowLeft,
 } from "lucide-react";
-import ProtectedRoute from "@/components/ProtectedRoute";
 
-interface TutorScheduleManagerProps {
+interface ScheduleManagerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
   initialTab?: "Lesson" | "Time off" | "Extra slots";
 }
 
-export default function TutorScheduleManagerPage() {
-  const searchParams = useSearchParams();
-  const tabParam = searchParams?.get("tab") || "Lesson";
-  // Handle URL-encoded spaces
-  const decodedTab = decodeURIComponent(tabParam);
-  
-  return (
-    <ProtectedRoute requiredRole="tutor">
-      <ScheduleManagerContent
-        initialTab={
-          (decodedTab as "Lesson" | "Time off" | "Extra slots") || "Lesson"
-        }
-      />
-    </ProtectedRoute>
-  );
-}
-
-function ScheduleManagerContent({
+export default function ScheduleManagerModal({
+  isOpen,
+  onClose,
   initialTab = "Lesson",
-}: TutorScheduleManagerProps) {
-  const router = useRouter();
+}: ScheduleManagerModalProps) {
   const [activeTab, setActiveTab] = useState<
     "Lesson" | "Time off" | "Extra slots"
   >(initialTab);
@@ -66,6 +49,13 @@ function ScheduleManagerContent({
   const [extraEndDate, setExtraEndDate] = useState("");
   const [extraEndTime, setExtraEndTime] = useState("21:00");
 
+  // Update active tab when modal opens or initialTab changes
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
   const handleScheduleLesson = () => {
     // TODO: Implement API call to schedule lesson
     console.log("Scheduling lesson:", {
@@ -75,7 +65,7 @@ function ScheduleManagerContent({
       lessonDate,
       lessonTime,
     });
-    router.back();
+    onClose();
   };
 
   const handleBookTimeOff = () => {
@@ -88,7 +78,7 @@ function ScheduleManagerContent({
       endDate,
       endTime,
     });
-    router.back();
+    onClose();
   };
 
   const handleAddExtraSlots = () => {
@@ -99,45 +89,45 @@ function ScheduleManagerContent({
       extraEndDate,
       extraEndTime,
     });
-    router.back();
+    onClose();
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.back()}
-              className="p-2 hover:bg-white dark:hover:bg-slate-900 rounded-lg transition-colors border border-slate-200 dark:border-slate-800"
-              title="Back"
-            >
-              <ArrowLeft size={20} className="text-slate-600 dark:text-slate-400" />
-            </button>
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
                 Schedule Management
-              </h1>
+              </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Manage your lessons, time off, and availability
               </p>
             </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              title="Close"
+            >
+              <X size={20} className="text-slate-400" />
+            </button>
           </div>
-          <button
-            onClick={() => router.back()}
-            className="p-2 hover:bg-white dark:hover:bg-slate-900 rounded-lg transition-colors"
-            title="Close"
-          >
-            <X size={20} className="text-slate-400" />
-          </button>
-        </div>
 
-        {/* Main Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div className="space-y-6 p-6">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
             {/* Tabs */}
-            <div className="flex border-b border-slate-200 dark:border-slate-700">
+            <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6">
               {["Lesson", "Time off", "Extra slots"].map((tab) => (
                 <button
                   key={tab}
@@ -241,7 +231,10 @@ function ScheduleManagerContent({
                           className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 transition-all appearance-none cursor-pointer text-center"
                         >
                           {Array.from({ length: 24 }, (_, i) => (
-                            <option key={i} value={`${i.toString().padStart(2, "0")}:00`}>
+                            <option
+                              key={i}
+                              value={`${i.toString().padStart(2, "0")}:00`}
+                            >
                               {i.toString().padStart(2, "0")}:00
                             </option>
                           ))}
