@@ -777,6 +777,7 @@ function TutorProfileContent() {
     { id: "description", label: "Description", icon: "📝" },
     { id: "video", label: "Intro Video", icon: "🎥" },
     { id: "pricing", label: "Pricing", icon: "💰" },
+    { id: "availability", label: "Availability", icon: "📅" },
   ];
 
   if (loading) {
