@@ -43,14 +43,14 @@ export default function MessageBubble({
       <div
         className={`max-w-[70%] rounded-lg p-3 ${
           isFromUser
-            ? "bg-primary-600 text-white"
-            : "bg-gray-100 text-gray-900"
+            ? "bg-emerald-600 text-white"
+            : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
         }`}
       >
         <p className="text-sm break-words">{body}</p>
         <div
           className={`flex items-center gap-1 mt-1 text-xs ${
-            isFromUser ? "text-primary-100" : "text-gray-500"
+            isFromUser ? "text-emerald-100" : "text-slate-500 dark:text-slate-400"
           }`}
         >
           <span>{formatTime(sentAt)}</span>

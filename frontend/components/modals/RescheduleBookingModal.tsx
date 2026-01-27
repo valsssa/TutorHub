@@ -76,10 +76,10 @@ export default function RescheduleBookingModal({
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">Reschedule Booking</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Reschedule Booking</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
             disabled={isSubmitting}
           >
             <FiX className="w-6 h-6" />
@@ -88,8 +88,8 @@ export default function RescheduleBookingModal({
 
         {/* Current Booking Info */}
         <div className="p-6 bg-blue-50 border-b border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Current Schedule</h3>
-          <div className="space-y-1 text-sm text-gray-600">
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Current Schedule</h3>
+          <div className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
             <div className="flex items-center gap-2">
               <FiCalendar className="w-4 h-4" />
               <span>{currentStart.toLocaleDateString()}</span>
@@ -108,7 +108,7 @@ export default function RescheduleBookingModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Date Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               New Date
             </label>
             <input
@@ -117,16 +117,16 @@ export default function RescheduleBookingModal({
               onChange={(e) => setSelectedDate(e.target.value)}
               min={minDate}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Must be at least 24 hours in advance
             </p>
           </div>
 
           {/* Time Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               New Time
             </label>
             <input
@@ -134,9 +134,9 @@ export default function RescheduleBookingModal({
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Duration will remain {duration} minutes
             </p>
           </div>

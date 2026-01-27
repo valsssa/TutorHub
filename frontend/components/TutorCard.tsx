@@ -258,6 +258,7 @@ export default function TutorCard({
               onClick={(e) => onToggleSave(e, tutor.id)}
               className="p-2 rounded-full bg-slate-100 dark:bg-slate-900/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all active:scale-90"
               title={isSaved ? "Remove from saved" : "Save tutor"}
+              aria-label={isSaved ? "Remove from saved" : "Save tutor"}
             >
               <FiHeart
                 className={`w-[18px] h-[18px] transition-colors duration-200 ${isSaved ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`}
@@ -390,8 +391,9 @@ export default function TutorCard({
             }
             router.push(`/messages?user=${tutor.user_id}`);
           }}
-          className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
           title="Message Tutor"
+          aria-label="Message Tutor"
         >
           <FiMessageCircle className="w-6 h-6" />
         </button>

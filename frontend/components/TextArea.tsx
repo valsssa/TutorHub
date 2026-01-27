@@ -111,7 +111,7 @@ export default function TextArea({
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
         >
           {label}
         </label>
@@ -130,13 +130,13 @@ export default function TextArea({
           // Base styles with proper line height (≥1.5)
           "w-full px-3 py-2 border rounded-lg shadow-sm transition-colors",
           "leading-relaxed", // line-height: 1.625
-          "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500",
+          "focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500",
           "resize-none", // Disable manual resize, use auto-resize
           "overflow-y-auto", // Enable scroll when exceeding max height
           // Dark mode support
           "dark:bg-slate-800 dark:text-white dark:border-slate-700",
           // Error state
-          error ? "border-red-500 dark:border-red-500" : "border-gray-300",
+          error ? "border-red-500 dark:border-red-500" : "border-slate-300 dark:border-slate-600",
           // Warning state (near limit)
           isWarning && !error && "border-amber-500 dark:border-amber-500",
           // At limit state
@@ -154,7 +154,7 @@ export default function TextArea({
             "mt-1 text-sm text-right",
             isAtLimit ? "text-red-600 dark:text-red-400 font-medium" :
             isWarning ? "text-amber-600 dark:text-amber-400" :
-            "text-gray-500 dark:text-gray-400"
+            "text-slate-500 dark:text-slate-400"
           )}
           aria-live="polite"
         >

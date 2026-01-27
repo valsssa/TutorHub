@@ -270,10 +270,12 @@ async def create_bulk_availability(
     db.query(TutorAvailability).filter(TutorAvailability.tutor_profile_id == profile.id).delete()
 
     created_slots = []
+    skipped_count = 0
     try:
         for av_data in availabilities:
             if av_data.start_time >= av_data.end_time:
-                continue  # Skip invalid slots
+                skipped_count += 1
+                continue  # Skip invalid slots (start_time must be before end_time)
 
             availability = TutorAvailability(
                 tutor_profile_id=profile.id,
@@ -286,10 +288,11 @@ async def create_bulk_availability(
             created_slots.append(availability)
 
         db.commit()
-        logger.info(f"Bulk availability created for tutor profile {profile.id}: {len(created_slots)} slots")
+        logger.info(f"Bulk availability created for tutor profile {profile.id}: {len(created_slots)} slots, {skipped_count} skipped")
         return {
             "message": f"Successfully created {len(created_slots)} availability slots",
             "count": len(created_slots),
+            "skipped": skipped_count,
         }
     except Exception as e:
         db.rollback()

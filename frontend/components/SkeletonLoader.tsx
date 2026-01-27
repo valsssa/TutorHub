@@ -13,7 +13,7 @@ export default function SkeletonLoader({
   height = '20px',
   lines = 1,
 }: SkeletonLoaderProps) {
-  const baseClass = 'animate-pulse bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 bg-[length:200%_100%]';
+  const baseClass = 'animate-pulse bg-gradient-to-r from-slate-200 dark:from-slate-700 via-slate-300 dark:via-slate-600 to-slate-200 dark:to-slate-700 bg-[length:200%_100%]';
   
   const variantClass = {
     text: 'rounded',
@@ -48,7 +48,7 @@ export default function SkeletonLoader({
 
 export function TutorCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl shadow-soft border border-gray-100 p-6 animate-pulse">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 p-6 animate-pulse">
       <div className="mb-4">
         <SkeletonLoader height="24px" width="70%" className="mb-2" />
         <SkeletonLoader height="16px" width="90%" lines={2} />

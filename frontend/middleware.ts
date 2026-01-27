@@ -34,6 +34,16 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Allowed video platform domains for iframe embeds
+  const videoPlatforms = [
+    'https://www.youtube.com',
+    'https://youtube.com',
+    'https://player.vimeo.com',
+    'https://www.loom.com',
+    'https://fast.wistia.net',
+    'https://play.vidyard.com',
+  ];
+
   const cspHeader = `
     default-src 'self';
     script-src ${scriptSrc.join(' ')};
@@ -41,6 +51,7 @@ export function middleware(request: NextRequest) {
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: https:;
     font-src 'self' https://fonts.gstatic.com;
+    frame-src 'self' ${videoPlatforms.join(' ')};
     object-src 'none';
     base-uri 'self';
     form-action 'self';

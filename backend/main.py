@@ -182,6 +182,7 @@ async def create_default_users():
                 tutor_profile.experience_years = 10
                 tutor_profile.education = "Master's in Education"
                 tutor_profile.languages = ["English", "Spanish"]
+                tutor_profile.video_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Demo intro video
                 tutor_profile.is_approved = True
                 tutor_profile.profile_status = "approved"
                 tutor_profile.updated_at = datetime.now(UTC)
@@ -190,6 +191,13 @@ async def create_default_users():
             logger.info(f"Created default tutor with approved profile: {tutor_email}")
         else:
             logger.debug(f"Tutor user already exists: {tutor_email}")
+            # Update existing tutor profile with video URL if missing
+            tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == existing_tutor.id).first()
+            if tutor_profile and not tutor_profile.video_url:
+                tutor_profile.video_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Demo intro video
+                tutor_profile.updated_at = datetime.now(UTC)
+                db.commit()
+                logger.info(f"Updated existing tutor profile with demo video URL: {tutor_email}")
 
         logger.info("Default users creation completed successfully")
     except Exception as e:

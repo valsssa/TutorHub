@@ -46,6 +46,20 @@ export default function Toast({
   };
 
   return (
-    null
+    <div
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${getStyles()}`}
+      role="alert"
+      aria-live="assertive"
+    >
+      {getIcon()}
+      <p className="flex-1 text-sm font-medium">{message}</p>
+      <button
+        onClick={onClose}
+        className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+        aria-label="Dismiss notification"
+      >
+        <FiX className="w-4 h-4" />
+      </button>
+    </div>
   );
 }

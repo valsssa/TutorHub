@@ -49,6 +49,8 @@ declare module "axios" {
   }
 }
 
+type RedirectingWindow = Window & { __redirecting?: boolean };
+
 // Rate limit state
 let rateLimitWarningShown = false;
 let lastRateLimitReset = 0;
@@ -311,9 +313,15 @@ api.interceptors.response.use(
       Cookies.remove("token");
       if (
         typeof window !== "undefined" &&
-        window.location.pathname !== "/login"
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/register"
       ) {
-        window.location.href = "/login";
+        // Prevent multiple simultaneous redirects
+        const redirectingWindow = window as RedirectingWindow;
+        if (!redirectingWindow.__redirecting) {
+          redirectingWindow.__redirecting = true;
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);
@@ -545,7 +553,6 @@ export const tutors = {
       setCache(cacheKey, data);
     }
 
-    clearCache('/api/tutors'); // Clear cache after mutation
     return data;
   },
 

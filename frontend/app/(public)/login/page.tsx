@@ -185,7 +185,8 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Quick Login Buttons */}
+          {/* Quick Login Buttons - Development only */}
+          {process.env.NODE_ENV === "development" && (
           <div className="mt-6">
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
@@ -225,6 +226,7 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+          )}
 
           {/* Demo Credentials */}
           {process.env.NODE_ENV === "development" && (

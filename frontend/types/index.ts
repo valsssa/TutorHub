@@ -11,14 +11,14 @@ export interface User {
   created_at: string;
   updated_at: string;
   avatar_url?: string | null;
+  /** Normalized camelCase alias set by frontend normalizeUser */
   avatarUrl?: string | null;
   currency: string;
   timezone: string;
   first_name?: string | null;
   last_name?: string | null;
-  country?: string | null;
-  bio?: string | null;
-  learning_goal?: string | null;
+  preferred_language?: string | null;
+  locale?: string | null;
 }
 
 export interface AvatarApiResponse {
@@ -101,7 +101,9 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   page_size: number;
-  pages: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 export interface TutorPublicSummary {

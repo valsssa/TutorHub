@@ -47,8 +47,8 @@ export default function ErrorDisplay({
   const styles = variantStyles[variant]
 
   return (
-    <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${styles.bg} p-4`}>
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center">
+    <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br ${styles.bg} dark:from-slate-950 dark:to-slate-900 p-4`}>
+      <div className="max-w-2xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 md:p-12 text-center">
         {/* Icon */}
         <div className="mb-6">
           <div className={`inline-flex items-center justify-center w-24 h-24 ${styles.iconBg} rounded-full mb-4`}>
@@ -99,16 +99,16 @@ export default function ErrorDisplay({
             )}
           </div>
           {statusCode && (
-            <h1 className="text-6xl font-bold text-gray-900 mb-2">{statusCode}</h1>
+            <h1 className="text-6xl font-bold text-slate-900 dark:text-white mb-2">{statusCode}</h1>
           )}
         </div>
 
         {/* Error Message */}
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">{title}</h2>
-        <p className="text-gray-600 text-lg mb-2">{message}</p>
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">{title}</h2>
+        <p className="text-slate-600 dark:text-slate-400 text-lg mb-2">{message}</p>
 
         {suggestion && (
-          <p className="text-gray-500 text-sm mb-8">{suggestion}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">{suggestion}</p>
         )}
 
         {/* Action Buttons */}
@@ -135,7 +135,7 @@ export default function ErrorDisplay({
           {showBackButton && (
             <button
               onClick={() => window.history.back()}
-              className="inline-flex items-center justify-center px-6 py-3 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
             >
               <svg
                 className="w-5 h-5 mr-2"

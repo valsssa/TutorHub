@@ -84,6 +84,8 @@ export default function Avatar({
           <div
             className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900"
             title="Online"
+            aria-label="Online"
+            role="status"
           >
             <div className="w-full h-full bg-emerald-500 rounded-full animate-pulse" />
           </div>

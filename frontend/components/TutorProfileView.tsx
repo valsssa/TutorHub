@@ -23,7 +23,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { TutorProfile, Subject, Review } from "@/types";
-import { resolveAssetUrl } from "@/lib/media";
+import { resolveAssetUrl, getVideoInfo } from "@/lib/media";
 import { getApiBaseUrl } from "@/shared/utils/url";
 
 interface TutorProfileViewProps {
@@ -80,6 +80,7 @@ export default function TutorProfileView({
 }: TutorProfileViewProps) {
   const router = useRouter();
   const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   // Schedule Section State
   const [scheduleDuration, setScheduleDuration] = useState<25 | 50>(50);
@@ -399,37 +400,101 @@ export default function TutorProfileView({
           </div>
 
           {/* Video Introduction */}
-          <div
-            className={`bg-slate-900 rounded-3xl overflow-hidden aspect-video relative shadow-lg ${
-              tutor.video_url ? "group cursor-pointer" : ""
-            }`}
-            onClick={() =>
-              tutor.video_url && window.open(tutor.video_url, "_blank")
-            }
-          >
-            {tutor.video_url ? (
-              <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border border-white/50">
-                    <Play size={32} className="text-white fill-white ml-1" />
+          {tutor.video_url ? (() => {
+            const videoInfo = getVideoInfo(tutor.video_url);
+            
+            if (!videoInfo) {
+              // Fallback for unsupported URLs
+              return (
+                <div
+                  className="bg-slate-900 rounded-3xl overflow-hidden aspect-video relative shadow-lg group cursor-pointer"
+                  onClick={() => window.open(tutor.video_url, "_blank")}
+                >
+                  <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border border-white/50">
+                        <Play size={32} className="text-white fill-white ml-1" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-4 left-4">
+                      <p className="text-white font-semibold">Meet {firstName}</p>
+                      <p className="text-white/80 text-sm">
+                        Click to watch introduction
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="absolute bottom-4 left-4">
-                  <p className="text-white font-semibold">Meet {firstName}</p>
-                  <p className="text-white/80 text-sm">
-                    Click to watch introduction
-                  </p>
-                </div>
+              );
+            }
+
+            return (
+              <div className="bg-slate-900 rounded-3xl overflow-hidden aspect-video relative shadow-lg">
+                {isVideoPlaying ? (
+                  <div className="w-full h-full">
+                    <iframe
+                      src={videoInfo.embedUrl}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={`${firstName}'s introduction video`}
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsVideoPlaying(false);
+                      }}
+                      className="absolute top-4 right-4 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors z-10"
+                      aria-label="Close video"
+                    >
+                      <span className="text-xl leading-none">×</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="w-full h-full relative group cursor-pointer"
+                    onClick={() => setIsVideoPlaying(true)}
+                  >
+                    {videoInfo.thumbnailUrl ? (
+                      <img
+                        src={videoInfo.thumbnailUrl}
+                        alt={`${firstName}'s introduction video thumbnail`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to gradient if thumbnail fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900" />
+                    )}
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border-2 border-white/50 shadow-lg">
+                        <Play size={40} className="text-white fill-white ml-1" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <p className="text-white font-semibold text-lg drop-shadow-lg">
+                        Meet {firstName}
+                      </p>
+                      <p className="text-white/90 text-sm drop-shadow-md">
+                        Click to watch introduction
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
+            );
+          })() : (
+            <div className="bg-slate-900 rounded-3xl overflow-hidden aspect-video relative shadow-lg">
               <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
                 <div className="text-center">
                   <Play size={48} className="text-white/50 mx-auto mb-2" />
                   <p className="text-white/70 text-sm">No intro video available</p>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* About & Bio */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">

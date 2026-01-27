@@ -57,14 +57,14 @@ export default function CancelBookingModal({
 
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-md w-full p-6">
           {/* Header */}
           <div className="mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
               Cancel Booking
             </h3>
             {tutorName && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                 Session with {tutorName}
               </p>
             )}

@@ -4,8 +4,8 @@ import Link from 'next/link'
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4">
+      <div className="max-w-2xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 md:p-12 text-center">
         {/* 404 Icon */}
         <div className="mb-6">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-blue-100 rounded-full mb-4">
@@ -23,14 +23,14 @@ export default function NotFound() {
               />
             </svg>
           </div>
-          <h1 className="text-6xl font-bold text-gray-900 mb-2">404</h1>
+          <h1 className="text-6xl font-bold text-slate-900 dark:text-white mb-2">404</h1>
         </div>
 
         {/* Error Message */}
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
           Page Not Found
         </h2>
-        <p className="text-gray-600 text-lg mb-8">
+        <p className="text-slate-600 dark:text-slate-400 text-lg mb-8">
           Sorry, we couldn&apos;t find the page you&apos;re looking for. The page might have been moved, deleted, or never existed.
         </p>
 
@@ -57,7 +57,7 @@ export default function NotFound() {
           </Link>
           <button
             onClick={() => window.history.back()}
-            className="inline-flex items-center justify-center px-6 py-3 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+            className="inline-flex items-center justify-center px-6 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
           >
             <svg
               className="w-5 h-5 mr-2"
@@ -77,8 +77,8 @@ export default function NotFound() {
         </div>
 
         {/* Helpful Links */}
-        <div className="mt-12 pt-8 border-t border-gray-200">
-          <p className="text-sm text-gray-500 mb-4">
+        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             Here are some helpful links instead:
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
@@ -88,21 +88,21 @@ export default function NotFound() {
             >
               Browse Tutors
             </Link>
-            <span className="text-gray-300">•</span>
+            <span className="text-slate-300 dark:text-slate-600">•</span>
             <Link
               href="/bookings"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
               My Bookings
             </Link>
-            <span className="text-gray-300">•</span>
+            <span className="text-slate-300 dark:text-slate-600">•</span>
             <Link
               href="/dashboard"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
               Dashboard
             </Link>
-            <span className="text-gray-300">•</span>
+            <span className="text-slate-300 dark:text-slate-600">•</span>
             <Link
               href="/support"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"

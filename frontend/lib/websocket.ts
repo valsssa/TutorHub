@@ -45,12 +45,12 @@ export class WebSocketClient {
   // Reconnection state
   private reconnectAttempts = 0;
   private reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private isManuallyDisconnected = false;
   private isConnecting = false;
 
   // Health monitoring
-  private pingInterval: NodeJS.Timeout | null = null;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
   private lastPongTime: number = 0;
 
   // Event handlers
@@ -79,7 +79,11 @@ export class WebSocketClient {
 
     return new Promise((resolve, reject) => {
       try {
-        this.ws = new WebSocket(this.url);
+        // Include token as query param - backend authenticates on connect
+        const wsUrl = this.token
+          ? `${this.url}${this.url.includes('?') ? '&' : '?'}token=${encodeURIComponent(this.token)}`
+          : this.url;
+        this.ws = new WebSocket(wsUrl);
         this.isManuallyDisconnected = false;
 
         // Connection opened successfully
@@ -87,8 +91,7 @@ export class WebSocketClient {
           console.log('✅ [WebSocket] Connection opened, authenticating...');
           this.isConnecting = false;
 
-          // Send authentication message immediately after connection
-          // This keeps the token out of URL query params (logs, browser history)
+          // Also send auth message for backwards compatibility
           this.sendAuthMessage();
         };
 

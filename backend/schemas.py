@@ -98,10 +98,6 @@ class UserResponse(BaseModel):
 
     id: int
     email: str
-    first_name: str | None = None
-    last_name: str | None = None
-    preferred_language: str | None = None
-    locale: str | None = None
     first_name: str | None = Field(None, min_length=1, max_length=100)
     last_name: str | None = Field(None, min_length=1, max_length=100)
     role: str

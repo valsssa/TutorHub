@@ -192,9 +192,11 @@ export default function RegisterPage() {
           </div>
 
           {/* Role Selection */}
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mb-6">
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mb-6" role="tablist" aria-label="Account type">
             <button
               type="button"
+              role="tab"
+              aria-selected={!values.isTutor}
               onClick={() => handleChange("isTutor", false)}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
                 !values.isTutor
@@ -206,6 +208,8 @@ export default function RegisterPage() {
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={values.isTutor}
               onClick={() => handleChange("isTutor", true)}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
                 values.isTutor
