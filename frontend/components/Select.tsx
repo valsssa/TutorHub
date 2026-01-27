@@ -36,6 +36,9 @@ export default function Select({
   const inputId = generateId(
     id || (label ? `select-${label.toLowerCase().replace(/\s+/g, "-")}` : undefined),
   );
+  const errorId = error ? `${inputId}-error` : undefined;
+  const helperId = helperText && !error ? `${inputId}-helper` : undefined;
+  const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
 
   return (
     <div className="w-full">
@@ -49,6 +52,8 @@ export default function Select({
       )}
       <select
         id={inputId}
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={describedBy}
         className={clsx(
           "w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors bg-white",
           error ? "border-red-500" : "border-gray-300",
@@ -67,9 +72,15 @@ export default function Select({
           </option>
         ))}
       </select>
-      {error && <p className="mt-1 text-sm text-red-600">{typeof error === 'string' ? error : String(error)}</p>}
+      {error && (
+        <p id={errorId} className="mt-1 text-sm text-red-600" role="alert">
+          {typeof error === 'string' ? error : String(error)}
+        </p>
+      )}
       {helperText && !error && (
-        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+        <p id={helperId} className="mt-1 text-sm text-gray-500">
+          {helperText}
+        </p>
       )}
     </div>
   );

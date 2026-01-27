@@ -606,21 +606,13 @@ function ScheduleContent() {
                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                   <button
                     onClick={handleToday}
-                    className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition-all ${
-                      view === "Day"
-                        ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white ring-2 ring-emerald-500/20"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                    }`}
+                    className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition-all ${view === "Day" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white ring-2 ring-emerald-500/20" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}
                   >
                     Today
                   </button>
                   <button
                     onClick={() => setView("Week")}
-                    className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition-all ${
-                      view === "Week"
-                        ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white ring-2 ring-emerald-500/20"
-                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                    }`}
+                    className={`px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition-all ${view === "Week" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white ring-2 ring-emerald-500/20" : "text-slate-500 hover:text-slate-900 dark:hover:text-white"}`}
                   >
                     Week
                   </button>
@@ -641,11 +633,13 @@ function ScheduleContent() {
               <div className={view === "Day" ? "w-full" : "min-w-[600px] md:min-w-[800px]"}>
                 {/* Header Row */}
                 <div
-                  className={`grid ${
-                    view === "Day"
-                      ? "grid-cols-[50px_1fr]"
-                      : `grid-cols-[60px_repeat(${days.length},1fr)]`
-                  } border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-30`}
+                  className="grid border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-30"
+                  style={{
+                    gridTemplateColumns:
+                      view === "Day"
+                        ? "50px 1fr"
+                        : `60px repeat(${days.length}, 1fr)`,
+                  }}
                 >
                   <div className="sticky left-0 z-40 bg-white dark:bg-slate-900 p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-slate-400 border-r border-slate-100 dark:border-slate-800 text-center flex items-end justify-center pb-2 shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_10px_-4px_rgba(0,0,0,0.5)]">
                     {timezone}
@@ -676,11 +670,13 @@ function ScheduleContent() {
                   {hours.map((time, i) => (
                     <div
                       key={i}
-                      className={`grid ${
-                        view === "Day"
-                          ? "grid-cols-[50px_1fr]"
-                          : `grid-cols-[60px_repeat(${days.length},1fr)]`
-                      } h-20 sm:h-24 border-b border-slate-100 dark:border-slate-800`}
+                      className="grid h-20 sm:h-24 border-b border-slate-100 dark:border-slate-800"
+                      style={{
+                        gridTemplateColumns:
+                          view === "Day"
+                            ? "50px 1fr"
+                            : `60px repeat(${days.length}, 1fr)`,
+                      }}
                     >
                       {/* Sticky Time Label */}
                       <div className="sticky left-0 z-20 bg-white dark:bg-slate-900 text-[10px] sm:text-xs text-slate-400 text-right pr-2 sm:pr-3 pt-2 border-r border-slate-100 dark:border-slate-800 relative shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_10px_-4px_rgba(0,0,0,0.5)]">

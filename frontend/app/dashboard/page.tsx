@@ -166,13 +166,6 @@ function DashboardContent() {
         onEditProfile={() => router.push("/tutor/profile")}
         onViewProfile={() => router.push("/tutor/profile")}
         onUpdateSchedule={(mode) => router.push("/tutor/schedule")}
-        onQuickAction={(action) => {
-          if (action === 'schedule') {
-            router.push("/bookings");
-          } else if (action === 'timeoff' || action === 'extraslots') {
-            router.push("/tutor/schedule");
-          }
-        }}
         onStartSession={handleStartSession}
         onCancelSession={handleCancelSession}
         onAcceptRequest={handleAcceptRequest}

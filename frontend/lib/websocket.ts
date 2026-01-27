@@ -40,30 +40,31 @@ export class WebSocketClient {
   private ws: WebSocket | null = null;
   private token: string;
   private url: string;
-  
+  private isAuthenticated = false;
+
   // Reconnection state
   private reconnectAttempts = 0;
   private reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private isManuallyDisconnected = false;
   private isConnecting = false;
-  
+
   // Health monitoring
   private pingInterval: NodeJS.Timeout | null = null;
   private lastPongTime: number = 0;
-  
+
   // Event handlers
   private messageHandlers: Set<MessageHandler> = new Set();
   private connectionHandlers: Set<ConnectionHandler> = new Set();
 
   constructor(token: string) {
     this.token = token;
-    
-    // Build WebSocket URL from API URL
+
+    // Build WebSocket URL from API URL - no token in URL for security
     const wsBaseUrl = getWebSocketBaseUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
-    this.url = `${wsBaseUrl}/ws/messages?token=${token}`;
-    
-    console.log(`[WebSocket] Initialized with URL: ${this.url.replace(/token=.*/, 'token=***')}`);
+    this.url = `${wsBaseUrl}/ws/messages`;
+
+    console.log(`[WebSocket] Initialized with URL: ${this.url}`);
   }
 
   async connect(): Promise<void> {
@@ -83,8 +84,18 @@ export class WebSocketClient {
 
         // Connection opened successfully
         this.ws.onopen = () => {
-          console.log('✅ [WebSocket] Connected successfully');
+          console.log('✅ [WebSocket] Connection opened, authenticating...');
           this.isConnecting = false;
+
+          // Send authentication message immediately after connection
+          // This keeps the token out of URL query params (logs, browser history)
+          this.sendAuthMessage();
+        };
+
+        // Set up auth success handler (called when server confirms auth)
+        const onAuthSuccess = () => {
+          console.log('✅ [WebSocket] Authenticated successfully');
+          this.isAuthenticated = true;
           this.reconnectAttempts = 0;
           this.reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
           this.lastPongTime = Date.now();
@@ -93,21 +104,42 @@ export class WebSocketClient {
           resolve();
         };
 
+        // Store auth handler to be called from message handler
+        (this as any)._onAuthSuccess = onAuthSuccess;
+
         // Message received from server
         this.ws.onmessage = (event) => {
           try {
             const message: WebSocketMessage = JSON.parse(event.data);
-            
+
+            // Handle authentication response
+            if (message.type === 'auth_success' || message.type === 'authenticated') {
+              const onAuthSuccess = (this as any)._onAuthSuccess;
+              if (onAuthSuccess) {
+                onAuthSuccess();
+                delete (this as any)._onAuthSuccess;
+              }
+              return;
+            }
+
+            // Handle authentication failure
+            if (message.type === 'auth_error' || message.type === 'auth_failed') {
+              console.error('❌ [WebSocket] Authentication failed:', message.error || message.message);
+              this.isAuthenticated = false;
+              reject(new Error(message.error || message.message || 'Authentication failed'));
+              return;
+            }
+
             // Update last pong time for health monitoring
             if (message.type === 'pong') {
               this.lastPongTime = Date.now();
             }
-            
+
             // Log only non-ping/pong messages (reduce noise)
             if (message.type !== 'pong' && message.type !== 'ping') {
               console.log(`📨 [WebSocket] ${message.type}`, message);
             }
-            
+
             // Notify all handlers
             this.messageHandlers.forEach((handler) => {
               try {
@@ -152,6 +184,18 @@ export class WebSocketClient {
         reject(error);
       }
     });
+  }
+
+  private sendAuthMessage(): void {
+    // Send authentication token after connection is established
+    // This is more secure than putting token in URL query params
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'authenticate',
+        token: this.token,
+      }));
+      console.log('[WebSocket] Auth message sent');
+    }
   }
 
   private scheduleReconnect(): void {

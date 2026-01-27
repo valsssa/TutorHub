@@ -94,11 +94,14 @@ export default function ProfileSettingsPage() {
 
     setSaving(true);
     try {
-      // TODO: Implement API call to update user profile
-      // await auth.updateProfile({ first_name: `${firstName} ${lastName}`.trim() });
+      const updatedUser = await auth.updateUser({
+        first_name: firstName.trim(),
+        last_name: lastName.trim() || undefined,
+      });
+      setUser(updatedUser);
       showSuccess("Profile updated successfully");
     } catch (error: any) {
-      showError(error.message || "Failed to update profile");
+      showError(error.response?.data?.detail || "Failed to update profile");
     } finally {
       setSaving(false);
     }

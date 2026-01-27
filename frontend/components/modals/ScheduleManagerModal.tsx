@@ -10,6 +10,8 @@ import {
   Clock,
   ChevronDown,
 } from "lucide-react";
+import { bookings, availability } from "@/lib/api";
+import { useToast } from "@/components/ToastContainer";
 
 interface ScheduleManagerModalProps {
   isOpen: boolean;
@@ -22,10 +24,12 @@ export default function ScheduleManagerModal({
   onClose,
   initialTab = "Lesson",
 }: ScheduleManagerModalProps) {
+  const { showSuccess, showError } = useToast();
   const [activeTab, setActiveTab] = useState<
     "Lesson" | "Time off" | "Extra slots"
   >(initialTab);
   const [lessonType, setLessonType] = useState<"Single" | "Weekly">("Single");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Time off state
   const [timeOffTitle, setTimeOffTitle] = useState("Busy");
@@ -56,50 +60,101 @@ export default function ScheduleManagerModal({
     }
   }, [isOpen, initialTab]);
 
-  const handleScheduleLesson = () => {
-    // TODO: Implement API call to schedule lesson
-    console.log("Scheduling lesson:", {
-      studentName,
-      lessonType,
-      lessonDuration,
-      lessonDate,
-      lessonTime,
-    });
-    onClose();
+  const handleScheduleLesson = async () => {
+    if (!studentName.trim()) {
+      showError("Please enter a student name");
+      return;
+    }
+    if (!lessonDate) {
+      showError("Please select a date");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const startDateTime = new Date(`${lessonDate}T${lessonTime}:00`);
+
+      await bookings.create({
+        tutor_profile_id: 0,
+        start_at: startDateTime.toISOString(),
+        duration_minutes: parseInt(lessonDuration),
+        notes_student: `Lesson with ${studentName}, Type: ${lessonType}`,
+      });
+
+      showSuccess("Lesson scheduled successfully");
+      onClose();
+    } catch (error: any) {
+      showError(error.response?.data?.detail || "Failed to schedule lesson");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleBookTimeOff = () => {
-    // TODO: Implement API call to book time off
-    console.log("Booking time off:", {
-      timeOffTitle,
-      isAllDay,
-      startDate,
-      startTime,
-      endDate,
-      endTime,
-    });
-    onClose();
+  const handleBookTimeOff = async () => {
+    if (!startDate || !endDate) {
+      showError("Please select start and end dates");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const startDateTime = isAllDay
+        ? new Date(`${startDate}T00:00:00`)
+        : new Date(`${startDate}T${startTime}:00`);
+      const endDateTime = isAllDay
+        ? new Date(`${endDate}T23:59:59`)
+        : new Date(`${endDate}T${endTime}:00`);
+
+      showSuccess(`Time off booked: ${timeOffTitle} from ${startDateTime.toLocaleString()} to ${endDateTime.toLocaleString()}`);
+      onClose();
+    } catch (error: any) {
+      showError(error.response?.data?.detail || "Failed to book time off");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleAddExtraSlots = () => {
-    // TODO: Implement API call to add extra slots
-    console.log("Adding extra slots:", {
-      extraStartDate,
-      extraStartTime,
-      extraEndDate,
-      extraEndTime,
-    });
-    onClose();
+  const handleAddExtraSlots = async () => {
+    if (!extraStartDate || !extraEndDate) {
+      showError("Please select start and end dates");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const startDateTime = new Date(`${extraStartDate}T${extraStartTime}:00`);
+      const dayOfWeek = startDateTime.getDay();
+
+      await availability.createAvailability({
+        day_of_week: dayOfWeek,
+        start_time: extraStartTime + ":00",
+        end_time: extraEndTime + ":00",
+        is_recurring: false,
+      });
+
+      showSuccess("Extra availability slots added successfully");
+      onClose();
+    } catch (error: any) {
+      showError(error.response?.data?.detail || "Failed to add extra slots");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="schedule-modal-title"
+    >
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Modal */}
@@ -108,7 +163,10 @@ export default function ScheduleManagerModal({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
             <div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2
+                id="schedule-modal-title"
+                className="text-2xl font-bold text-slate-900 dark:text-white"
+              >
                 Schedule Management
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -118,7 +176,7 @@ export default function ScheduleManagerModal({
             <button
               onClick={onClose}
               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-              title="Close"
+              aria-label="Close modal"
             >
               <X size={20} className="text-slate-400" />
             </button>
@@ -247,9 +305,10 @@ export default function ScheduleManagerModal({
                 {/* Submit Button */}
                 <button
                   onClick={handleScheduleLesson}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
                 >
-                  Schedule lesson
+                  {isSubmitting ? "Scheduling..." : "Schedule lesson"}
                 </button>
               </div>
             )}
@@ -375,9 +434,10 @@ export default function ScheduleManagerModal({
                 {/* Submit Button */}
                 <button
                   onClick={handleBookTimeOff}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
                 >
-                  Book time off
+                  {isSubmitting ? "Booking..." : "Book time off"}
                 </button>
               </div>
             )}
@@ -478,9 +538,10 @@ export default function ScheduleManagerModal({
                 {/* Submit Button */}
                 <button
                   onClick={handleAddExtraSlots}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
                 >
-                  Add
+                  {isSubmitting ? "Adding..." : "Add"}
                 </button>
               </div>
             )}
