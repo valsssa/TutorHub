@@ -17,6 +17,7 @@ from pydantic import BaseModel, EmailStr, Field
 from core.dependencies import DatabaseSession
 from core.email_service import email_service
 from core.security import PasswordHasher
+from core.utils import StringUtils
 from models import User
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,7 @@ async def request_password_reset(
 ) -> MessageResponse:
     """Request password reset email."""
 
-    email = request.email.lower().strip()
+    email = StringUtils.normalize_email(request.email)
 
     # Find user (don't reveal if exists)
     user = db.query(User).filter(User.email == email).first()

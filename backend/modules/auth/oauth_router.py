@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from core.config import settings
 from core.dependencies import DatabaseSession, get_current_user_optional
 from core.security import TokenManager
+from core.utils import StringUtils
 from models import User, UserProfile
 
 logger = logging.getLogger(__name__)
@@ -202,7 +203,7 @@ async def google_callback(
                 url=f"{settings.FRONTEND_LOGIN_ERROR_URL}&reason=no_email"
             )
 
-        email = email.lower().strip()
+        email = StringUtils.normalize_email(email)
         google_id = user_info.get("sub")
         first_name = user_info.get("given_name", "")
         last_name = user_info.get("family_name", "")

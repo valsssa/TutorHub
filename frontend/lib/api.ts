@@ -290,6 +290,59 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Automatic cache invalidation after mutations
+// This replaces 30+ manual clearCache() calls throughout the codebase
+api.interceptors.response.use(
+  (response) => {
+    const method = response.config.method?.toUpperCase();
+    const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method || '');
+
+    if (isMutation && response.status >= 200 && response.status < 300) {
+      // Extract resource type from URL for pattern-based invalidation
+      const url = response.config.url || '';
+
+      // Pattern-based invalidation for common resources
+      if (url.includes('/users') || url.includes('/profile') || url.includes('/avatar')) {
+        clearCache('users');
+        clearCache('profile');
+      }
+      if (url.includes('/tutors') || url.includes('/tutor-profile')) {
+        clearCache('tutors');
+        clearCache('tutor-profile');
+      }
+      if (url.includes('/bookings')) {
+        clearCache('bookings');
+      }
+      if (url.includes('/reviews')) {
+        clearCache('reviews');
+      }
+      if (url.includes('/messages')) {
+        clearCache('messages');
+      }
+      if (url.includes('/notifications')) {
+        clearCache('notifications');
+      }
+      if (url.includes('/packages')) {
+        clearCache('packages');
+      }
+      if (url.includes('/favorites')) {
+        clearCache('favorites');
+      }
+      if (url.includes('/admin')) {
+        // Admin operations may affect many resources
+      }
+
+      logger.debug(`Auto-invalidated cache after ${method} ${url}`);
+    }
+
+    return response;
+  },
+  (error) => {
+    // Error handling is done by the existing error interceptor below
+    return Promise.reject(error);
+  }
+);
+
 // Handle errors consistently and parse decimal fields
 api.interceptors.response.use(
   (response) => {
@@ -422,7 +475,6 @@ export const auth = {
       });
       
       // Clear cache on login to ensure fresh data
-      clearCache();
       
       logger.info(`Login successful for: ${email}`);
       return data.access_token;
@@ -447,7 +499,6 @@ export const auth = {
   logout() {
     logger.info("User logging out");
     Cookies.remove("token");
-    clearCache(); // Clear cache on logout
     if (typeof window !== "undefined") {
       window.location.href = "/";
     }
@@ -582,7 +633,6 @@ export const tutors = {
       "/api/tutors/me/about",
       payload,
     );
-    clearCache(); // Invalidate cache after updating tutor about
     return data;
   },
 
@@ -593,7 +643,6 @@ export const tutors = {
       "/api/tutors/me/subjects",
       subjectsPayload,
     );
-    clearCache(); // Invalidate cache after replacing subjects
     return data;
   },
 
@@ -617,7 +666,6 @@ export const tutors = {
         headers: { "Content-Type": "multipart/form-data" },
       },
     );
-    clearCache(); // Invalidate cache after replacing certifications
     return data;
   },
 
@@ -641,7 +689,6 @@ export const tutors = {
         headers: { "Content-Type": "multipart/form-data" },
       },
     );
-    clearCache(); // Invalidate cache after replacing education
     return data;
   },
 
@@ -652,7 +699,6 @@ export const tutors = {
       "/api/tutors/me/description",
       payload,
     );
-    clearCache(); // Invalidate cache after updating description
     return data;
   },
 
@@ -661,7 +707,6 @@ export const tutors = {
       "/api/tutors/me/video",
       payload,
     );
-    clearCache(); // Invalidate cache after updating video
     return data;
   },
 
@@ -674,7 +719,6 @@ export const tutors = {
       "/api/tutors/me/pricing",
       payload,
     );
-    clearCache(); // Invalidate cache after updating pricing
     return data;
   },
 
@@ -687,13 +731,11 @@ export const tutors = {
       "/api/tutors/me/availability",
       payload,
     );
-    clearCache(); // Invalidate cache after replacing availability
     return data;
   },
 
   async submitForReview(): Promise<TutorProfile> {
     const { data } = await api.post<TutorProfile>("/api/tutors/me/submit", {});
-    clearCache(); // Invalidate cache after submitting for review
     return data;
   },
 
@@ -713,7 +755,6 @@ export const tutors = {
         headers: { "Content-Type": "multipart/form-data" },
       },
     );
-    clearCache(); // Invalidate cache after updating profile photo
     return data;
   },
 };
@@ -751,7 +792,6 @@ export const bookings = {
    */
   async create(bookingData: BookingCreateRequest): Promise<BookingDTO> {
     const { data } = await api.post<BookingDTO>("/api/bookings", bookingData);
-    clearCache(); // Invalidate cache after creating booking
     return data;
   },
 
@@ -760,7 +800,6 @@ export const bookings = {
    */
   async cancel(bookingId: number, request: BookingCancelRequest): Promise<BookingDTO> {
     const { data } = await api.post<BookingDTO>(`/api/bookings/${bookingId}/cancel`, request);
-    clearCache(); // Invalidate cache after cancelling booking
     return data;
   },
 
@@ -769,7 +808,6 @@ export const bookings = {
    */
   async reschedule(bookingId: number, request: BookingRescheduleRequest): Promise<BookingDTO> {
     const { data } = await api.post<BookingDTO>(`/api/bookings/${bookingId}/reschedule`, request);
-    clearCache(); // Invalidate cache after rescheduling booking
     return data;
   },
 
@@ -780,7 +818,6 @@ export const bookings = {
     const { data } = await api.post<BookingDTO>(`/api/tutor/bookings/${bookingId}/confirm`, {
       notes_tutor,
     });
-    clearCache(); // Invalidate cache after confirming booking
     return data;
   },
 
@@ -791,7 +828,6 @@ export const bookings = {
     const { data } = await api.post<BookingDTO>(`/api/tutor/bookings/${bookingId}/decline`, {
       reason,
     });
-    clearCache(); // Invalidate cache after declining booking
     return data;
   },
 
@@ -802,7 +838,6 @@ export const bookings = {
     const { data } = await api.post<BookingDTO>(`/api/tutor/bookings/${bookingId}/mark-no-show-student`, {
       notes,
     });
-    clearCache(); // Invalidate cache after marking no-show
     return data;
   },
 
@@ -813,7 +848,6 @@ export const bookings = {
     const { data } = await api.post<BookingDTO>(`/api/tutor/bookings/${bookingId}/mark-no-show-tutor`, {
       notes,
     });
-    clearCache(); // Invalidate cache after marking no-show
     return data;
   },
 };
@@ -833,7 +867,6 @@ export const reviews = {
       rating,
       comment,
     });
-    clearCache(); // Invalidate cache after creating review
     return data;
   },
 };
@@ -857,7 +890,6 @@ export const packages = {
     agreed_terms?: string;
   }): Promise<StudentPackage> {
     const { data } = await api.post<StudentPackage>("/api/packages", packageData);
-    clearCache(); // Invalidate cache after purchasing package
     return data;
   },
 
@@ -865,7 +897,6 @@ export const packages = {
     const { data } = await api.patch<StudentPackage>(
       `/api/packages/${packageId}/use-credit`
     );
-    clearCache(); // Invalidate cache after using package credit
     return data;
   },
 };
@@ -886,7 +917,6 @@ export const messages = {
         message,
         booking_id: bookingId,
       });
-      clearCache(); // Invalidate cache after sending message
       return data;
     } catch (error: any) {
       console.error('[API] Failed to send message:', error);
@@ -949,14 +979,12 @@ export const messages = {
 
   async markRead(messageId: number): Promise<void> {
     await api.patch(`/api/messages/${messageId}/read`);
-    clearCache();
   },
 
   async markThreadRead(otherUserId: number, bookingId?: number): Promise<void> {
     await api.patch(`/api/messages/threads/${otherUserId}/read-all`, null, {
       params: bookingId ? { booking_id: bookingId } : undefined,
     });
-    clearCache();
   },
 
   async getUnreadCount(): Promise<{ total: number; by_sender: Record<number, number> }> {
@@ -968,13 +996,11 @@ export const messages = {
     const { data } = await api.patch<Message>(`/api/messages/${messageId}`, {
       message: newMessage,
     });
-    clearCache();
     return data;
   },
 
   async deleteMessage(messageId: number): Promise<void> {
     await api.delete(`/api/messages/${messageId}`);
-    clearCache();
   },
 };
 
@@ -1000,14 +1026,12 @@ export const avatars = {
         headers: { "Content-Type": "multipart/form-data" },
       },
     );
-    clearCache(); // Invalidate cache after uploading avatar
     return transformAvatarResponse(data);
   },
 
   async remove(): Promise<void> {
     logger.info("Deleting user avatar");
     await api.delete("/api/users/me/avatar");
-    clearCache(); // Invalidate cache after removing avatar
   },
 
   async uploadForUser(userId: number, file: File): Promise<AvatarSignedUrl> {
@@ -1021,7 +1045,6 @@ export const avatars = {
         headers: { "Content-Type": "multipart/form-data" },
       },
     );
-    clearCache(); // Invalidate cache after admin uploads user avatar
     return transformAvatarResponse(data);
   },
 };
@@ -1043,7 +1066,6 @@ export const students = {
       "/api/profile/student/me",
       updates,
     );
-    clearCache(); // Invalidate cache after updating student profile
     return data;
   },
 };
@@ -1070,22 +1092,18 @@ export const notifications = {
 
   async markAsRead(notificationId: number): Promise<void> {
     await api.patch(`/api/notifications/${notificationId}/read`);
-    clearCache(); // Invalidate cache after marking notification as read
   },
 
   async markAllAsRead(): Promise<void> {
     await api.patch("/api/notifications/mark-all-read");
-    clearCache(); // Invalidate cache after marking all notifications as read
   },
 
   async markRead(notificationId: number): Promise<void> {
     await api.patch(`/api/notifications/${notificationId}/read`);
-    clearCache(); // Invalidate cache after marking notification as read
   },
 
   async delete(notificationId: number): Promise<void> {
     await api.delete(`/api/notifications/${notificationId}`);
-    clearCache(); // Invalidate cache after deleting notification
   },
 };
 
@@ -1147,18 +1165,15 @@ export const availability = {
 
   async createAvailability(slot: Omit<AvailabilitySlot, "id">): Promise<AvailabilitySlot> {
     const { data } = await api.post<AvailabilitySlot>("/api/tutors/availability", slot);
-    clearCache();
     return data;
   },
 
   async deleteAvailability(availabilityId: number): Promise<void> {
     await api.delete(`/api/tutors/availability/${availabilityId}`);
-    clearCache();
   },
 
   async createBulkAvailability(slots: Omit<AvailabilitySlot, "id">[]): Promise<{ message: string; count: number }> {
     const { data } = await api.post<{ message: string; count: number }>("/api/tutors/availability/bulk", slots);
-    clearCache();
     return data;
   },
 
@@ -1179,13 +1194,11 @@ export const admin = {
 
   async updateUser(userId: number, updates: Partial<User>): Promise<User> {
     const { data } = await api.put<User>(`/api/admin/users/${userId}`, updates);
-    clearCache(); // Invalidate cache after admin updates user
     return normalizeUser(data);
   },
 
   async deleteUser(userId: number) {
     await api.delete(`/api/admin/users/${userId}`);
-    clearCache(); // Invalidate cache after admin deletes user
   },
 
   async listPendingTutors(page: number = 1, pageSize: number = 20): Promise<{ items: TutorProfile[]; total: number; page: number; page_size: number }> {
@@ -1207,7 +1220,6 @@ export const admin = {
       `/api/admin/tutors/${tutorId}/approve`,
       {},
     );
-    clearCache(); // Invalidate cache after admin approves tutor
     return data;
   },
 
@@ -1219,7 +1231,6 @@ export const admin = {
       `/api/admin/tutors/${tutorId}/reject`,
       { rejection_reason: rejectionReason },
     );
-    clearCache(); // Invalidate cache after admin rejects tutor
     return data;
   },
 

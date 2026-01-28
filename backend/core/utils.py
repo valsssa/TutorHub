@@ -1,11 +1,109 @@
 """Common utility functions."""
 
-from datetime import datetime, timedelta
-from typing import TypeVar
+import functools
+import logging
+from datetime import UTC, datetime, timedelta
+from typing import Any, Callable, TypeVar
 
+from fastapi import HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
+
+
+def handle_db_errors(
+    operation: str = "perform operation",
+    rollback: bool = True,
+) -> Callable:
+    """
+    Decorator to handle database errors consistently across endpoints.
+
+    Centralizes the 146+ duplicate try/except/HTTPException patterns.
+
+    Args:
+        operation: Description of the operation for error messages
+        rollback: Whether to rollback the database session on error
+
+    Usage:
+        @handle_db_errors("create user")
+        async def create_user_endpoint(...):
+            ...
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            db: Session | None = None
+            # Try to find db session in kwargs or args
+            if "db" in kwargs:
+                db = kwargs["db"]
+            else:
+                # Check positional args for Session object
+                for arg in args:
+                    if isinstance(arg, Session):
+                        db = arg
+                        break
+
+            try:
+                return await func(*args, **kwargs)
+            except HTTPException:
+                # Re-raise HTTPExceptions as-is (client errors)
+                raise
+            except Exception as e:
+                # Rollback database transaction if available
+                if db and rollback:
+                    db.rollback()
+
+                # Log the error with full context
+                logger.error(f"Error in {operation}: {str(e)}", exc_info=True)
+
+                # Raise generic 500 error to client
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to {operation}",
+                ) from e
+
+        @functools.wraps(func)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            db: Session | None = None
+            # Try to find db session in kwargs or args
+            if "db" in kwargs:
+                db = kwargs["db"]
+            else:
+                # Check positional args for Session object
+                for arg in args:
+                    if isinstance(arg, Session):
+                        db = arg
+                        break
+
+            try:
+                return func(*args, **kwargs)
+            except HTTPException:
+                # Re-raise HTTPExceptions as-is (client errors)
+                raise
+            except Exception as e:
+                # Rollback database transaction if available
+                if db and rollback:
+                    db.rollback()
+
+                # Log the error with full context
+                logger.error(f"Error in {operation}: {str(e)}", exc_info=True)
+
+                # Raise generic 500 error to client
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to {operation}",
+                ) from e
+
+        # Return appropriate wrapper based on function type
+        if functools.iscoroutinefunction(func):
+            return async_wrapper
+        return sync_wrapper
+
+    return decorator
 
 
 class DateTimeUtils:
@@ -14,7 +112,7 @@ class DateTimeUtils:
     @staticmethod
     def now() -> datetime:
         """Get current UTC datetime."""
-        return datetime.utcnow()
+        return datetime.now(UTC)
 
     @staticmethod
     def add_minutes(dt: datetime, minutes: int) -> datetime:
@@ -30,12 +128,12 @@ class DateTimeUtils:
     @staticmethod
     def is_in_future(dt: datetime) -> bool:
         """Check if datetime is in the future."""
-        return dt > datetime.utcnow()
+        return dt > datetime.now(UTC)
 
     @staticmethod
     def is_in_past(dt: datetime) -> bool:
         """Check if datetime is in the past."""
-        return dt < datetime.utcnow()
+        return dt < datetime.now(UTC)
 
 
 class StringUtils:
@@ -101,6 +199,60 @@ class PaginatedResponse[T](BaseModel):
         """Pydantic configuration."""
 
         arbitrary_types_allowed = True
+
+
+def get_user_or_404(db: Session, user_id: int):
+    """
+    Get user by ID or raise 404.
+
+    Centralizes 25+ duplicate user lookup queries across the codebase.
+
+    Args:
+        db: Database session
+        user_id: User ID to lookup
+
+    Returns:
+        User object
+
+    Raises:
+        HTTPException: 404 if user not found
+    """
+    from backend.models import User
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found",
+        )
+    return user
+
+
+def get_tutor_profile_or_404(db: Session, tutor_id: int):
+    """
+    Get tutor profile by ID or raise 404.
+
+    Centralizes 15+ duplicate tutor profile lookup queries.
+
+    Args:
+        db: Database session
+        tutor_id: Tutor profile ID to lookup
+
+    Returns:
+        TutorProfile object
+
+    Raises:
+        HTTPException: 404 if tutor profile not found
+    """
+    from backend.models import TutorProfile
+
+    tutor_profile = db.query(TutorProfile).filter(TutorProfile.id == tutor_id).first()
+    if not tutor_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tutor profile with ID {tutor_id} not found",
+        )
+    return tutor_profile
 
 
 def paginate(query, page: int = 1, page_size: int = 50):

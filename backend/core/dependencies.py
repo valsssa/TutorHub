@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from core.config import Roles
 from core.exceptions import AuthenticationError
 from core.security import TokenManager
+from core.utils import StringUtils
 from database import get_db
 from models import TutorProfile, User
 
@@ -33,7 +34,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = db.query(User).filter(User.email == email.lower().strip()).first()
+    user = db.query(User).filter(User.email == StringUtils.normalize_email(email)).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,7 +64,7 @@ async def get_current_user_optional(
     except AuthenticationError:
         return None
 
-    user = db.query(User).filter(User.email == email.lower().strip()).first()
+    user = db.query(User).filter(User.email == StringUtils.normalize_email(email)).first()
     if user is None or not user.is_active:
         return None
 

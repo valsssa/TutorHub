@@ -24,6 +24,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from core.config import settings
+from core.utils import StringUtils
 from database import get_db
 from models import User
 
@@ -314,7 +315,7 @@ async def authenticate_websocket(websocket: WebSocket, token: str, db: Session) 
         user = (
             db.query(User)
             .filter(
-                User.email == email.lower().strip(),
+                User.email == StringUtils.normalize_email(email),
                 User.is_active.is_(True),
             )
             .first()

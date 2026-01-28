@@ -9,6 +9,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from core.constants import is_valid_language_code, is_valid_proficiency_level
 from core.sanitization import sanitize_url, validate_phone_number, validate_video_url
 from core.timezone import is_valid_timezone
+from core.utils import StringUtils
 
 # ============================================================================
 # Authentication Schemas
@@ -29,7 +30,7 @@ class UserCreate(BaseModel):
     @field_validator("email")
     @classmethod
     def email_lowercase(cls, v: str) -> str:
-        return v.lower().strip()
+        return StringUtils.normalize_email(v)
 
     @field_validator("password")
     @classmethod

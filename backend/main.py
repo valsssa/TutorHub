@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -66,8 +66,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
 
-# Initialize rate limiter (shared instance)
-limiter = Limiter(key_func=get_remote_address)
+# Note: limiter is imported from core.rate_limiting (shared instance)
 
 
 # ============================================================================

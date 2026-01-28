@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 from core.dependencies import get_current_admin_user
 from core.pagination import PaginatedResponse, PaginationParams
 from core.sanitization import sanitize_text_input
-from core.utils import paginate
+from core.utils import StringUtils, paginate
 from database import get_db
 from models import Booking, Notification, Review, Subject, TutorProfile, User
 from modules.users.avatar.schemas import AvatarResponse
@@ -195,7 +195,7 @@ async def update_user(
 
         # Sanitize email if provided
         if "email" in update_data and update_data["email"]:
-            update_data["email"] = update_data["email"].lower().strip()
+            update_data["email"] = StringUtils.normalize_email(update_data["email"])
 
         for field, value in update_data.items():
             setattr(user, field, value)
