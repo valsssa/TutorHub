@@ -52,7 +52,8 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
                 if response.status_code == 200 and hasattr(response, "body"):
                     body_bytes = getattr(response, "body", b"")
                     if body_bytes:
-                        etag = hashlib.md5(body_bytes).hexdigest()
+                        # Use SHA-256 for stronger hashing (ETags are for cache validation)
+                        etag = hashlib.sha256(body_bytes).hexdigest()
                         response.headers["ETag"] = f'"{etag}"'
 
                         # Check if client has cached version

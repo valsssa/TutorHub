@@ -78,9 +78,9 @@ class MigrationManager:
         return pending
 
     def calculate_checksum(self, filepath: Path) -> str:
-        """Calculate MD5 checksum of migration file."""
+        """Calculate SHA-256 checksum of migration file for integrity verification."""
         with open(filepath, "rb") as f:
-            return hashlib.md5(f.read()).hexdigest()
+            return hashlib.sha256(f.read()).hexdigest()
 
     def apply_migration(self, version: str, filepath: Path) -> None:
         """
