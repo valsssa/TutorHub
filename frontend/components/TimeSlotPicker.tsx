@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -8,6 +8,7 @@ import {
   FiClock,
 } from "react-icons/fi";
 import { getApiBaseUrl } from "@/shared/utils/url";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface TimeSlot {
   start_time: string;
@@ -47,6 +48,28 @@ export default function TimeSlotPicker({
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
   const [slotsCache, setSlotsCache] = useState<Record<string, TimeSlot[]>>({});
+  const { lastMessage } = useWebSocket();
+
+  // Refetch slots for the currently selected date
+  const refetchSelectedDate = useCallback(() => {
+    if (selectedDate) {
+      setSlotsCache({});
+      // Reset selectedDate to trigger the fetch effect
+      const date = selectedDate;
+      setSelectedDate(null);
+      setTimeout(() => setSelectedDate(date), 0);
+    }
+  }, [selectedDate]);
+
+  // Listen for real-time availability updates via WebSocket
+  useEffect(() => {
+    if (
+      lastMessage?.type === "availability_updated" &&
+      lastMessage.tutor_profile_id === tutorId
+    ) {
+      refetchSelectedDate();
+    }
+  }, [lastMessage, tutorId, refetchSelectedDate]);
 
   // Get calendar days for current month
   const calendarDays = useMemo(() => {

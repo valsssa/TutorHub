@@ -24,6 +24,7 @@ import { useToast } from "@/components/ToastContainer";
 import { tutors, bookings } from "@/lib/api";
 import { authUtils } from "@/lib/auth";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import type { TutorProfile } from "@/types";
 import type { BookingDTO } from "@/types/booking";
 
@@ -257,6 +258,17 @@ function ScheduleContent() {
       loadBookings();
     }
   }, [mode, currentDate, user, loadBookings]);
+
+  // Listen for real-time availability updates via WebSocket
+  const { lastMessage } = useWebSocket();
+  useEffect(() => {
+    if (
+      lastMessage?.type === "availability_updated" &&
+      mode === "calendar"
+    ) {
+      loadBookings();
+    }
+  }, [lastMessage, mode, loadBookings]);
 
   const handlePrev = () => {
     const newDate = new Date(currentDate);

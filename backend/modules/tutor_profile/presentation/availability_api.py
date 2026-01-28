@@ -54,14 +54,14 @@ async def get_available_slots(
     if not availabilities:
         return []
 
-    # Get existing bookings in the date range
+    # Get existing bookings that overlap the date range
     bookings = (
         db.query(Booking)
         .filter(
             Booking.tutor_profile_id == tutor_id,
-            Booking.status.in_(["pending", "confirmed"]),
-            Booking.start_time >= start_dt,
-            Booking.end_time <= end_dt,
+            Booking.status.in_(["PENDING", "CONFIRMED"]),
+            Booking.start_time < end_dt,
+            Booking.end_time > start_dt,
         )
         .all()
     )

@@ -3,6 +3,7 @@ Clean booking API endpoints following presentation layer pattern.
 Consolidates all booking routes with shared error handling and authorization.
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -24,7 +25,24 @@ from modules.bookings.schemas import (
 )
 from modules.bookings.service import BookingService, booking_to_dto
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api", tags=["bookings"])
+
+
+async def _broadcast_availability_update(tutor_profile_id: int, tutor_user_id: int) -> None:
+    """Broadcast availability change to all connected clients."""
+    try:
+        from modules.messages.websocket import manager
+
+        message = {
+            "type": "availability_updated",
+            "tutor_profile_id": tutor_profile_id,
+            "tutor_user_id": tutor_user_id,
+        }
+        await manager.broadcast_to_all(message)
+    except Exception as e:
+        logger.warning("Failed to broadcast availability update: %s", e)
 
 
 # ============================================================================
@@ -130,6 +148,11 @@ async def create_booking(
 
         db.commit()
         db.refresh(booking)
+
+        await _broadcast_availability_update(
+            tutor_profile_id=booking.tutor_profile_id,
+            tutor_user_id=booking.tutor_profile.user_id if booking.tutor_profile else 0,
+        )
 
         return booking_to_dto(booking, db)
 
@@ -249,6 +272,11 @@ async def cancel_booking(
         db.commit()
         db.refresh(cancelled_booking)
 
+        await _broadcast_availability_update(
+            tutor_profile_id=cancelled_booking.tutor_profile_id,
+            tutor_user_id=cancelled_booking.tutor_profile.user_id if cancelled_booking.tutor_profile else 0,
+        )
+
         return booking_to_dto(cancelled_booking, db)
 
     except HTTPException:
@@ -333,6 +361,11 @@ async def reschedule_booking(
         db.commit()
         db.refresh(booking)
 
+        await _broadcast_availability_update(
+            tutor_profile_id=booking.tutor_profile_id,
+            tutor_user_id=booking.tutor_profile.user_id if booking.tutor_profile else 0,
+        )
+
         return booking_to_dto(booking, db)
 
     except HTTPException:
@@ -403,6 +436,11 @@ async def confirm_booking(
         db.commit()
         db.refresh(booking)
 
+        await _broadcast_availability_update(
+            tutor_profile_id=booking.tutor_profile_id,
+            tutor_user_id=tutor_profile.user_id,
+        )
+
         return booking_to_dto(booking, db)
 
     except Exception as e:
@@ -451,6 +489,11 @@ async def decline_booking(
 
         db.commit()
         db.refresh(declined_booking)
+
+        await _broadcast_availability_update(
+            tutor_profile_id=declined_booking.tutor_profile_id,
+            tutor_user_id=tutor_profile.user_id,
+        )
 
         return booking_to_dto(declined_booking, db)
 

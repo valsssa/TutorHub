@@ -23,7 +23,8 @@ export default function StudentBottomDock({ user }: StudentBottomDockProps) {
         { href: '/dashboard', icon: FiHome, label: 'Home' },
         { href: '/tutors', icon: FiSearch, label: 'Find' },
         { href: '/packages', icon: FiPackage, label: 'Packages' },
-        { href: '/bookings', icon: FiCalendar, label: 'Sessions' }
+        { href: '/bookings', icon: FiCalendar, label: 'Sessions' },
+        { href: '/profile', icon: FiUser, label: 'Profile' }
       ]
     : isTutor
     ? [

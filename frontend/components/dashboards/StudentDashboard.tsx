@@ -171,6 +171,8 @@ export default function StudentDashboard({ user, bookings, onAvatarChange: _onAv
     router.push(`/messages?user=${tutor.user_id}`);
   };
 
+  const handleEditProfile = () => router.push("/profile");
+
   const handleTopUp = () => router.push("/wallet");
 
   return (
@@ -187,6 +189,7 @@ export default function StudentDashboard({ user, bookings, onAvatarChange: _onAv
             onViewBookings={() => router.push("/bookings")}
             onMessages={() => router.push("/messages")}
             onTopUp={handleTopUp}
+            onEditProfile={handleEditProfile}
           />
 
           <StudentStatsGrid

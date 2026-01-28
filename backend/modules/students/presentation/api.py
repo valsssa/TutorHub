@@ -113,7 +113,7 @@ favorites_router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 limiter_favorites = Limiter(key_func=get_remote_address)
 
 
-@favorites_router.get("/", response_model=list[FavoriteTutorResponse])
+@favorites_router.get("", response_model=list[FavoriteTutorResponse])
 @limiter_favorites.limit("20/minute")
 async def get_favorite_tutors(
     request: Request,
@@ -141,7 +141,7 @@ async def get_favorite_tutors(
         )
 
 
-@favorites_router.post("/", response_model=FavoriteTutorResponse)
+@favorites_router.post("", response_model=FavoriteTutorResponse)
 @limiter_favorites.limit("10/minute")
 async def add_favorite_tutor(
     request: Request,

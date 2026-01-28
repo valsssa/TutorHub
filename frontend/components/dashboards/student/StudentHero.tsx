@@ -21,6 +21,7 @@ interface StudentHeroProps {
   onViewBookings: () => void;
   onMessages: () => void;
   onTopUp: () => void;
+  onEditProfile: () => void;
 }
 
 const actions = [
@@ -42,6 +43,12 @@ const actions = [
     icon: MessageSquare,
     key: "messages",
   },
+  {
+    label: "Learning profile",
+    description: "Update goals, interests, and bio",
+    icon: BadgeCheck,
+    key: "profile",
+  },
 ];
 
 export default function StudentHero({
@@ -52,11 +59,13 @@ export default function StudentHero({
   onViewBookings,
   onMessages,
   onTopUp,
+  onEditProfile,
 }: StudentHeroProps) {
   const actionHandlers: Record<string, () => void> = {
     "find-tutor": onBookTutor,
     bookings: onViewBookings,
     messages: onMessages,
+    profile: onEditProfile,
   };
 
   return (

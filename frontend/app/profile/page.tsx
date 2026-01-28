@@ -14,7 +14,6 @@ import Input from "@/components/Input";
 import TextArea from "@/components/TextArea";
 import AppShell from "@/components/AppShell";
 import AvatarUploader from "@/components/AvatarUploader";
-import { authUtils } from "@/lib/auth";
 
 export default function ProfilePage() {
   return (
@@ -51,12 +50,6 @@ function ProfileContent() {
         auth.getCurrentUser(),
         students.getProfile().catch(() => null)
       ]);
-
-      // Redirect students away from this page
-      if (currentUser && authUtils.isStudent(currentUser)) {
-        router.replace("/dashboard");
-        return;
-      }
 
       setUser(currentUser);
       setProfile(studentProfile);
