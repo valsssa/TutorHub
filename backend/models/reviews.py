@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from .base import Base
+from .base import Base, JSONType
 
 
 class Review(Base):
@@ -27,7 +27,7 @@ class Review(Base):
     rating = Column(Integer, nullable=False)
     comment = Column(Text)
     is_public = Column(Boolean, default=True)
-    booking_snapshot = Column(Text, nullable=True)  # JSONB immutable context
+    booking_snapshot = Column(JSONType, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships

@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from .base import Base
+from .base import Base, JSONType
 
 
 class Report(Base):
@@ -54,8 +54,8 @@ class AuditLog(Base):
     table_name = Column(String(100), nullable=False)
     record_id = Column(Integer, nullable=False)
     action = Column(String(20), nullable=False)
-    old_data = Column(Text)  # JSONB stored as text for SQLAlchemy compatibility
-    new_data = Column(Text)  # JSONB stored as text for SQLAlchemy compatibility
+    old_data = Column(JSONType)
+    new_data = Column(JSONType)
     changed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     changed_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     ip_address = Column(String(45))  # IPv6 support

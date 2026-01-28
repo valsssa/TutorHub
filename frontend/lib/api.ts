@@ -125,8 +125,8 @@ function showRateLimitWarning(rateLimitInfo: RateLimitInfo | null, status: numbe
       }
     }
 
-    // Also log to console for visibility
-    console.warn(`🚫 ${message}`);
+    // Also log for visibility
+    logger.warn(`🚫 ${message}`);
 
     // Store in localStorage so components can display it
     if (typeof window !== 'undefined') {
@@ -919,7 +919,7 @@ export const messages = {
       });
       return data;
     } catch (error: any) {
-      console.error('[API] Failed to send message:', error);
+      logger.error('Failed to send message', error);
       throw error;
     }
   },

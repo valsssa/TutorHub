@@ -26,9 +26,12 @@ import { auth, messages } from '@/lib/api'
 import { authUtils } from '@/lib/auth'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { createLogger } from '@/lib/logger'
 import Button from './Button'
 import NotificationBell from './NotificationBell'
 import Avatar from './Avatar'
+
+const logger = createLogger('Navbar')
 
 interface NavbarProps {
   user: User
@@ -60,7 +63,7 @@ export default function Navbar({ user }: NavbarProps) {
       const data = await messages.getUnreadCount()
       setUnreadMessageCount(data.total || 0)
     } catch (error) {
-      console.error('Failed to load unread message count:', error)
+      logger.error('Failed to load unread message count', error)
       setUnreadMessageCount(0)
     }
   }, [])

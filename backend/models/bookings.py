@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from .base import Base
+from .base import Base, JSONType
 
 
 class Booking(Base):
@@ -58,7 +58,7 @@ class Booking(Base):
     tutor_title = Column(String(200), nullable=True)
     student_name = Column(String(200), nullable=True)
     subject_name = Column(String(100), nullable=True)
-    pricing_snapshot = Column(Text, nullable=True)  # JSONB in DB
+    pricing_snapshot = Column(JSONType, nullable=True)
     agreement_terms = Column(Text, nullable=True)
     # Instant booking fields (production schema)
     is_instant_booking = Column(Boolean, default=False)

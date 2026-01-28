@@ -12,8 +12,11 @@ import {
 import { useLocale } from '@/contexts/LocaleContext'
 import { admin } from '@/lib/api'
 import { useAuth } from '@/hooks/useAuth'
+import { createLogger } from '@/lib/logger'
 
 import type { UserData, Stats, Activity, Session, Conversation, Message, SidebarItem, SettingsTab } from '@/types/admin'
+
+const logger = createLogger('AdminDashboard')
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminHeader from '@/components/admin/AdminHeader'
 import DashboardSection from '@/components/admin/DashboardSection'

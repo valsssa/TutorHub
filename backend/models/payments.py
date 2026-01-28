@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from .base import Base
+from .base import Base, JSONType
 
 
 class SupportedCurrency(Base):
@@ -43,7 +43,7 @@ class Payment(Base):
     provider = Column(String(20), default="stripe", nullable=False)
     provider_payment_id = Column(Text)
     status = Column(String(30), default="pending", nullable=False)
-    payment_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    payment_metadata = Column(JSONType)
     # Stripe-specific fields
     stripe_checkout_session_id = Column(String(255), nullable=True, index=True)
     stripe_payment_intent_id = Column(String(255), nullable=True, index=True)
@@ -89,7 +89,7 @@ class Refund(Base):
     currency = Column(String(3), default="USD", nullable=False)
     reason = Column(String(30), nullable=False)
     provider_refund_id = Column(Text)
-    refund_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    refund_metadata = Column(JSONType)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
@@ -118,7 +118,7 @@ class Payout(Base):
     currency = Column(String(3), default="USD", nullable=False)
     status = Column(String(20), default="PENDING", nullable=False)
     transfer_reference = Column(Text)
-    payout_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    payout_metadata = Column(JSONType)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
         TIMESTAMP(timezone=True),

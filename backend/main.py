@@ -138,6 +138,35 @@ async def create_default_users():
             else:
                 logger.debug(f"Admin user already exists with names: {admin_email}")
 
+        # Create owner (highest privilege level)
+        owner_email = os.getenv("DEFAULT_OWNER_EMAIL", "owner@example.com")
+        logger.debug(f"Checking for owner user: {owner_email}")
+        existing_owner = db.query(User).filter(User.email == owner_email).first()
+        if not existing_owner:
+            owner_password, was_generated = _get_or_generate_password("DEFAULT_OWNER_PASSWORD", "owner")
+            if was_generated:
+                generated_credentials.append(("OWNER", owner_email, owner_password))
+
+            owner = User(
+                email=owner_email,
+                hashed_password=get_password_hash(owner_password),
+                role="owner",
+                is_verified=True,
+                first_name="Owner",
+                last_name="User",
+            )
+            db.add(owner)
+            logger.info(f"Created default owner: {owner_email}")
+        else:
+            # Update existing owner if missing names
+            logger.debug(f"Owner exists, first_name: '{existing_owner.first_name}', last_name: '{existing_owner.last_name}'")
+            if not existing_owner.first_name or not existing_owner.last_name:
+                existing_owner.first_name = existing_owner.first_name or "Owner"
+                existing_owner.last_name = existing_owner.last_name or "User"
+                logger.info(f"Updated default owner with names: {owner_email}")
+            else:
+                logger.debug(f"Owner user already exists with names: {owner_email}")
+
         # Create student
         student_email = os.getenv("DEFAULT_STUDENT_EMAIL", "student@example.com")
         logger.debug(f"Checking for student user: {student_email}")
