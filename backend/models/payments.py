@@ -37,13 +37,20 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"))
-    student_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     provider = Column(String(20), default="stripe", nullable=False)
     provider_payment_id = Column(Text)
-    status = Column(String(30), default="REQUIRES_ACTION", nullable=False)
+    status = Column(String(30), default="pending", nullable=False)
     payment_metadata = Column(Text)  # JSONB stored as text, renamed to avoid SQLAlchemy conflict
+    # Stripe-specific fields
+    stripe_checkout_session_id = Column(String(255), nullable=True, index=True)
+    stripe_payment_intent_id = Column(String(255), nullable=True, index=True)
+    paid_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    refunded_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    refund_amount_cents = Column(Integer, nullable=True)
+    error_message = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
         TIMESTAMP(timezone=True),
@@ -63,7 +70,8 @@ class Payment(Base):
             name="valid_payment_provider",
         ),
         CheckConstraint(
-            "status IN ('REQUIRES_ACTION', 'AUTHORIZED', 'CAPTURED', 'REFUNDED', 'FAILED')",
+            "status IN ('pending', 'completed', 'failed', 'refunded', 'partially_refunded', "
+            "'REQUIRES_ACTION', 'AUTHORIZED', 'CAPTURED', 'REFUNDED', 'FAILED')",
             name="valid_payment_status",
         ),
     )

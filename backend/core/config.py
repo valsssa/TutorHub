@@ -123,6 +123,40 @@ class Settings(BaseSettings):
     MESSAGE_ATTACHMENT_MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5 MB
     MESSAGE_ATTACHMENT_URL_TTL_SECONDS: int = 3600  # 1 hour
 
+    # Stripe Payment Configuration
+    STRIPE_SECRET_KEY: str | None = None  # sk_test_... or sk_live_...
+    STRIPE_PUBLISHABLE_KEY: str | None = None  # pk_test_... or pk_live_...
+    STRIPE_WEBHOOK_SECRET: str | None = None  # whsec_...
+    STRIPE_CONNECT_CLIENT_ID: str | None = None  # ca_... for Connect OAuth
+    STRIPE_CURRENCY: str = "usd"  # Default currency for payments
+    STRIPE_SUCCESS_URL: str = "https://edustream.valsa.solutions/bookings/{booking_id}?payment=success"
+    STRIPE_CANCEL_URL: str = "https://edustream.valsa.solutions/bookings/{booking_id}?payment=cancelled"
+    STRIPE_CONNECT_REFRESH_URL: str = "https://edustream.valsa.solutions/tutor/earnings?connect=refresh"
+    STRIPE_CONNECT_RETURN_URL: str = "https://edustream.valsa.solutions/tutor/earnings?connect=success"
+
+    # Google OAuth/OIDC Configuration
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_REDIRECT_URI: str = "https://edustream.valsa.solutions/api/auth/google/callback"
+    OAUTH_STATE_SECRET: str | None = None  # For CSRF protection
+
+    # Brevo (Sendinblue) Email Configuration
+    BREVO_API_KEY: str | None = None
+    BREVO_SENDER_EMAIL: str = "noreply@edustream.valsa.solutions"
+    BREVO_SENDER_NAME: str = "EduStream"
+    EMAIL_ENABLED: bool = True
+
+    # Zoom Video Integration
+    ZOOM_CLIENT_ID: str | None = None
+    ZOOM_CLIENT_SECRET: str | None = None
+    ZOOM_ACCOUNT_ID: str | None = None  # For Server-to-Server OAuth
+    ZOOM_REDIRECT_URI: str = "https://edustream.valsa.solutions/api/integrations/zoom/callback"
+
+    # Frontend URLs for OAuth redirects
+    FRONTEND_URL: str = "https://edustream.valsa.solutions"
+    FRONTEND_LOGIN_SUCCESS_URL: str = "https://edustream.valsa.solutions/dashboard"
+    FRONTEND_LOGIN_ERROR_URL: str = "https://edustream.valsa.solutions/login?error=oauth_failed"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value):

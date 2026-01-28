@@ -68,6 +68,8 @@ class Booking(Base):
     cancelled_at = Column(TIMESTAMP(timezone=True), nullable=True)
     is_rebooked = Column(Boolean, default=False)
     original_booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True)
+    # Stripe integration
+    stripe_checkout_session_id = Column(String(255), nullable=True, index=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

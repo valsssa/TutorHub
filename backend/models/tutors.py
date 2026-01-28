@@ -55,6 +55,11 @@ class TutorProfile(Base):
     # auto_confirm = Column(Boolean, default=False)
     # trial_price_cents = Column(Integer)
     # payout_method = Column(Text)
+    # Stripe Connect integration
+    stripe_account_id = Column(String(255), nullable=True, index=True)  # acct_...
+    stripe_charges_enabled = Column(Boolean, default=False)
+    stripe_payouts_enabled = Column(Boolean, default=False)
+    stripe_onboarding_completed = Column(Boolean, default=False)
     version = Column(Integer, nullable=False, default=1, server_default="1")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(

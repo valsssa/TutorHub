@@ -37,6 +37,8 @@ class User(Base):
         # No onupdate - updated_at is set in application code
     )
     avatar_key = Column(String(255), nullable=True, index=True)
+    # OAuth provider IDs
+    google_id = Column(String(255), nullable=True, unique=True, index=True)
     currency = Column(String(3), nullable=False, default="USD", server_default="USD")
     timezone = Column(String(64), nullable=False, default="UTC", server_default="UTC")
     preferred_language = Column(String(5), nullable=False, default="en", server_default="en")

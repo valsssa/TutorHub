@@ -34,11 +34,14 @@ from modules.admin.presentation.api import router as admin_router
 
 # Import module routers
 from modules.auth.presentation.api import router as auth_router
+from modules.auth.oauth_router import router as oauth_router
 from modules.bookings.presentation.api import router as bookings_router
 from modules.messages.api import router as messages_router
 from modules.messages.websocket import router as websocket_router
 from modules.notifications.presentation.api import router as notifications_router
 from modules.packages.presentation.api import router as packages_router
+from modules.payments.router import router as payments_router
+from modules.payments.connect_router import router as connect_router
 from modules.profiles.presentation.api import router as profiles_router
 from modules.reviews.presentation.api import router as reviews_router
 from modules.students.presentation.api import router as students_router, favorites_router
@@ -492,6 +495,7 @@ app.add_middleware(SlowAPIMiddleware)
 # ============================================================================
 
 app.include_router(auth_router)
+app.include_router(oauth_router)
 app.include_router(profiles_router)
 app.include_router(students_router)
 app.include_router(favorites_router)
@@ -501,6 +505,8 @@ app.include_router(reviews_router)
 app.include_router(messages_router)
 app.include_router(notifications_router)
 app.include_router(packages_router)
+app.include_router(payments_router)
+app.include_router(connect_router)
 app.include_router(admin_router)
 app.include_router(audit_router)
 app.include_router(owner_router)
