@@ -16,8 +16,8 @@ export default function Error({
   }, [error])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 dark:from-slate-950 dark:to-slate-900 p-4">
+      <div className="max-w-2xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 md:p-12 text-center">
         {/* Error Icon */}
         <div className="mb-6">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-red-100 rounded-full mb-4">
@@ -35,14 +35,14 @@ export default function Error({
               />
             </svg>
           </div>
-          <h1 className="text-6xl font-bold text-gray-900 mb-2">Oops!</h1>
+          <h1 className="text-6xl font-bold text-slate-900 dark:text-white mb-2">Oops!</h1>
         </div>
 
         {/* Error Message */}
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
           Something went wrong
         </h2>
-        <p className="text-gray-600 text-lg mb-2">
+        <p className="text-slate-600 dark:text-slate-400 text-lg mb-2">
           We encountered an unexpected error while processing your request.
         </p>
 
@@ -60,7 +60,7 @@ export default function Error({
           </div>
         )}
 
-        <p className="text-gray-500 text-sm mb-8">
+        <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">
           Don&apos;t worry, our team has been notified and we&apos;re working on it.
         </p>
 
@@ -87,7 +87,7 @@ export default function Error({
           </button>
           <Link
             href="/"
-            className="inline-flex items-center justify-center px-6 py-3 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+            className="inline-flex items-center justify-center px-6 py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
           >
             <svg
               className="w-5 h-5 mr-2"
@@ -107,25 +107,25 @@ export default function Error({
         </div>
 
         {/* Support Information */}
-        <div className="mt-12 pt-8 border-t border-gray-200">
-          <p className="text-sm text-gray-500 mb-2">
+        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
             Need immediate help?
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link
-              href="/settings/help"
+              href="/support"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
               Contact Support
             </Link>
-            <span className="text-gray-300">•</span>
+            <span className="text-slate-300 dark:text-slate-600">•</span>
             <Link
-              href="/settings/help"
+              href="/support"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
               Help Center
             </Link>
-            <span className="text-gray-300">•</span>
+            <span className="text-slate-300 dark:text-slate-600">•</span>
             <a
               href="mailto:support@edustream.com"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"

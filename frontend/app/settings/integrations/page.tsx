@@ -1,6 +1,5 @@
 "use client";
 
-import { FiCalendar, FiVideo, FiFolder } from "react-icons/fi";
 import SettingsCard from "@/components/settings/SettingsCard";
 import Button from "@/components/Button";
 
@@ -10,7 +9,7 @@ export default function IntegrationsPage() {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">
-          🔄 Integrations
+          Integrations
         </h2>
         <p className="text-slate-600">
           Connect your favorite tools and services
@@ -23,21 +22,6 @@ export default function IntegrationsPage() {
           <div>
             <p className="text-sm text-slate-600 mb-1">
               Sync your lessons with Google Calendar
-            </p>
-            <p className="text-xs text-slate-500">Coming soon</p>
-          </div>
-          <Button variant="secondary" disabled>
-            Connect
-          </Button>
-        </div>
-      </SettingsCard>
-
-      {/* Video */}
-      <SettingsCard title="🎥 Zoom">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-slate-600 mb-1">
-              Auto-create Zoom meetings for lessons
             </p>
             <p className="text-xs text-slate-500">Coming soon</p>
           </div>

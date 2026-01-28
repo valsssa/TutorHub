@@ -75,79 +75,114 @@ export default function GeneralSettings({ currentUser, onUserUpdated }: GeneralS
   return (
     <div className="space-y-6">
       {message && (
-        <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+        <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200' : 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200'}`}>
           {message.text}
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
             <Settings className="w-5 h-5" />
             Platform Settings
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Platform Name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Platform Name</label>
               <input
                 type="text"
                 defaultValue="EduStream"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Default Currency</label>
-              <select
-                value={selectedCurrency}
-                onChange={(e) => handleCurrencyChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-              >
-                {CURRENCIES.map(curr => (
-                  <option key={curr.code} value={curr.code}>
-                    {curr.code} - {curr.label}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Default Currency</label>
+              <div className="relative">
+                <select
+                  value={selectedCurrency}
+                  onChange={(e) => handleCurrencyChange(e.target.value)}
+                  className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 appearance-none transition-all cursor-pointer"
+                >
+                  {CURRENCIES.map(curr => (
+                    <option key={curr.code} value={curr.code}>
+                      {curr.code} - {curr.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 1.5L6 6.5L11 1.5"/>
+                  </svg>
+                </div>
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Default Language</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
-                <option>English</option>
-                <option>Spanish</option>
-                <option>French</option>
-                <option>German</option>
-              </select>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Default Language</label>
+              <div className="relative">
+                <select className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 appearance-none transition-all cursor-pointer">
+                  <option>English</option>
+                  <option>Spanish</option>
+                  <option>French</option>
+                  <option>German</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 1.5L6 6.5L11 1.5"/>
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
             <Globe className="w-5 h-5" />
             Regional Settings
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
-                <option>UTC+0 (London)</option>
-                <option>UTC+1 (Berlin)</option>
-                <option>UTC+2 (Athens)</option>
-                <option>UTC-5 (New York)</option>
-              </select>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Timezone</label>
+              <div className="relative">
+                <select className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 appearance-none transition-all cursor-pointer">
+                  <option>UTC+0 (London)</option>
+                  <option>UTC+1 (Berlin)</option>
+                  <option>UTC+2 (Athens)</option>
+                  <option>UTC-5 (New York)</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 1.5L6 6.5L11 1.5"/>
+                  </svg>
+                </div>
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
-                <option>MM/DD/YYYY</option>
-                <option>DD/MM/YYYY</option>
-                <option>YYYY-MM-DD</option>
-              </select>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Date Format</label>
+              <div className="relative">
+                <select className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 appearance-none transition-all cursor-pointer">
+                  <option>MM/DD/YYYY</option>
+                  <option>DD/MM/YYYY</option>
+                  <option>YYYY-MM-DD</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 1.5L6 6.5L11 1.5"/>
+                  </svg>
+                </div>
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Number Format</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
-                <option>1,000.00 (US)</option>
-                <option>1.000,00 (EU)</option>
-              </select>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Number Format</label>
+              <div className="relative">
+                <select className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 appearance-none transition-all cursor-pointer">
+                  <option>1,000.00 (US)</option>
+                  <option>1.000,00 (EU)</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 1.5L6 6.5L11 1.5"/>
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -156,7 +191,7 @@ export default function GeneralSettings({ currentUser, onUserUpdated }: GeneralS
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-lg shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>

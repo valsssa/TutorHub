@@ -108,6 +108,8 @@ class UserResponse(BaseModel):
     avatar_url: str | None = None
     currency: str = "USD"
     timezone: str = "UTC"
+    preferred_language: str | None = None
+    locale: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -171,6 +173,7 @@ class SubjectResponse(BaseModel):
     id: int
     name: str
     description: str | None
+    category: str | None
     is_active: bool
 
     model_config = {"from_attributes": True}
@@ -442,6 +445,7 @@ class TutorProfileResponse(BaseModel):
     created_at: datetime
     timezone: str | None
     version: int
+    profile_photo_url: str | None = None
     subjects: list[TutorSubjectResponse] = []
     availabilities: list[TutorAvailabilityResponse] = []
     certifications: list[TutorCertificationResponse] = []
@@ -467,6 +471,11 @@ class TutorPublicProfile(BaseModel):
     total_reviews: int
     total_sessions: int
     subjects: list[str] = []
+    education: list[str] = []
+    video_url: str | None = None
+    profile_photo_url: str | None = None
+    recent_review: str | None = None
+    next_available_slots: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -485,6 +494,7 @@ class StudentProfileUpdate(BaseModel):
     school_name: str | None = None
     learning_goals: str | None = None
     interests: str | None = None
+    preferred_language: str | None = None
 
 
 class StudentProfileResponse(BaseModel):
@@ -499,6 +509,8 @@ class StudentProfileResponse(BaseModel):
     learning_goals: str | None
     interests: str | None
     total_sessions: int
+    preferred_language: str | None
+    timezone: str
     created_at: datetime
     updated_at: datetime
 
@@ -539,10 +551,20 @@ class BookingStatusUpdate(BaseModel):
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str) -> str:
-        allowed = ["confirmed", "cancelled", "completed", "no_show"]
-        if v not in allowed:
+        allowed = [
+            "PENDING",
+            "CONFIRMED",
+            "CANCELLED_BY_STUDENT",
+            "CANCELLED_BY_TUTOR",
+            "NO_SHOW_STUDENT",
+            "NO_SHOW_TUTOR",
+            "COMPLETED",
+            "REFUNDED",
+        ]
+        v_upper = v.upper()
+        if v_upper not in allowed:
             raise ValueError(f"Status must be one of: {', '.join(allowed)}")
-        return v
+        return v_upper
 
 
 class BookingResponse(BaseModel):
@@ -766,6 +788,28 @@ class TutorRejectionRequest(BaseModel):
     """Tutor profile rejection request."""
 
     rejection_reason: str = Field(..., min_length=10, max_length=500)
+
+
+# ============================================================================
+# Favorite Tutor Schemas
+# ============================================================================
+
+
+class FavoriteTutorResponse(BaseModel):
+    """Favorite tutor response."""
+
+    id: int
+    student_id: int
+    tutor_profile_id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FavoriteTutorCreate(BaseModel):
+    """Create favorite tutor."""
+
+    tutor_profile_id: int = Field(..., gt=0)
 
 
 # ============================================================================

@@ -11,13 +11,15 @@ from datetime import UTC, datetime
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from io import BytesIO
+from fastapi import HTTPException
 
 from auth import get_password_hash
 from core.config import settings
@@ -38,7 +40,7 @@ from modules.notifications.presentation.api import router as notifications_route
 from modules.packages.presentation.api import router as packages_router
 from modules.profiles.presentation.api import router as profiles_router
 from modules.reviews.presentation.api import router as reviews_router
-from modules.students.presentation.api import router as students_router
+from modules.students.presentation.api import router as students_router, favorites_router
 from modules.subjects.presentation.api import router as subjects_router
 from modules.tutor_profile.presentation.api import router as tutor_profile_router
 from modules.tutor_profile.presentation.availability_api import (
@@ -180,6 +182,7 @@ async def create_default_users():
                 tutor_profile.experience_years = 10
                 tutor_profile.education = "Master's in Education"
                 tutor_profile.languages = ["English", "Spanish"]
+                tutor_profile.video_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Demo intro video
                 tutor_profile.is_approved = True
                 tutor_profile.profile_status = "approved"
                 tutor_profile.updated_at = datetime.now(UTC)
@@ -188,6 +191,13 @@ async def create_default_users():
             logger.info(f"Created default tutor with approved profile: {tutor_email}")
         else:
             logger.debug(f"Tutor user already exists: {tutor_email}")
+            # Update existing tutor profile with video URL if missing
+            tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == existing_tutor.id).first()
+            if tutor_profile and not tutor_profile.video_url:
+                tutor_profile.video_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Demo intro video
+                tutor_profile.updated_at = datetime.now(UTC)
+                db.commit()
+                logger.info(f"Updated existing tutor profile with demo video URL: {tutor_email}")
 
         logger.info("Default users creation completed successfully")
     except Exception as e:
@@ -433,6 +443,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.include_router(auth_router)
 app.include_router(profiles_router)
 app.include_router(students_router)
+app.include_router(favorites_router)
 app.include_router(subjects_router)
 app.include_router(bookings_router)
 app.include_router(reviews_router)
@@ -448,6 +459,55 @@ app.include_router(tutor_profile_router)
 app.include_router(availability_router)
 app.include_router(utils_router)
 app.include_router(websocket_router)
+
+
+# ============================================================================
+# Legacy Avatar Route - Handle old avatar URLs for tutor profile photos
+# ============================================================================
+
+@app.get("/api/avatars/{user_id}/{filename:path}")
+async def serve_legacy_avatar(
+    user_id: int,
+    filename: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Legacy route to serve tutor profile photos stored with old avatar URL format.
+    This handles URLs like /api/avatars/3/filename.webp and serves the actual
+    tutor profile photo from MinIO storage.
+    """
+    from core.storage import MINIO_BUCKET, _s3_client
+    
+    # Get user to find their avatar_key (which contains the tutor profile photo URL)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.avatar_key:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    # Extract storage key from the avatar_key URL
+    from core.storage import _extract_key_from_url
+    storage_key = _extract_key_from_url(user.avatar_key)
+    
+    # If extraction failed, try to construct key from tutor_profiles path
+    if not storage_key:
+        # Try tutor_profiles path format
+        storage_key = f"tutor_profiles/{user_id}/photo/{filename}"
+    
+    # Get file from MinIO
+    try:
+        client = _s3_client()
+        response = client.get_object(Bucket=MINIO_BUCKET, Key=storage_key)
+        content = response["Body"].read()
+        content_type = response.get("ContentType", "image/jpeg")
+        
+        return StreamingResponse(
+            BytesIO(content),
+            media_type=content_type,
+            headers={
+                "Cache-Control": "public, max-age=31536000, immutable",
+            },
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="Photo not found in storage")
 
 
 # ============================================================================

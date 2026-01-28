@@ -51,7 +51,7 @@ export default function LocaleDropdown() {
   const currentCurrency = localeUtils.getCurrency(currency)
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative z-[10000]" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1.5 px-3 py-2 text-text-secondary hover:text-brand-rose transition-colors rounded-lg hover:bg-gray-50"
@@ -72,7 +72,7 @@ export default function LocaleDropdown() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-floating border border-gray-100 py-2 z-50"
+            className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-floating border border-gray-100 py-2 z-[10001]"
             role="menu"
           >
             {/* Language Section */}

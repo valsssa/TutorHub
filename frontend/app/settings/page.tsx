@@ -1,37 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { FiSave, FiUser } from "react-icons/fi";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import { Upload, Camera, User as UserIcon } from "lucide-react";
+import { motion } from "framer-motion";
 import { auth } from "@/lib/api";
 import { User } from "@/types";
 import { useToast } from "@/components/ToastContainer";
+import { avatars } from "@/lib/api";
+import Input from "@/components/Input";
 import Button from "@/components/Button";
 import SettingsCard from "@/components/settings/SettingsCard";
-import AvatarUploader from "@/components/AvatarUploader";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function ProfileSettingsPage() {
-  return (
-    <ProtectedRoute>
-      <SettingsContent />
-    </ProtectedRoute>
-  );
-}
-
-function SettingsContent() {
   const { showSuccess, showError } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [profile, setProfile] = useState({
-    first_name: "",
-    last_name: "",
-    country: "",
-    bio: "",
-    learning_goal: "",
-  });
+  // Account Form State
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,13 +31,14 @@ function SettingsContent() {
         const currentUser = await auth.getCurrentUser();
         setUser(currentUser);
         
-        setProfile({
-          first_name: currentUser.first_name || "",
-          last_name: currentUser.last_name || "",
-          country: currentUser.country || "",
-          bio: currentUser.bio || "",
-          learning_goal: currentUser.learning_goal || "",
-        });
+        if (currentUser.first_name) {
+          const nameParts = currentUser.first_name.split(" ");
+          setFirstName(nameParts[0] || "");
+          setLastName(nameParts.slice(1).join(" ") || "");
+        } else {
+          setFirstName("");
+          setLastName("");
+        }
       } catch (error) {
         showError("Failed to load profile");
       } finally {
@@ -56,195 +49,224 @@ function SettingsContent() {
     loadData();
   }, [showError]);
 
-  const handleAvatarChange = (url: string | null) => {
-    if (user) {
-      setUser({
-        ...user,
-        avatarUrl: url,
-        avatar_url: url,
-      });
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showError("File size must be less than 2MB");
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+      showError("Please upload a JPG or PNG image");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const result = await avatars.upload(file);
+      if (user) {
+        setUser({
+          ...user,
+          avatarUrl: result.avatarUrl,
+          avatar_url: result.avatarUrl,
+        });
+        showSuccess("Profile photo updated successfully");
+      }
+    } catch (error: any) {
+      showError(error.message || "Failed to upload photo");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
   const handleSave = async () => {
+    if (!firstName.trim()) {
+      showError("First name is required");
+      return;
+    }
+
     setSaving(true);
     try {
-      showSuccess("Profile updated successfully ✅");
+      const updatedUser = await auth.updateUser({
+        first_name: firstName.trim(),
+        last_name: lastName.trim() || undefined,
+      });
+      setUser(updatedUser);
+      showSuccess("Profile updated successfully");
     } catch (error: any) {
-      showError(error.message || "Failed to update profile");
+      showError(error.response?.data?.detail || "Failed to update profile");
     } finally {
       setSaving(false);
     }
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
-  if (loading || !user) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
       </div>
     );
   }
 
-  const bioLength = profile.bio?.length || 0;
-  const bioMaxLength = 300;
+  if (!user) {
+    return null;
+  }
+
+  const displayName = firstName || user.email.split('@')[0];
+  const avatarUrl = user.avatarUrl ?? user.avatar_url;
 
   return (
-    <div className="space-y-6">
-      {/* Greeting Banner */}
-      <div className="bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 rounded-2xl p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden border-3 border-white shadow-lg relative">
-            {user.avatarUrl || user.avatar_url ? (
-              <Image
-                src={user.avatarUrl ?? user.avatar_url ?? ''}
-                alt={user.email}
-                width={64}
-                height={64}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center">
-                <FiUser className="w-8 h-8 text-white" />
-              </div>
-            )}
-          </div>
-          <div>
-            <p className="text-sm text-slate-600">{getGreeting()} 👋</p>
-            <h2 className="text-2xl font-bold text-slate-900">
-              {profile.first_name || user.email.split('@')[0]}
-            </h2>
-            <p className="text-sm text-slate-600 mt-0.5">This is your personal space.</p>
-          </div>
-        </div>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Page Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          Profile Settings
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400">
+          Manage your profile information and photo
+        </p>
       </div>
 
-      {/* Avatar Upload */}
+      {/* Profile Photo Section */}
       <SettingsCard
         title="Profile Photo"
-        description="Profiles with photos get 3× more engagement"
+        description="Upload a photo to help others recognize you"
       >
-        <AvatarUploader
-          initialUrl={user.avatarUrl ?? user.avatar_url}
-          onAvatarChange={handleAvatarChange}
-        />
-      </SettingsCard>
-
-      {/* Personal Information */}
-      <SettingsCard
-        title="Personal Information"
-        description="Your basic profile details"
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                First Name
-              </label>
-              <input
-                type="text"
-                value={profile.first_name}
-                onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-transparent"
-                placeholder="Enter your first name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Last Name
-              </label>
-              <input
-                type="text"
-                value={profile.last_name}
-                onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-transparent"
-                placeholder="Enter your last name"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Country
-            </label>
-            <select
-              value={profile.country}
-              onChange={(e) => setProfile({ ...profile, country: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-transparent"
+        <div className="flex flex-col sm:flex-row items-start gap-6 sm:gap-8">
+          <div className="flex flex-col items-center gap-3">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="relative w-32 h-32 rounded-full overflow-hidden flex-shrink-0 shadow-lg ring-2 ring-slate-200 dark:ring-slate-700"
             >
-              <option value="">Select your country</option>
-              <option value="US">🇺🇸 United States</option>
-              <option value="GB">🇬🇧 United Kingdom</option>
-              <option value="CA">🇨🇦 Canada</option>
-              <option value="AU">🇦🇺 Australia</option>
-              <option value="DE">🇩🇪 Germany</option>
-              <option value="FR">🇫🇷 France</option>
-              <option value="ES">🇪🇸 Spain</option>
-              <option value="IT">🇮🇹 Italy</option>
-              <option value="JP">🇯🇵 Japan</option>
-              <option value="IN">🇮🇳 India</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Learning Goal
-            </label>
-            <select
-              value={profile.learning_goal}
-              onChange={(e) => setProfile({ ...profile, learning_goal: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-transparent"
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt="Profile"
+                  width={128}
+                  height={128}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center text-white">
+                  <UserIcon className="w-16 h-16" />
+                </div>
+              )}
+              {uploading && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                </div>
+              )}
+            </motion.div>
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              <option value="">Select your primary goal</option>
-              <option value="travel">🌍 Travel & Communication</option>
-              <option value="business">💼 Business & Career</option>
-              <option value="academic">📚 Academic Excellence</option>
-              <option value="personal">🎯 Personal Development</option>
-              <option value="hobby">🎨 Hobby & Interest</option>
-            </select>
+              <Camera className="w-4 h-4" />
+              Change photo
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Bio
-            </label>
-            <textarea
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-              rows={4}
-              maxLength={bioMaxLength}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-transparent"
-              placeholder="Tell us about yourself, your interests, and what you hope to achieve..."
+          
+          <div className="flex-1 space-y-4 w-full sm:w-auto">
+            <input 
+              type="file" 
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/png, image/jpeg, image/jpg"
+              disabled={uploading}
             />
-            <div className="flex justify-between text-xs mt-1">
-              <span className="text-slate-500">Share a bit about yourself</span>
-              <span className={`${bioLength > bioMaxLength * 0.9 ? 'text-orange-600' : 'text-slate-400'}`}>
-                {bioLength}/{bioMaxLength}
-              </span>
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full sm:w-auto"
+            >
+              <Upload className="w-4 h-4" />
+              {uploading ? "Uploading..." : "Upload new photo"}
+            </Button>
+            <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+              <p className="flex items-center gap-1">
+                <span className="font-medium">Maximum size:</span> 2MB
+              </p>
+              <p className="flex items-center gap-1">
+                <span className="font-medium">Formats:</span> JPG, PNG
+              </p>
             </div>
           </div>
         </div>
       </SettingsCard>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button
-          variant="primary"
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 bg-rose-500 hover:bg-rose-600"
-        >
-          <FiSave className="w-4 h-4" />
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
-      </div>
+      {/* Personal Information Section */}
+      <SettingsCard
+        title="Personal Information"
+        description="Update your name and basic information"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (user.first_name) {
+                  const nameParts = user.first_name.split(" ");
+                  setFirstName(nameParts[0] || "");
+                  setLastName(nameParts.slice(1).join(" ") || "");
+                } else {
+                  setFirstName("");
+                  setLastName("");
+                }
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              isLoading={saving}
+              disabled={saving || uploading}
+            >
+              Save changes
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <Input
+            label="First name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="Enter your first name"
+            required
+            disabled={saving}
+          />
+          <Input
+            label="Last name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Enter your last name"
+            disabled={saving}
+          />
+          <div className="pt-2">
+            <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">
+              Email
+            </label>
+            <div className="px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
+              {user.email}
+            </div>
+            <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+              Email cannot be changed. Contact support if you need to update it.
+            </p>
+          </div>
+        </div>
+      </SettingsCard>
     </div>
   );
 }

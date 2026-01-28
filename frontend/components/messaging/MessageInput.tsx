@@ -35,8 +35,11 @@ export default function MessageInput({
               onTyping();
             }
           }}
-          placeholder="Type your message..."
-          rows={2}
+          placeholder="Write your message here..."
+          minRows={2}
+          maxRows={6}
+          maxLength={2000}
+          showCounter={message.length > 1600}
           onKeyPress={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -45,6 +48,7 @@ export default function MessageInput({
           }}
           className="flex-1"
           disabled={disabled}
+          autoResize={true}
         />
         <Button
           variant="primary"

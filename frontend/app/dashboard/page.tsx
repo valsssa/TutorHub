@@ -22,7 +22,7 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const router = useRouter();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [userBookings, setUserBookings] = useState<BookingDTO[]>([]);
   const [tutorProfile, setTutorProfile] = useState<TutorProfile | null>(null);
@@ -38,6 +38,62 @@ function DashboardContent() {
           }
         : prev,
     );
+  };
+
+  const handleAcceptRequest = async (id: number) => {
+    try {
+      await bookings.confirm(id);
+      showSuccess("Booking request accepted");
+      // Refresh bookings
+      const bookingData = await bookings.list({
+        role: user?.role as "student" | "tutor",
+        page: 1,
+        page_size: 20,
+      });
+      setUserBookings(bookingData.bookings || []);
+    } catch (error) {
+      showError("Failed to accept booking request");
+    }
+  };
+
+  const handleDeclineRequest = async (id: number) => {
+    try {
+      await bookings.decline(id);
+      showSuccess("Booking request declined");
+      // Refresh bookings
+      const bookingData = await bookings.list({
+        role: user?.role as "student" | "tutor",
+        page: 1,
+        page_size: 20,
+      });
+      setUserBookings(bookingData.bookings || []);
+    } catch (error) {
+      showError("Failed to decline booking request");
+    }
+  };
+
+  const handleStartSession = (session: BookingDTO) => {
+    if (session.join_url) {
+      window.open(session.join_url, '_blank');
+    } else {
+      showError("No meeting link available");
+    }
+  };
+
+  const handleCancelSession = async (sessionId: string) => {
+    try {
+      await bookings.cancel(Number(sessionId), { reason: "Cancelled by tutor" });
+      showSuccess("Session cancelled");
+      // Refresh bookings
+      const bookingData = await bookings.list({
+        role: user?.role as "student" | "tutor",
+        page: 1,
+        page_size: 20,
+      });
+      setUserBookings(bookingData.bookings || []);
+    } catch (error) {
+      showError("Failed to cancel session");
+    }
   };
 
   useEffect(() => {
@@ -82,8 +138,9 @@ function DashboardContent() {
 
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950" role="status" aria-label="Loading dashboard">
         <div className="animate-spin rounded-full h-12 w-12 border-2 border-emerald-200 dark:border-emerald-800 border-t-emerald-600 dark:border-t-emerald-400"></div>
+        <span className="sr-only">Loading dashboard...</span>
       </div>
     );
   }
@@ -104,8 +161,21 @@ function DashboardContent() {
         user={user}
         bookings={userBookings}
         profile={tutorProfile}
+        verificationStatus={tutorProfile?.is_approved ? 'verified' : tutorProfile?.profile_status === 'pending_approval' ? 'pending' : 'unverified'}
         onAvatarChange={handleAvatarChange}
         onProfileUpdate={(updated) => setTutorProfile(updated)}
+        onEditProfile={() => router.push("/tutor/profile")}
+        onViewProfile={() => router.push("/tutor/profile")}
+        onUpdateSchedule={(mode) => router.push("/tutor/schedule")}
+        onStartSession={handleStartSession}
+        onCancelSession={handleCancelSession}
+        onAcceptRequest={handleAcceptRequest}
+        onDeclineRequest={handleDeclineRequest}
+        onViewCalendar={() => router.push("/tutor/schedule")}
+        onManageVerification={() => router.push("/tutor/profile")}
+        onViewEarnings={() => router.push("/tutor/earnings")}
+        onViewStudents={() => router.push("/bookings")}
+        onOpenChat={(userId, userName) => router.push(`/messages?user=${userId}`)}
       />
     );
   }

@@ -21,6 +21,7 @@ from core.message_storage import (
 )
 from database import get_db
 from models import Message, MessageAttachment
+from core.avatar_storage import build_avatar_url
 from modules.messages.service import MessageService
 from modules.messages.websocket import manager
 from schemas import MessageResponse
@@ -56,6 +57,7 @@ class MessageThreadResponse(BaseModel):
     other_user_email: str
     other_user_first_name: str | None = None
     other_user_last_name: str | None = None
+    other_user_avatar_url: str | None = None
     other_user_role: str
     booking_id: int | None = None
     last_message: str
@@ -88,6 +90,17 @@ class UnreadCountResponse(BaseModel):
 
     total: int
     by_sender: dict[int, int] = Field(default_factory=dict, description="Unread count per sender user ID")
+
+
+class UserBasicInfoResponse(BaseModel):
+    """Basic user information for messaging."""
+
+    id: int
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+    avatar_url: str | None = None
+    role: str
 
 
 # ============================================================================
@@ -214,6 +227,9 @@ async def list_threads(
             MessageThreadResponse(
                 other_user_id=t["other_user_id"],
                 other_user_email=t["other_user_email"],
+                other_user_first_name=t.get("other_user_first_name"),
+                other_user_last_name=t.get("other_user_last_name"),
+                other_user_avatar_url=t.get("other_user_avatar_url"),
                 other_user_role=t["other_user_role"],
                 booking_id=t["booking_id"],
                 last_message=t["last_message"],
@@ -657,6 +673,57 @@ async def get_unread_count(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get unread count",
+        )
+
+
+@router.get("/users/{user_id}", response_model=UserBasicInfoResponse)
+async def get_user_basic_info(
+    user_id: int,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+):
+    """
+    Get basic user information for messaging purposes.
+
+    **Returns:**
+    - User's ID, email, first name, last name, and role
+
+    **Use Cases:**
+    - Display user information when starting a new conversation
+    - Show user details in message threads
+
+    **Security:**
+    - Only authenticated users can access this endpoint
+    - Returns basic public information only
+    """
+    try:
+        from models import User
+
+        user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        avatar_key = getattr(user, "avatar_key", None)
+        return UserBasicInfoResponse(
+            id=user.id,
+            email=user.email,
+            first_name=getattr(user, "first_name", None),
+            last_name=getattr(user, "last_name", None),
+            avatar_url=build_avatar_url(avatar_key),
+            role=user.role,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching user info: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get user information",
         )
 
 

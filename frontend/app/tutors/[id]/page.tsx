@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { tutors, subjects as subjectsApi, auth } from "@/lib/api";
+import { tutors, subjects as subjectsApi, auth, favorites } from "@/lib/api";
 import { authUtils } from "@/lib/auth";
 import type { TutorProfile, User, Subject, Review } from "@/types";
 import { useToast } from "@/components/ToastContainer";
@@ -52,10 +52,28 @@ function TutorDetailContent() {
         if (token) {
           const currentUser = await auth.getCurrentUser();
           setUser(currentUser);
+
+          // Check if tutor is favorited by current user (only for students)
+          if (authUtils.isStudent(currentUser)) {
+            try {
+              const favorite = await favorites.checkFavorite(tutorId);
+              setIsSaved(Boolean(favorite));
+            } catch (favoriteError: any) {
+              // If 404, tutor is not favorited (normal case)
+              // If 403, user is not a student (also normal)
+              if (favoriteError.response?.status !== 404 && favoriteError.response?.status !== 403) {
+                console.error("Error checking favorite:", favoriteError);
+              }
+              setIsSaved(false);
+            }
+          } else {
+            setIsSaved(false);
+          }
         }
       } catch (authError) {
         // User is not authenticated, which is fine for public access
         setUser(null);
+        setIsSaved(false);
       }
     } catch (error) {
       showError("Failed to load tutor profile");
@@ -71,12 +89,40 @@ function TutorDetailContent() {
     }
   }, [tutorId, loadData]);
 
-  const handleToggleSave = (e: React.MouseEvent, id: number) => {
+  const handleToggleSave = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    setIsSaved(!isSaved);
-    // TODO: Implement save to favorites API
-    if (!isSaved) {
-      showSuccess("Tutor saved to favorites");
+
+    // Check if user is authenticated
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    // Only students can save favorites
+    if (!authUtils.isStudent(user)) {
+      showError("Only students can save tutors to favorites");
+      return;
+    }
+
+    try {
+      if (isSaved) {
+        await favorites.removeFavorite(id);
+        setIsSaved(false);
+        showSuccess("Tutor removed from favorites");
+      } else {
+        await favorites.addFavorite(id);
+        setIsSaved(true);
+        showSuccess("Tutor saved to favorites");
+      }
+    } catch (error: any) {
+      console.error("Error toggling favorite:", error);
+      const errorMessage = error.response?.data?.detail || "Failed to update favorites";
+      showError(errorMessage);
+      
+      // If error is 403, user might not be a student
+      if (error.response?.status === 403) {
+        setIsSaved(false);
+      }
     }
   };
 
@@ -126,6 +172,9 @@ function TutorDetailContent() {
     tutor.user_id === user.id
   );
 
+  // Show save button to all authenticated users (handler will check if they're a student)
+  const canSave = !!user && !isOwnProfile;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
       {/* Navigation Header */}
@@ -140,7 +189,7 @@ function TutorDetailContent() {
           onMessage={handleMessage}
           isOwnProfile={isOwnProfile}
           onEdit={() => router.push("/tutor/profile")}
-          onToggleSave={canBook ? handleToggleSave : undefined}
+          onToggleSave={canSave ? handleToggleSave : undefined}
           isSaved={isSaved}
           backHref="/tutors"
           backLabel="Back to Marketplace"

@@ -54,14 +54,14 @@ async def get_available_slots(
     if not availabilities:
         return []
 
-    # Get existing bookings in the date range
+    # Get existing bookings that overlap the date range
     bookings = (
         db.query(Booking)
         .filter(
             Booking.tutor_profile_id == tutor_id,
-            Booking.status.in_(["pending", "confirmed"]),
-            Booking.start_time >= start_dt,
-            Booking.end_time <= end_dt,
+            Booking.status.in_(["PENDING", "CONFIRMED"]),
+            Booking.start_time < end_dt,
+            Booking.end_time > start_dt,
         )
         .all()
     )
@@ -270,10 +270,12 @@ async def create_bulk_availability(
     db.query(TutorAvailability).filter(TutorAvailability.tutor_profile_id == profile.id).delete()
 
     created_slots = []
+    skipped_count = 0
     try:
         for av_data in availabilities:
             if av_data.start_time >= av_data.end_time:
-                continue  # Skip invalid slots
+                skipped_count += 1
+                continue  # Skip invalid slots (start_time must be before end_time)
 
             availability = TutorAvailability(
                 tutor_profile_id=profile.id,
@@ -286,10 +288,11 @@ async def create_bulk_availability(
             created_slots.append(availability)
 
         db.commit()
-        logger.info(f"Bulk availability created for tutor profile {profile.id}: {len(created_slots)} slots")
+        logger.info(f"Bulk availability created for tutor profile {profile.id}: {len(created_slots)} slots, {skipped_count} skipped")
         return {
             "message": f"Successfully created {len(created_slots)} availability slots",
             "count": len(created_slots),
+            "skipped": skipped_count,
         }
     except Exception as e:
         db.rollback()

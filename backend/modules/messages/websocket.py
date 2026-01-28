@@ -242,6 +242,11 @@ class WebSocketManager:
         """
         return [uid for uid in user_ids if self.is_user_online(uid)]
 
+    async def broadcast_to_all(self, message: dict) -> int:
+        """Broadcast a message to all connected users."""
+        all_user_ids = list(self.active_connections.keys())
+        return await self.broadcast_to_users(message, all_user_ids)
+
     def get_online_count(self) -> int:
         """Get total number of online users."""
         return len(self.active_connections)

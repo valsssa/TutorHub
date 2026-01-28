@@ -147,12 +147,13 @@ export default function NotificationBell() {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative z-[10000]" ref={dropdownRef}>
       {/* Bell Icon with Badge */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+        className="relative tap-target p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
         aria-label="Notifications"
+        aria-expanded={isOpen}
       >
         <FiBell className="w-6 h-6" />
         {unreadCount > 0 && (
@@ -164,15 +165,15 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[600px] flex flex-col">
+        <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-[10001] max-h-[600px] flex flex-col">
           {/* Header */}
-          <div className="px-4 py-3 border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Notifications</h3>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium"
                 >
                   Mark all read
                 </button>
@@ -184,20 +185,20 @@ export default function NotificationBell() {
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto" role="status"><span className="sr-only">Loading...</span></div>
               </div>
             ) : notifications.length === 0 ? (
               <div className="p-8 text-center">
-                <FiBell className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 text-sm">No notifications yet</p>
+                <FiBell className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-600 dark:text-slate-400 text-sm">No notifications yet</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`px-4 py-3 hover:bg-gray-50 transition-colors ${
-                      !notification.is_read ? "bg-blue-50" : ""
+                    className={`px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${
+                      !notification.is_read ? "bg-blue-50 dark:bg-blue-900/20" : ""
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -205,13 +206,13 @@ export default function NotificationBell() {
                         {getNotificationIcon(notification.type, notification.category)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                           {notification.title}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
                           {notification.message}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                           {formatTime(notification.created_at)}
                         </p>
                       </div>
@@ -219,16 +220,18 @@ export default function NotificationBell() {
                         {!notification.is_read && (
                           <button
                             onClick={() => markAsRead(notification.id)}
-                            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                            className="p-1 text-slate-400 dark:text-slate-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
                             title="Mark as read"
+                            aria-label="Mark notification as read"
                           >
                             <FiCheck className="w-4 h-4" />
                           </button>
                         )}
                         <button
                           onClick={() => deleteNotification(notification.id)}
-                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Delete"
+                          className="p-1 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          title="Delete notification"
+                          aria-label="Delete notification"
                         >
                           <FiX className="w-4 h-4" />
                         </button>
@@ -237,7 +240,7 @@ export default function NotificationBell() {
                     {notification.link && (
                       <a
                         href={notification.link}
-                        className="text-xs text-primary-600 hover:text-primary-700 mt-2 inline-block"
+                        className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 mt-2 inline-block"
                         onClick={() => setIsOpen(false)}
                       >
                         View →

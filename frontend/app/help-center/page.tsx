@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Search, Mail, MessageCircle, AlertCircle, HelpCircle, CheckCircle, ChevronDown, ChevronUp, Book, CreditCard, Shield, User, Send, X } from 'lucide-react';
 import Modal from '../../components/Modal';
+import TextArea from '../../components/TextArea';
 
 interface SupportPageProps {
     onBack: () => void;
@@ -185,7 +186,7 @@ const SupportPage: React.FC<SupportPageProps> = ({ onBack, onChat }) => {
                     <div className="space-y-4">
                         {filteredFaqs.length === 0 ? (
                             <div className="text-center py-12 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                <p className="text-slate-500 dark:text-slate-400">No results found for "{searchQuery}". Try a different keyword.</p>
+                                <p className="text-slate-500 dark:text-slate-400">No results found for &quot;{searchQuery}&quot;. Try a different keyword.</p>
                             </div>
                         ) : (
                             filteredFaqs.map((faq, i) => (
@@ -273,17 +274,18 @@ const SupportPage: React.FC<SupportPageProps> = ({ onBack, onChat }) => {
                                 <option>Other</option>
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Message</label>
-                            <textarea 
-                                value={emailMessage}
-                                onChange={(e) => setEmailMessage(e.target.value)}
-                                required
-                                rows={5}
-                                placeholder="Describe your issue or question..."
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-slate-900 dark:text-white resize-none"
-                            />
-                        </div>
+                        <TextArea
+                            label="Message (our support team will respond via email)"
+                            value={emailMessage}
+                            onChange={(e) => setEmailMessage(e.target.value)}
+                            required
+                            placeholder="What's happening? What were you trying to do? What did you expect vs what actually occurred?"
+                            minRows={5}
+                            maxRows={10}
+                            maxLength={2000}
+                            minLength={20}
+                            helperText="Include specific details to help us resolve your issue faster"
+                        />
                         <div className="flex justify-end gap-3 pt-2">
                             <button 
                                 type="button" 

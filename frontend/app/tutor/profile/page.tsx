@@ -11,6 +11,7 @@ import type { TutorProfile, Subject } from "@/types";
 import { useToast } from "@/components/ToastContainer";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
+import TextArea from "@/components/TextArea";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import AvatarUploader from "@/components/AvatarUploader";
 
@@ -775,8 +776,8 @@ function TutorProfileContent() {
     { id: "education", label: "Education", icon: "🎓" },
     { id: "description", label: "Description", icon: "📝" },
     { id: "video", label: "Intro Video", icon: "🎥" },
-    { id: "availability", label: "Availability", icon: "📅" },
     { id: "pricing", label: "Pricing", icon: "💰" },
+    { id: "availability", label: "Availability", icon: "📅" },
   ];
 
   if (loading) {
@@ -870,20 +871,19 @@ function TutorProfileContent() {
               setAboutForm({ ...aboutForm, headline: e.target.value })
             }
           />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Short Bio
-            </label>
-            <textarea
-              rows={4}
-              value={aboutForm.bio}
-              onChange={(e) =>
-                setAboutForm({ ...aboutForm, bio: e.target.value })
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Share a brief introduction, teaching philosophy, and what students can expect."
-            />
-          </div>
+          <TextArea
+            label="Short bio (shown on your public profile)"
+            value={aboutForm.bio}
+            onChange={(e) =>
+              setAboutForm({ ...aboutForm, bio: e.target.value })
+            }
+            placeholder="Who are you as a teacher? What's your approach? What can students expect from lessons with you?"
+            minRows={4}
+            maxRows={8}
+            maxLength={600}
+            minLength={80}
+            helperText="A compelling bio helps students decide if you're the right fit for them"
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Years of Experience"
@@ -1288,20 +1288,18 @@ function TutorProfileContent() {
                     }
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description (optional)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={entry.description || ""}
-                    onChange={(e) =>
-                      updateEducation(index, "description", e.target.value)
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Share coursework, achievements, or key learnings."
-                  />
-                </div>
+                <TextArea
+                  label="Description (optional - highlights relevant achievements)"
+                  value={entry.description || ""}
+                  onChange={(e) =>
+                    updateEducation(index, "description", e.target.value)
+                  }
+                  placeholder="What did you focus on? What achievements are relevant to teaching? What skills did you develop?"
+                  minRows={3}
+                  maxRows={6}
+                  maxLength={500}
+                  helperText="Focus on aspects that demonstrate your expertise in your teaching subjects"
+                />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Credential Document (optional)
@@ -1387,18 +1385,17 @@ function TutorProfileContent() {
             </div>
           }
         >
-          <div>
-            <textarea
-              rows={6}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Describe your teaching method, lesson structure, and how you personalise sessions."
-            />
-            <p className="text-sm text-gray-500 mt-2">
-              {description.length} characters
-            </p>
-          </div>
+          <TextArea
+            label="Full description (this is the main text students see on your profile)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What's your lesson structure? How do you adapt to different student needs? What makes your teaching effective? What results can students expect?"
+            minRows={6}
+            maxRows={12}
+            maxLength={2000}
+            minLength={200}
+            helperText="A detailed description helps students understand exactly what they'll get from lessons with you"
+          />
         </SectionCard>
             )}
 
@@ -1648,20 +1645,18 @@ function TutorProfileContent() {
                     }
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description (optional)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={option.description || ""}
-                    onChange={(e) =>
-                      updatePricingOption(index, "description", e.target.value)
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Detail what is included in this package."
-                  />
-                </div>
+                <TextArea
+                  label="Package description (helps students choose the right option)"
+                  value={option.description || ""}
+                  onChange={(e) =>
+                    updatePricingOption(index, "description", e.target.value)
+                  }
+                  placeholder="What's included? What makes this package valuable? Who is it best suited for?"
+                  minRows={3}
+                  maxRows={5}
+                  maxLength={300}
+                  helperText="Clear package descriptions increase bookings"
+                />
                 <div className="flex justify-end">
                   <Button
                     variant="ghost"

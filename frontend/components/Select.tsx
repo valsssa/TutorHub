@@ -17,6 +17,12 @@ interface SelectProps
   placeholder?: string;
 }
 
+const generateId = (seed?: string) =>
+  seed ??
+  (typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `select-${Math.random().toString(36).slice(2, 10)}`);
+
 export default function Select({
   label,
   error,
@@ -27,23 +33,30 @@ export default function Select({
   id,
   ...props
 }: SelectProps) {
-  const inputId = id || (label ? `select-${label.toLowerCase().replace(/\s+/g, "-")}` : crypto.randomUUID());
+  const inputId = generateId(
+    id || (label ? `select-${label.toLowerCase().replace(/\s+/g, "-")}` : undefined),
+  );
+  const errorId = error ? `${inputId}-error` : undefined;
+  const helperId = helperText && !error ? `${inputId}-helper` : undefined;
+  const describedBy = [errorId, helperId].filter(Boolean).join(" ") || undefined;
 
   return (
     <div className="w-full">
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
         >
           {label}
         </label>
       )}
       <select
         id={inputId}
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={describedBy}
         className={clsx(
-          "w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors bg-white",
-          error ? "border-red-500" : "border-gray-300",
+          "w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white dark:bg-slate-800 text-slate-900 dark:text-white",
+          error ? "border-red-500" : "border-slate-300 dark:border-slate-600",
           className,
         )}
         {...props}
@@ -59,9 +72,15 @@ export default function Select({
           </option>
         ))}
       </select>
-      {error && <p className="mt-1 text-sm text-red-600">{typeof error === 'string' ? error : String(error)}</p>}
+      {error && (
+        <p id={errorId} className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
+          {typeof error === 'string' ? error : String(error)}
+        </p>
+      )}
       {helperText && !error && (
-        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+        <p id={helperId} className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          {helperText}
+        </p>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { bookings, reviews as reviewsApi } from "@/lib/api";
 import type { Booking } from "@/types";
 import { useToast } from "@/components/ToastContainer";
 import Button from "@/components/Button";
+import TextArea from "@/components/TextArea";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function BookingReviewPage() {
@@ -209,22 +210,17 @@ function BookingReviewContent() {
           </div>
 
           {/* Comment */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Share your experience (optional)
-            </label>
-            <textarea
-              rows={6}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="What did you like about this session? How did the tutor help you? Any suggestions for improvement?"
-              maxLength={2000}
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              {comment.length}/2000 characters
-            </p>
-          </div>
+          <TextArea
+            label="Share your experience (visible to other students considering this tutor)"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="What worked well? How did the tutor help you understand the material? Would you recommend them to others?"
+            minRows={5}
+            maxRows={10}
+            maxLength={500}
+            minLength={20}
+            helperText="Honest, constructive feedback helps other students and tutors improve"
+          />
 
           {/* Privacy Notice */}
           <div className="bg-blue-50 rounded-lg p-4">

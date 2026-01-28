@@ -9,16 +9,16 @@ interface SettingsCardProps {
 
 export default function SettingsCard({ title, description, children, footer }: SettingsCardProps) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all">
+    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all">
       <div className="p-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">{title}</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">{title}</h3>
         {description && (
-          <p className="text-sm text-slate-500 mb-4">{description}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{description}</p>
         )}
         {children}
       </div>
       {footer && (
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 rounded-b-2xl">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 rounded-b-lg">
           {footer}
         </div>
       )}

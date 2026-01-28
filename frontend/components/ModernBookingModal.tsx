@@ -22,6 +22,8 @@ import { useToast } from "./ToastContainer";
 import axios from "axios";
 import { bookings } from "@/lib/api";
 import type { BookingCreateRequest } from "@/types/booking";
+import { getApiBaseUrl } from "@/shared/utils/url";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface ModernBookingModalProps {
   tutor: TutorProfile;
@@ -51,6 +53,7 @@ export default function ModernBookingModal({
   onSuccess,
 }: ModernBookingModalProps) {
   const { showError } = useToast();
+  const { lastMessage } = useWebSocket();
   const [step, setStep] = useState<BookingStep>(1);
   const [submitting, setSubmitting] = useState(false);
   
@@ -138,7 +141,7 @@ export default function ModernBookingModal({
       const startDateStr = `${dateKey}T00:00:00`;
       const endDateStr = `${dateKey}T23:59:59`;
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL;
+      const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
       if (!API_URL) {
         setAvailableSlots([]);
         return;
@@ -193,6 +196,17 @@ export default function ModernBookingModal({
       fetchSlotsForDate(selectedDate, true);
     }
   }, [selectedDate, fetchSlotsForDate]);
+
+  // Listen for real-time availability updates via WebSocket
+  useEffect(() => {
+    if (
+      lastMessage?.type === "availability_updated" &&
+      lastMessage.tutor_profile_id === tutor.id
+    ) {
+      setSelectedSlot(null);
+      refreshSlots();
+    }
+  }, [lastMessage, tutor.id, refreshSlots]);
 
   const handlePrevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));

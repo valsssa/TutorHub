@@ -6,8 +6,13 @@ import Cookies from 'js-cookie'
 import axios from 'axios'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { ChevronLeft, DollarSign, Users, PieChart, ArrowRight, CheckCircle } from 'lucide-react'
+import { getApiBaseUrl } from '@/shared/utils/url'
+import PublicHeader from '@/components/PublicHeader'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
+import { User } from '@/types'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL)
 
 export default function AffiliateProgramPage() {
   return <AffiliateContent />
@@ -15,7 +20,7 @@ export default function AffiliateProgramPage() {
 
 function AffiliateContent() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   useEffect(() => {
@@ -41,21 +46,9 @@ function AffiliateContent() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-emerald-600 font-medium"
-          >
-            <ChevronLeft size={20} /> Back
-          </button>
-          <div className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
-            EduConnect <span className="text-emerald-600">Partners</span>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+      {/* Navigation Header */}
+      {user ? <Navbar user={user} /> : <PublicHeader />}
 
       {/* Hero */}
       <div className="container mx-auto px-4 py-20 max-w-6xl text-center">
@@ -182,6 +175,9 @@ function AffiliateContent() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

@@ -10,6 +10,7 @@ import {
   FiHeart,
   FiMessageCircle,
 } from "react-icons/fi";
+import { LuGraduationCap, LuMessageSquare } from "react-icons/lu";
 import { TutorPublicSummary, User } from "@/types";
 import { resolveAssetUrl } from "@/lib/media";
 import { auth } from "@/lib/api";
@@ -22,6 +23,11 @@ interface TutorCardProps {
   variant?: "default" | "compact" | "featured";
   isSaved?: boolean;
   onToggleSave?: (e: React.MouseEvent, id: number) => void;
+  onViewProfile?: () => void;
+  onBook?: (e: React.MouseEvent, tutor: TutorPublicSummary) => void;
+  onQuickBook?: (e: React.MouseEvent, tutor: TutorPublicSummary) => void;
+  onSlotBook?: (e: React.MouseEvent, tutor: TutorPublicSummary, slot: string) => void;
+  onMessage?: (e: React.MouseEvent, tutor: TutorPublicSummary) => void;
 }
 
 export default function TutorCard({
@@ -29,6 +35,11 @@ export default function TutorCard({
   variant = "default",
   isSaved = false,
   onToggleSave,
+  onViewProfile,
+  onBook,
+  onQuickBook,
+  onSlotBook,
+  onMessage,
 }: TutorCardProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -83,7 +94,7 @@ export default function TutorCard({
     return (
       <div
         className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:shadow-lg transition-all cursor-pointer"
-        onClick={() => router.push(`/tutors/${tutor.id}`)}
+        onClick={() => (onViewProfile ? onViewProfile() : router.push(`/tutors/${tutor.id}`))}
       >
         <div className="flex items-start gap-4">
           {tutor.profile_photo_url && (
@@ -219,6 +230,10 @@ export default function TutorCard({
             className="w-full"
             onClick={(e) => {
               e.stopPropagation();
+              if (onViewProfile) {
+                onViewProfile();
+                return;
+              }
               router.push(`/tutors/${tutor.id}`);
             }}
           >
@@ -233,7 +248,7 @@ export default function TutorCard({
   return (
     <div
       className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] cursor-pointer overflow-hidden flex flex-col"
-      onClick={() => router.push(`/tutors/${tutor.id}`)}
+      onClick={() => (onViewProfile ? onViewProfile() : router.push(`/tutors/${tutor.id}`))}
     >
       <div className="p-5 flex-1 relative flex flex-col">
         {/* Save Button */}
@@ -241,11 +256,12 @@ export default function TutorCard({
           <div className="absolute top-4 right-4 z-10">
             <button
               onClick={(e) => onToggleSave(e, tutor.id)}
-              className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-90"
+              className="p-2 rounded-full bg-slate-100 dark:bg-slate-900/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all active:scale-90"
               title={isSaved ? "Remove from saved" : "Save tutor"}
+              aria-label={isSaved ? "Remove from saved" : "Save tutor"}
             >
               <FiHeart
-                className={`w-4 h-4 transition-colors duration-200 ${isSaved ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`}
+                className={`w-[18px] h-[18px] transition-colors duration-200 ${isSaved ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`}
               />
             </button>
           </div>
@@ -259,7 +275,16 @@ export default function TutorCard({
               alt={displayName}
               width={64}
               height={64}
-              className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 hover:scale-105 transition-transform duration-200"
+              loading="lazy"
+              className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 hover:scale-105 transition-transform duration-200 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onViewProfile) {
+                  onViewProfile();
+                } else {
+                  router.push(`/tutors/${tutor.id}`);
+                }
+              }}
               unoptimized
             />
           )}
@@ -287,13 +312,14 @@ export default function TutorCard({
           </div>
         )}
 
-        {/* Experience */}
-        {tutor.experience_years > 0 && (
+        {/* Educational Background Snippet */}
+        {tutor.education && tutor.education.length > 0 && (
           <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 mb-3 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-lg">
-            <FiAward className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <span className="truncate">{tutor.experience_years} years of experience</span>
+            <LuGraduationCap className="w-[14px] h-[14px] text-emerald-500 shrink-0" />
+            <span className="truncate">{tutor.education[0]}</span>
           </div>
         )}
+
 
         {/* Subjects */}
         {tutor.subjects && tutor.subjects.length > 0 && (
@@ -306,11 +332,42 @@ export default function TutorCard({
                 {subject}
               </span>
             ))}
-            {tutor.subjects.length > 3 && (
-              <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded">
-                +{tutor.subjects.length - 3}
-              </span>
-            )}
+          </div>
+        )}
+
+        {/* Testimonial Snippet */}
+        {tutor.recent_review && (
+          <div className="flex items-start gap-2 mb-4 text-xs text-slate-500 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/30 p-2 rounded">
+            <LuMessageSquare className="w-3 h-3 shrink-0 mt-0.5 text-emerald-500" />
+            <span className="line-clamp-1 italic">&ldquo;{tutor.recent_review}&rdquo;</span>
+          </div>
+        )}
+
+        {/* Next Available */}
+        {tutor.next_available_slots && tutor.next_available_slots.length > 0 && (
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+              Next Available
+            </p>
+            <div className="flex gap-2 overflow-hidden">
+              {tutor.next_available_slots.slice(0, 2).map((slot, idx) => {
+                const slotDate = new Date(slot);
+                return (
+                  <button
+                    key={idx}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onSlotBook) {
+                        onSlotBook(e, tutor, slot);
+                      }
+                    }}
+                    className="text-[10px] whitespace-nowrap bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                  >
+                    {slotDate.toLocaleDateString([], { weekday: 'short' })}, {slotDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -321,20 +378,25 @@ export default function TutorCard({
           ${tutor.hourly_rate}
           <span className="text-slate-500 text-xs font-normal">/hr</span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={(e) => {
             e.stopPropagation();
             if (!user) {
               router.push("/login");
               return;
             }
+            if (onMessage) {
+              onMessage(e, tutor);
+              return;
+            }
             router.push(`/messages?user=${tutor.user_id}`);
           }}
+          className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          title="Message Tutor"
+          aria-label="Message Tutor"
         >
-          <FiMessageCircle className="w-7 h-7" />
-        </Button>
+          <FiMessageCircle className="w-6 h-6" />
+        </button>
       </div>
     </div>
   );

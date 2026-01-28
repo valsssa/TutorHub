@@ -9,25 +9,25 @@ interface ToggleProps {
 
 export default function Toggle({ enabled, onChange, label, description }: ToggleProps) {
   return (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex-1">
-        {label && <p className="font-medium text-slate-900 text-sm">{label}</p>}
-        {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+    <div className="flex items-start justify-between pb-6 border-b border-slate-100 dark:border-slate-800 last:border-b-0 last:pb-0">
+      <div className="flex-1 pr-4">
+        {label && <h4 className="font-bold text-slate-900 dark:text-white mb-1">{label}</h4>}
+        {description && <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>}
       </div>
       <button
         type="button"
         onClick={() => onChange(!enabled)}
         className={`
-          relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-          ${enabled ? 'bg-sky-500' : 'bg-slate-200'}
+          w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out relative flex-shrink-0
+          ${enabled ? 'bg-slate-900 dark:bg-white' : 'bg-slate-200 dark:bg-slate-700'}
         `}
         role="switch"
         aria-checked={enabled}
       >
-        <span
+        <div
           className={`
-            inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm
-            ${enabled ? 'translate-x-6' : 'translate-x-1'}
+            w-4 h-4 rounded-full bg-white dark:bg-slate-900 shadow-sm transform transition-transform duration-200
+            ${enabled ? 'translate-x-6' : 'translate-x-0'}
           `}
         />
       </button>

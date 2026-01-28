@@ -33,7 +33,7 @@ interface FilterBarProps {
 type FilterDropdown = "subject" | "price" | "rating" | "experience" | null;
 
 export default function FilterBar({
-  subjects,
+  subjects = [],
   selectedSubject,
   priceRange,
   minRating,
@@ -135,7 +135,7 @@ export default function FilterBar({
       <button
         onClick={() => toggleDropdown(type)}
         className={`
-          flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+          flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium tap-target
           transition-all duration-200 whitespace-nowrap
           ${
             active
@@ -160,7 +160,7 @@ export default function FilterBar({
   return (
     <div
       ref={dropdownRef}
-      className="sticky top-0 bg-white border-b border-slate-200 shadow-sm z-40"
+      className="sticky top-0 bg-white border-b border-slate-200 shadow-sm z-[10000]"
     >
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
@@ -183,7 +183,7 @@ export default function FilterBar({
         {/* Dropdowns */}
         {activeDropdown && (
           <div className="relative mt-2">
-            <div className="absolute top-0 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg p-4 z-50 max-w-md">
+            <div className="absolute top-0 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg p-4 z-[10001] max-w-md">
               {/* Subject Dropdown */}
               {activeDropdown === "subject" && (
                 <div>

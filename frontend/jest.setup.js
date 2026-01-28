@@ -1,22 +1,23 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
 
-// Set required environment variables for tests
-process.env.NEXT_PUBLIC_API_URL = 'http://localhost:8000'
+// Set required environment variables for tests (only for unit tests)
+if (!process.env.NEXT_PUBLIC_API_URL) {
+  process.env.NEXT_PUBLIC_API_URL = 'http://localhost:8000'
+}
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
-  useRouter() {
-    return {
-      push: jest.fn(),
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-      back: jest.fn(),
-      pathname: '/',
-      query: {},
-      asPath: '/',
-    }
-  },
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    pathname: '/',
+    query: {},
+    asPath: '/',
+  })),
+  useParams: jest.fn(() => ({})),
   usePathname() {
     return '/'
   },
@@ -60,3 +61,6 @@ jest.mock('axios', () => ({
     },
   },
 }))
+
+// Export for use in tests
+globalThis.mockAxiosInstance = mockAxiosInstance

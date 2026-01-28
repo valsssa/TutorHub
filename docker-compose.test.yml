@@ -69,6 +69,8 @@ services:
       AVATAR_STORAGE_USE_SSL: ${AVATAR_STORAGE_USE_SSL:-false}
       AVATAR_STORAGE_URL_TTL_SECONDS: ${AVATAR_STORAGE_URL_TTL_SECONDS:-300}
       AVATAR_STORAGE_DEFAULT_URL: ${AVATAR_STORAGE_DEFAULT_URL:-https://placehold.co/300x300?text=Avatar}
+    volumes:
+      - ./backend:/app/backend
     depends_on:
       test-db:
         condition: service_healthy
@@ -164,6 +166,30 @@ services:
         npm run test -- --watchAll=false --coverage
       "
 
+  # Frontend integration tests (uses real API)
+  frontend-integration-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    environment:
+      NEXT_PUBLIC_API_URL: http://test-backend:8000
+      NODE_ENV: test
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      test-backend:
+        condition: service_healthy
+      test-db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '🧪 Waiting for backend to be ready...' &&
+        sleep 5 &&
+        echo '🧪 Running frontend integration tests...' &&
+        npm test -- --config=jest.config.integration.js --watchAll=false --verbose
+      "
+
   # End-to-end integration tests
   e2e-tests:
     build:
@@ -186,6 +212,27 @@ services:
         curl -f http://test-backend:8000/health &&
         curl -f http://test-frontend:3000 &&
         echo '✅ All services are healthy and accessible'
+      "
+
+  # Playwright E2E tests
+  playwright-tests:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.playwright
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions}
+      NEXT_PUBLIC_FRONTEND_URL: ${NEXT_PUBLIC_FRONTEND_URL:-https://edustream.valsa.solutions}
+      USE_EXTERNAL_URLS: "true"
+      CI: "true"
+    volumes:
+      - ./frontend/playwright-report:/app/playwright-report
+      - ./frontend/test-results:/app/test-results
+    command: >
+      sh -c "
+        echo '🎭 Running Playwright E2E tests...' &&
+        echo 'Using API URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions}' &&
+        echo 'Using Frontend URL: ${NEXT_PUBLIC_FRONTEND_URL:-https://edustream.valsa.solutions}' &&
+        npx playwright test --reporter=list,html
       "
 
 volumes:

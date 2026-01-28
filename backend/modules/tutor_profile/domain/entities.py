@@ -94,6 +94,7 @@ class TutorProfileAggregate:
     timezone: str | None = "UTC"
     version: int = 1
     created_at: datetime | None = None
+    profile_photo_url: str | None = None
     subjects: list[TutorSubjectEntity] = field(default_factory=list)
     availabilities: list[TutorAvailabilityEntity] = field(default_factory=list)
     certifications: list[TutorCertificationEntity] = field(default_factory=list)

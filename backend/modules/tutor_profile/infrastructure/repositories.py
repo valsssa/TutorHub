@@ -19,6 +19,8 @@ from models import (
     UserProfile,
 )
 
+from core.avatar_storage import build_avatar_url
+
 from ...tutor_profile.domain.entities import (
     TutorAvailabilityEntity,
     TutorCertificationEntity,
@@ -499,9 +501,13 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         first_name = None
         last_name = None
+        profile_photo_url = None
         if profile.user:
             first_name = getattr(profile.user, "first_name", None)
             last_name = getattr(profile.user, "last_name", None)
+            avatar_key = getattr(profile.user, "avatar_key", None)
+
+            profile_photo_url = build_avatar_url(avatar_key, allow_absolute=True)
 
         return TutorProfileAggregate(
             id=profile.id,
@@ -526,6 +532,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             total_sessions=profile.total_sessions or 0,
             timezone=timezone,
             version=profile.version or 1,
+            profile_photo_url=profile_photo_url,
             subjects=subjects,
             availabilities=availabilities,
             certifications=certifications,

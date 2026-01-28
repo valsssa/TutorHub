@@ -15,6 +15,7 @@ class Subject(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(100), unique=True, nullable=False)
     description = Column(Text)
+    category = Column(String(50))  # e.g., 'STEM', 'Languages', 'Arts', 'Business'
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 

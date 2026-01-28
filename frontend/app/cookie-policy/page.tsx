@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import axios from 'axios'
 import { ChevronLeft, Cookie } from 'lucide-react'
+import { getApiBaseUrl } from '@/shared/utils/url'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL)
 
 export default function CookiePolicyPage() {
   const router = useRouter()

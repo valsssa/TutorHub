@@ -39,7 +39,7 @@ export default function AdminHeader({
   }, [currency, user?.currency, currencyCode])
 
   return (
-    <header className="bg-white shadow-sm border-b">
+    <header className="bg-white shadow-sm border-b relative z-[10000]">
       <div className="px-6 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -83,7 +83,7 @@ export default function AdminHeader({
               </button>
 
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-2 z-10">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-2 z-[10001]">
                   <div className="px-4 py-2 border-b">
                     <p className="text-sm font-medium">Account Settings</p>
                   </div>

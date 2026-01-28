@@ -76,11 +76,9 @@ function BookingPageContent() {
       setSubjectsList(subjectsData);
       setReviews(reviewsData);
 
-      // Set default subject
+      // Set default subject (only from tutor's subjects)
       if (tutorData.subjects && tutorData.subjects.length > 0) {
         setSelectedSubjectId(tutorData.subjects[0].subject_id);
-      } else if (subjectsData.length > 0) {
-        setSelectedSubjectId(subjectsData[0].id);
       }
     } catch (error) {
       showError("Failed to load booking details");
@@ -342,7 +340,7 @@ function BookingPageContent() {
               </div>
 
               {/* Subject Selection */}
-              {subjectsList.length > 0 && (
+              {tutor.subjects && tutor.subjects.length > 0 && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Subject
@@ -354,9 +352,9 @@ function BookingPageContent() {
                     }
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 transition-colors"
                   >
-                    {subjectsList.map((subject) => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
+                    {tutor.subjects.map((tutorSubject) => (
+                      <option key={tutorSubject.subject_id} value={tutorSubject.subject_id}>
+                        {tutorSubject.subject_name}
                       </option>
                     ))}
                   </select>

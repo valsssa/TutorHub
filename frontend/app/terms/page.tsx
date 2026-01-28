@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import axios from 'axios'
 import { ChevronLeft, FileText, Shield, Scale, Gavel, Globe } from 'lucide-react'
+import { getApiBaseUrl } from '@/shared/utils/url'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL)
 
 export default function TermsPage() {
   const router = useRouter()
@@ -69,8 +70,8 @@ export default function TermsPage() {
         <div className="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300">
           <h3>1. Introduction</h3>
           <p>
-            This Terms of Use Agreement ("Agreement") constitutes a legally binding contract between EduConnect ("Company," "we," "us," or "our") and you ("User," "you," or "your").
-            By accessing or using the EduConnect platform, website, and mobile application (collectively, the "Services"), you agree to be bound by these terms.
+            This Terms of Use Agreement (&quot;Agreement&quot;) constitutes a legally binding contract between EduConnect (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) and you (&quot;User,&quot; &quot;you,&quot; or &quot;your&quot;).
+            By accessing or using the EduConnect platform, website, and mobile application (collectively, the &quot;Services&quot;), you agree to be bound by these terms.
           </p>
 
           <h3>2. Acceptable Use</h3>
@@ -79,7 +80,7 @@ export default function TermsPage() {
           </p>
           <ul>
             <li>Use the Services in any way that violates applicable federal, state, local, or international law.</li>
-            <li>Engage in conduct that restricts or inhibits anyone's use or enjoyment of the Services, or which may harm the Company or users of the Services.</li>
+            <li>Engage in conduct that restricts or inhibits anyone&apos;s use or enjoyment of the Services, or which may harm the Company or users of the Services.</li>
             <li>Use the Services to impersonate or attempt to impersonate the Company, a Company employee, another user, or any other person or entity.</li>
             <li>Engage in any automated use of the system, such as using scripts to send comments or messages, or using any data mining, robots, or similar data gathering and extraction tools.</li>
             <li>Attempt to bypass any measures of the Site designed to prevent or restrict access to the Site, or any portion of the Site.</li>
@@ -87,10 +88,10 @@ export default function TermsPage() {
 
           <h3>3. User Generated Content</h3>
           <p>
-            The Services may invite you to chat, contribute to, or participate in blogs, message boards, online forums, and other functionality, and may provide you with the opportunity to create, submit, post, display, transmit, perform, publish, distribute, or broadcast content and materials to us or on the Services, including but not limited to text, writings, video, audio, photographs, graphics, comments, suggestions, or personal information or other material (collectively, "Contributions").
+            The Services may invite you to chat, contribute to, or participate in blogs, message boards, online forums, and other functionality, and may provide you with the opportunity to create, submit, post, display, transmit, perform, publish, distribute, or broadcast content and materials to us or on the Services, including but not limited to text, writings, video, audio, photographs, graphics, comments, suggestions, or personal information or other material (collectively, &quot;Contributions&quot;).
           </p>
           <p>
-            <strong>Moderation:</strong> We have the right (but not the obligation) to: (1) monitor the Contributions; (2) remove any Contributions that we determine in our sole discretion are unlawful, offensive, threatening, libelous, defamatory, pornographic, obscene, or otherwise objectionable or violates any party's intellectual property or these Terms of Use.
+            <strong>Moderation:</strong> We have the right (but not the obligation) to: (1) monitor the Contributions; (2) remove any Contributions that we determine in our sole discretion are unlawful, offensive, threatening, libelous, defamatory, pornographic, obscene, or otherwise objectionable or violates any party&apos;s intellectual property or these Terms of Use.
           </p>
 
           <h3>4. Intellectual Property Rights</h3>

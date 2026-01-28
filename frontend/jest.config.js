@@ -7,7 +7,6 @@ const createJestConfig = nextJest({
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
@@ -17,6 +16,8 @@ const customJestConfig = {
     '<rootDir>/node_modules/',
     '<rootDir>/__tests__/test-utils.tsx',
     '<rootDir>/__tests__/utils/',
+    '<rootDir>/__tests__/integration/', // Exclude integration tests from default run
+    '<rootDir>/e2e/', // Playwright suite runs separately
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
@@ -30,6 +31,8 @@ const customJestConfig = {
   transformIgnorePatterns: [
     'node_modules/(?!(lucide-react|@lucide)/)',
   ],
+  // Unit tests use jest.setup.js with mocks
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

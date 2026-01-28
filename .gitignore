@@ -51,6 +51,9 @@ htmlcov/
 .tox/
 .coverage
 .coverage.*
+frontend/test-results/*
+frontend/playwright-report/*
+
 
 # IDEs
 .vscode/

@@ -1,25 +1,51 @@
 
 'use client'
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Check, DollarSign, Calendar, Globe, Users } from 'lucide-react';
+import { Check, DollarSign, Calendar, Globe, Users } from 'lucide-react';
+import Cookies from 'js-cookie';
+import axios from 'axios';
+import PublicHeader from '@/components/PublicHeader';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { User } from '@/types';
+import { getApiBaseUrl } from '@/shared/utils/url';
+
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export default function BecomeTutorPage() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = Cookies.get('token');
+      if (token) {
+        try {
+          const response = await axios.get(`${API_URL}/users/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setUser(response.data);
+        } catch (error) {
+          Cookies.remove('token');
+          setUser(null);
+        }
+      }
+    };
+
+    checkAuth();
+  }, []);
+
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-16">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+            {/* Navigation Header */}
+            {user ? <Navbar user={user} /> : <PublicHeader />}
             <div className="bg-slate-900 text-white relative overflow-hidden">
                 <div className="absolute inset-0 bg-emerald-600/10 pattern-dots"></div>
                 <div className="container mx-auto px-4 py-8 relative z-10">
-                    <button
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors font-medium mb-12 group"
-                    >
-                        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform"/> 
-                        Back
-                    </button>
-
                     <div className="flex flex-col lg:flex-row items-center gap-12 mb-16">
                         <div className="flex-1 text-center lg:text-left">
                             <h1 className="text-5xl lg:text-6xl font-black mb-6 leading-tight">
@@ -29,27 +55,31 @@ export default function BecomeTutorPage() {
                             <p className="text-xl text-slate-300 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
                                 Join over 30,000 tutors teaching 120+ subjects. Set your own rates, manage your own schedule, and teach students globally.
                             </p>
-                            <button
-                                onClick={() => router.push('/tutor/onboarding')}
-                                className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-1"
+                            <Link
+                                href="/register?role=tutor"
+                                className="inline-block px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-1"
                             >
                                 Become a Tutor
-                            </button>
+                            </Link>
                         </div>
                         <div className="flex-1 relative">
                             <div className="relative z-10 bg-white dark:bg-slate-800 p-2 rounded-3xl shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
-                                <img 
-                                    src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=1000&auto=format&fit=crop" 
-                                    alt="Happy Tutor" 
-                                    className="rounded-2xl w-full h-[400px] object-cover object-top"
-                                />
+                                <div className="relative w-full h-[400px]">
+                                    <Image 
+                                        src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=1000&auto=format&fit=crop" 
+                                        alt="Happy Tutor" 
+                                        fill
+                                        className="rounded-2xl object-cover object-top"
+                                        unoptimized
+                                    />
+                                </div>
                                 <div className="absolute -bottom-6 -left-6 bg-white dark:bg-slate-700 p-4 rounded-xl shadow-xl flex items-center gap-4">
                                     <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xl">
                                         $
                                     </div>
                                     <div>
                                         <p className="text-sm text-slate-500 dark:text-slate-300 font-bold uppercase">Average Earnings</p>
-                                        <p className="text-xl font-bold text-slate-900 dark:text-white">$1,500/mo</p>
+                                        <p className="text-xl font-bold text-slate-900 dark:text-white">$2,500/mo</p>
                                     </div>
                                 </div>
                             </div>
@@ -108,6 +138,9 @@ export default function BecomeTutorPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Footer */}
+            <Footer />
         </div>
     );
 }
