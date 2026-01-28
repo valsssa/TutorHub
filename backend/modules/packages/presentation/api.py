@@ -1,7 +1,7 @@
 """Student Packages API - Decision tracking for package purchases."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -94,9 +94,8 @@ async def purchase_package(
 
     # Calculate expiration date (if pricing option has validity)
     expires_at = None
-    # TODO: Add validity_days to pricing options if needed
-    # if pricing_option.validity_days:
-    #     expires_at = datetime.utcnow() + timedelta(days=pricing_option.validity_days)
+    if pricing_option.validity_days:
+        expires_at = datetime.utcnow() + timedelta(days=pricing_option.validity_days)
 
     try:
         # Create package purchase record

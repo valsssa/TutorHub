@@ -349,6 +349,7 @@ class TutorPricingOptionInput(BaseModel):
     description: str | None = None
     duration_minutes: int = Field(..., gt=0, le=600)
     price: Decimal = Field(..., gt=0, max_digits=10, decimal_places=2)
+    validity_days: int | None = Field(None, gt=0, description="Number of days package is valid after purchase (NULL = no expiration)")
 
 
 class TutorPricingOptionResponse(TutorPricingOptionInput):

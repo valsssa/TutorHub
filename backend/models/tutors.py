@@ -184,6 +184,7 @@ class TutorPricingOption(Base):
     description = Column(Text)
     duration_minutes = Column(Integer, nullable=False)
     price = Column(DECIMAL(10, 2), nullable=False)
+    validity_days = Column(Integer, nullable=True)  # Number of days package is valid (NULL = no expiration)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
         TIMESTAMP(timezone=True),
@@ -196,6 +197,7 @@ class TutorPricingOption(Base):
     __table_args__ = (
         CheckConstraint("duration_minutes > 0", name="positive_duration"),
         CheckConstraint("price > 0", name="positive_price"),
+        CheckConstraint("validity_days IS NULL OR validity_days > 0", name="positive_validity_days"),
     )
 
 
