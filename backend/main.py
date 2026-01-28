@@ -193,8 +193,6 @@ async def create_default_users():
             db.flush()  # Get user ID
 
             # Now change role to tutor using DDD event handler (creates profile) and update with demo data
-            from datetime import datetime
-
             from modules.users.domain.events import UserRoleChanged
             from modules.users.domain.handlers import RoleChangeEventHandler
 
