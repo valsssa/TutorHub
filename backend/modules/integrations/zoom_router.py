@@ -13,11 +13,12 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
 from core.config import settings
 from core.dependencies import CurrentUser, DatabaseSession, TutorUser
+from core.rate_limiting import limiter
 from models import Booking
 
 logger = logging.getLogger(__name__)
@@ -220,7 +221,8 @@ zoom_client = ZoomClient()
     response_model=ZoomConnectionStatus,
     summary="Check Zoom integration status",
 )
-async def get_zoom_status() -> ZoomConnectionStatus:
+@limiter.limit("30/minute")
+async def get_zoom_status(request: Request) -> ZoomConnectionStatus:
     """Check if Zoom integration is configured."""
 
     is_configured = bool(
@@ -247,7 +249,9 @@ Automatically generates a Zoom meeting link and updates the booking.
 Only tutors can create meetings for their own bookings.
     """,
 )
+@limiter.limit("20/minute")
 async def create_meeting_for_booking(
+    request: Request,
     booking_id: Annotated[int, Query(description="Booking ID")],
     current_user: TutorUser,
     db: DatabaseSession,
@@ -313,7 +317,9 @@ async def create_meeting_for_booking(
     "/meetings/{meeting_id}",
     summary="Delete Zoom meeting",
 )
+@limiter.limit("20/minute")
 async def delete_meeting(
+    request: Request,
     meeting_id: int,
     current_user: TutorUser,
     db: DatabaseSession,
