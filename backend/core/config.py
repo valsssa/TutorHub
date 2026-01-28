@@ -138,6 +138,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
     GOOGLE_REDIRECT_URI: str = "https://edustream.valsa.solutions/api/auth/google/callback"
+    GOOGLE_CALENDAR_REDIRECT_URI: str = "https://api.valsa.solutions/api/integrations/calendar/callback"
     OAUTH_STATE_SECRET: str | None = None  # For CSRF protection
 
     # Brevo (Sendinblue) Email Configuration

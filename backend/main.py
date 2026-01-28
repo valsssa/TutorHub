@@ -55,6 +55,7 @@ from modules.users.avatar.router import router as avatar_router
 from modules.users.currency.router import router as currency_router
 from modules.users.preferences.router import router as preferences_router
 from modules.utils.presentation.api import router as utils_router
+from modules.integrations.calendar_router import router as calendar_router
 from modules.integrations.zoom_router import router as zoom_router
 
 logging.basicConfig(
@@ -525,6 +526,7 @@ app.include_router(availability_router)
 app.include_router(utils_router)
 app.include_router(websocket_router)
 app.include_router(zoom_router)
+app.include_router(calendar_router)
 
 
 # ============================================================================

@@ -39,6 +39,12 @@ class User(Base):
     avatar_key = Column(String(255), nullable=True, index=True)
     # OAuth provider IDs
     google_id = Column(String(255), nullable=True, unique=True, index=True)
+    # Google Calendar integration
+    google_calendar_access_token = Column(Text, nullable=True)
+    google_calendar_refresh_token = Column(Text, nullable=True)
+    google_calendar_token_expires = Column(TIMESTAMP(timezone=True), nullable=True)
+    google_calendar_email = Column(String(255), nullable=True)
+    google_calendar_connected_at = Column(TIMESTAMP(timezone=True), nullable=True)
     currency = Column(String(3), nullable=False, default="USD", server_default="USD")
     timezone = Column(String(64), nullable=False, default="UTC", server_default="UTC")
     preferred_language = Column(String(5), nullable=False, default="en", server_default="en")

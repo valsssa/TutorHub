@@ -4,6 +4,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Repository Structure](#repository-structure)
+3. [Git Workflow & Version Control](#git-workflow--version-control)
+   - [Repository Configuration](#repository-configuration)
+   - [Branch Management](#branch-management)
+   - [Commit Message Convention](#commit-message-convention)
+   - [Workflow Steps](#workflow-steps)
+   - [Pre-commit Hooks](#pre-commit-hooks)
+   - [Pull Request Guidelines](#pull-request-guidelines)
+4. [Critical Development Rules](#critical-development-rules)
+   - [Always Use Docker](#1-always-use-docker)
+   - [Role System Security](#2-role-system-security)
+   - [Testing is Mandatory](#3-testing-is-mandatory)
+   - [Architectural Principles](#4--architectural-principles)
+   - [Performance & Optimization](#-5-performance--optimization)
+   - [Code Quality](#-6-code-quality)
+5. [Essential Commands](#essential-commands)
+   - [Git Operations](#git-operations)
+   - [Development](#development)
+   - [Testing](#testing)
+   - [Database Operations](#database-operations)
+   - [Production Deployment](#production-deployment)
+6. [Architecture & Code Organization](#architecture--code-organization)
+   - [Backend Architecture](#backend-architecture-fastapi)
+   - [Frontend Architecture](#frontend-architecture-nextjs-15)
+   - [Database Architecture](#database-architecture)
+7. [Adding New Features](#adding-new-features)
+   - [New API Endpoint](#new-api-endpoint)
+   - [New Frontend Page](#new-frontend-page)
+   - [New User Role](#new-user-role)
+8. [Corporate Proxy Configuration](#corporate-proxy-configuration)
+9. [Security Guidelines](#security-guidelines)
+   - [Input Validation](#input-validation)
+   - [Authentication Flow](#authentication-flow)
+   - [Security Best Practices](#️-common-security-mistakes-to-avoid-and-secure-countermeasures)
+10. [Testing Strategy](#testing-strategy)
+11. [Common Troubleshooting](#common-troubleshooting)
+12. [Documentation Structure](#documentation-structure)
+13. [Default Credentials](#default-credentials)
+14. [Common Pitfalls & Best Practices](#common-pitfalls--best-practices)
+15. [Quick Reference](#quick-reference)
+
+---
+
 ## Project Overview
 
 Full-stack authentication template with role-based access control, production-ready security, and Docker containerization.
@@ -15,6 +61,439 @@ Full-stack authentication template with role-based access control, production-re
 - Rate limiting (5/min registration, 10/min login)
 - Optimized database with indexes (60% faster queries)
 - Corporate proxy support (Harbor + Nexus)
+
+---
+
+## Repository Structure
+
+```
+TutorHub/
+├── backend/                    # FastAPI backend application
+│   ├── core/                   # Core utilities and shared logic
+│   │   ├── config.py          # Configuration management
+│   │   ├── security.py        # Security utilities
+│   │   ├── dependencies.py    # FastAPI dependencies
+│   │   └── ...
+│   ├── modules/               # Feature modules (DDD structure)
+│   │   ├── auth/              # Authentication module
+│   │   │   ├── application/   # Business logic
+│   │   │   ├── domain/        # Domain entities
+│   │   │   ├── infrastructure/# Data access
+│   │   │   └── presentation/  # API endpoints
+│   │   ├── bookings/          # Booking management
+│   │   ├── payments/          # Payment processing
+│   │   ├── users/             # User management
+│   │   └── ...
+│   ├── models/                # SQLAlchemy models
+│   │   ├── __init__.py
+│   │   ├── auth.py
+│   │   ├── bookings.py
+│   │   └── ...
+│   ├── tests/                 # Backend tests
+│   ├── alembic/               # Database migrations
+│   ├── main.py                # Application entry point
+│   ├── database.py            # Database configuration
+│   ├── requirements.txt       # Python dependencies
+│   └── Dockerfile             # Backend container
+│
+├── frontend/                   # Next.js 15 frontend
+│   ├── app/                   # Next.js App Router
+│   │   ├── (public)/          # Public routes (login, register)
+│   │   ├── admin/             # Admin dashboard
+│   │   ├── bookings/          # Booking pages
+│   │   ├── messages/          # Messaging interface
+│   │   ├── tutors/            # Tutor discovery
+│   │   └── ...
+│   ├── components/            # React components
+│   │   ├── dashboards/        # Dashboard components
+│   │   ├── modals/            # Modal dialogs
+│   │   ├── messaging/         # Messaging components
+│   │   └── ...
+│   ├── lib/                   # Utilities and helpers
+│   │   ├── api/               # API client
+│   │   ├── auth.ts            # Auth utilities
+│   │   └── ...
+│   ├── __tests__/             # Frontend tests
+│   ├── e2e/                   # Playwright E2E tests
+│   ├── package.json           # Node dependencies
+│   └── Dockerfile             # Frontend container
+│
+├── database/                   # Database resources
+│   ├── init.sql               # Initial schema
+│   ├── migrations/            # SQL migration files
+│   └── SOURCE_OF_TRUTH.md     # Database documentation
+│
+├── docs/                       # Project documentation
+│   ├── architecture/          # Architecture docs
+│   ├── flow/                  # User flow diagrams
+│   ├── tests/                 # Testing documentation
+│   └── ...
+│
+├── tests/                      # Integration & E2E tests
+│   └── e2e/                   # End-to-end test scenarios
+│
+├── scripts/                    # Utility scripts
+│   ├── backup_avatars.sh      # Avatar backup
+│   └── ...
+│
+├── docker-compose.yml          # Development environment
+├── docker-compose.test.yml     # Test environment
+├── docker-compose.prod.yml     # Production environment
+│
+├── .gitignore                 # Git ignore rules
+├── .env.example               # Environment template
+├── CLAUDE.md                  # This file (AI guidance)
+├── AGENTS.md                  # Agent-specific rules
+├── README.md                  # Project documentation
+└── START_HERE.md              # Getting started guide
+```
+
+**Key Directories**:
+- `backend/core/` - Shared utilities, security, config
+- `backend/modules/` - Feature modules following DDD principles
+- `frontend/app/` - Next.js pages using App Router
+- `frontend/components/` - Reusable React components
+- `database/migrations/` - SQL migrations (auto-applied on startup)
+- `docs/` - Comprehensive project documentation
+- `tests/` - Integration and E2E tests
+
+---
+
+## Git Workflow & Version Control
+
+### Repository Configuration
+
+**Dual-Push Setup** (GitHub + GitLab):
+- **Primary (fetch)**: GitHub → `https://github.com/valsssa/TutorHub.git`
+- **Mirrors (push)**:
+  - GitHub → `https://github.com/valsssa/TutorHub.git`
+  - GitLab → `https://gitlab.lazarev.cloud/valsa/tutorhub.git`
+
+```bash
+# Single command pushes to BOTH remotes automatically
+git push origin main
+
+# View remote configuration
+git remote -v
+# origin  https://github.com/valsssa/TutorHub.git (fetch)
+# origin  https://github.com/valsssa/TutorHub.git (push)
+# origin  https://gitlab.lazarev.cloud/valsa/tutorhub.git (push)
+```
+
+### Branch Management
+
+**Main Branch**: `main` (protected, requires PR/MR for changes)
+
+**Branch Naming Convention** (kebab-case):
+```bash
+feature/<short-description>    # New features
+fix/<issue-description>        # Bug fixes
+refactor/<component-name>      # Code refactoring
+docs/<documentation-update>    # Documentation only
+test/<test-description>        # Test additions/updates
+chore/<maintenance-task>       # Maintenance tasks
+hotfix/<critical-fix>          # Production hotfixes
+```
+
+**Examples**:
+```bash
+feature/user-authentication
+feature/booking-system
+fix/login-validation-error
+fix/payment-processing-bug
+refactor/database-queries
+refactor/api-endpoints
+docs/api-documentation
+test/integration-tests
+chore/update-dependencies
+hotfix/security-patch
+```
+
+### Commit Message Convention
+
+Follow **Conventional Commits** specification:
+
+**Format**: `<type>(<scope>): <subject>`
+
+**Types**:
+- `feat`: New feature
+- `fix`: Bug fix
+- `refactor`: Code refactoring (no functionality change)
+- `perf`: Performance improvement
+- `style`: Code style/formatting (no logic change)
+- `test`: Adding or updating tests
+- `docs`: Documentation changes
+- `chore`: Maintenance tasks, dependency updates
+- `ci`: CI/CD pipeline changes
+- `build`: Build system changes
+- `revert`: Revert previous commit
+
+**Examples**:
+```bash
+feat(auth): add JWT token refresh mechanism
+fix(booking): resolve timezone conversion error
+refactor(api): simplify error handling middleware
+perf(db): optimize user query with indexes
+test(auth): add unit tests for login flow
+docs(api): update endpoint documentation
+chore(deps): upgrade FastAPI to 0.104.0
+```
+
+**Multi-line commits**:
+```bash
+git commit -m "feat(payments): integrate Stripe payment processing
+
+- Add Stripe SDK integration
+- Implement payment webhook handlers
+- Add payment status tracking
+- Update booking flow with payment step
+
+Closes #123"
+```
+
+**Co-authored commits** (when pairing or AI-assisted):
+```bash
+git commit -m "feat(booking): implement booking cancellation
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+```
+
+### Workflow Steps
+
+**1. Create Feature Branch**:
+```bash
+# Update main branch
+git checkout main
+git pull origin main
+
+# Create and switch to feature branch
+git checkout -b feature/new-feature
+
+# Or for bug fixes
+git checkout -b fix/issue-description
+```
+
+**2. Make Changes & Commit**:
+```bash
+# Stage specific files (preferred over git add .)
+git add backend/main.py backend/schemas.py
+git commit -m "feat(api): add user profile endpoint"
+
+# Or stage all changes (use cautiously)
+git add .
+git commit -m "feat(api): add user profile endpoint"
+```
+
+**3. Keep Branch Updated**:
+```bash
+# Rebase on main to keep linear history
+git fetch origin
+git rebase origin/main
+
+# Or merge main into feature branch
+git merge origin/main
+```
+
+**4. Push to Both Remotes**:
+```bash
+# First push of new branch
+git push -u origin feature/new-feature
+
+# Subsequent pushes (pushes to GitHub + GitLab automatically)
+git push origin feature/new-feature
+```
+
+**5. Create Pull Request / Merge Request**:
+```bash
+# Using GitHub CLI
+gh pr create --title "Add user profile endpoint" --body "Description of changes"
+
+# Using GitLab CLI (if installed)
+glab mr create --title "Add user profile endpoint" --description "Description of changes"
+```
+
+### Pre-commit Hooks
+
+**Automated checks before each commit**:
+- `black` - Python code formatting
+- `isort` - Import sorting
+- `ruff` - Python linting
+- `eslint` - TypeScript/JavaScript linting
+- `prettier` - Frontend code formatting
+- `pytest` - Fast unit tests (optional)
+
+**Setup pre-commit** (if not already configured):
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Run manually
+pre-commit run --all-files
+```
+
+### Branch Protection Rules
+
+**Main Branch Protection**:
+- ❌ Direct pushes disabled
+- ✅ Require pull request reviews (1+ approvers)
+- ✅ Require status checks to pass (tests, linting)
+- ✅ Require branches to be up to date before merging
+- ✅ Enforce linear history (rebase or squash merge only)
+
+**Recommended Protection for All Branches**:
+- Block force pushes to shared branches
+- Require signed commits (optional but recommended)
+
+### Common Git Operations
+
+**Undo Last Commit** (keep changes):
+```bash
+git reset --soft HEAD~1
+```
+
+**Amend Last Commit** (change message or add files):
+```bash
+git add forgotten-file.py
+git commit --amend --no-edit
+```
+
+**Stash Changes Temporarily**:
+```bash
+# Save work in progress
+git stash save "WIP: implementing feature X"
+
+# List stashes
+git stash list
+
+# Apply most recent stash
+git stash pop
+
+# Apply specific stash
+git stash apply stash@{0}
+```
+
+**Rebase Interactive** (clean up commits):
+```bash
+# Rebase last 3 commits
+git rebase -i HEAD~3
+
+# Options: pick, reword, squash, fixup, drop
+```
+
+**Cherry-pick Commit**:
+```bash
+# Apply specific commit to current branch
+git cherry-pick <commit-hash>
+```
+
+**View History**:
+```bash
+# Pretty log
+git log --oneline --graph --decorate --all
+
+# Log with file changes
+git log --stat
+
+# Search commits
+git log --grep="search term"
+```
+
+### Pull Request Guidelines
+
+**PR Title**: Follow commit message convention
+```
+feat(auth): add OAuth2 Google authentication
+```
+
+**PR Description Template**:
+```markdown
+## Summary
+Brief description of changes (1-3 sentences)
+
+## Changes
+- Bullet point list of specific changes
+- Keep it focused and clear
+
+## Testing
+- [ ] Unit tests added/updated
+- [ ] Integration tests pass
+- [ ] Manual testing completed
+- [ ] Docker build successful
+
+## Screenshots (if applicable)
+Before/after screenshots for UI changes
+
+## Related Issues
+Closes #123
+Related to #456
+
+## Checklist
+- [ ] Code follows project style guidelines
+- [ ] Tests pass locally
+- [ ] Documentation updated
+- [ ] No breaking changes (or documented if required)
+- [ ] Branch is up to date with main
+```
+
+**PR Review Checklist**:
+- ✅ Code quality and readability
+- ✅ Test coverage adequate
+- ✅ No security vulnerabilities
+- ✅ Performance implications considered
+- ✅ Documentation updated
+- ✅ Breaking changes documented
+- ✅ Database migrations included (if needed)
+
+### GitFlow Emergency Procedures
+
+**Hotfix Workflow** (critical production fix):
+```bash
+# Create hotfix branch from main
+git checkout main
+git pull origin main
+git checkout -b hotfix/critical-security-patch
+
+# Make fix and test thoroughly
+# ... make changes ...
+
+# Commit with clear description
+git add .
+git commit -m "fix(security): patch XSS vulnerability in user input
+
+CRITICAL: Fixes security vulnerability allowing XSS attacks
+via unsanitized user input in profile fields.
+
+CVE-XXXX-XXXXX"
+
+# Push and create urgent PR
+git push -u origin hotfix/critical-security-patch
+gh pr create --title "HOTFIX: Patch XSS vulnerability" --label "critical,security"
+```
+
+**Revert Broken Deployment**:
+```bash
+# Revert specific commit
+git revert <commit-hash>
+git push origin main
+
+# Revert merge commit
+git revert -m 1 <merge-commit-hash>
+git push origin main
+```
+
+**Force Sync Fork/Mirror** (use with caution):
+```bash
+# Backup current state first
+git branch backup-$(date +%Y%m%d)
+
+# Reset to remote state
+git fetch origin
+git reset --hard origin/main
+git push origin main --force-with-lease
+```
 
 ---
 
@@ -102,6 +581,50 @@ docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 ---
 
 ## Essential Commands
+
+### Git Operations
+
+```bash
+# Check repository status
+git status
+
+# View remotes (shows dual-push configuration)
+git remote -v
+
+# Create and switch to new branch
+git checkout -b feature/new-feature
+
+# Stage and commit changes
+git add backend/main.py frontend/app/page.tsx
+git commit -m "feat(api): add new endpoint"
+
+# Push to both GitHub and GitLab
+git push origin feature/new-feature
+
+# Pull latest changes
+git pull origin main
+
+# Rebase current branch on main
+git fetch origin
+git rebase origin/main
+
+# View commit history
+git log --oneline --graph --decorate
+
+# Stash work in progress
+git stash save "WIP: feature implementation"
+git stash pop
+
+# Create PR using GitHub CLI
+gh pr create --title "Feature: Add authentication" --body "Description"
+
+# View PR status
+gh pr status
+
+# Sync both remotes manually (if needed)
+git push github main  # Push to GitHub only
+git push gitlab-lc main  # Push to GitLab only
+```
 
 ### Development
 
@@ -852,26 +1375,425 @@ Default users are created automatically on startup (configurable via environment
 
 ---
 
+## Common Pitfalls & Best Practices
+
+### Development Workflow Mistakes
+
+❌ **DON'T**:
+- Run services directly (`python main.py`, `npm run dev`)
+- Commit without running tests first
+- Push directly to `main` branch
+- Use `git add .` without reviewing changes
+- Commit with unclear messages like "fix bug" or "update code"
+- Skip pre-commit hooks with `--no-verify`
+- Force push to shared branches without team coordination
+- Leave TODO comments without creating issues
+- Mix multiple unrelated changes in one commit
+- Ignore linting errors and warnings
+
+✅ **DO**:
+- Always use Docker for development
+- Run full test suite before pushing
+- Create feature branches for all changes
+- Review staged changes before committing (`git diff --cached`)
+- Write descriptive commit messages following conventions
+- Let pre-commit hooks run automatically
+- Communicate before force-pushing
+- Create GitHub issues for TODOs
+- Make atomic commits (one logical change per commit)
+- Fix linting errors immediately
+
+### Code Quality Mistakes
+
+❌ **DON'T**:
+- Copy-paste code without refactoring
+- Skip type hints in Python
+- Use `any` type in TypeScript
+- Leave `console.log` or `print()` statements
+- Hardcode URLs, tokens, or credentials
+- Write functions longer than 50 lines
+- Create files longer than 300 lines
+- Skip docstrings for public functions
+- Ignore IDE warnings
+
+✅ **DO**:
+- Extract common logic into reusable functions
+- Provide 100% type hint coverage
+- Use specific TypeScript types
+- Use proper logging (`logger.info()`, not `print()`)
+- Store config in environment variables
+- Break down complex functions
+- Split large files into smaller modules
+- Document complex logic and public APIs
+- Address all IDE warnings
+
+### Database Mistakes
+
+❌ **DON'T**:
+- Write raw SQL queries
+- Skip database indexes
+- Use SELECT * in production
+- Forget to handle timezone conversions
+- Skip database migrations
+- Modify production database directly
+- Use synchronous DB calls in async code
+- Expose sensitive data in logs
+
+✅ **DO**:
+- Use ORM queries (SQLAlchemy)
+- Add indexes for frequently queried columns
+- Select only needed columns
+- Always use UTC timestamps
+- Create migrations for schema changes
+- Use migrations and backup/restore
+- Use async database drivers
+- Mask sensitive data in logs
+
+### Security Mistakes
+
+❌ **DON'T**:
+- Trust client-side validation
+- Store passwords in plain text
+- Use weak JWT secrets
+- Skip input sanitization
+- Expose detailed error messages to clients
+- Use `allow_origins="*"` in CORS
+- Log sensitive user data
+- Skip rate limiting
+
+✅ **DO**:
+- Validate on server-side always
+- Hash passwords with bcrypt (≥12 rounds)
+- Use strong, random secrets (32+ characters)
+- Sanitize and validate all inputs
+- Return generic error messages
+- Whitelist specific origins
+- Mask PII in logs
+- Apply rate limiting to all endpoints
+
+### Testing Mistakes
+
+❌ **DON'T**:
+- Skip writing tests for new features
+- Test only happy paths
+- Use production data in tests
+- Skip E2E tests for critical flows
+- Ignore failing tests
+- Mock everything in unit tests
+- Have tests depend on each other
+- Commit commented-out tests
+
+✅ **DO**:
+- Write tests before pushing
+- Test error cases and edge cases
+- Use test fixtures and factories
+- Have E2E tests for user workflows
+- Fix failing tests immediately
+- Mock only external dependencies
+- Make tests independent
+- Delete obsolete tests
+
+### Git Workflow Mistakes
+
+❌ **DON'T**:
+- Commit `.env` files with secrets
+- Commit `node_modules` or virtual environments
+- Make 50+ file commits without grouping
+- Rebase shared branches
+- Delete branches before merging
+- Merge without PR review
+- Squash commits that should be separate
+- Use ambiguous branch names like `fix` or `temp`
+
+✅ **DO**:
+- Use `.gitignore` properly
+- Exclude dependencies from commits
+- Make focused commits (<10 files)
+- Rebase only local feature branches
+- Keep branches until merged and deployed
+- Require PR reviews
+- Preserve meaningful commit history
+- Use descriptive branch names
+
+### Docker Mistakes
+
+❌ **DON'T**:
+- Run containers as root
+- Use `latest` tag in production
+- Include secrets in Dockerfiles
+- Skip multi-stage builds
+- Ignore Docker layer caching
+- Have large images (>1GB)
+- Skip health checks
+
+✅ **DO**:
+- Use non-root users
+- Pin specific versions
+- Use environment variables
+- Use multi-stage builds
+- Order Dockerfile for cache optimization
+- Minimize image size (<500MB)
+- Define health check endpoints
+
+### Performance Mistakes
+
+❌ **DON'T**:
+- Load all records without pagination
+- Use N+1 queries
+- Skip database connection pooling
+- Block event loop with sync code
+- Load large files into memory
+- Skip response caching
+- Use uncompressed responses
+
+✅ **DO**:
+- Always paginate list endpoints
+- Use `selectinload`/`joinedload` for relationships
+- Configure connection pools properly
+- Use async functions consistently
+- Stream large files
+- Implement response caching
+- Enable GZip compression
+
+### Documentation Mistakes
+
+❌ **DON'T**:
+- Skip updating documentation
+- Write obvious comments
+- Use outdated examples
+- Forget to update API docs
+- Leave broken links
+- Write code-only documentation
+
+✅ **DO**:
+- Update docs with code changes
+- Explain "why", not "what"
+- Keep examples current
+- Auto-generate API docs (OpenAPI)
+- Check links regularly
+- Include architecture diagrams
+
+---
+
 ## Quick Reference
 
+### Most Common Commands
+
 ```bash
-# Start development
+# === Development Workflow ===
+
+# 1. Start development environment
 docker compose up -d --build
+
+# 2. Create feature branch
+git checkout -b feature/new-feature
+
+# 3. Make changes, then commit
+git add backend/main.py
+git commit -m "feat(api): add new endpoint"
+
+# 4. Run tests
+docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+
+# 5. Push to both remotes (GitHub + GitLab)
+git push origin feature/new-feature
+
+# 6. Create pull request
+gh pr create --title "Add new feature" --body "Description"
+
+# === Docker Commands ===
+
+# Start all services
+docker compose up -d --build
+
+# Start specific service
+docker compose up -d --build backend
+
+# View logs (follow mode)
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (clean slate)
+docker compose down -v
+
+# Remove all Docker resources
+docker system prune -af --volumes
+
+# Rebuild single service
+docker compose build --no-cache backend
+
+# === Database Commands ===
+
+# Access database shell
+docker compose exec db psql -U postgres -d authapp
+
+# View all users
+docker compose exec db psql -U postgres -d authapp -c "SELECT id, email, role, is_active FROM users;"
+
+# Backup database
+docker compose exec -T db pg_dump -U postgres authapp > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Restore database
+cat backup.sql | docker compose exec -T db psql -U postgres -d authapp
+
+# Run migrations manually
+docker compose exec backend alembic upgrade head
+
+# === Testing Commands ===
 
 # Run all tests
 docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 
-# Clean slate
-docker compose down -v && docker system prune -af --volumes
+# Run backend tests only
+docker compose -f docker-compose.test.yml up backend-tests --abort-on-container-exit
 
-# Access database
-docker compose exec db psql -U postgres -d authapp
+# Run frontend tests only
+docker compose -f docker-compose.test.yml up frontend-tests --abort-on-container-exit
 
-# View logs
-docker compose logs backend
+# Run E2E tests
+docker compose -f docker-compose.test.yml up e2e-tests --abort-on-container-exit
 
-# Production deploy
+# Cleanup test environment
+docker compose -f docker-compose.test.yml down -v
+
+# === Git Commands ===
+
+# Check status
+git status
+
+# View remotes (dual-push)
+git remote -v
+
+# Create new branch
+git checkout -b feature/my-feature
+
+# Commit changes
+git add .
+git commit -m "feat(module): description"
+
+# Push to both GitHub and GitLab
+git push origin main
+
+# Pull latest
+git pull origin main
+
+# Rebase on main
+git fetch origin && git rebase origin/main
+
+# View commit history
+git log --oneline --graph --decorate
+
+# Stash changes
+git stash save "WIP: feature"
+git stash pop
+
+# === GitHub CLI Commands ===
+
+# Create PR
+gh pr create --title "Title" --body "Description"
+
+# View PR status
+gh pr status
+
+# List PRs
+gh pr list
+
+# Checkout PR
+gh pr checkout <number>
+
+# Merge PR
+gh pr merge <number>
+
+# === Production Deployment ===
+
+# Build and start production
 docker compose -f docker-compose.prod.yml up -d --build
+
+# View production logs
+docker compose -f docker-compose.prod.yml logs -f
+
+# Check production status
+docker compose -f docker-compose.prod.yml ps
+
+# Stop production
+docker compose -f docker-compose.prod.yml down
+```
+
+### Emergency Commands
+
+```bash
+# Port already in use
+docker compose down
+lsof -ti:8000 | xargs kill -9  # Backend
+lsof -ti:3000 | xargs kill -9  # Frontend
+
+# Database connection failed
+docker compose down -v
+docker compose up -d --build
+
+# Complete system reset
+docker compose down -v
+docker system prune -af --volumes
+docker compose up -d --build
+
+# Revert last commit (keep changes)
+git reset --soft HEAD~1
+
+# Revert last commit (discard changes)
+git reset --hard HEAD~1
+
+# Force sync with remote
+git fetch origin
+git reset --hard origin/main
+git push origin main --force-with-lease
+```
+
+### Environment Variables
+
+**Backend** (`.env` or environment):
+```bash
+# Database
+DATABASE_URL=postgresql://postgres:postgres@db:5432/authapp
+
+# Security
+SECRET_KEY=your-secret-key-here
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Default Users
+DEFAULT_ADMIN_EMAIL=admin@example.com
+DEFAULT_ADMIN_PASSWORD=admin123
+DEFAULT_TUTOR_EMAIL=tutor@example.com
+DEFAULT_TUTOR_PASSWORD=tutor123
+DEFAULT_STUDENT_EMAIL=student@example.com
+DEFAULT_STUDENT_PASSWORD=student123
+
+# Stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Email (optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+```
+
+**Frontend** (`.env.local` or `.env.development`):
+```bash
+# API URL
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Stripe (frontend)
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+# Feature Flags
+NEXT_PUBLIC_ENABLE_ANALYTICS=false
+NEXT_PUBLIC_ENABLE_CHAT=true
 ```
 
 ### 🎯 **Core Principle: “Store Agreements, Not Just Data”**

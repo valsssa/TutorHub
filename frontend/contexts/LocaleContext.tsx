@@ -17,22 +17,14 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState(() => localeUtils.getDefaultLocale())
   const [currency, setCurrencyState] = useState(() => localeUtils.getDefaultCurrency())
 
-  // Debug: Log whenever currency state changes
-  useEffect(() => {
-    console.log('[LocaleContext] Currency state changed to:', currency)
-  }, [currency])
-
   const setLocale = (newLocale: string) => {
     setLocaleState(newLocale)
     localeUtils.setLocale(newLocale)
   }
 
   const setCurrency = (newCurrency: string) => {
-    console.log('[LocaleContext] setCurrency called with:', newCurrency)
-    console.log('[LocaleContext] Current currency before update:', currency)
     setCurrencyState(newCurrency)
     localeUtils.setCurrency(newCurrency)
-    console.log('[LocaleContext] setCurrencyState and localeUtils.setCurrency called')
   }
 
   const formatPrice = (amount: number) => {
