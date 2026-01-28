@@ -7,18 +7,36 @@ import { FiMail, FiLock, FiBook, FiArrowRight } from "react-icons/fi";
 import { auth } from "@/lib/api";
 import { useToast } from "@/components/ToastContainer";
 import { useFormValidation } from "@/hooks/useFormValidation";
+import { useTimezone } from "@/contexts/TimezoneContext";
+import { getBrowserTimezone } from "@/lib/timezone";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
+import TimezoneConfirmModal from "@/components/TimezoneConfirmModal";
 
 interface LoginFormValues {
   email: string;
   password: string;
 }
 
+interface TimezoneCheckState {
+  showModal: boolean;
+  detectedTimezone: string;
+  savedTimezone: string;
+  pendingRoute: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
+  const { setUserTimezone } = useTimezone();
   const [isLoading, setIsLoading] = useState(false);
+  const [isUpdatingTimezone, setIsUpdatingTimezone] = useState(false);
+  const [timezoneCheck, setTimezoneCheck] = useState<TimezoneCheckState>({
+    showModal: false,
+    detectedTimezone: "",
+    savedTimezone: "",
+    pendingRoute: "/dashboard",
+  });
 
   const loginAndRoute = async (
     email: string,
@@ -34,11 +52,29 @@ export default function LoginPage() {
         showSuccess(`Logged in as ${user.role}`);
       }
 
-      // Route based on user role
-      if (user.role === "admin") {
-        router.push("/admin");
+      // Set user timezone in context
+      if (user.timezone) {
+        setUserTimezone(user.timezone);
+      }
+
+      // Determine route based on role
+      const targetRoute = user.role === "admin" ? "/admin" : "/dashboard";
+
+      // Check if browser timezone differs from saved timezone
+      const browserTz = getBrowserTimezone();
+      const savedTz = user.timezone || "UTC";
+
+      if (browserTz !== savedTz) {
+        // Show confirmation modal instead of routing immediately
+        setTimezoneCheck({
+          showModal: true,
+          detectedTimezone: browserTz,
+          savedTimezone: savedTz,
+          pendingRoute: targetRoute,
+        });
       } else {
-        router.push("/dashboard");
+        // Timezones match, route directly
+        router.push(targetRoute);
       }
     } catch (error) {
       const err = error as { response?: { data?: { detail?: string } }; message?: string };
@@ -49,6 +85,28 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTimezoneUpdate = async () => {
+    setIsUpdatingTimezone(true);
+    try {
+      await auth.updatePreferences("", timezoneCheck.detectedTimezone);
+      setUserTimezone(timezoneCheck.detectedTimezone);
+      showSuccess("Timezone updated");
+      router.push(timezoneCheck.pendingRoute);
+    } catch (error) {
+      showError("Failed to update timezone");
+      // Still route even if update fails
+      router.push(timezoneCheck.pendingRoute);
+    } finally {
+      setIsUpdatingTimezone(false);
+      setTimezoneCheck((prev) => ({ ...prev, showModal: false }));
+    }
+  };
+
+  const handleKeepTimezone = () => {
+    setTimezoneCheck((prev) => ({ ...prev, showModal: false }));
+    router.push(timezoneCheck.pendingRoute);
   };
 
   const { values, errors, touched, handleChange, handleBlur, handleSubmit } =
@@ -85,6 +143,15 @@ export default function LoginPage() {
   };
 
   return (
+    <>
+      <TimezoneConfirmModal
+        isOpen={timezoneCheck.showModal}
+        detectedTimezone={timezoneCheck.detectedTimezone}
+        savedTimezone={timezoneCheck.savedTimezone}
+        onConfirmUpdate={handleTimezoneUpdate}
+        onKeepCurrent={handleKeepTimezone}
+        isLoading={isUpdatingTimezone}
+      />
     <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-950 relative overflow-hidden transition-colors duration-200 py-12 min-h-screen">
       {/* Background Gradient Orbs */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
@@ -244,5 +311,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

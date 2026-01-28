@@ -16,6 +16,8 @@ import {
 } from "react-icons/fi";
 import { BookingDTO } from "@/types/booking";
 import Button from "@/components/Button";
+import TimeDisplay from "@/components/TimeDisplay";
+import { useTimezone } from "@/contexts/TimezoneContext";
 
 interface BookingCardTutorProps {
   booking: BookingDTO;
@@ -34,6 +36,7 @@ export default function BookingCardTutor({
   onMarkNoShow,
   onAddNotes,
 }: BookingCardTutorProps) {
+  const { userTimezone } = useTimezone();
   const isPending = ["PENDING", "pending"].includes(booking.status);
   const isUpcoming = ["PENDING", "CONFIRMED", "pending", "confirmed"].includes(
     booking.status
@@ -46,6 +49,9 @@ export default function BookingCardTutor({
   const duration = Math.round(
     (endDate.getTime() - startDate.getTime()) / (1000 * 60)
   );
+
+  // Use user's timezone context or fall back to booking's tutor_tz
+  const displayTimezone = userTimezone || booking.tutor_tz;
 
   // Format earnings (tutor receives 80% after platform fee)
   const earningsDisplay = `$${(booking.tutor_earnings_cents / 100).toFixed(2)}`;
@@ -160,6 +166,7 @@ export default function BookingCardTutor({
               year: "numeric",
               month: "short",
               day: "numeric",
+              timeZone: displayTimezone,
             })}
           </span>
         </div>
@@ -167,16 +174,14 @@ export default function BookingCardTutor({
         <div className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
           <FiClock className="w-5 h-5" />
           <span>
-            {startDate.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}{" "}
-            - {endDate.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}{" "}
-            <span className="text-sm text-gray-500 dark:text-slate-400">
-              ({duration} min • {booking.tutor_tz})
+            <TimeDisplay
+              date={booking.start_at}
+              userTimezone={displayTimezone}
+              otherTimezone={booking.student_tz}
+              otherLabel="student"
+            />
+            <span className="text-sm text-gray-500 dark:text-slate-400 ml-2">
+              ({duration} min)
             </span>
           </span>
         </div>

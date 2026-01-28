@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/ToastContainer";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { LocaleProvider } from "@/contexts/LocaleContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { TimezoneProvider } from "@/contexts/TimezoneContext";
 import { headers } from "next/headers";
 import Link from "next/link";
 
@@ -42,7 +43,9 @@ export default function RootLayout({
         <ErrorBoundary>
           <ThemeProvider>
             <LocaleProvider>
-              <ToastProvider>{children}</ToastProvider>
+              <TimezoneProvider>
+                <ToastProvider>{children}</ToastProvider>
+              </TimezoneProvider>
             </LocaleProvider>
           </ThemeProvider>
         </ErrorBoundary>

@@ -16,6 +16,8 @@ import {
 } from "react-icons/fi";
 import { BookingDTO } from "@/types/booking";
 import Button from "@/components/Button";
+import TimeDisplay from "@/components/TimeDisplay";
+import { useTimezone } from "@/contexts/TimezoneContext";
 
 interface BookingCardStudentProps {
   booking: BookingDTO;
@@ -32,6 +34,7 @@ export default function BookingCardStudent({
   onReschedule,
   onMarkNoShow,
 }: BookingCardStudentProps) {
+  const { userTimezone } = useTimezone();
   const isUpcoming = ["PENDING", "CONFIRMED", "pending", "confirmed"].includes(
     booking.status
   );
@@ -44,6 +47,9 @@ export default function BookingCardStudent({
   const duration = Math.round(
     (endDate.getTime() - startDate.getTime()) / (1000 * 60)
   );
+
+  // Use user's timezone context or fall back to booking's student_tz
+  const displayTimezone = userTimezone || booking.student_tz;
 
   // Format price
   const priceDisplay = `$${(booking.rate_cents / 100).toFixed(2)}`;
@@ -145,6 +151,7 @@ export default function BookingCardStudent({
               year: "numeric",
               month: "short",
               day: "numeric",
+              timeZone: displayTimezone,
             })}
           </span>
         </div>
@@ -152,16 +159,14 @@ export default function BookingCardStudent({
         <div className="flex items-center gap-2 text-gray-700 dark:text-slate-300">
           <FiClock className="w-5 h-5" />
           <span>
-            {startDate.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}{" "}
-            - {endDate.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}{" "}
-            <span className="text-sm text-gray-500 dark:text-slate-400">
-              ({duration} min • {booking.student_tz})
+            <TimeDisplay
+              date={booking.start_at}
+              userTimezone={displayTimezone}
+              otherTimezone={booking.tutor_tz}
+              otherLabel="tutor"
+            />
+            <span className="text-sm text-gray-500 dark:text-slate-400 ml-2">
+              ({duration} min)
             </span>
           </span>
         </div>
