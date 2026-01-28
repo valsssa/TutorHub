@@ -82,22 +82,8 @@ function ScheduleManagerContent({
 
     setIsSubmitting(true);
     try {
-      // Create booking through the API
-      // Note: This creates a tutor-initiated booking
-      // The student field would need to be resolved by name/email in the backend
-      const startDateTime = new Date(`${lessonDate}T${lessonTime}:00`);
-
-      await bookings.create({
-        tutor_profile_id: 0, // Backend will use current tutor
-        start_at: startDateTime.toISOString(),
-        duration_minutes: parseInt(lessonDuration),
-        notes_student: `Lesson with ${studentName}, Type: ${lessonType}`,
-      });
-
-      showSuccess("Lesson scheduled successfully");
-      router.back();
-    } catch (error: any) {
-      showError(error.response?.data?.detail || "Failed to schedule lesson");
+      // Tutors cannot create bookings via the student-only endpoint.
+      showError("Scheduling lessons from this page isn't supported yet. Ask the student to book the session.");
     } finally {
       setIsSubmitting(false);
     }
@@ -111,21 +97,8 @@ function ScheduleManagerContent({
 
     setIsSubmitting(true);
     try {
-      // Create a blocked time slot (time off)
-      const startDateTime = isAllDay
-        ? new Date(`${startDate}T00:00:00`)
-        : new Date(`${startDate}T${startTime}:00`);
-      const endDateTime = isAllDay
-        ? new Date(`${endDate}T23:59:59`)
-        : new Date(`${endDate}T${endTime}:00`);
-
-      // Create availability slots that block this time
-      // For time off, we could create a "blocked" availability or use a separate API
-      // Since there's no specific "time off" endpoint, we'll show an info message
-      showSuccess(`Time off booked: ${timeOffTitle} from ${startDateTime.toLocaleString()} to ${endDateTime.toLocaleString()}`);
-      router.back();
-    } catch (error: any) {
-      showError(error.response?.data?.detail || "Failed to book time off");
+      // No backend endpoint exists yet; avoid showing false success.
+      showError("Time off booking isn't supported yet. Please adjust availability manually or contact support.");
     } finally {
       setIsSubmitting(false);
     }
@@ -137,21 +110,32 @@ function ScheduleManagerContent({
       return;
     }
 
+    const rangeStart = new Date(`${extraStartDate}T00:00:00`);
+    const rangeEnd = new Date(`${extraEndDate}T23:59:59`);
+    if (rangeEnd < rangeStart) {
+      showError("End date must be on or after start date");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const startDateTime = new Date(`${extraStartDate}T${extraStartTime}:00`);
-      const endDateTime = new Date(`${extraEndDate}T${extraEndTime}:00`);
+      const slotsToCreate: Array<Promise<unknown>> = [];
+      const cursor = new Date(rangeStart);
 
-      // Get the day of week (0 = Sunday, 6 = Saturday)
-      const dayOfWeek = startDateTime.getDay();
+      while (cursor <= rangeEnd) {
+        const dayOfWeek = cursor.getDay();
+        slotsToCreate.push(
+          availability.createAvailability({
+            day_of_week: dayOfWeek,
+            start_time: `${extraStartTime}:00`,
+            end_time: `${extraEndTime}:00`,
+            is_recurring: false,
+          })
+        );
+        cursor.setDate(cursor.getDate() + 1);
+      }
 
-      // Create availability slot for extra hours
-      await availability.createAvailability({
-        day_of_week: dayOfWeek,
-        start_time: extraStartTime + ":00",
-        end_time: extraEndTime + ":00",
-        is_recurring: false,
-      });
+      await Promise.all(slotsToCreate);
 
       showSuccess("Extra availability slots added successfully");
       router.back();

@@ -20,6 +20,37 @@ export default function LoginPage() {
   const { showSuccess, showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
+  const loginAndRoute = async (
+    email: string,
+    password: string,
+    { showRoleToast = false }: { showRoleToast?: boolean } = {},
+  ) => {
+    setIsLoading(true);
+    try {
+      await auth.login(email, password);
+      const user = await auth.getCurrentUser();
+
+      if (showRoleToast) {
+        showSuccess(`Logged in as ${user.role}`);
+      }
+
+      // Route based on user role
+      if (user.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      const err = error as { response?: { data?: { detail?: string } }; message?: string };
+      showError(
+        err.response?.data?.detail ||
+          "Login failed. Please check your credentials.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const { values, errors, touched, handleChange, handleBlur, handleSubmit } =
     useFormValidation<LoginFormValues>(
       {
@@ -45,56 +76,12 @@ export default function LoginPage() {
     );
 
   const onSubmit = async (formValues: LoginFormValues) => {
-    setIsLoading(true);
-
-    try {
-      await auth.login(formValues.email, formValues.password);
-      const user = await auth.getCurrentUser();
-
-      // Route based on user role
-      if (user.role === 'admin') {
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
-      }
-    } catch (error) {
-      const err = error as { response?: { data?: { detail?: string } }; message?: string };
-      showError(
-        err.response?.data?.detail ||
-          "Login failed. Please check your credentials.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
+    await loginAndRoute(formValues.email, formValues.password);
   };
 
   const fillDemoCredentials = (email: string, password: string) => {
     handleChange("email", email);
     handleChange("password", password);
-  };
-
-  const loginWithDefaultAccount = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      await auth.login(email, password);
-      const user = await auth.getCurrentUser();
-      showSuccess(`Logged in as ${user.role}`);
-      
-      // Route based on user role
-      if (user.role === 'admin') {
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
-      }
-    } catch (error) {
-      const err = error as { response?: { data?: { detail?: string } }; message?: string };
-      showError(
-        err.response?.data?.detail ||
-          "Login failed. Please check your credentials.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -202,7 +189,7 @@ export default function LoginPage() {
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => loginWithDefaultAccount("admin@example.com", "admin123")}
+                onClick={() => loginAndRoute("admin@example.com", "admin123", { showRoleToast: true })}
                 disabled={isLoading}
                 className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 border border-slate-900 dark:border-slate-200 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-300 transition-colors shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -210,7 +197,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => loginWithDefaultAccount("tutor@example.com", "tutor123")}
+                onClick={() => loginAndRoute("tutor@example.com", "tutor123", { showRoleToast: true })}
                 disabled={isLoading}
                 className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 dark:bg-blue-500 text-white border border-blue-600 dark:border-blue-500 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -218,7 +205,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => loginWithDefaultAccount("student@example.com", "student123")}
+                onClick={() => loginAndRoute("student@example.com", "student123", { showRoleToast: true })}
                 disabled={isLoading}
                 className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-emerald-600 dark:bg-emerald-500 text-white border border-emerald-600 dark:border-emerald-500 rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >

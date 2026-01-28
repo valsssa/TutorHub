@@ -28,7 +28,7 @@ export default function SupportPage() {
                   <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
                     <FiMail className="w-5 h-5 text-slate-600 dark:text-slate-400 mb-2" />
                     <h4 className="font-semibold text-slate-900 dark:text-white mb-1">Email Us</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">suppot@valsa.solutions</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">support@valsa.solutions</p>
                     <p className="text-xs text-slate-500 dark:text-slate-500">Response within 24 hours</p>
                   </div>
 

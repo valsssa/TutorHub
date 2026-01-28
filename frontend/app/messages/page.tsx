@@ -714,10 +714,12 @@ function MessagesContent() {
                                 isMe ? 'justify-end text-emerald-100' : 'justify-start text-slate-400 dark:text-slate-500'
                               }`}>
                                 <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                <span className="flex items-center gap-0.5">
-                                  <FiCheck size={11} className={isMe ? "opacity-80" : "opacity-60"} />
-                                  {isRead && <FiCheck size={11} className={`${isMe ? "opacity-80" : "opacity-60"} -ml-2`} />}
-                                </span>
+                                {isMe && (
+                                  <span className="flex items-center gap-0.5">
+                                    <FiCheck size={11} className="opacity-80" />
+                                    {isRead && <FiCheck size={11} className="opacity-80 -ml-2" />}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>

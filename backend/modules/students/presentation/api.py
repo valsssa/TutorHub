@@ -78,9 +78,12 @@ async def update_student_profile(
         for field, value in update_fields.items():
             setattr(profile, field, value)
 
-        # Keep profile preferred_language in sync with user preference if provided
+        # Keep profile preferred_language in sync with user preference if provided.
+        # current_user is loaded in a separate session; persist the change on this db session.
         if "preferred_language" in update_fields and update_fields["preferred_language"]:
-            current_user.preferred_language = update_fields["preferred_language"]
+            user_record = db.query(User).filter(User.id == current_user.id).first()
+            if user_record:
+                user_record.preferred_language = update_fields["preferred_language"]
 
         # Update timestamp in application code (no DB triggers)
         from datetime import datetime

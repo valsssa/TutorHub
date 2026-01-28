@@ -19,6 +19,8 @@ from models import (
     UserProfile,
 )
 
+from core.avatar_storage import build_avatar_url
+
 from ...tutor_profile.domain.entities import (
     TutorAvailabilityEntity,
     TutorCertificationEntity,
@@ -505,15 +507,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             last_name = getattr(profile.user, "last_name", None)
             avatar_key = getattr(profile.user, "avatar_key", None)
 
-            # Convert avatar_key to full public URL if it's a relative path
-            if avatar_key:
-                if avatar_key.startswith("http://") or avatar_key.startswith("https://"):
-                    # Already a full URL
-                    profile_photo_url = avatar_key
-                else:
-                    # Relative path - convert to full MinIO public URL
-                    from core.config import settings
-                    profile_photo_url = f"{settings.AVATAR_STORAGE_PUBLIC_ENDPOINT.rstrip('/')}/{settings.AVATAR_STORAGE_BUCKET}/{avatar_key}"
+            profile_photo_url = build_avatar_url(avatar_key, allow_absolute=True)
 
         return TutorProfileAggregate(
             id=profile.id,

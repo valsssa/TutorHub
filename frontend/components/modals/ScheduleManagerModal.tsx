@@ -72,19 +72,8 @@ export default function ScheduleManagerModal({
 
     setIsSubmitting(true);
     try {
-      const startDateTime = new Date(`${lessonDate}T${lessonTime}:00`);
-
-      await bookings.create({
-        tutor_profile_id: 0,
-        start_at: startDateTime.toISOString(),
-        duration_minutes: parseInt(lessonDuration),
-        notes_student: `Lesson with ${studentName}, Type: ${lessonType}`,
-      });
-
-      showSuccess("Lesson scheduled successfully");
-      onClose();
-    } catch (error: any) {
-      showError(error.response?.data?.detail || "Failed to schedule lesson");
+      // Tutors cannot create bookings via the student-only endpoint.
+      showError("Scheduling lessons from this view isn't supported yet. Ask the student to book or use the bookings dashboard.");
     } finally {
       setIsSubmitting(false);
     }
@@ -98,17 +87,8 @@ export default function ScheduleManagerModal({
 
     setIsSubmitting(true);
     try {
-      const startDateTime = isAllDay
-        ? new Date(`${startDate}T00:00:00`)
-        : new Date(`${startDate}T${startTime}:00`);
-      const endDateTime = isAllDay
-        ? new Date(`${endDate}T23:59:59`)
-        : new Date(`${endDate}T${endTime}:00`);
-
-      showSuccess(`Time off booked: ${timeOffTitle} from ${startDateTime.toLocaleString()} to ${endDateTime.toLocaleString()}`);
-      onClose();
-    } catch (error: any) {
-      showError(error.response?.data?.detail || "Failed to book time off");
+      // No backend endpoint exists yet; avoid misleading success state.
+      showError("Time off booking isn't supported yet. Please contact support or adjust availability manually.");
     } finally {
       setIsSubmitting(false);
     }
@@ -120,17 +100,32 @@ export default function ScheduleManagerModal({
       return;
     }
 
+    const rangeStart = new Date(`${extraStartDate}T00:00:00`);
+    const rangeEnd = new Date(`${extraEndDate}T23:59:59`);
+    if (rangeEnd < rangeStart) {
+      showError("End date must be on or after start date");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const startDateTime = new Date(`${extraStartDate}T${extraStartTime}:00`);
-      const dayOfWeek = startDateTime.getDay();
+      const slotsToCreate: Array<Promise<unknown>> = [];
+      const cursor = new Date(rangeStart);
 
-      await availability.createAvailability({
-        day_of_week: dayOfWeek,
-        start_time: extraStartTime + ":00",
-        end_time: extraEndTime + ":00",
-        is_recurring: false,
-      });
+      while (cursor <= rangeEnd) {
+        const dayOfWeek = cursor.getDay();
+        slotsToCreate.push(
+          availability.createAvailability({
+            day_of_week: dayOfWeek,
+            start_time: `${extraStartTime}:00`,
+            end_time: `${extraEndTime}:00`,
+            is_recurring: false,
+          })
+        );
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      await Promise.all(slotsToCreate);
 
       showSuccess("Extra availability slots added successfully");
       onClose();

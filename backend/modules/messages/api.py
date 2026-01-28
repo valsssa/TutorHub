@@ -21,7 +21,8 @@ from core.message_storage import (
 )
 from database import get_db
 from models import Message, MessageAttachment
-from modules.messages.service import MessageService, _build_avatar_url
+from core.avatar_storage import build_avatar_url
+from modules.messages.service import MessageService
 from modules.messages.websocket import manager
 from schemas import MessageResponse
 
@@ -712,7 +713,7 @@ async def get_user_basic_info(
             email=user.email,
             first_name=getattr(user, "first_name", None),
             last_name=getattr(user, "last_name", None),
-            avatar_url=_build_avatar_url(avatar_key),
+            avatar_url=build_avatar_url(avatar_key),
             role=user.role,
         )
 
