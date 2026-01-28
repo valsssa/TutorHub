@@ -7,35 +7,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from auth import get_password_hash
-from database import Base, get_db
-
-# Import all models to register them with Base.metadata
-# This is required before create_all() is called
-from models import (
-    User,
-    UserProfile,
-    TutorProfile,
-    TutorSubject,
-    TutorCertification,
-    TutorEducation,
-    TutorPricingOption,
-    TutorAvailability,
-    TutorBlackout,
-    StudentProfile,
-    Subject,
-    Booking,
-    SessionMaterial,
-    Review,
-    Message,
-    MessageAttachment,
-    Notification,
-    FavoriteTutor,
-    Payment,
-    Refund,
-    Payout,
-    SupportedCurrency,
-    AuditLog,
-)
+from database import get_db
+from models.base import Base  # Use the same Base that models use
 
 from main import app
 
