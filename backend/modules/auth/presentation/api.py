@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 from sqlalchemy.orm import Session
 
 from core.config import settings
@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
 
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:

@@ -5,8 +5,8 @@ import os
 from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_student_user
@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
 
 router = APIRouter(prefix="/api/profile/student", tags=["students"])
-limiter = Limiter(key_func=get_remote_address)
 
 
 @router.get("/me", response_model=StudentProfileResponse)

@@ -5,8 +5,8 @@ from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 from sqlalchemy.orm import Session
 
 from core.currency import CurrencyOption, load_supported_currencies
@@ -16,7 +16,6 @@ from models import User
 from schemas import UserResponse
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/users/currency", tags=["user-currency"])
 

@@ -1,8 +1,8 @@
 """Utilities API routes for constants and validators."""
 
 from fastapi import APIRouter, Request
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 
 from core.cache import cache_with_ttl
 from core.constants import COUNTRIES, LANGUAGES, PHONE_COUNTRY_CODES, PROFICIENCY_LEVELS
@@ -10,7 +10,6 @@ from core.constants import COUNTRIES, LANGUAGES, PHONE_COUNTRY_CODES, PROFICIENC
 router = APIRouter(prefix="/api/utils", tags=["utils"])
 
 # Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
 
 
 @cache_with_ttl(ttl_seconds=3600)  # Cache for 1 hour (constants rarely change)

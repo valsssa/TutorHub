@@ -6,8 +6,8 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 from sqlalchemy.orm import Session
 
 from core.audit import AuditLogger
@@ -16,7 +16,6 @@ from database import get_db
 from models import StudentPackage, TutorPricingOption, TutorProfile, User
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/packages", tags=["packages"])
 

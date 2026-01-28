@@ -4,18 +4,16 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_tutor_profile
+from core.rate_limiting import limiter
 from database import get_db
 from models import Booking, TutorAvailability, TutorProfile
 from schemas import AvailableSlot, TutorAvailabilityCreate, TutorAvailabilityResponse
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/tutors", tags=["tutor-availability"])
 

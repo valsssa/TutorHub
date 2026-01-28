@@ -6,8 +6,8 @@ from datetime import UTC
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -20,7 +20,6 @@ from models import Booking, Review, TutorProfile, User
 from schemas import ReviewCreate, ReviewResponse
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/reviews", tags=["reviews"])
 

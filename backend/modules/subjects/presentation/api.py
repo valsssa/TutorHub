@@ -4,8 +4,8 @@ import logging
 from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 from sqlalchemy.orm import Session
 
 from core.cache import cache_with_ttl, invalidate_cache
@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/subjects", tags=["subjects"])
 
 # Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
 
 
 @cache_with_ttl(ttl_seconds=300)  # Cache for 5 minutes

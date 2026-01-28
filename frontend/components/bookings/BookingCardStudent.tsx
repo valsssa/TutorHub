@@ -18,6 +18,13 @@ import { BookingDTO } from "@/types/booking";
 import Button from "@/components/Button";
 import TimeDisplay from "@/components/TimeDisplay";
 import { useTimezone } from "@/contexts/TimezoneContext";
+import {
+  BOOKING_STATUS_COLORS,
+  LESSON_TYPE_BADGES,
+  calculateBookingTiming,
+  formatBookingPrice,
+  getDisplayTimezone,
+} from "@/lib/bookingUtils";
 
 interface BookingCardStudentProps {
   booking: BookingDTO;
@@ -41,47 +48,11 @@ export default function BookingCardStudent({
   const isCompleted = ["COMPLETED", "completed"].includes(booking.status);
   const isCancelled = booking.status.toLowerCase().includes("cancel");
 
-  // Format date and time in student timezone
-  const startDate = new Date(booking.start_at);
-  const endDate = new Date(booking.end_at);
-  const duration = Math.round(
-    (endDate.getTime() - startDate.getTime()) / (1000 * 60)
-  );
-
-  // Use user's timezone context or fall back to booking's student_tz
-  const displayTimezone = userTimezone || booking.student_tz;
-
-  // Format price
-  const priceDisplay = `$${(booking.rate_cents / 100).toFixed(2)}`;
-
-  // Calculate hours until session for policy hint
-  const now = new Date();
-  const hoursUntil = Math.round(
-    (startDate.getTime() - now.getTime()) / (1000 * 60 * 60)
-  );
-  const canCancelFree = hoursUntil >= 12;
-
-  // Status badge color
-  const statusColors: Record<string, string> = {
-    PENDING: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
-    pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
-    CONFIRMED: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
-    confirmed: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
-    COMPLETED: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
-    completed: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
-    CANCELLED_BY_STUDENT: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
-    CANCELLED_BY_TUTOR: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
-    cancelled: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
-    NO_SHOW_STUDENT: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
-    NO_SHOW_TUTOR: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
-  };
-
-  // Lesson type badge
-  const lessonTypeBadge = {
-    TRIAL: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
-    REGULAR: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
-    PACKAGE: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300",
-  };
+  // Use shared timing calculation and formatting utilities
+  const timing = calculateBookingTiming(booking, userTimezone);
+  const { startDate, endDate, duration, hoursUntil, canCancelFree } = timing;
+  const displayTimezone = getDisplayTimezone(booking, userTimezone);
+  const priceDisplay = formatBookingPrice(booking.rate_cents);
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 hover:shadow-md transition-all">
@@ -124,7 +95,7 @@ export default function BookingCardStudent({
         <div className="flex flex-col gap-2 items-end">
           <span
             className={`px-3 py-1 rounded-full text-xs font-medium ${
-              statusColors[booking.status] || "bg-gray-100 text-gray-800"
+              BOOKING_STATUS_COLORS[booking.status] || "bg-gray-100 text-gray-800"
             }`}
           >
             {booking.status.replace(/_/g, " ")}
@@ -132,7 +103,7 @@ export default function BookingCardStudent({
           {/* Lesson Type Badge */}
           <span
             className={`px-2 py-1 rounded text-xs font-medium ${
-              lessonTypeBadge[booking.lesson_type] || "bg-gray-100 text-gray-800"
+              LESSON_TYPE_BADGES[booking.lesson_type] || "bg-gray-100 text-gray-800"
             }`}
           >
             {booking.lesson_type}

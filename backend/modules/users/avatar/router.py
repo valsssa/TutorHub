@@ -3,8 +3,8 @@
 import logging
 
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 from sqlalchemy.orm import Session
 
 from core.config import settings
@@ -15,7 +15,6 @@ from modules.users.avatar.schemas import AvatarDeleteResponse, AvatarResponse
 from modules.users.avatar.service import AvatarService
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 

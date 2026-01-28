@@ -5,8 +5,8 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from core.rate_limiting import limiter
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,6 @@ from database import get_db
 from models import User
 
 logger = logging.getLogger(__name__)
-limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/admin/audit", tags=["admin-audit"])
 

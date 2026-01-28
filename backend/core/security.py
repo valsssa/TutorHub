@@ -71,17 +71,6 @@ class TokenManager:
             raise AuthenticationError(f"Invalid token: {str(e)}")
 
 
-# Convenience functions for backward compatibility
-def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return PasswordHasher.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password."""
-    return PasswordHasher.verify(plain_password, hashed_password)
-
-
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    """Create access token."""
-    return TokenManager.create_access_token(data, expires_delta)
+# NOTE: Convenience functions removed from here to eliminate duplication.
+# Use PasswordHasher.hash() and PasswordHasher.verify() directly,
+# or import from auth.py for backward compatibility (which will be deprecated in future).
