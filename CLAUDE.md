@@ -118,10 +118,13 @@ npm run dev
 ```
 
 ### 2. Role System Security
+- **Role Hierarchy**: Owner (level 3) → Admin (level 2) → Tutor (level 1) → Student (level 0)
 - New registrations always create "student" role
-- "admin" and "tutor" roles ONLY assigned via backend/database or admin panel
+- "owner", "admin", and "tutor" roles ONLY assigned via backend/database or admin panel
+- **Owner role**: Highest privilege level with access to financial data and business intelligence
 - Role validation enforced server-side with CHECK constraints
-- Protected endpoints use `Depends(get_current_user)` or `Depends(get_current_admin_user)`
+- Protected endpoints use `Depends(get_current_user)`, `Depends(get_current_admin_user)`, or `Depends(get_current_owner_user)`
+- Owner role CANNOT be assigned via public registration (security by design)
 
 ### 3. Testing is Mandatory
 ```bash

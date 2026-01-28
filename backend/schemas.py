@@ -759,8 +759,8 @@ class UserUpdate(BaseModel):
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: str | None) -> str | None:
-        if v and v not in ["student", "tutor", "admin"]:
-            raise ValueError("Role must be student, tutor, or admin")
+        if v and v not in ["student", "tutor", "admin", "owner"]:
+            raise ValueError("Role must be student, tutor, admin, or owner")
         return v
 
 
@@ -815,6 +815,30 @@ class FavoriteTutorResponse(BaseModel):
     student_id: int
     tutor_profile_id: int
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============================================================================
+# Student Notes Schemas
+# ============================================================================
+
+
+class StudentNoteUpdate(BaseModel):
+    """Student note update request."""
+
+    notes: str | None = Field(None, max_length=10000, description="Private notes about the student")
+
+
+class StudentNoteResponse(BaseModel):
+    """Student note response."""
+
+    id: int
+    tutor_id: int
+    student_id: int
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
 

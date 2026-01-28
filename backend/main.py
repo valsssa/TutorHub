@@ -53,6 +53,7 @@ from modules.tutor_profile.presentation.api import router as tutor_profile_route
 from modules.tutor_profile.presentation.availability_api import (
     router as availability_router,
 )
+from modules.tutors.student_notes_router import router as student_notes_router
 from modules.users.avatar.router import router as avatar_router
 from modules.users.currency.router import router as currency_router
 from modules.users.preferences.router import router as preferences_router
@@ -551,6 +552,7 @@ app.include_router(preferences_router)
 app.include_router(currency_router)
 app.include_router(tutor_profile_router)
 app.include_router(availability_router)
+app.include_router(student_notes_router)
 app.include_router(utils_router)
 app.include_router(websocket_router)
 app.include_router(zoom_router)

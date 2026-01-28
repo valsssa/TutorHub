@@ -26,7 +26,7 @@ from .messages import Message, MessageAttachment
 from .notifications import Notification
 from .payments import Payment, Payout, Refund, SupportedCurrency
 from .reviews import Review
-from .students import FavoriteTutor, StudentPackage, StudentProfile
+from .students import FavoriteTutor, StudentNote, StudentPackage, StudentProfile
 from .subjects import Subject
 from .tutors import (
     TutorAvailability,

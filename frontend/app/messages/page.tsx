@@ -20,6 +20,9 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { useMessaging } from "@/hooks/useMessaging";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import Input from "@/components/Input";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger('Messages');
 
 export default function MessagesPage() {
   return (
@@ -196,7 +199,7 @@ function MessagesContent() {
             setMessages([]);
           } catch (error) {
             showError("Failed to load user information");
-            console.error("Error fetching user info:", error);
+            logger.error("Error fetching user info", error);
           }
         };
         fetchUserAndCreateThread();

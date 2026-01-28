@@ -157,7 +157,7 @@ export default function AdminDashboard() {
       setSubjectDistribution(subjectsData)
       setUserGrowthData(growthData)
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      logger.error('Error fetching dashboard data', error)
     }
   }, [])
 
@@ -167,7 +167,7 @@ export default function AdminDashboard() {
       const users = await admin.listUsers()
       setAllUsers(users)
     } catch (error) {
-      console.error('Error fetching users:', error)
+      logger.error('Error fetching users', error)
     }
   }, [])
 
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
       const response = await admin.listPendingTutors(1, 50)
       setPendingTutors(response.items || [])
     } catch (error) {
-      console.error('Error fetching pending tutors:', error)
+      logger.error('Error fetching pending tutors', error)
     }
   }, [])
 
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
       await fetchUsers()
       alert('Tutor approved successfully!')
     } catch (error) {
-      console.error('Error approving tutor:', error)
+      logger.error('Error approving tutor', error)
       alert('Failed to approve tutor')
     }
   }
@@ -202,7 +202,7 @@ export default function AdminDashboard() {
       await fetchUsers()
       alert('Tutor rejected successfully!')
     } catch (error) {
-      console.error('Error rejecting tutor:', error)
+      logger.error('Error rejecting tutor', error)
       alert('Failed to reject tutor')
     }
   }
@@ -224,7 +224,7 @@ export default function AdminDashboard() {
           fetchPendingTutors()
         ])
       } catch (error) {
-        console.error('Error loading dashboard data:', error)
+        logger.error('Error loading dashboard data', error)
       } finally {
         setLoading(false)
       }
@@ -251,13 +251,13 @@ export default function AdminDashboard() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
     if (newMessage.trim()) {
-      console.log('Sending message:', newMessage)
+      logger.debug('Sending message', { message: newMessage })
       setNewMessage('')
     }
   }
 
   const handleUserPreferencesUpdated = (updatedUser: UserData) => {
-    console.log('[AdminDashboard] handleUserPreferencesUpdated called with:', updatedUser)
+    logger.debug('handleUserPreferencesUpdated called', updatedUser)
     // Currency is already updated in GeneralSettings before this is called
     // This ensures the user state is synced with the backend response
   }

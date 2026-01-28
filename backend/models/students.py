@@ -58,6 +58,28 @@ class FavoriteTutor(Base):
     tutor_profile = relationship("TutorProfile", back_populates="favorites")
 
 
+class StudentNote(Base):
+    """Private notes that tutors keep about students."""
+
+    __tablename__ = "student_notes"
+
+    id = Column(Integer, primary_key=True)
+    tutor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    notes = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        # No onupdate - updated_at is set in application code
+        nullable=False,
+    )
+
+    # Relationships
+    tutor = relationship("User", foreign_keys=[tutor_id])
+    student = relationship("User", foreign_keys=[student_id])
+
+
 class StudentPackage(Base):
     """Student-purchased packages and subscriptions."""
 

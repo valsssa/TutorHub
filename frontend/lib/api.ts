@@ -26,6 +26,12 @@ import type {
   FavoriteTutor,
   PaginatedResponse,
 } from "@/types";
+import type {
+  DashboardStats,
+  TutorListParams,
+  MessageSendResponse,
+  UnreadCountResponse,
+} from "@/types/api";
 
 const logger = createLogger('API');
 
@@ -918,7 +924,7 @@ export const messages = {
         booking_id: bookingId,
       });
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to send message', error);
       throw error;
     }
@@ -1234,9 +1240,9 @@ export const admin = {
     return data;
   },
 
-  async getDashboardStats(): Promise<any> {
+  async getDashboardStats(): Promise<DashboardStats> {
     const cacheKey = getCacheKey("/api/admin/dashboard/stats");
-    const cached = getFromCache<any>(cacheKey, 30 * 1000); // 30 seconds cache
+    const cached = getFromCache<DashboardStats>(cacheKey, 30 * 1000); // 30 seconds cache
     if (cached) {
       logger.debug("Dashboard stats loaded from cache");
       return cached;

@@ -36,6 +36,12 @@ Production-ready tutoring platform connecting students with expert tutors. Featu
 - 🎯 Manage subjects (create, update, delete)
 - 📈 View platform statistics
 
+#### Owners Can:
+- 🔑 All admin capabilities (full platform access)
+- 💼 Access business intelligence and financial data
+- 👑 Assign admin and owner roles to users
+- 📊 View owner dashboard with advanced analytics
+
 ### 🖼️ Secure Profile Avatars
 - ✨ Students, tutors, and admins manage avatars with instant validation
 - 🔐 Images stored in private MinIO bucket and served via signed URLs (5-minute TTL)
@@ -45,12 +51,13 @@ Production-ready tutoring platform connecting students with expert tutors. Featu
 ### 🔒 Security & Authentication
 
 - **JWT-based authentication** with 30-minute token expiry
-- **3-role system** (Student/Tutor/Admin) with RBAC
+- **4-role system** (Owner/Admin/Tutor/Student) with hierarchical RBAC
 - **BCrypt password hashing** (12 rounds)
 - **Rate limiting** (5/min registration, 10/min login)
 - **Triple validation** (Frontend → Backend → Database)
 - **SQL injection prevention** via parameterized queries
 - **XSS protection** with React auto-escaping
+- **Role assignment security**: Owner/Admin roles ONLY assignable via backend/admin panel (never via public registration)
 
 ### 🏗️ Modern Architecture
 
@@ -117,11 +124,14 @@ docker compose logs -f frontend
 
 | Role | Email | Password |
 |------|-------|----------|
+| Owner | owner@example.com | owner123 |
 | Admin | admin@example.com | admin123 |
 | Tutor | tutor@example.com | tutor123 |
 | Student | student@example.com | student123 |
 
- **Change these credentials in production!**
+**Role Hierarchy**: Owner (highest) → Admin → Tutor → Student
+
+**Change these credentials in production!** Set `DEFAULT_OWNER_PASSWORD`, `DEFAULT_ADMIN_PASSWORD`, etc. in environment variables.
 
 ## 📁 Project Structure
 
