@@ -8,6 +8,35 @@ from sqlalchemy.pool import StaticPool
 
 from auth import get_password_hash
 from database import Base, get_db
+
+# Import all models to register them with Base.metadata
+# This is required before create_all() is called
+from models import (
+    User,
+    UserProfile,
+    TutorProfile,
+    TutorSubject,
+    TutorCertification,
+    TutorEducation,
+    TutorPricingOption,
+    TutorAvailability,
+    TutorBlackout,
+    StudentProfile,
+    Subject,
+    Booking,
+    SessionMaterial,
+    Review,
+    Message,
+    MessageAttachment,
+    Notification,
+    FavoriteTutor,
+    Payment,
+    Refund,
+    Payout,
+    SupportedCurrency,
+    AuditLog,
+)
+
 from main import app
 
 # Create in-memory SQLite database for testing
@@ -26,53 +55,41 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
 
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Global session for dependency override
-_test_db = None
-
-
-def override_get_db():
-    """Override database dependency for testing."""
-    global _test_db
-    if _test_db is not None:
-        yield _test_db
-    else:
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-
-# Override the dependency
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture(scope="function", autouse=True)
-def setup_database():
-    """Create fresh database for each test automatically."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")
-def db_session(setup_database):
-    """Create database session for each test."""
-    global _test_db
+def db_session():
+    """Create fresh database for each test."""
+    # Create tables
+    Base.metadata.create_all(bind=engine)
+
+    # Create session
     db = TestingSessionLocal()
-    _test_db = db
+
+    # Override the dependency to use our test session
+    def override_get_db():
+        try:
+            yield db
+        finally:
+            pass  # Don't close here, we'll close in fixture cleanup
+
+    app.dependency_overrides[get_db] = override_get_db
+
     try:
         yield db
     finally:
-        _test_db = None
         db.close()
+        # Clear overrides after test
+        app.dependency_overrides.clear()
+        # Drop tables
+        Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")
 def client(db_session):
-    """Create test client."""
+    """Create test client with database session."""
     return TestClient(app)
 
 
@@ -87,6 +104,8 @@ def admin_user(db_session):
         role="admin",
         is_verified=True,
         is_active=True,
+        first_name="Admin",
+        last_name="User",
         currency="USD",
         timezone="UTC",
     )
@@ -107,6 +126,8 @@ def tutor_user(db_session):
         role="tutor",
         is_verified=True,
         is_active=True,
+        first_name="Test",
+        last_name="Tutor",
         currency="USD",
         timezone="UTC",
     )
@@ -148,6 +169,8 @@ def student_user(db_session):
         role="student",
         is_verified=True,
         is_active=True,
+        first_name="Test",
+        last_name="Student",
         currency="USD",
         timezone="UTC",
     )
@@ -160,14 +183,22 @@ def student_user(db_session):
 @pytest.fixture
 def admin_token(client, admin_user):
     """Get admin auth token."""
-    response = client.post("/api/auth/login", data={"username": admin_user.email, "password": "admin123"})
+    response = client.post(
+        "/api/auth/login",
+        data={"username": admin_user.email, "password": "admin123"}
+    )
+    assert response.status_code == 200, f"Login failed: {response.text}"
     return response.json()["access_token"]
 
 
 @pytest.fixture
 def tutor_token(client, tutor_user):
     """Get tutor auth token."""
-    response = client.post("/api/auth/login", data={"username": tutor_user.email, "password": "tutor123"})
+    response = client.post(
+        "/api/auth/login",
+        data={"username": tutor_user.email, "password": "tutor123"}
+    )
+    assert response.status_code == 200, f"Login failed: {response.text}"
     return response.json()["access_token"]
 
 
@@ -178,6 +209,7 @@ def student_token(client, student_user):
         "/api/auth/login",
         data={"username": student_user.email, "password": "student123"},
     )
+    assert response.status_code == 200, f"Login failed: {response.text}"
     return response.json()["access_token"]
 
 
@@ -186,7 +218,12 @@ def test_subject(db_session):
     """Create test subject."""
     from models import Subject
 
-    subject = Subject(name="Mathematics", description="Math tutoring", category="STEM", is_active=True)
+    subject = Subject(
+        name="Mathematics",
+        description="Math tutoring",
+        category="STEM",
+        is_active=True
+    )
     db_session.add(subject)
     db_session.commit()
     db_session.refresh(subject)
