@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from core.avatar_storage import build_avatar_url
 from core.config import settings
-from core.currency import calculate_platform_fee
+from core.currency import calculate_platform_fee, calculate_platform_fee_dynamic
 from core.utils import StringUtils
 from models import Booking, StudentPackage, TutorBlackout, TutorProfile, User
 from modules.bookings.policy_engine import CancellationPolicy, NoShowPolicy
@@ -55,7 +55,7 @@ def can_transition(from_status: str, to_status: str) -> bool:
 class BookingService:
     """Core booking business logic."""
 
-    PLATFORM_FEE_PCT = Decimal("20.0")  # 20% platform fee
+    DEFAULT_PLATFORM_FEE_PCT = Decimal("20.0")  # Default 20% platform fee (for new tutors)
     MIN_GAP_MINUTES = 5  # Buffer between sessions
 
     def __init__(self, db: Session):
@@ -120,8 +120,8 @@ class BookingService:
                 detail=f"Tutor is not available at this time: {conflicts}",
             )
 
-        # 5. Calculate pricing
-        rate_cents, platform_fee_cents, tutor_earnings_cents = self._calculate_pricing(
+        # 5. Calculate pricing with dynamic commission tiers
+        rate_cents, platform_fee_cents, tutor_earnings_cents, fee_pct, tier_name = self._calculate_pricing(
             tutor_profile, duration_minutes, lesson_type
         )
 
@@ -148,7 +148,7 @@ class BookingService:
             total_amount=Decimal(rate_cents) / 100,
             rate_cents=rate_cents,
             currency=tutor_profile.currency or "USD",
-            platform_fee_pct=self.PLATFORM_FEE_PCT,
+            platform_fee_pct=fee_pct,  # Dynamic fee based on tutor tier
             platform_fee_cents=platform_fee_cents,
             tutor_earnings_cents=tutor_earnings_cents,
             pricing_type="hourly",
@@ -376,29 +376,34 @@ class BookingService:
 
     def _calculate_pricing(
         self, tutor_profile: TutorProfile, duration_minutes: int, lesson_type: str
-    ) -> tuple[int, int, int]:
+    ) -> tuple[int, int, int, Decimal, str]:
         """
-        Calculate rate, platform fee, and tutor earnings.
+        Calculate rate, platform fee, and tutor earnings using dynamic commission tiers.
+
+        Revenue-based commission tiers:
+        - Standard ($0 - $999.99 lifetime): 20% platform fee
+        - Silver ($1,000 - $4,999.99 lifetime): 15% platform fee
+        - Gold ($5,000+ lifetime): 10% platform fee
 
         Returns:
-            (rate_cents, platform_fee_cents, tutor_earnings_cents)
+            (rate_cents, platform_fee_cents, tutor_earnings_cents, fee_pct, tier_name)
         """
         # Get hourly rate in cents
         hourly_rate_cents = int(tutor_profile.hourly_rate * 100)
 
         # Special handling for trials
-        if lesson_type == "TRIAL" and tutor_profile.trial_price_cents:
+        if lesson_type == "TRIAL" and hasattr(tutor_profile, 'trial_price_cents') and tutor_profile.trial_price_cents:
             rate_cents = tutor_profile.trial_price_cents
         else:
             # Calculate pro-rated amount
             rate_cents = int(hourly_rate_cents * (duration_minutes / 60))
 
-        # Calculate fees using centralized currency module
-        platform_fee_cents, tutor_earnings_cents = calculate_platform_fee(
-            rate_cents, Decimal(str(self.PLATFORM_FEE_PCT))
+        # Calculate fees using dynamic revenue-based tiers
+        platform_fee_cents, tutor_earnings_cents, fee_pct, tier_name = calculate_platform_fee_dynamic(
+            self.db, tutor_profile.id, rate_cents
         )
 
-        return rate_cents, platform_fee_cents, tutor_earnings_cents
+        return rate_cents, platform_fee_cents, tutor_earnings_cents, fee_pct, tier_name
 
     def _generate_join_url(self, booking_id: int) -> str:
         """

@@ -29,6 +29,7 @@ from core.response_cache import ResponseCacheMiddleware
 from database import get_db
 from models import TutorProfile, User
 from modules.admin.audit.router import router as audit_router
+from modules.admin.owner.router import router as owner_router
 from modules.admin.presentation.api import router as admin_router
 
 # Import module routers
@@ -68,6 +69,28 @@ limiter = Limiter(key_func=get_remote_address)
 # ============================================================================
 
 
+def _generate_secure_password() -> str:
+    """Generate a secure random password."""
+    import secrets
+    import string
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for _ in range(16))
+
+
+def _get_or_generate_password(env_var: str, user_type: str) -> tuple[str, bool]:
+    """
+    Get password from environment or generate a secure one.
+    Returns (password, was_generated) tuple.
+    """
+    password = os.getenv(env_var)
+    if password:
+        return password, False
+
+    # Generate secure password
+    generated = _generate_secure_password()
+    return generated, True
+
+
 async def create_default_users():
     """Create default admin, tutor, and student users."""
     logger.info("Starting default users creation...")
@@ -78,15 +101,21 @@ async def create_default_users():
     from database import engine
 
     db = Session(bind=engine)
+    generated_credentials = []  # Track auto-generated passwords
+
     try:
         # Create admin
         admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@example.com")
         logger.debug(f"Checking for admin user: {admin_email}")
         existing_admin = db.query(User).filter(User.email == admin_email).first()
         if not existing_admin:
+            admin_password, was_generated = _get_or_generate_password("DEFAULT_ADMIN_PASSWORD", "admin")
+            if was_generated:
+                generated_credentials.append(("ADMIN", admin_email, admin_password))
+
             admin = User(
                 email=admin_email,
-                hashed_password=get_password_hash(os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123")),
+                hashed_password=get_password_hash(admin_password),
                 role="admin",
                 is_verified=True,
                 first_name="Admin",
@@ -109,9 +138,13 @@ async def create_default_users():
         logger.debug(f"Checking for student user: {student_email}")
         existing_student = db.query(User).filter(User.email == student_email).first()
         if not existing_student:
+            student_password, was_generated = _get_or_generate_password("DEFAULT_STUDENT_PASSWORD", "student")
+            if was_generated:
+                generated_credentials.append(("STUDENT", student_email, student_password))
+
             student = User(
                 email=student_email,
-                hashed_password=get_password_hash(os.getenv("DEFAULT_STUDENT_PASSWORD", "student123")),
+                hashed_password=get_password_hash(student_password),
                 role="student",
                 is_verified=True,
                 first_name="Demo",
@@ -138,10 +171,14 @@ async def create_default_users():
         logger.debug(f"Checking for tutor user: {tutor_email}")
         existing_tutor = db.query(User).filter(User.email == tutor_email).first()
         if not existing_tutor:
+            tutor_password, was_generated = _get_or_generate_password("DEFAULT_TUTOR_PASSWORD", "tutor")
+            if was_generated:
+                generated_credentials.append(("TUTOR", tutor_email, tutor_password))
+
             # Create user first with student role (will be changed to tutor)
             tutor = User(
                 email=tutor_email,
-                hashed_password=get_password_hash(os.getenv("DEFAULT_TUTOR_PASSWORD", "tutor123")),
+                hashed_password=get_password_hash(tutor_password),
                 role="student",  # Start as student, then change to tutor
                 is_verified=True,
                 first_name="Demo",
@@ -198,6 +235,20 @@ async def create_default_users():
                 tutor_profile.updated_at = datetime.now(UTC)
                 db.commit()
                 logger.info(f"Updated existing tutor profile with demo video URL: {tutor_email}")
+
+        # Log generated credentials (ONLY on first startup when users are created)
+        if generated_credentials:
+            logger.warning("=" * 70)
+            logger.warning("SECURITY NOTICE: Auto-generated credentials for default users")
+            logger.warning("SAVE THESE NOW - they will NOT be shown again!")
+            logger.warning("Set these in environment variables for production:")
+            logger.warning("-" * 70)
+            for role, email, password in generated_credentials:
+                logger.warning(f"  {role}: {email} / {password}")
+                logger.warning(f"    Set: DEFAULT_{role}_PASSWORD={password}")
+            logger.warning("-" * 70)
+            logger.warning("For production, set these environment variables BEFORE first run.")
+            logger.warning("=" * 70)
 
         logger.info("Default users creation completed successfully")
     except Exception as e:
@@ -452,6 +503,7 @@ app.include_router(notifications_router)
 app.include_router(packages_router)
 app.include_router(admin_router)
 app.include_router(audit_router)
+app.include_router(owner_router)
 app.include_router(avatar_router)
 app.include_router(preferences_router)
 app.include_router(currency_router)

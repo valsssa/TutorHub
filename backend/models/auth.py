@@ -69,7 +69,7 @@ class User(Base):
     received_messages = relationship("Message", foreign_keys="Message.recipient_id", back_populates="recipient")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
-    __table_args__ = (CheckConstraint("role IN ('student', 'tutor', 'admin')", name="valid_role"),)
+    __table_args__ = (CheckConstraint("role IN ('student', 'tutor', 'admin', 'owner')", name="valid_role"),)
 
 
 class UserProfile(Base):

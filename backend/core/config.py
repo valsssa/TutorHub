@@ -78,13 +78,17 @@ class Settings(BaseSettings):
     RATE_LIMIT_LOGIN: str = "10/minute"
     RATE_LIMIT_DEFAULT: str = "20/minute"
 
-    # Default Users
+    # Default Users - SECURITY: Passwords must be set via environment variables
+    # If not set, secure random passwords will be generated and logged ONCE on first startup
     DEFAULT_ADMIN_EMAIL: str = "admin@example.com"
-    DEFAULT_ADMIN_PASSWORD: str = "admin123"
+    DEFAULT_ADMIN_PASSWORD: str | None = None  # Must be set via env or will be auto-generated
     DEFAULT_TUTOR_EMAIL: str = "tutor@example.com"
-    DEFAULT_TUTOR_PASSWORD: str = "tutor123"
+    DEFAULT_TUTOR_PASSWORD: str | None = None  # Must be set via env or will be auto-generated
     DEFAULT_STUDENT_EMAIL: str = "student@example.com"
-    DEFAULT_STUDENT_PASSWORD: str = "student123"
+    DEFAULT_STUDENT_PASSWORD: str | None = None  # Must be set via env or will be auto-generated
+
+    # Environment
+    ENVIRONMENT: str = "development"  # development, staging, production
 
     # Validation
     PASSWORD_MIN_LENGTH: int = 6
@@ -172,8 +176,28 @@ class Roles:
     STUDENT = "student"
     TUTOR = "tutor"
     ADMIN = "admin"
+    OWNER = "owner"  # Super-admin with financial/business analytics access
 
-    ALL = [STUDENT, TUTOR, ADMIN]
+    ALL = [STUDENT, TUTOR, ADMIN, OWNER]
+
+    # Role hierarchy for access control
+    # Higher index = more privileges
+    HIERARCHY = {
+        STUDENT: 0,
+        TUTOR: 1,
+        ADMIN: 2,
+        OWNER: 3,  # Highest privilege level
+    }
+
+    @classmethod
+    def has_admin_access(cls, role: str) -> bool:
+        """Check if role has admin-level access (admin or owner)."""
+        return role in [cls.ADMIN, cls.OWNER]
+
+    @classmethod
+    def is_owner(cls, role: str) -> bool:
+        """Check if role is owner."""
+        return role == cls.OWNER
 
 
 # Booking Status Constants (State Machine)

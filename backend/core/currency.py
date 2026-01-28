@@ -131,3 +131,115 @@ def calculate_platform_fee(amount_cents: int, fee_percentage: Decimal = Decimal(
     tutor_earnings_cents = amount_cents - platform_fee_cents
 
     return platform_fee_cents, tutor_earnings_cents
+
+
+# ============================================================================
+# Revenue-Based Commission Tiers
+# ============================================================================
+
+# Commission tiers based on tutor lifetime earnings (in cents)
+# Structure: [(threshold_cents, fee_percentage), ...]
+# Sorted by threshold ascending - first matching tier wins
+COMMISSION_TIERS = [
+    (0, Decimal("20.0")),           # $0 - $999.99: 20% fee
+    (100_000, Decimal("15.0")),     # $1,000 - $4,999.99: 15% fee
+    (500_000, Decimal("10.0")),     # $5,000+: 10% fee
+]
+
+
+def get_tutor_lifetime_earnings(db: Session, tutor_profile_id: int) -> int:
+    """
+    Calculate tutor's total lifetime earnings in cents from completed bookings.
+
+    Args:
+        db: Database session
+        tutor_profile_id: Tutor profile ID
+
+    Returns:
+        Total earnings in cents
+    """
+    from sqlalchemy import func
+    from models import Booking
+
+    result = (
+        db.query(func.coalesce(func.sum(Booking.tutor_earnings_cents), 0))
+        .filter(
+            Booking.tutor_profile_id == tutor_profile_id,
+            Booking.status == "COMPLETED",
+        )
+        .scalar()
+    )
+
+    return int(result or 0)
+
+
+def get_commission_tier(lifetime_earnings_cents: int) -> tuple[Decimal, str]:
+    """
+    Determine commission tier based on lifetime earnings.
+
+    Args:
+        lifetime_earnings_cents: Tutor's total lifetime earnings in cents
+
+    Returns:
+        (fee_percentage, tier_name) tuple
+    """
+    fee_pct = COMMISSION_TIERS[0][1]  # Default to highest fee
+    tier_name = "Standard"
+
+    for threshold, pct in COMMISSION_TIERS:
+        if lifetime_earnings_cents >= threshold:
+            fee_pct = pct
+            if threshold >= 500_000:
+                tier_name = "Gold"
+            elif threshold >= 100_000:
+                tier_name = "Silver"
+            else:
+                tier_name = "Standard"
+
+    return fee_pct, tier_name
+
+
+def get_dynamic_platform_fee(db: Session, tutor_profile_id: int) -> tuple[Decimal, str, int]:
+    """
+    Get the dynamic platform fee percentage for a tutor based on their earnings.
+
+    Args:
+        db: Database session
+        tutor_profile_id: Tutor profile ID
+
+    Returns:
+        (fee_percentage, tier_name, lifetime_earnings_cents) tuple
+    """
+    lifetime_earnings = get_tutor_lifetime_earnings(db, tutor_profile_id)
+    fee_pct, tier_name = get_commission_tier(lifetime_earnings)
+
+    logger.debug(
+        f"Tutor {tutor_profile_id} commission tier: {tier_name} "
+        f"({fee_pct}% fee, ${lifetime_earnings / 100:.2f} lifetime earnings)"
+    )
+
+    return fee_pct, tier_name, lifetime_earnings
+
+
+def calculate_platform_fee_dynamic(
+    db: Session,
+    tutor_profile_id: int,
+    amount_cents: int,
+) -> tuple[int, int, Decimal, str]:
+    """
+    Calculate platform fee using dynamic revenue-based tiers.
+
+    Args:
+        db: Database session
+        tutor_profile_id: Tutor profile ID
+        amount_cents: Total booking amount in cents
+
+    Returns:
+        (platform_fee_cents, tutor_earnings_cents, fee_percentage, tier_name)
+    """
+    fee_pct, tier_name, _ = get_dynamic_platform_fee(db, tutor_profile_id)
+
+    platform_fee_cents = int(amount_cents * (fee_pct / 100))
+    tutor_earnings_cents = amount_cents - platform_fee_cents
+
+    return platform_fee_cents, tutor_earnings_cents, fee_pct, tier_name

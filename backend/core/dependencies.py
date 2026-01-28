@@ -80,9 +80,18 @@ async def get_current_active_user(
 async def get_current_admin_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
-    """Require admin role."""
-    if current_user.role != Roles.ADMIN:
+    """Require admin role (or owner, which has higher privileges)."""
+    if not Roles.has_admin_access(current_user.role):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user
+
+
+async def get_current_owner_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Require owner role (highest privilege level for business analytics)."""
+    if not Roles.is_owner(current_user.role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner access required")
     return current_user
 
 
@@ -127,6 +136,7 @@ async def get_current_tutor_profile(
 # Type aliases for cleaner endpoint signatures
 CurrentUser = Annotated[User, Depends(get_current_user)]
 AdminUser = Annotated[User, Depends(get_current_admin_user)]
+OwnerUser = Annotated[User, Depends(get_current_owner_user)]
 TutorUser = Annotated[User, Depends(get_current_tutor_user)]
 StudentUser = Annotated[User, Depends(get_current_student_user)]
 DatabaseSession = Annotated[Session, Depends(get_db)]

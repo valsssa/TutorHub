@@ -1,5 +1,6 @@
 """Security middleware for FastAPI application."""
 
+import os
 from collections.abc import Callable
 
 from fastapi import Request, Response
@@ -16,6 +17,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app: ASGIApp):
         super().__init__(app)
+        # Determine environment for HSTS
+        self.environment = os.getenv("ENVIRONMENT", os.getenv("ENV", "development")).lower()
+        self.enable_hsts = self.environment in ("production", "staging")
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Add security headers to response."""
@@ -71,11 +75,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "usb=()"
         )
 
-        # Strict Transport Security - Enforce HTTPS (only in production)
-        # Uncomment when deploying to production with HTTPS
-        # response.headers["Strict-Transport-Security"] = (
-        #     "max-age=31536000; includeSubDomains; preload"
-        # )
+        # Strict Transport Security - Enforce HTTPS (production/staging only)
+        if self.enable_hsts:
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains; preload"
+            )
 
         # Remove server header to avoid information disclosure
         if "Server" in response.headers:

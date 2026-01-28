@@ -34,7 +34,7 @@ class CancellationPolicy:
     """Implements cancellation rules and refund logic."""
 
     # Policy constants (configurable)
-    FREE_CANCEL_WINDOW_HOURS = 12
+    FREE_CANCEL_WINDOW_HOURS = 24  # 24-hour free cancellation window
     TUTOR_CANCEL_PENALTY_CENTS = 500  # $5 compensation
     MINIMUM_GRACE_MINUTES = 10
 
@@ -150,7 +150,7 @@ class CancellationPolicy:
 class ReschedulePolicy:
     """Implements rescheduling rules."""
 
-    RESCHEDULE_WINDOW_HOURS = 12
+    RESCHEDULE_WINDOW_HOURS = 24  # Match cancellation window
 
     @classmethod
     def evaluate_reschedule(
