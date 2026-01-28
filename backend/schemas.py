@@ -472,6 +472,7 @@ class TutorPublicProfile(BaseModel):
     total_sessions: int
     subjects: list[str] = []
     education: list[str] = []
+    video_url: str | None = None
     profile_photo_url: str | None = None
     recent_review: str | None = None
     next_available_slots: list[str] = []

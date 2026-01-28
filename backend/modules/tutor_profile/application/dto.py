@@ -155,6 +155,7 @@ def aggregate_to_public_profile(aggregate: TutorProfileAggregate) -> TutorPublic
         "total_sessions": aggregate.total_sessions,
         "subjects": subjects,
         "education": education_list,
+        "video_url": aggregate.video_url,
         "profile_photo_url": aggregate.profile_photo_url,
         "recent_review": None,  # Will be populated by service layer if needed
         "next_available_slots": [],  # Will be populated by service layer if needed
