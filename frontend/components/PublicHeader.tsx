@@ -35,8 +35,26 @@ export default function PublicHeader() {
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
           {/* Navigation Links */}
-          <div className="flex gap-6">
-          </div>
+          <nav className="flex gap-6">
+            <Link
+              href="/tutors"
+              className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            >
+              Browse Tutors
+            </Link>
+            <Link
+              href="/#how-it-works"
+              className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            >
+              How It Works
+            </Link>
+            <Link
+              href="/become-a-tutor"
+              className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+            >
+              Become a Tutor
+            </Link>
+          </nav>
 
           <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
 
@@ -100,6 +118,31 @@ export default function PublicHeader() {
               role="menu"
             >
               <div className="p-4 space-y-4">
+                {/* Mobile Navigation Links */}
+                <div className="flex flex-col gap-1">
+                  <Link
+                    href="/tutors"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-3 px-4 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Browse Tutors
+                  </Link>
+                  <Link
+                    href="/#how-it-works"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-3 px-4 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    How It Works
+                  </Link>
+                  <Link
+                    href="/become-a-tutor"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-3 px-4 text-slate-700 dark:text-slate-200 font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Become a Tutor
+                  </Link>
+                </div>
+
                 <div className="flex flex-col gap-3">
                   <div className="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
                   <button
