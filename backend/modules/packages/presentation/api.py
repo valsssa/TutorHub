@@ -14,6 +14,7 @@ from core.audit import AuditLogger
 from core.dependencies import get_current_student_user, get_current_user
 from database import get_db
 from models import StudentPackage, TutorPricingOption, TutorProfile, User
+from modules.packages.services.expiration_service import PackageExpirationService
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +174,12 @@ async def list_my_packages(
     db: Session = Depends(get_db),
 ):
     """Get current user's packages."""
+    # Mark expired packages before listing
+    try:
+        PackageExpirationService.mark_expired_packages(db)
+    except Exception as e:
+        logger.warning(f"Failed to mark expired packages: {e}")
+
     query = db.query(StudentPackage).filter(StudentPackage.student_id == current_user.id)
 
     if status_filter:
@@ -208,17 +215,15 @@ async def use_package_credit(
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
 
-    if package.status != "active":
-        raise HTTPException(status_code=400, detail=f"Package is {package.status}, cannot use credits")
-
-    if package.sessions_remaining <= 0:
-        raise HTTPException(status_code=400, detail="No credits remaining in package")
-
-    # Check expiration
-    if package.expires_at and package.expires_at < datetime.utcnow():
-        package.status = "expired"
-        db.commit()
-        raise HTTPException(status_code=400, detail="Package has expired")
+    # Check package validity (includes expiration check)
+    is_valid, error_message = PackageExpirationService.check_package_validity(package)
+    if not is_valid:
+        # If expired, mark it and commit
+        if "expired" in error_message.lower() and package.status == "active":
+            package.status = "expired"
+            package.updated_at = datetime.utcnow()
+            db.commit()
+        raise HTTPException(status_code=400, detail=error_message)
 
     try:
         old_remaining = package.sessions_remaining
