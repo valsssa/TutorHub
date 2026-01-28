@@ -105,12 +105,12 @@ export default function AvatarUploader({
   return (
     <section
       className={clsx(
-        "rounded-xl border border-gray-200 bg-white p-6 shadow-sm",
+        "rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors",
         className,
       )}
     >
       <div className="flex items-start gap-4">
-        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50">
+        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
           {resolvedAvatarUrl ? (
             <Image
               src={resolvedAvatarUrl}
@@ -123,20 +123,20 @@ export default function AvatarUploader({
               unoptimized
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-gray-500">
+            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500 dark:text-slate-400">
               No photo
             </div>
           )}
           {(uploading || deleting) && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-slate-900/70">
               <LoadingSpinner size="sm" />
             </div>
           )}
         </div>
 
         <div className="flex-1">
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-          <p className="mt-1 text-sm text-gray-600">{description}</p>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h3>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{description}</p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <label className="inline-flex">
@@ -176,7 +176,7 @@ export default function AvatarUploader({
             aria-live="polite"
             className={clsx(
               "mt-3 text-sm",
-              validationMessage ? "text-red-600" : "text-gray-500",
+              validationMessage ? "text-red-600 dark:text-red-400" : "text-slate-500 dark:text-slate-400",
             )}
           >
             {validationMessage ||

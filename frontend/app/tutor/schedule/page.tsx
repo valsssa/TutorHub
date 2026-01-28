@@ -23,7 +23,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { useToast } from "@/components/ToastContainer";
 import { tutors, bookings } from "@/lib/api";
 import { authUtils } from "@/lib/auth";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { TutorProfile } from "@/types";
 import type { BookingDTO } from "@/types/booking";

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { useLocale } from '@/contexts/LocaleContext'
 import { admin } from '@/lib/api'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth } from '@/hooks/useAuth'
 
 import type { UserData, Stats, Activity, Session, Conversation, Message, SidebarItem, SettingsTab } from '@/types/admin'
 import AdminSidebar from '@/components/admin/AdminSidebar'
