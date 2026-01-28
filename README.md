@@ -286,8 +286,18 @@ PATCH  /api/bookings/{id}      # Update status/meeting URL
 POST   /api/reviews                    # Create review (student, completed)
 GET    /api/messages                   # List messages
 POST   /api/messages                   # Send message
-GET    /api/notifications              # List notifications
-PATCH  /api/notifications/mark-all-read # Mark all as read
+```
+
+### Notifications
+```
+GET    /api/notifications                  # List notifications (paginated)
+GET    /api/notifications/unread-count     # Get unread count
+PATCH  /api/notifications/{id}/read        # Mark single as read
+PATCH  /api/notifications/mark-all-read    # Mark all as read
+PATCH  /api/notifications/{id}/dismiss     # Dismiss notification
+DELETE /api/notifications/{id}             # Delete notification
+GET    /api/notifications/preferences      # Get notification preferences
+PUT    /api/notifications/preferences      # Update preferences
 ```
 
 ### Admin
@@ -474,6 +484,6 @@ See the [LICENSE](./LICENSE) file in the repository root for the same terms.
 **Status**: ✅ PRODUCTION READY
 **Version**: 2.0
 **Test Coverage**: 96%
-**Last Updated**: 2025-01-09
+**Last Updated**: 2026-01-28
 
 For detailed architecture information, see [ARCHITECTURE.md](./ARCHITECTURE.md)

@@ -23,7 +23,7 @@ from .auth import User, UserProfile
 from .base import Base, JSONEncodedArray
 from .bookings import Booking, SessionMaterial
 from .messages import Message, MessageAttachment
-from .notifications import Notification
+from .notifications import Notification, NotificationAnalytics, NotificationPreferences
 from .payments import Payment, Payout, Refund, SupportedCurrency
 from .reviews import Review
 from .students import FavoriteTutor, StudentNote, StudentPackage, StudentProfile
@@ -33,8 +33,10 @@ from .tutors import (
     TutorBlackout,
     TutorCertification,
     TutorEducation,
+    TutorMetrics,
     TutorPricingOption,
     TutorProfile,
+    TutorResponseLog,
     TutorSubject,
 )
 
@@ -53,6 +55,8 @@ __all__ = [
     "TutorPricingOption",
     "TutorAvailability",
     "TutorBlackout",
+    "TutorMetrics",
+    "TutorResponseLog",
     # Students
     "StudentProfile",
     "StudentPackage",
@@ -69,6 +73,8 @@ __all__ = [
     "MessageAttachment",
     # Notifications
     "Notification",
+    "NotificationPreferences",
+    "NotificationAnalytics",
     # Payments
     "Payment",
     "Refund",

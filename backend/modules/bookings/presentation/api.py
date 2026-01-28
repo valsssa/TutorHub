@@ -134,6 +134,8 @@ async def create_booking(
     _require_role(current_user, "student")
 
     try:
+        from modules.bookings.services.response_tracking import ResponseTrackingService
+
         service = BookingService(db)
         booking = service.create_booking(
             student_id=current_user.id,
@@ -145,6 +147,16 @@ async def create_booking(
             notes_student=request.notes_student,
             package_id=request.use_package_id,
         )
+
+        # Log booking creation for response time tracking (only for pending bookings)
+        if booking.status == "PENDING":
+            response_tracker = ResponseTrackingService(db)
+            response_tracker.log_booking_created(booking)
+        elif booking.status == "CONFIRMED":
+            # Auto-confirmed booking - log with auto_confirmed action
+            response_tracker = ResponseTrackingService(db)
+            response_tracker.log_booking_created(booking)
+            response_tracker.log_tutor_response(booking, "auto_confirmed")
 
         db.commit()
         db.refresh(booking)
@@ -420,6 +432,8 @@ async def confirm_booking(
     try:
         from datetime import datetime
 
+        from modules.bookings.services.response_tracking import ResponseTrackingService
+
         booking.status = "CONFIRMED"
 
         # Generate join URL
@@ -432,6 +446,10 @@ async def confirm_booking(
 
         # Update timestamp in application code (no DB triggers)
         booking.updated_at = datetime.now(UTC)
+
+        # Track response time
+        response_tracker = ResponseTrackingService(db)
+        response_tracker.log_tutor_response(booking, "confirmed")
 
         db.commit()
         db.refresh(booking)
@@ -480,12 +498,18 @@ async def decline_booking(
         )
 
     try:
+        from modules.bookings.services.response_tracking import ResponseTrackingService
+
         service = BookingService(db)
         declined_booking = service.cancel_booking(
             booking=booking,
             cancelled_by_role="TUTOR",
             reason=request.reason,
         )
+
+        # Track response time
+        response_tracker = ResponseTrackingService(db)
+        response_tracker.log_tutor_response(booking, "cancelled")
 
         db.commit()
         db.refresh(declined_booking)

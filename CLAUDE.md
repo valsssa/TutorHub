@@ -8,11 +8,6 @@ AI guidance for working with this codebase. For detailed docs see `README.md`, `
 
 **Stack**: FastAPI (Python 3.12) + Next.js 15 (TypeScript) + PostgreSQL 17
 
-**Key Features**:
-- JWT authentication with role-based access (tutor/admin/student)
-- Rate limiting, optimized DB indexes, Docker containerization
-- Corporate proxy support (Harbor + Nexus at lazarev.cloud)
-
 ---
 
 ## Repository Structure
@@ -40,69 +35,6 @@ AI guidance for working with this codebase. For detailed docs see `README.md`, `
 - `backend/modules/` - Feature modules (auth, users, bookings, payments)
 - `frontend/app/` - Next.js pages using App Router
 - `database/migrations/` - SQL migrations (auto-applied on startup)
-
----
-
-## Git Workflow
-
-### Dual-Push Setup (GitHub + GitLab)
-```bash
-# Single command pushes to BOTH remotes
-git push origin main
-
-# View configuration
-git remote -v
-```
-
-### Branch Naming
-```bash
-feature/<description>   # New features
-fix/<description>       # Bug fixes
-refactor/<component>    # Code refactoring
-docs/<update>           # Documentation
-test/<description>      # Tests
-chore/<task>            # Maintenance
-```
-
-### Commit Convention
-Format: `<type>(<scope>): <subject>`
-
-Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore`, `ci`
-
-Examples:
-```bash
-feat(auth): add JWT refresh mechanism
-fix(booking): resolve timezone error
-refactor(api): simplify error handling
-```
-
-**Co-authored commits**:
-```bash
-git commit -m "feat(booking): implement cancellation
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
-```
-
-### Workflow
-```bash
-# 1. Create branch
-git checkout -b feature/new-feature
-
-# 2. Make changes & commit
-git add backend/main.py
-git commit -m "feat(api): add endpoint"
-
-# 3. Run tests
-docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
-
-# 4. Push (auto-pushes to GitHub + GitLab)
-git push origin feature/new-feature
-
-# 5. Create PR
-gh pr create --title "Add feature" --body "Description"
-```
-
----
 
 ## Critical Development Rules
 
@@ -202,79 +134,10 @@ docker compose exec -T db pg_dump -U postgres authapp > backup_$(date +%Y%m%d).s
 # Restore
 cat backup.sql | docker compose exec -T db psql -U postgres -d authapp
 ```
-
-### Git
-```bash
-git status
-git checkout -b feature/new-feature
-git add backend/main.py
-git commit -m "feat(api): add endpoint"
-git push origin feature/new-feature
-gh pr create --title "Title" --body "Description"
-```
-
 ---
 
 ## Architecture Patterns
 
-### Backend (FastAPI)
-
-**Protected Endpoints**:
-```python
-@app.get("/api/protected")
-async def protected(current_user: User = Depends(get_current_user)):
-    return {"user": current_user.email}
-```
-
-**Rate Limiting**:
-```python
-@app.post("/register")
-@limiter.limit("5/minute")
-async def register(request: Request, user: UserCreate):
-    # ...
-```
-
-**Email Normalization**:
-```python
-normalized_email = user.email.lower().strip()
-```
-
-### Frontend (Next.js 15)
-
-**Auth Check Pattern**:
-```typescript
-const token = Cookies.get('token')
-if (!token) router.replace('/login')
-
-const response = await axios.get(`${API_URL}/users/me`, {
-  headers: { Authorization: `Bearer ${token}` }
-})
-```
-
-**Toast Notifications**:
-```typescript
-const { showSuccess, showError } = useToast()
-```
-
-### Database
-
-**Schema**:
-```sql
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    hashed_password VARCHAR(255) NOT NULL,
-    role VARCHAR(50) DEFAULT 'student',
-    CONSTRAINT valid_role CHECK (role IN ('tutor', 'admin', 'student'))
-);
-```
-
-**Timestamps**: All `updated_at` set in application code (no DB triggers)
-```python
-user.updated_at = datetime.now(timezone.utc)
-```
-
-See `docs/architecture/DATABASE_ARCHITECTURE.md` for details.
 
 ---
 
@@ -356,14 +219,6 @@ docker compose up -d --build
 # Test
 docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 
-# Commit
-git checkout -b feature/new-feature
-git add backend/main.py
-git commit -m "feat(api): add endpoint"
-git push origin feature/new-feature
-gh pr create --title "Add feature" --body "Description"
-```
-
 ### Emergency Commands
 ```bash
 # Port in use
@@ -381,19 +236,7 @@ docker compose up -d --build
 ```
 
 ### Environment Variables
-**Backend** (`.env`):
-```bash
-DATABASE_URL=postgresql://postgres:postgres@db:5432/authapp
-SECRET_KEY=your-secret-key
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-DEFAULT_ADMIN_EMAIL=admin@example.com
-```
-
-**Frontend** (`.env.local`):
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
+`.env` - all
 ---
 
 ## Documentation
@@ -414,3 +257,31 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 > Every record should capture a user decision at a point in time—not just current state.
 
 This solves 80% of marketplace pitfalls before they happen.
+
+## Feature Implementation System Guidelines
+
+### Feature Implementation Priority Rules
+- IMMEDIATE EXECUTION: Launch parallel Tasks immediately upon feature requests.
+- NO CLARIFICATION: Skip asking what type of implementation unless absolutely critical.
+- PARALLEL BY DEFAULT: Always use 7-parallel-Task method for efficiency.
+
+### Parallel Feature Implementation Workflow
+1. **Component:** Create main component file.
+2. **Styles:** Create component styles/CSS.
+3. **Tests:** Create test files.
+4. **Types:** Create type definitions.
+5. **Hooks:** Create custom hooks/utilities.
+6. **Integration:** Update routing, imports, exports.
+7. **Remaining:** Update package.json, documentation, configuration files.
+8. **Review and Validation:** Coordinate integration, run tests, verify build, check for conflicts.
+
+### Context Optimization Rules
+- Strip out all comments when reading code files for analysis.
+- Each task handles ONLY specified files or file types.
+- Task 7 combines small config/doc updates to prevent over-splitting.
+
+### Feature Implementation Guidelines
+- **CRITICAL:** Make MINIMAL CHANGES to existing patterns and structures.
+- **CRITICAL:** Preserve existing naming conventions and file organization.
+- Follow project's established architecture and component patterns.
+- Use existing utility functions and avoid duplicating functionality.

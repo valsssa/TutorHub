@@ -356,13 +356,19 @@ def _calculate_health_metrics(db: Session) -> MarketplaceHealth:
     cancellation_rate = (cancelled / total_bookings * 100) if total_bookings > 0 else 0
     no_show_rate = (no_shows / total_bookings * 100) if total_bookings > 0 else 0
 
+    # Calculate average response time from response log
+    from modules.bookings.services.response_tracking import ResponseTrackingService
+
+    response_service = ResponseTrackingService(db)
+    avg_response_time_hours = response_service.get_platform_average_response_time()
+
     return MarketplaceHealth(
         average_tutor_rating=float(avg_rating or 0),
         tutors_with_bookings_pct=round(tutors_with_bookings_pct, 2),
         repeat_booking_rate=round(repeat_rate, 2),
         cancellation_rate=round(cancellation_rate, 2),
         no_show_rate=round(no_show_rate, 2),
-        average_response_time_hours=None,  # TODO: Implement when response tracking is added
+        average_response_time_hours=avg_response_time_hours,
     )
 
 

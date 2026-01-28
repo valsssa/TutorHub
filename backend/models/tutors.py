@@ -239,3 +239,97 @@ class TutorBlackout(Base):
     tutor = relationship("User", foreign_keys=[tutor_id])
 
     __table_args__ = (CheckConstraint("start_at < end_at", name="valid_blackout_time"),)
+
+
+class TutorMetrics(Base):
+    """Aggregated tutor performance metrics."""
+
+    __tablename__ = "tutor_metrics"
+
+    id = Column(Integer, primary_key=True)
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), unique=True, nullable=False)
+
+    # Response metrics
+    avg_response_time_minutes = Column(Integer, default=0)
+    response_rate_24h = Column(DECIMAL(5, 2), default=0.00)
+
+    # Booking metrics
+    total_bookings = Column(Integer, default=0)
+    completed_bookings = Column(Integer, default=0)
+    cancelled_bookings = Column(Integer, default=0)
+    no_show_bookings = Column(Integer, default=0)
+    completion_rate = Column(DECIMAL(5, 2), default=0.00)
+
+    # Student metrics
+    total_unique_students = Column(Integer, default=0)
+    returning_students = Column(Integer, default=0)
+    student_retention_rate = Column(DECIMAL(5, 2), default=0.00)
+    avg_sessions_per_student = Column(DECIMAL(5, 2), default=0.00)
+
+    # Revenue metrics
+    total_revenue = Column(DECIMAL(12, 2), default=0.00)
+    avg_session_value = Column(DECIMAL(10, 2), default=0.00)
+
+    # Engagement metrics
+    profile_views_30d = Column(Integer, default=0)
+    booking_conversion_rate = Column(DECIMAL(5, 2), default=0.00)
+
+    # Rating metrics
+    avg_rating = Column(DECIMAL(3, 2), default=0.00)
+    total_reviews = Column(Integer, default=0)
+
+    # Percentile rankings
+    response_time_percentile = Column(Integer)
+    retention_rate_percentile = Column(Integer)
+    rating_percentile = Column(Integer)
+
+    # Timestamps
+    last_calculated = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    tutor_profile = relationship("TutorProfile", backref="metrics", uselist=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            "(response_time_percentile IS NULL OR response_time_percentile BETWEEN 0 AND 100)",
+            name="valid_response_percentile",
+        ),
+        CheckConstraint(
+            "(retention_rate_percentile IS NULL OR retention_rate_percentile BETWEEN 0 AND 100)",
+            name="valid_retention_percentile",
+        ),
+        CheckConstraint(
+            "(rating_percentile IS NULL OR rating_percentile BETWEEN 0 AND 100)",
+            name="valid_rating_percentile",
+        ),
+    )
+
+
+class TutorResponseLog(Base):
+    """Log of tutor responses to booking requests for response time tracking."""
+
+    __tablename__ = "tutor_response_log"
+
+    id = Column(Integer, primary_key=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"))
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
+    booking_created_at = Column(TIMESTAMP(timezone=True), nullable=False)
+    tutor_responded_at = Column(TIMESTAMP(timezone=True))
+    response_time_minutes = Column(Integer)
+    response_action = Column(String(20))  # confirmed, cancelled, ignored, auto_confirmed
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    booking = relationship("Booking")
+    tutor_profile = relationship("TutorProfile")
+    student = relationship("User")
+
+    __table_args__ = (
+        CheckConstraint(
+            "response_action IN ('confirmed', 'cancelled', 'ignored', 'auto_confirmed')",
+            name="valid_response_action",
+        ),
+    )

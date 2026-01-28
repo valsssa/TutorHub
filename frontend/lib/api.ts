@@ -1158,12 +1158,79 @@ export interface NotificationItem {
   link?: string | null;
   is_read: boolean;
   created_at: string;
+  category?: string | null;
+  priority?: number;
+  action_url?: string | null;
+  action_label?: string | null;
+  read_at?: string | null;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  total: number;
+  unread_count: number;
+}
+
+export interface NotificationPreferences {
+  email_enabled: boolean;
+  push_enabled: boolean;
+  sms_enabled: boolean;
+  session_reminders_enabled: boolean;
+  booking_requests_enabled: boolean;
+  learning_nudges_enabled: boolean;
+  review_prompts_enabled: boolean;
+  achievements_enabled: boolean;
+  marketing_enabled: boolean;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  preferred_notification_time: string | null;
+  max_daily_notifications: number;
+  max_weekly_nudges: number;
+}
+
+export interface NotificationPreferencesUpdate {
+  email_enabled?: boolean;
+  push_enabled?: boolean;
+  sms_enabled?: boolean;
+  session_reminders_enabled?: boolean;
+  booking_requests_enabled?: boolean;
+  learning_nudges_enabled?: boolean;
+  review_prompts_enabled?: boolean;
+  achievements_enabled?: boolean;
+  marketing_enabled?: boolean;
+  quiet_hours_start?: string;
+  quiet_hours_end?: string;
+  preferred_notification_time?: string;
+  max_daily_notifications?: number;
+  max_weekly_nudges?: number;
 }
 
 export const notifications = {
-  async list(): Promise<NotificationItem[]> {
-    const { data } = await api.get<NotificationItem[]>("/api/notifications");
+  async list(options?: { skip?: number; limit?: number; category?: string; unread_only?: boolean }): Promise<NotificationItem[]> {
+    const params = new URLSearchParams();
+    if (options?.skip) params.append('skip', options.skip.toString());
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.category) params.append('category', options.category);
+    if (options?.unread_only) params.append('unread_only', 'true');
+    const query = params.toString();
+    const { data } = await api.get<NotificationListResponse>(`/api/notifications${query ? `?${query}` : ''}`);
+    return data.items;
+  },
+
+  async listWithMeta(options?: { skip?: number; limit?: number; category?: string; unread_only?: boolean }): Promise<NotificationListResponse> {
+    const params = new URLSearchParams();
+    if (options?.skip) params.append('skip', options.skip.toString());
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.category) params.append('category', options.category);
+    if (options?.unread_only) params.append('unread_only', 'true');
+    const query = params.toString();
+    const { data } = await api.get<NotificationListResponse>(`/api/notifications${query ? `?${query}` : ''}`);
     return data;
+  },
+
+  async getUnreadCount(): Promise<number> {
+    const { data } = await api.get<{ count: number }>("/api/notifications/unread-count");
+    return data.count;
   },
 
   async markAsRead(notificationId: number): Promise<void> {
@@ -1178,8 +1245,22 @@ export const notifications = {
     await api.patch(`/api/notifications/${notificationId}/read`);
   },
 
+  async dismiss(notificationId: number): Promise<void> {
+    await api.patch(`/api/notifications/${notificationId}/dismiss`);
+  },
+
   async delete(notificationId: number): Promise<void> {
     await api.delete(`/api/notifications/${notificationId}`);
+  },
+
+  async getPreferences(): Promise<NotificationPreferences> {
+    const { data } = await api.get<NotificationPreferences>("/api/notifications/preferences");
+    return data;
+  },
+
+  async updatePreferences(preferences: NotificationPreferencesUpdate): Promise<NotificationPreferences> {
+    const { data } = await api.put<NotificationPreferences>("/api/notifications/preferences", preferences);
+    return data;
   },
 };
 

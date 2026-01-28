@@ -26,8 +26,6 @@ class Booking(Base):
     tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="SET NULL"))
-    # package_id - Not in production DB (requires migration 017)
-    # package_id = Column(Integer, ForeignKey("student_packages.id"), nullable=True)
     start_time = Column(TIMESTAMP(timezone=True), nullable=False)
     end_time = Column(TIMESTAMP(timezone=True), nullable=False)
     status = Column(String(20), default="PENDING", nullable=False)
@@ -45,8 +43,8 @@ class Booking(Base):
     platform_fee_pct = Column(DECIMAL(5, 2), default=20.0, nullable=False)
     platform_fee_cents = Column(Integer, default=0, nullable=False)
     tutor_earnings_cents = Column(Integer, default=0, nullable=False)
-    pricing_option_id = Column(Integer, nullable=True)  # FK to tutor_pricing_options
-    package_id = Column(Integer, nullable=True)  # FK to student_packages
+    pricing_option_id = Column(Integer, ForeignKey("tutor_pricing_options.id", ondelete="SET NULL"), nullable=True)
+    package_id = Column(Integer, ForeignKey("student_packages.id", ondelete="SET NULL"), nullable=True)
     package_sessions_remaining = Column(Integer, nullable=True)
     pricing_type = Column(String(20), default="hourly", nullable=False)
     lesson_type = Column(String(20), default="REGULAR", nullable=False)
@@ -87,8 +85,8 @@ class Booking(Base):
     tutor_profile = relationship("TutorProfile", back_populates="bookings")
     student = relationship("User", foreign_keys=[student_id])
     subject = relationship("Subject", back_populates="bookings")
-    # package relationship requires migration 017
-    # package = relationship("StudentPackage", foreign_keys=[package_id])
+    # Package relationship for session packages
+    package = relationship("StudentPackage", foreign_keys=[package_id])
     # Keep these relationships if tables exist (check production schema)
     materials = relationship(
         "SessionMaterial",

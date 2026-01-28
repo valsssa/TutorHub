@@ -76,6 +76,12 @@ class User(Base):
     sent_messages = relationship("Message", foreign_keys="Message.sender_id", back_populates="sender")
     received_messages = relationship("Message", foreign_keys="Message.recipient_id", back_populates="recipient")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    notification_preferences = relationship(
+        "NotificationPreferences",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (CheckConstraint("role IN ('student', 'tutor', 'admin', 'owner')", name="valid_role"),)
 

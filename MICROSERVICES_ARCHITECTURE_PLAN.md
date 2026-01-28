@@ -226,9 +226,11 @@ DELETE /api/messages/{id}
 
 ---
 
-### 5. Notification Context (Port 8005)
+### 5. Notification Context (Port 8005) ✅ IMPLEMENTED
 
 **Responsibility**: Email, push, SMS notifications
+
+**Status**: Core notification module implemented in monolith (backend/modules/notifications/)
 
 **Domain Model**:
 ```
@@ -240,28 +242,45 @@ Notification (Aggregate Root)
 │   ├── MessageReceived
 │   ├── PaymentReceived
 │   └── ReviewPosted
+├── Category (general, booking, message, payment, system)
+├── Priority (1-5)
 ├── Channel (Email, Push, SMS)
 ├── Content (Value Object)
 ├── Status (Sent, Failed, Pending)
+├── ActionUrl (Optional)
+├── DismissedAt (Optional)
 └── SentAt (DateTime)
+
+NotificationPreferences (Entity)
+├── UserId (Foreign Reference)
+├── EmailEnabled
+├── PushEnabled
+├── SessionRemindersEnabled
+├── MarketingEnabled
+├── QuietHoursStart
+└── QuietHoursEnd
 ```
 
 **Domain Events** (Consumed from other services):
 - Listens to: `BookingConfirmed`, `MessageSent`, `PaymentProcessed`, etc.
 - Emits: `NotificationSent`, `NotificationFailed`
 
-**API Endpoints**:
+**API Endpoints** (✅ All implemented):
 ```
-GET    /api/notifications       # List notifications
-PATCH  /api/notifications/mark-all-read
-PATCH  /api/notifications/{id}/read
-PUT    /api/notifications/preferences
+GET    /api/notifications                  # List notifications (paginated)
+GET    /api/notifications/unread-count     # Get unread count
+PATCH  /api/notifications/{id}/read        # Mark as read
+PATCH  /api/notifications/mark-all-read    # Mark all as read
+PATCH  /api/notifications/{id}/dismiss     # Dismiss notification
+DELETE /api/notifications/{id}             # Delete notification
+GET    /api/notifications/preferences      # Get preferences
+PUT    /api/notifications/preferences      # Update preferences
 ```
 
 **Database Tables**:
-- notifications
-- notification_preferences
-- notification_delivery_log
+- notifications ✅
+- user_notification_preferences ✅
+- notification_analytics ✅
 
 ---
 
@@ -845,7 +864,7 @@ booking-service/
 ### Week 11-12: Messaging & Notification Services
 - Extract messaging code
 - Implement WebSocket support
-- Extract notification code
+- ✅ Notification service already implemented (can be extracted)
 - Deploy both services
 
 ### Week 13-14: Payment & Review Services
