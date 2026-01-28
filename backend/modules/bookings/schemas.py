@@ -68,12 +68,12 @@ class BookingCreateRequest(BaseModel):
 
     @field_validator("duration_minutes")
     @classmethod
-    def validate_duration(cls, v: int) -> int:
+    def validate_duration(cls, duration_value: int) -> int:
         """Ensure duration matches allowed values."""
         allowed = [25, 30, 45, 50, 60, 90, 120]
-        if v not in allowed:
+        if duration_value not in allowed:
             raise ValueError(f"Duration must be one of: {allowed}")
-        return v
+        return duration_value
 
 
 class BookingCancelRequest(BaseModel):
@@ -163,10 +163,10 @@ class AvailabilityWindowCreate(BaseModel):
 
     @field_validator("end_minute")
     @classmethod
-    def validate_time_order(cls, v: int, info) -> int:
-        if "start_minute" in info.data and v <= info.data["start_minute"]:
+    def validate_time_order(cls, end_minute_value: int, info) -> int:
+        if "start_minute" in info.data and end_minute_value <= info.data["start_minute"]:
             raise ValueError("end_minute must be after start_minute")
-        return v
+        return end_minute_value
 
 
 class AvailabilityUpdateRequest(BaseModel):
@@ -186,10 +186,10 @@ class BlackoutCreateRequest(BaseModel):
 
     @field_validator("end_at")
     @classmethod
-    def validate_time_order(cls, v: datetime, info) -> datetime:
-        if "start_at" in info.data and v <= info.data["start_at"]:
+    def validate_time_order(cls, end_at_value: datetime, info) -> datetime:
+        if "start_at" in info.data and end_at_value <= info.data["start_at"]:
             raise ValueError("end_at must be after start_at")
-        return v
+        return end_at_value
 
 
 class AvailabilitySlotDTO(BaseModel):

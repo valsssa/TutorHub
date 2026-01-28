@@ -87,6 +87,7 @@ export const auth = {
   logout() {
     logger.info("User logging out");
     Cookies.remove("token");
+    Cookies.remove("token_expiry");
     clearCache(); // Clear cache on logout
     if (typeof window !== "undefined") {
       window.location.href = "/";

@@ -322,10 +322,18 @@ async def _handle_checkout_completed(db: Session, session: dict):
     """Handle successful checkout session."""
 
     metadata = session.get("metadata", {})
+    payment_type = metadata.get("payment_type")
+
+    # Handle wallet top-up payments
+    if payment_type == "wallet_topup":
+        await _handle_wallet_topup(db, session)
+        return
+
+    # Handle booking payments
     booking_id = metadata.get("booking_id")
 
     if not booking_id:
-        logger.warning("Checkout completed without booking_id in metadata")
+        logger.warning("Checkout completed without booking_id or payment_type in metadata")
         return
 
     booking = db.query(Booking).filter(Booking.id == int(booking_id)).first()
@@ -569,4 +577,49 @@ async def request_refund(
         refund_id=refund.id,
         amount_cents=refund.amount,
         status="succeeded",
+    )
+
+
+async def _handle_wallet_topup(db: Session, session: dict):
+    """Handle successful wallet top-up payment."""
+    from models import StudentProfile
+
+    metadata = session.get("metadata", {})
+    student_id = metadata.get("student_id")
+    student_profile_id = metadata.get("student_profile_id")
+
+    if not student_id or not student_profile_id:
+        logger.warning("Wallet top-up completed without student_id or student_profile_id in metadata")
+        return
+
+    amount_cents = session.get("amount_total", 0)
+
+    # Get student profile
+    student_profile = db.query(StudentProfile).filter(StudentProfile.id == int(student_profile_id)).first()
+    if not student_profile:
+        logger.error(f"StudentProfile {student_profile_id} not found for wallet top-up")
+        return
+
+    # Add credits to student balance
+    current_balance = student_profile.credit_balance_cents or 0
+    student_profile.credit_balance_cents = current_balance + amount_cents
+    student_profile.updated_at = datetime.now(UTC)
+
+    # Update payment record
+    payment = (
+        db.query(Payment)
+        .filter(Payment.stripe_checkout_session_id == session.get("id"))
+        .first()
+    )
+
+    if payment:
+        payment.status = "completed"
+        payment.stripe_payment_intent_id = session.get("payment_intent")
+        payment.paid_at = datetime.now(UTC)
+
+    db.commit()
+
+    logger.info(
+        f"Wallet top-up completed for student {student_id}: "
+        f"added {amount_cents} cents, new balance: {student_profile.credit_balance_cents}"
     )

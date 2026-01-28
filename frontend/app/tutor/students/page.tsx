@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   Check,
   Clock,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppShell from "@/components/AppShell";
@@ -53,8 +55,21 @@ function TutorStudentsContent() {
   );
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [archivedStudentIds, setArchivedStudentIds] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
+    // Load archived student IDs from localStorage
+    const stored = localStorage.getItem('archived_students');
+    if (stored) {
+      try {
+        const ids = JSON.parse(stored);
+        setArchivedStudentIds(new Set(ids));
+      } catch (e) {
+        console.error('Failed to parse archived students:', e);
+      }
+    }
+
     const loadData = async () => {
       try {
         const currentUser = await auth.getCurrentUser();
@@ -188,9 +203,21 @@ function TutorStudentsContent() {
   }, [bookingsData]);
 
   const filteredStudents = useMemo(() => {
-    if (filterType === "All") return students;
-    return students.filter((student) => student.type === filterType);
-  }, [students, filterType]);
+    let filtered = students;
+
+    // Filter by type
+    if (filterType !== "All") {
+      filtered = filtered.filter((student) => student.type === filterType);
+    }
+
+    // Filter by archived status
+    filtered = filtered.filter((student) => {
+      const isArchived = archivedStudentIds.has(student.id);
+      return showArchived ? isArchived : !isArchived;
+    });
+
+    return filtered;
+  }, [students, filterType, archivedStudentIds, showArchived]);
 
   const handleFilterClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -241,8 +268,18 @@ function TutorStudentsContent() {
   };
 
   const handleArchive = (studentId: string) => {
-    // TODO: Implement archive functionality
-    showError("Archive feature coming soon");
+    const newArchivedIds = new Set(archivedStudentIds);
+    if (newArchivedIds.has(studentId)) {
+      // Unarchive
+      newArchivedIds.delete(studentId);
+    } else {
+      // Archive
+      newArchivedIds.add(studentId);
+    }
+    setArchivedStudentIds(newArchivedIds);
+    // Persist to localStorage
+    localStorage.setItem('archived_students', JSON.stringify(Array.from(newArchivedIds)));
+    setOpenMenuId(null);
   };
 
   const handleNotes = (studentId: string, name: string) => {
@@ -312,6 +349,19 @@ function TutorStudentsContent() {
               </div>
             )}
           </div>
+
+          {/* Show Archived Toggle */}
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-bold transition-all active:scale-95 ${
+              showArchived
+                ? "bg-slate-700 dark:bg-slate-600 border-slate-700 dark:border-slate-600 text-white"
+                : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+            }`}
+          >
+            {showArchived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+            {showArchived ? "Show Active" : "Show Archived"}
+          </button>
 
           {filterType !== "All" && (
             <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/50 animate-in fade-in zoom-in-95 duration-200">
@@ -502,9 +552,19 @@ function TutorStudentsContent() {
                                     handleArchive(student.id);
                                     setOpenMenuId(null);
                                   }}
-                                  className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                                  className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"
                                 >
-                                  Archive Student
+                                  {archivedStudentIds.has(student.id) ? (
+                                    <>
+                                      <ArchiveRestore className="w-4 h-4" />
+                                      Unarchive Student
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Archive className="w-4 h-4" />
+                                      Archive Student
+                                    </>
+                                  )}
                                 </button>
                               </div>
                             )}
@@ -672,9 +732,19 @@ function TutorStudentsContent() {
                         handleArchive(student.id);
                         setOpenMenuId(null);
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 rounded hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"
                     >
-                      Archive Student
+                      {archivedStudentIds.has(student.id) ? (
+                        <>
+                          <ArchiveRestore className="w-4 h-4" />
+                          Unarchive
+                        </>
+                      ) : (
+                        <>
+                          <Archive className="w-4 h-4" />
+                          Archive
+                        </>
+                      )}
                     </button>
                   </div>
                 )}

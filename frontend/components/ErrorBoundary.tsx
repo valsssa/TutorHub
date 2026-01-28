@@ -26,7 +26,16 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo);
+    // Log to production error tracking (could integrate with Sentry, etc.)
+    if (typeof window !== 'undefined') {
+      // Store error for debugging
+      window.localStorage.setItem('lastError', JSON.stringify({
+        message: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack,
+        timestamp: new Date().toISOString()
+      }));
+    }
     this.props.onError?.(error, errorInfo);
   }
 

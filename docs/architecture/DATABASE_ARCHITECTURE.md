@@ -193,7 +193,28 @@ def soft_delete_entity(entity_id: int, user_id: int):
 - Single source of truth for business rules
 - Full control and visibility
 
+## Recent Architecture Compliance Updates
+
+### Migration 028: Removed Timezone Database Logic (2026-01-28)
+
+**Issue**: Migration 026 introduced a PL/pgSQL function `is_valid_timezone_format()` and CHECK constraints that violated the "No Logic in Database" principle.
+
+**Resolution**: Migration 028 removed:
+- Database function `is_valid_timezone_format()`
+- All CHECK constraints using the function:
+  - `users_timezone_format_check`
+  - `user_profiles_timezone_format_check`
+  - `tutor_profiles_timezone_format_check`
+  - `bookings_student_tz_format_check`
+  - `bookings_tutor_tz_format_check`
+
+**Current Implementation**:
+- Timezone validation handled by `backend/core/timezone.py:is_valid_timezone()`
+- Pydantic validators in `backend/schemas.py`
+- Full IANA timezone database validation
+- No database-level validation functions
+
 ---
 
-**Last Updated:** 2025-11-12  
+**Last Updated:** 2026-01-28
 **Architecture Version:** 2.0 (Pure Data Storage)

@@ -309,11 +309,16 @@ See `docs/architecture/DATABASE_ARCHITECTURE.md` for details.
 
 | Role    | Email               | Password    |
 |---------|---------------------|-------------|
+| Owner   | owner@example.com   | owner123    |
 | Admin   | admin@example.com   | admin123    |
 | Tutor   | tutor@example.com   | tutor123    |
 | Student | student@example.com | student123  |
 
-**Change in production via environment variables.**
+**Change in production via environment variables:**
+- `DEFAULT_OWNER_PASSWORD`
+- `DEFAULT_ADMIN_PASSWORD`
+- `DEFAULT_TUTOR_PASSWORD`
+- `DEFAULT_STUDENT_PASSWORD`
 
 ---
 

@@ -44,6 +44,7 @@ from modules.notifications.presentation.api import router as notifications_route
 from modules.packages.presentation.api import router as packages_router
 from modules.payments.connect_router import router as connect_router
 from modules.payments.router import router as payments_router
+from modules.payments.wallet_router import router as wallet_router
 from modules.profiles.presentation.api import router as profiles_router
 from modules.reviews.presentation.api import router as reviews_router
 from modules.students.presentation.api import favorites_router
@@ -543,6 +544,7 @@ app.include_router(messages_router)
 app.include_router(notifications_router)
 app.include_router(packages_router)
 app.include_router(payments_router)
+app.include_router(wallet_router)
 app.include_router(connect_router)
 app.include_router(admin_router)
 app.include_router(audit_router)

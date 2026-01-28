@@ -73,3 +73,31 @@ export function isValidCurrency(code: string): code is CurrencyCode {
 export function getAllCurrencies(): CurrencyInfo[] {
   return Object.values(SUPPORTED_CURRENCIES);
 }
+
+/**
+ * Format cents to currency string
+ */
+export function formatCents(cents: number, currency: string = 'USD'): string {
+  const dollars = cents / 100;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+  }).format(dollars);
+}
+
+/**
+ * Format cents with compact notation (K, M)
+ */
+export function formatCompactCents(cents: number): string {
+  const dollars = cents / 100;
+  if (dollars >= 1_000_000) return `$${(dollars / 1_000_000).toFixed(1)}M`;
+  if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(1)}k`;
+  return formatCents(cents);
+}
+
+/**
+ * Format percentage with specified decimals
+ */
+export function formatPercentage(value: number, decimals: number = 1): string {
+  return `${value.toFixed(decimals)}%`;
+}

@@ -8,7 +8,7 @@ import { auth } from '@/lib/api';
 import type { User } from '@/types';
 
 interface UseAuthOptions {
-  requiredRole?: 'admin' | 'tutor' | 'student';
+  requiredRole?: 'admin' | 'tutor' | 'student' | 'owner';
   redirectTo?: string;
 }
 
@@ -21,6 +21,7 @@ interface UseAuthReturn {
   isAdmin: boolean;
   isTutor: boolean;
   isStudent: boolean;
+  isOwner: boolean;
 }
 
 export function useAuth(options: UseAuthOptions = {}): UseAuthReturn {
@@ -80,12 +81,13 @@ export function useAuth(options: UseAuthOptions = {}): UseAuthReturn {
     isAdmin: user?.role === 'admin',
     isTutor: user?.role === 'tutor',
     isStudent: user?.role === 'student',
+    isOwner: user?.role === 'owner',
   };
 }
 
 /**
  * Hook for protected routes - simpler version
  */
-export function useProtectedRoute(requiredRole?: 'admin' | 'tutor' | 'student') {
+export function useProtectedRoute(requiredRole?: 'admin' | 'tutor' | 'student' | 'owner') {
   return useAuth({ requiredRole });
 }

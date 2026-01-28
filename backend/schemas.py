@@ -29,21 +29,21 @@ class UserCreate(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def email_lowercase(cls, v: str) -> str:
-        return StringUtils.normalize_email(v)
+    def email_lowercase(cls, email_value: str) -> str:
+        return StringUtils.normalize_email(email_value)
 
     @field_validator("password")
     @classmethod
-    def validate_password_complexity(cls, v: str) -> str:
+    def validate_password_complexity(cls, password_value: str) -> str:
         """Validate password complexity requirements."""
-        if len(v) < 8 or len(v) > 128:
+        if len(password_value) < 8 or len(password_value) > 128:
             raise ValueError("Password must be 8-128 characters")
 
         # Check for uppercase, lowercase, digit, and special character
-        has_upper = any(c.isupper() for c in v)
-        has_lower = any(c.islower() for c in v)
-        has_digit = any(c.isdigit() for c in v)
-        has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in v)
+        has_upper = any(c.isupper() for c in password_value)
+        has_lower = any(c.islower() for c in password_value)
+        has_digit = any(c.isdigit() for c in password_value)
+        has_special = any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password_value)
 
         if not has_upper:
             raise ValueError("Password must contain at least one uppercase letter")
@@ -54,32 +54,32 @@ class UserCreate(BaseModel):
         if not has_special:
             raise ValueError("Password must contain at least one special character (!@#$%^&* etc.)")
 
-        return v
+        return password_value
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, v: str | None) -> str:
-        if not v:
+    def validate_role(cls, role_value: str | None) -> str:
+        if not role_value:
             return "student"
-        if v not in ["student", "tutor", "admin"]:
+        if role_value not in ["student", "tutor", "admin"]:
             raise ValueError("Role must be student, tutor, or admin")
-        return v
+        return role_value
 
     @field_validator("timezone")
     @classmethod
-    def validate_timezone(cls, v: str | None) -> str:
-        if not v:
+    def validate_timezone(cls, timezone_value: str | None) -> str:
+        if not timezone_value:
             return "UTC"
-        if not is_valid_timezone(v):
-            raise ValueError(f"Invalid IANA timezone: {v}")
-        return v
+        if not is_valid_timezone(timezone_value):
+            raise ValueError(f"Invalid IANA timezone: {timezone_value}")
+        return timezone_value
 
     @field_validator("currency")
     @classmethod
-    def validate_currency(cls, v: str | None) -> str:
-        if not v:
+    def validate_currency(cls, currency_value: str | None) -> str:
+        if not currency_value:
             return "USD"
-        return v.upper()
+        return currency_value.upper()
 
 
 class UserLogin(BaseModel):
@@ -139,13 +139,13 @@ class UserProfileUpdate(BaseModel):
 
     @field_validator("phone")
     @classmethod
-    def validate_phone(cls, v: str | None) -> str | None:
+    def validate_phone(cls, phone_value: str | None) -> str | None:
         """Validate phone number format (E.164)."""
-        if not v:
-            return v
-        if not validate_phone_number(v):
+        if not phone_value:
+            return phone_value
+        if not validate_phone_number(phone_value):
             raise ValueError("Phone number must be in E.164 format (e.g., +1234567890)")
-        return v
+        return phone_value
 
 
 class UserPreferencesUpdate(BaseModel):
@@ -155,12 +155,12 @@ class UserPreferencesUpdate(BaseModel):
 
     @field_validator("timezone")
     @classmethod
-    def validate_timezone(cls, v: str | None) -> str | None:
-        if not v:
-            return v
-        if not is_valid_timezone(v):
-            raise ValueError(f"Invalid IANA timezone: {v}")
-        return v
+    def validate_timezone(cls, timezone_value: str | None) -> str | None:
+        if not timezone_value:
+            return timezone_value
+        if not is_valid_timezone(timezone_value):
+            raise ValueError(f"Invalid IANA timezone: {timezone_value}")
+        return timezone_value
 
 
 class UserProfileResponse(BaseModel):
@@ -205,12 +205,12 @@ class TutorSubjectInput(BaseModel):
 
     @field_validator("proficiency_level")
     @classmethod
-    def validate_proficiency(cls, v: str) -> str:
+    def validate_proficiency(cls, proficiency_value: str) -> str:
         """Validate proficiency level against CEFR framework."""
-        v_lower = v.lower().strip()
-        if not is_valid_proficiency_level(v_lower):
+        proficiency_lower = proficiency_value.lower().strip()
+        if not is_valid_proficiency_level(proficiency_lower):
             raise ValueError("Proficiency must be one of: a1, a2, b1, b2, c1, c2, native (CEFR framework)")
-        return v_lower
+        return proficiency_lower
 
 
 class TutorSubjectResponse(BaseModel):
@@ -235,10 +235,10 @@ class TutorAvailabilityInput(BaseModel):
 
     @field_validator("end_time")
     @classmethod
-    def validate_time_range(cls, v: time, info) -> time:
-        if "start_time" in info.data and v <= info.data["start_time"]:
+    def validate_time_range(cls, end_time_value: time, info) -> time:
+        if "start_time" in info.data and end_time_value <= info.data["start_time"]:
             raise ValueError("end_time must be after start_time")
-        return v
+        return end_time_value
 
 
 class TutorAvailabilityResponse(BaseModel):
@@ -286,19 +286,19 @@ class TutorCertificationInput(BaseModel):
 
     @field_validator("expiration_date")
     @classmethod
-    def validate_dates(cls, v: date | None, info) -> date | None:
+    def validate_dates(cls, expiration_value: date | None, info) -> date | None:
         issue_date = info.data.get("issue_date")
-        if v and issue_date and v < issue_date:
+        if expiration_value and issue_date and expiration_value < issue_date:
             raise ValueError("expiration_date cannot be before issue_date")
-        return v
+        return expiration_value
 
     @field_validator("credential_url")
     @classmethod
-    def validate_credential_url(cls, v: str | None) -> str | None:
+    def validate_credential_url(cls, url_value: str | None) -> str | None:
         """Sanitize credential URL to prevent XSS."""
-        if not v:
-            return v
-        sanitized = sanitize_url(v)
+        if not url_value:
+            return url_value
+        sanitized = sanitize_url(url_value)
         if not sanitized:
             raise ValueError("Invalid or potentially malicious URL")
         return sanitized
@@ -326,11 +326,11 @@ class TutorEducationInput(BaseModel):
 
     @field_validator("end_year")
     @classmethod
-    def validate_years(cls, v: int | None, info) -> int | None:
+    def validate_years(cls, end_year_value: int | None, info) -> int | None:
         start_year = info.data.get("start_year")
-        if v and start_year and v < start_year:
+        if end_year_value and start_year and end_year_value < start_year:
             raise ValueError("end_year cannot be before start_year")
-        return v
+        return end_year_value
 
 
 class TutorEducationResponse(TutorEducationInput):
@@ -373,12 +373,12 @@ class TutorAboutUpdate(BaseModel):
 
     @field_validator("languages")
     @classmethod
-    def validate_languages(cls, v: list[str] | None) -> list[str] | None:
+    def validate_languages(cls, languages_value: list[str] | None) -> list[str] | None:
         """Validate language codes against ISO 639-1 standard."""
-        if not v:
+        if not languages_value:
             return None
         # Filter out empty strings
-        filtered = [lang.strip().lower() for lang in v if lang and lang.strip()]
+        filtered = [lang.strip().lower() for lang in languages_value if lang and lang.strip()]
         if not filtered:
             return None
         for lang in filtered:
@@ -400,12 +400,12 @@ class TutorVideoUpdate(BaseModel):
 
     @field_validator("video_url")
     @classmethod
-    def validate_video_url_field(cls, v: str) -> str:
+    def validate_video_url_field(cls, url_value: str) -> str:
         """Validate video URL is from allowed platforms."""
-        if not validate_video_url(v):
+        if not validate_video_url(url_value):
             raise ValueError("Video URL must be from YouTube, Vimeo, Loom, Wistia, or Vidyard")
         # Also sanitize the URL
-        sanitized = sanitize_url(v)
+        sanitized = sanitize_url(url_value)
         if not sanitized:
             raise ValueError("Invalid or potentially malicious URL")
         return sanitized
@@ -547,10 +547,10 @@ class BookingCreate(BaseModel):
 
     @field_validator("end_time")
     @classmethod
-    def validate_booking_time(cls, v: datetime, info) -> datetime:
-        if "start_time" in info.data and v <= info.data["start_time"]:
+    def validate_booking_time(cls, end_time_value: datetime, info) -> datetime:
+        if "start_time" in info.data and end_time_value <= info.data["start_time"]:
             raise ValueError("end_time must be after start_time")
-        return v
+        return end_time_value
 
 
 class BookingStatusUpdate(BaseModel):
@@ -563,7 +563,7 @@ class BookingStatusUpdate(BaseModel):
 
     @field_validator("status")
     @classmethod
-    def validate_status(cls, v: str) -> str:
+    def validate_status(cls, status_value: str) -> str:
         allowed = [
             "PENDING",
             "CONFIRMED",
@@ -574,10 +574,10 @@ class BookingStatusUpdate(BaseModel):
             "COMPLETED",
             "REFUNDED",
         ]
-        v_upper = v.upper()
-        if v_upper not in allowed:
+        status_upper = status_value.upper()
+        if status_upper not in allowed:
             raise ValueError(f"Status must be one of: {', '.join(allowed)}")
-        return v_upper
+        return status_upper
 
 
 class BookingResponse(BaseModel):
@@ -758,10 +758,10 @@ class UserUpdate(BaseModel):
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, v: str | None) -> str | None:
-        if v and v not in ["student", "tutor", "admin", "owner"]:
+    def validate_role(cls, role_value: str | None) -> str | None:
+        if role_value and role_value not in ["student", "tutor", "admin", "owner"]:
             raise ValueError("Role must be student, tutor, admin, or owner")
-        return v
+        return role_value
 
 
 class UserSelfUpdate(BaseModel):

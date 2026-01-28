@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { X, Save } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppShell from "@/components/AppShell";
-import { auth } from "@/lib/api";
+import { auth, tutorStudentNotes } from "@/lib/api";
 import { User } from "@/types";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import TextArea from "@/components/TextArea";
@@ -49,14 +49,16 @@ function EditStudentNotesContent() {
         const currentUser = await auth.getCurrentUser();
         setUser(currentUser);
 
-        // TODO: Load existing notes from API
-        // For now, load from localStorage as example
-        const savedNotes = localStorage.getItem(`student_notes_${studentId}`);
-        if (savedNotes) {
-          setNotes(savedNotes);
+        // Load existing notes from API
+        if (studentId) {
+          const noteData = await tutorStudentNotes.getNote(Number(studentId));
+          if (noteData && noteData.notes) {
+            setNotes(noteData.notes);
+          }
         }
       } catch (error) {
-        console.error("Failed to load user:", error);
+        showError("Failed to load notes");
+        logger.error("Failed to load user or notes", error);
         router.replace("/login");
       } finally {
         setLoading(false);
@@ -70,14 +72,13 @@ function EditStudentNotesContent() {
 
     setSaving(true);
     try {
-      // TODO: Save notes via API
-      // For now, save to localStorage as example
-      localStorage.setItem(`student_notes_${studentId}`, notes);
-      
+      // Save notes via API
+      await tutorStudentNotes.updateNote(Number(studentId), notes);
+
       showSuccess("Notes saved successfully");
       router.back();
     } catch (error) {
-      console.error("Failed to save notes:", error);
+      logger.error("Failed to save notes", error);
       showError("Failed to save notes");
     } finally {
       setSaving(false);

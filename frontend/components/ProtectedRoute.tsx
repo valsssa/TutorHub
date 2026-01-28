@@ -8,6 +8,7 @@ import { User } from "@/types";
 import LoadingSpinner from "./LoadingSpinner";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import ErrorBoundary from "./ErrorBoundary";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -48,6 +49,7 @@ export default function ProtectedRoute({
         setLoading(false);
       } catch (error) {
         Cookies.remove("token");
+        Cookies.remove("token_expiry");
         setLoading(false);
         router.replace("/");
       }
@@ -65,12 +67,16 @@ export default function ProtectedRoute({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
-      {showNavbar && <Navbar user={user} />}
-      <main id="main-content" role="main" className="flex-1">
-        {children}
-      </main>
-      {showNavbar && <Footer />}
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-200">
+        {showNavbar && <Navbar user={user} />}
+        <main id="main-content" role="main" className="flex-1">
+          <ErrorBoundary inline={false}>
+            {children}
+          </ErrorBoundary>
+        </main>
+        {showNavbar && <Footer />}
+      </div>
+    </ErrorBoundary>
   );
 }

@@ -26,7 +26,7 @@ class TestAdminWorkflows:
 
         # Login as admin
         response = requests.post(
-            f"{self.api_url}/token",
+            f"{self.api_url}/api/auth/login",
             data={"username": "admin@example.com", "password": "admin123"},
         )
         assert response.status_code == 200
@@ -34,7 +34,7 @@ class TestAdminWorkflows:
 
         # Login as student
         response = requests.post(
-            f"{self.api_url}/token",
+            f"{self.api_url}/api/auth/login",
             data={"username": "student@example.com", "password": "student123"},
         )
         assert response.status_code == 200
@@ -55,7 +55,7 @@ class TestAdminWorkflows:
         # Step 1: Admin creates a new user
         new_user_data = {"email": "newuser@example.com", "password": "testpassword123"}
 
-        response = requests.post(f"{self.api_url}/register", json=new_user_data)
+        response = requests.post(f"{self.api_url}/api/auth/register", json=new_user_data)
         assert response.status_code == 200
         new_user = response.json()
         new_user_id = new_user["id"]
@@ -127,7 +127,7 @@ class TestAdminWorkflows:
 
         # Step 8: Verify deactivated user cannot login
         response = requests.post(
-            f"{self.api_url}/token",
+            f"{self.api_url}/api/auth/login",
             data={
                 "username": "updatedemail@example.com",
                 "password": "testpassword123",
@@ -157,7 +157,7 @@ class TestAdminWorkflows:
 
         # Step 11: Verify user can login with new password
         response = requests.post(
-            f"{self.api_url}/token",
+            f"{self.api_url}/api/auth/login",
             data={"username": "updatedemail@example.com", "password": new_password},
         )
         assert response.status_code == 200, "User should be able to login with new password"
@@ -330,7 +330,7 @@ class TestAdminWorkflows:
         """
         # Create a new user
         response = requests.post(
-            f"{self.api_url}/register",
+            f"{self.api_url}/api/auth/register",
             json={"email": "unique@example.com", "password": "password123"},
         )
         assert response.status_code == 200
@@ -338,7 +338,7 @@ class TestAdminWorkflows:
 
         # Try to create another user with same email
         response = requests.post(
-            f"{self.api_url}/register",
+            f"{self.api_url}/api/auth/register",
             json={"email": "unique@example.com", "password": "differentpassword"},
         )
         assert response.status_code == 400
@@ -370,7 +370,7 @@ class TestAdminWorkflows:
         """
         # Create a test user
         response = requests.post(
-            f"{self.api_url}/register",
+            f"{self.api_url}/api/auth/register",
             json={"email": "multiupdate@example.com", "password": "password123"},
         )
         assert response.status_code == 200
@@ -409,7 +409,7 @@ class TestAdminWorkflows:
         """
         # Create a test user
         response = requests.post(
-            f"{self.api_url}/register",
+            f"{self.api_url}/api/auth/register",
             json={"email": "concurrent@example.com", "password": "password123"},
         )
         assert response.status_code == 200

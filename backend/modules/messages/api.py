@@ -301,7 +301,7 @@ async def get_conversation(
 
 @router.get("/search", response_model=MessageSearchResponse)
 async def search_messages(
-    q: str = Query(..., min_length=2, description="Search query"),
+    search_query: str = Query(..., min_length=2, description="Search query", alias="q"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
     current_user: CurrentUser = None,
@@ -311,7 +311,7 @@ async def search_messages(
     Search user's messages by content.
 
     **Parameters:**
-    - `q`: Search query (minimum 2 characters)
+    - `search_query`: Search query (minimum 2 characters)
     - `page`: Page number
     - `page_size`: Results per page (max 50)
 

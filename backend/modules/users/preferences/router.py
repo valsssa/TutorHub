@@ -27,10 +27,10 @@ class TimezoneSync(BaseModel):
 
     @field_validator("detected_timezone")
     @classmethod
-    def validate_timezone(cls, v: str) -> str:
-        if not is_valid_timezone(v):
-            raise ValueError(f"Invalid IANA timezone: {v}")
-        return v
+    def validate_timezone(cls, timezone_value: str) -> str:
+        if not is_valid_timezone(timezone_value):
+            raise ValueError(f"Invalid IANA timezone: {timezone_value}")
+        return timezone_value
 
 
 class TimezoneSyncResponse(BaseModel):

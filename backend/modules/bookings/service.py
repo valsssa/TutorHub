@@ -488,6 +488,11 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
         else "Unknown"
     )
 
+    # Get student level from profile if available
+    student_level = None
+    if student and hasattr(student, 'student_profile') and student.student_profile:
+        student_level = student.student_profile.grade_level
+
     student_info = StudentInfoDTO(
         id=student.id if student else 0,
         name=student_name,
@@ -495,7 +500,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
             student.avatar_key if student else None,
             default=settings.AVATAR_STORAGE_DEFAULT_URL,
         ),
-        level=None,  # TODO: Add student level field if needed
+        level=student_level,
     )
 
     # Get timezones from booking (stored at creation time)

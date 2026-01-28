@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { X, Save, CreditCard, Building2, MapPin } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppShell from "@/components/AppShell";
-import { auth } from "@/lib/api";
+import { auth, api } from "@/lib/api";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger('EditPayoutMethods');
 import { User } from "@/types";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useToast } from "@/components/ToastContainer";
@@ -46,16 +49,18 @@ function EditPayoutMethodsContent() {
         const currentUser = await auth.getCurrentUser();
         setUser(currentUser);
 
-        // TODO: Load existing payout methods from API
-        // For now, use example data
-        setPayoutForm((prev) => ({
-          ...prev,
-          accountName: "John Doe",
-          bankName: "Example Bank",
-          accountNumber: "****4242",
-        }));
+        // Load Stripe Connect status from API
+        const statusResponse = await api.get('/api/tutor/connect/status');
+        if (statusResponse.data.has_account) {
+          setPayoutForm((prev) => ({
+            ...prev,
+            accountName: statusResponse.data.is_ready ? "Stripe Account Connected" : "Setup In Progress",
+            bankName: "Managed by Stripe",
+            accountNumber: statusResponse.data.is_ready ? "✓ Connected" : "⚠ Not Ready",
+          }));
+        }
       } catch (error) {
-        console.error("Failed to load user:", error);
+        logger.error("Failed to load payout info", error);
         router.replace("/login");
       } finally {
         setLoading(false);
@@ -67,14 +72,19 @@ function EditPayoutMethodsContent() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // TODO: Save payout methods via API
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
-      
-      showSuccess("Payout method updated successfully");
-      router.back();
-    } catch (error) {
-      console.error("Failed to save payout method:", error);
-      showError("Failed to save payout method");
+      // Redirect to Stripe Express Dashboard for payout method management
+      const dashboardResponse = await api.get('/api/tutor/connect/dashboard-link');
+      if (dashboardResponse.data.url) {
+        // Open Stripe dashboard in new tab
+        window.open(dashboardResponse.data.url, '_blank');
+        showSuccess("Opening Stripe Dashboard to manage payout methods");
+        router.back();
+      } else {
+        throw new Error('No dashboard URL received');
+      }
+    } catch (error: any) {
+      logger.error("Failed to get dashboard link", error);
+      showError(error.response?.data?.detail || "Failed to access payout settings");
     } finally {
       setSaving(false);
     }

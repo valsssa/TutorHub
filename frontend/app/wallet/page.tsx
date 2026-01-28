@@ -107,27 +107,23 @@ function WalletContent() {
     }
 
     setProcessing(true);
-    
+
     try {
-      // TODO: Implement Stripe payment integration
-      // For now, show a placeholder message
-      showInfo(
-        `Payment integration coming soon! You selected $${selectedAmount.toFixed(2)}`
-      );
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // This is where the Stripe checkout would be initiated:
-      // const response = await api.post('/api/wallet/checkout', {
-      //   amount_cents: Math.round(selectedAmount * 100),
-      //   currency: user?.currency || 'USD'
-      // });
-      // window.location.href = response.data.checkout_url;
-      
+      // Create Stripe checkout session
+      const response = await api.post('/api/wallet/checkout', {
+        amount_cents: Math.round(selectedAmount * 100),
+        currency: user?.currency || 'USD'
+      });
+
+      // Redirect to Stripe Checkout
+      if (response.data.checkout_url) {
+        window.location.href = response.data.checkout_url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+
     } catch (error: any) {
       showError(error.response?.data?.detail || "Payment processing failed");
-    } finally {
       setProcessing(false);
     }
   };

@@ -32,6 +32,13 @@ import type {
   MessageSendResponse,
   UnreadCountResponse,
 } from "@/types/api";
+import type {
+  OwnerDashboard,
+  RevenueMetrics,
+  GrowthMetrics,
+  MarketplaceHealth,
+  CommissionTierBreakdown,
+} from "@/types/owner";
 
 const logger = createLogger('API');
 
@@ -168,6 +175,19 @@ api.interceptors.response.use(
   async (error) => {
     const config = error.config;
 
+    // Handle authentication errors (401)
+    if (error.response?.status === 401) {
+      logger.warn("Received 401 Unauthorized, clearing auth data");
+      clearAuthData();
+
+      // Redirect to login if we're in browser
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login?expired=true';
+      }
+
+      return Promise.reject(error);
+    }
+
     // Handle rate limit errors (429)
     if (error.response?.status === 429) {
       const rateLimitInfo = parseRateLimitHeaders(error.response.headers || {});
@@ -284,9 +304,42 @@ export function clearCache(pattern?: string): void {
   }
 }
 
+// Helper to check if token is expired
+function isTokenExpired(): boolean {
+  const tokenExpiry = Cookies.get("token_expiry");
+  if (!tokenExpiry) return false;
+
+  const expiryTime = parseInt(tokenExpiry, 10);
+  const currentTime = Date.now();
+
+  // Token expired if current time is past expiry
+  return currentTime >= expiryTime;
+}
+
+// Helper to clear auth data
+function clearAuthData() {
+  Cookies.remove("token");
+  Cookies.remove("token_expiry");
+  clearCache(); // Clear all cached data
+}
+
 // Add auth token to requests
 api.interceptors.request.use((config) => {
   const token = Cookies.get("token");
+
+  // Check if token is expired before making request
+  if (token && isTokenExpired()) {
+    logger.warn("Token expired, clearing auth data");
+    clearAuthData();
+
+    // Redirect to login if we're in browser
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login?expired=true';
+    }
+
+    return Promise.reject(new Error('Token expired'));
+  }
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
     logger.debug(`Request to ${config.url} with auth token`);
@@ -474,15 +527,25 @@ export const auth = {
         },
       );
 
+      // Token expires in 30 minutes (backend default)
+      const expiryTime = Date.now() + (30 * 60 * 1000); // 30 minutes from now
+
       Cookies.set("token", data.access_token, {
         expires: 7,
         secure: true,
         sameSite: 'strict'
       });
-      
+
+      Cookies.set("token_expiry", expiryTime.toString(), {
+        expires: 7,
+        secure: true,
+        sameSite: 'strict'
+      });
+
       // Clear cache on login to ensure fresh data
-      
-      logger.info(`Login successful for: ${email}`);
+      clearCache();
+
+      logger.info(`Login successful for: ${email}, token expires at ${new Date(expiryTime).toISOString()}`);
       return data.access_token;
     } catch (error) {
       logger.error(`Login failed for ${email}`, error);
@@ -1304,6 +1367,86 @@ export const admin = {
     const { data } = await api.get(`/api/admin/dashboard/user-growth?months=${months}`);
     setCache(cacheKey, data);
     return data;
+  },
+};
+
+// Owner API
+export const owner = {
+  async getDashboard(periodDays: number = 30): Promise<OwnerDashboard> {
+    const cacheKey = getCacheKey("/api/owner/dashboard", { period_days: periodDays });
+    const cached = getFromCache<OwnerDashboard>(cacheKey, 60 * 1000); // 1 min cache
+    if (cached) {
+      logger.debug("Owner dashboard loaded from cache");
+      return cached;
+    }
+    const { data } = await api.get("/api/owner/dashboard", {
+      params: { period_days: periodDays },
+    });
+    setCache(cacheKey, data);
+    return data;
+  },
+
+  async getRevenue(periodDays: number = 30): Promise<RevenueMetrics> {
+    const cacheKey = getCacheKey("/api/owner/revenue", { period_days: periodDays });
+    const cached = getFromCache<RevenueMetrics>(cacheKey, 60 * 1000);
+    if (cached) return cached;
+    const { data } = await api.get("/api/owner/revenue", {
+      params: { period_days: periodDays },
+    });
+    setCache(cacheKey, data);
+    return data;
+  },
+
+  async getGrowth(periodDays: number = 30): Promise<GrowthMetrics> {
+    const cacheKey = getCacheKey("/api/owner/growth", { period_days: periodDays });
+    const cached = getFromCache<GrowthMetrics>(cacheKey, 60 * 1000);
+    if (cached) return cached;
+    const { data } = await api.get("/api/owner/growth", {
+      params: { period_days: periodDays },
+    });
+    setCache(cacheKey, data);
+    return data;
+  },
+
+  async getHealth(): Promise<MarketplaceHealth> {
+    const cacheKey = getCacheKey("/api/owner/health");
+    const cached = getFromCache<MarketplaceHealth>(cacheKey, 2 * 60 * 1000); // 2 min
+    if (cached) return cached;
+    const { data } = await api.get("/api/owner/health");
+    setCache(cacheKey, data);
+    return data;
+  },
+
+  async getCommissionTiers(): Promise<CommissionTierBreakdown> {
+    const cacheKey = getCacheKey("/api/owner/commission-tiers");
+    const cached = getFromCache<CommissionTierBreakdown>(cacheKey, 5 * 60 * 1000); // 5 min
+    if (cached) return cached;
+    const { data } = await api.get("/api/owner/commission-tiers");
+    setCache(cacheKey, data);
+    return data;
+  },
+};
+
+// Tutor Student Notes API
+export const tutorStudentNotes = {
+  async getNote(studentId: number): Promise<{ id: number; notes: string | null } | null> {
+    try {
+      const { data } = await api.get(`/api/tutor/student-notes/${studentId}`);
+      return data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  async updateNote(studentId: number, notes: string): Promise<void> {
+    await api.put(`/api/tutor/student-notes/${studentId}`, { notes });
+  },
+
+  async deleteNote(studentId: number): Promise<void> {
+    await api.delete(`/api/tutor/student-notes/${studentId}`);
   },
 };
 

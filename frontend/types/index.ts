@@ -5,7 +5,7 @@
 export interface User {
   id: number;
   email: string;
-  role: "student" | "tutor" | "admin";
+  role: "student" | "tutor" | "admin" | "owner";
   is_active: boolean;
   is_verified: boolean;
   created_at: string;
