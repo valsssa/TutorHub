@@ -4,11 +4,13 @@ import logging
 from datetime import UTC
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, field_validator
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_user
+from core.timezone import is_valid_timezone
 from database import get_db
 from models import User
 from schemas import UserPreferencesUpdate, UserResponse
@@ -17,6 +19,27 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/users/preferences", tags=["user-preferences"])
+
+
+class TimezoneSync(BaseModel):
+    """Request body for timezone sync endpoint."""
+
+    detected_timezone: str
+
+    @field_validator("detected_timezone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        if not is_valid_timezone(v):
+            raise ValueError(f"Invalid IANA timezone: {v}")
+        return v
+
+
+class TimezoneSyncResponse(BaseModel):
+    """Response for timezone sync endpoint."""
+
+    needs_update: bool
+    saved_timezone: str
+    detected_timezone: str
 
 
 @router.patch("", response_model=UserResponse)
@@ -53,4 +76,29 @@ async def update_preferences(
         avatar_url=None,  # Will be fetched separately if needed
         currency=current_user.currency,
         timezone=current_user.timezone,
+    )
+
+
+@router.post("/sync-timezone", response_model=TimezoneSyncResponse)
+@limiter.limit("30/minute")
+async def sync_timezone(
+    request: Request,
+    sync_data: TimezoneSync,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Check if user's saved timezone differs from their detected browser timezone.
+    Used on login to prompt user to update if timezone has changed.
+
+    Returns whether an update is needed and both timezone values.
+    """
+    logger.info(
+        f"Timezone sync check for user {current_user.email}: "
+        f"saved={current_user.timezone}, detected={sync_data.detected_timezone}"
+    )
+
+    return TimezoneSyncResponse(
+        needs_update=current_user.timezone != sync_data.detected_timezone,
+        saved_timezone=current_user.timezone,
+        detected_timezone=sync_data.detected_timezone,
     )

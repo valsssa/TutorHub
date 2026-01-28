@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from core.constants import is_valid_language_code, is_valid_proficiency_level
 from core.sanitization import sanitize_url, validate_phone_number, validate_video_url
+from core.timezone import is_valid_timezone
 
 # ============================================================================
 # Authentication Schemas
@@ -68,7 +69,8 @@ class UserCreate(BaseModel):
     def validate_timezone(cls, v: str | None) -> str:
         if not v:
             return "UTC"
-        # Basic validation - could be enhanced with pytz
+        if not is_valid_timezone(v):
+            raise ValueError(f"Invalid IANA timezone: {v}")
         return v
 
     @field_validator("currency")
@@ -149,6 +151,15 @@ class UserPreferencesUpdate(BaseModel):
     """Update user preferences (timezone)."""
 
     timezone: str | None = None
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: str | None) -> str | None:
+        if not v:
+            return v
+        if not is_valid_timezone(v):
+            raise ValueError(f"Invalid IANA timezone: {v}")
+        return v
 
 
 class UserProfileResponse(BaseModel):

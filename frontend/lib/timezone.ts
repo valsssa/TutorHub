@@ -124,3 +124,61 @@ export function getTimezoneOffset(timezone: string): string {
     return "UTC";
   }
 }
+
+/**
+ * Format time in a specific timezone
+ */
+export function formatTimeInTimezone(
+  date: Date | string,
+  timezone: string,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: timezone,
+    ...options,
+  };
+  return dateObj.toLocaleTimeString("en-US", defaultOptions);
+}
+
+/**
+ * Format date and time showing both user's timezone and another party's timezone.
+ *
+ * Example output: "2:00 PM EST (11:00 AM PST for tutor)"
+ *
+ * @param date - Date to format (ISO string or Date object)
+ * @param userTimezone - User's preferred timezone
+ * @param otherTimezone - The other party's timezone
+ * @param otherLabel - Label for the other party (e.g., "tutor", "student")
+ * @returns Dual timezone formatted string
+ */
+export function formatDualTimezone(
+  date: Date | string,
+  userTimezone: string,
+  otherTimezone: string,
+  otherLabel: string = "other"
+): string {
+  const userTime = formatTimeInTimezone(date, userTimezone);
+  const userAbbr = getTimezoneOffset(userTimezone);
+
+  // If timezones are the same, just return single timezone
+  if (userTimezone === otherTimezone) {
+    return `${userTime} ${userAbbr}`;
+  }
+
+  const otherTime = formatTimeInTimezone(date, otherTimezone);
+  const otherAbbr = getTimezoneOffset(otherTimezone);
+
+  return `${userTime} ${userAbbr} (${otherTime} ${otherAbbr} for ${otherLabel})`;
+}
+
+/**
+ * Get timezone display name (e.g., "America/New_York" -> "Eastern Time")
+ */
+export function getTimezoneDisplayName(timezone: string): string {
+  const info = COMMON_TIMEZONES.find((tz) => tz.value === timezone);
+  return info?.label || timezone;
+}
