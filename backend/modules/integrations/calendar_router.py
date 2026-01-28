@@ -12,13 +12,14 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from core.config import settings
 from core.dependencies import CurrentUser, DatabaseSession
 from core.google_calendar import google_calendar
+from core.rate_limiting import limiter
 from models import Booking, User
 
 logger = logging.getLogger(__name__)
@@ -101,7 +102,9 @@ def _validate_state(state: str) -> dict | None:
     response_model=CalendarConnectionStatus,
     summary="Check Google Calendar connection status",
 )
+@limiter.limit("30/minute")
 async def get_calendar_status(
+    request: Request,
     current_user: CurrentUser,
 ) -> CalendarConnectionStatus:
     """Check if user has connected Google Calendar."""
@@ -130,7 +133,9 @@ After authorization, Google will redirect to the callback URL
 with the tokens to store.
     """,
 )
+@limiter.limit("10/minute")
 async def get_calendar_auth_url(
+    request: Request,
     current_user: CurrentUser,
 ) -> CalendarAuthURLResponse:
     """Get Google Calendar OAuth authorization URL."""
@@ -159,7 +164,9 @@ async def get_calendar_auth_url(
     summary="Google Calendar OAuth callback",
     description="Handles the OAuth callback from Google after calendar authorization.",
 )
+@limiter.limit("10/minute")
 async def calendar_callback(
+    request: Request,
     code: Annotated[str, Query(description="Authorization code from Google")],
     state: Annotated[str, Query(description="State parameter for CSRF protection")],
     db: DatabaseSession,
@@ -236,7 +243,9 @@ async def calendar_callback(
     summary="Disconnect Google Calendar",
     description="Remove Google Calendar connection and delete stored tokens.",
 )
+@limiter.limit("20/minute")
 async def disconnect_calendar(
+    request: Request,
     current_user: CurrentUser,
     db: DatabaseSession,
 ):
@@ -269,7 +278,9 @@ async def disconnect_calendar(
     summary="Create calendar event for booking",
     description="Manually create a calendar event for a specific booking.",
 )
+@limiter.limit("20/minute")
 async def create_booking_event(
+    request: Request,
     booking_id: int,
     current_user: CurrentUser,
     db: DatabaseSession,
@@ -377,7 +388,9 @@ async def create_booking_event(
     "/events/booking/{booking_id}",
     summary="Delete calendar event for booking",
 )
+@limiter.limit("20/minute")
 async def delete_booking_event(
+    request: Request,
     booking_id: int,
     current_user: CurrentUser,
     db: DatabaseSession,

@@ -361,7 +361,9 @@ async def delete_meeting(
     summary="Auto-create meetings for confirmed bookings",
     description="Admin endpoint to auto-create Zoom meetings for all confirmed bookings without one.",
 )
+@limiter.limit("10/minute")
 async def auto_create_meetings(
+    request: Request,
     current_user: CurrentUser,
     db: DatabaseSession,
     hours_ahead: Annotated[int, Query(ge=1, le=72)] = 24,
