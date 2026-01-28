@@ -35,6 +35,7 @@ from modules.admin.presentation.api import router as admin_router
 # Import module routers
 from modules.auth.presentation.api import router as auth_router
 from modules.auth.oauth_router import router as oauth_router
+from modules.auth.password_router import router as password_router
 from modules.bookings.presentation.api import router as bookings_router
 from modules.messages.api import router as messages_router
 from modules.messages.websocket import router as websocket_router
@@ -54,6 +55,7 @@ from modules.users.avatar.router import router as avatar_router
 from modules.users.currency.router import router as currency_router
 from modules.users.preferences.router import router as preferences_router
 from modules.utils.presentation.api import router as utils_router
+from modules.integrations.zoom_router import router as zoom_router
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -378,6 +380,12 @@ Tutor availability management with recurring schedules and one-time blocks. Cale
 
 System health checks, readiness probes, and service status endpoints. Used by load balancers and monitoring systems.""",
     },
+    {
+        "name": "integrations",
+        "description": """**Third-Party Integrations**
+
+External service integrations including Zoom video conferencing for virtual tutoring sessions. Handles OAuth flows, meeting creation, and lifecycle management.""",
+    },
 ]
 
 # Create FastAPI app with lifespan and comprehensive OpenAPI metadata
@@ -496,6 +504,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(auth_router)
 app.include_router(oauth_router)
+app.include_router(password_router)
 app.include_router(profiles_router)
 app.include_router(students_router)
 app.include_router(favorites_router)
@@ -517,6 +526,7 @@ app.include_router(tutor_profile_router)
 app.include_router(availability_router)
 app.include_router(utils_router)
 app.include_router(websocket_router)
+app.include_router(zoom_router)
 
 
 # ============================================================================
