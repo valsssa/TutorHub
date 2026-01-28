@@ -1,8 +1,9 @@
 """Favorites domain entities."""
 
-from sqlalchemy import Column, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from core.database import Base
 
 

@@ -12,10 +12,9 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.dependencies import CurrentUser, DatabaseSession
@@ -311,25 +310,27 @@ async def create_booking_event(
 
     # Refresh token if needed
     access_token = current_user.google_calendar_access_token
-    if current_user.google_calendar_token_expires:
-        if datetime.now(UTC) >= current_user.google_calendar_token_expires - timedelta(minutes=5):
-            try:
-                tokens = await google_calendar.refresh_access_token(
-                    current_user.google_calendar_refresh_token
-                )
-                access_token = tokens["access_token"]
-                user = db.query(User).filter(User.id == current_user.id).first()
-                user.google_calendar_access_token = access_token
-                user.google_calendar_token_expires = datetime.now(UTC) + timedelta(
-                    seconds=tokens.get("expires_in", 3600)
-                )
-                db.commit()
-            except Exception as e:
-                logger.error(f"Failed to refresh calendar token: {e}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Calendar token expired. Please reconnect your calendar.",
-                )
+    if (
+        current_user.google_calendar_token_expires
+        and datetime.now(UTC) >= current_user.google_calendar_token_expires - timedelta(minutes=5)
+    ):
+        try:
+            tokens = await google_calendar.refresh_access_token(
+                current_user.google_calendar_refresh_token
+            )
+            access_token = tokens["access_token"]
+            user = db.query(User).filter(User.id == current_user.id).first()
+            user.google_calendar_access_token = access_token
+            user.google_calendar_token_expires = datetime.now(UTC) + timedelta(
+                seconds=tokens.get("expires_in", 3600)
+            )
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to refresh calendar token: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Calendar token expired. Please reconnect your calendar.",
+            )
 
     # Get names
     tutor_name = booking.tutor_name or "Tutor"

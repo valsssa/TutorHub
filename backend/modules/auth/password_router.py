@@ -13,9 +13,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.orm import Session
 
-from core.config import settings
 from core.dependencies import DatabaseSession
 from core.email_service import email_service
 from core.security import PasswordHasher

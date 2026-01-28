@@ -403,21 +403,20 @@ async def get_tutor_photo(
 ):
     """Serve tutor profile photo from storage."""
     from core.storage import MINIO_BUCKET
-    
+
     # Get tutor profile to find the user
     profile = service.get_profile_by_id(db, tutor_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor not found")
-    
+
     # Get user to find avatar_key
     user = db.query(User).filter(User.id == profile.user_id).first()
     if not user or not user.avatar_key:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor photo not found")
-    
+
     # Extract storage key from URL
-    from core.storage import _extract_key_from_url
     storage_key = _extract_key_from_url(user.avatar_key)
-    
+
     if not storage_key:
         # If URL doesn't match expected format, try to construct key from tutor_profiles path
         # Handle old avatar format: /avatars/{user_id}/{filename}
@@ -429,14 +428,14 @@ async def get_tutor_photo(
                 storage_key = f"tutor_profiles/{profile.user_id}/photo/{filename}"
         else:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid photo URL format")
-    
+
     # Get file from MinIO
     try:
         client = _s3_client()
         response = client.get_object(Bucket=MINIO_BUCKET, Key=storage_key)
         content = response["Body"].read()
         content_type = response.get("ContentType", "image/jpeg")
-        
+
         return StreamingResponse(
             BytesIO(content),
             media_type=content_type,
@@ -444,7 +443,7 @@ async def get_tutor_photo(
                 "Cache-Control": "public, max-age=31536000, immutable",
             },
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Photo not found in storage"

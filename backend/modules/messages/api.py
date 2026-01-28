@@ -12,6 +12,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from core.avatar_storage import build_avatar_url
 from core.dependencies import CurrentUser
 from core.exceptions import ValidationError
 from core.message_storage import (
@@ -21,7 +22,6 @@ from core.message_storage import (
 )
 from database import get_db
 from models import Message, MessageAttachment
-from core.avatar_storage import build_avatar_url
 from modules.messages.service import MessageService
 from modules.messages.websocket import manager
 from schemas import MessageResponse
@@ -699,7 +699,7 @@ async def get_user_basic_info(
     try:
         from models import User
 
-        user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+        user = db.query(User).filter(User.id == user_id, User.is_active).first()
 
         if not user:
             raise HTTPException(

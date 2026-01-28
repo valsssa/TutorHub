@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from core.audit import AuditLogger
 from core.cache import cache_with_ttl, invalidate_cache
-from core.dependencies import get_current_student_user, get_current_user, get_current_user_optional
+from core.dependencies import get_current_student_user
 from core.sanitization import sanitize_text_input
 from database import get_db
 from models import Booking, Review, TutorProfile, User

@@ -15,8 +15,6 @@ exclude_dirs:
 skips:
   # B101: Test for use of assert (allowed in tests)
   - B101
-  # B601: Parameterized shell command (we use subprocess safely)
-  - B601
 
 # Tests to run (all except skipped)
 tests:

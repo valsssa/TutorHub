@@ -1,20 +1,21 @@
 """Favorites API endpoints."""
 
-from typing import Annotated, List
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+from typing import Annotated
 
-from core.dependencies import get_db, get_current_user
-from core.database_models import User, TutorProfile
-from modules.favorites.entities import FavoriteTutor
-from modules.favorites.schemas import FavoriteResponse, FavoriteCreate
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from core.database_models import TutorProfile, User
+from core.dependencies import get_current_user, get_db
 from core.logger import logger
+from modules.favorites.entities import FavoriteTutor
+from modules.favorites.schemas import FavoriteCreate, FavoriteResponse
 
 router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 
 
-@router.get("", response_model=List[FavoriteResponse])
+@router.get("", response_model=list[FavoriteResponse])
 async def get_favorites(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -26,11 +27,11 @@ async def get_favorites(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can have favorite tutors"
         )
-    
+
     favorites = db.query(FavoriteTutor).filter(
         FavoriteTutor.student_id == current_user.id
     ).all()
-    
+
     logger.info(f"Retrieved {len(favorites)} favorites for user {current_user.id}")
     return favorites
 
@@ -48,24 +49,24 @@ async def add_favorite(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can save favorite tutors"
         )
-    
+
     # Check if tutor profile exists
     tutor_profile = db.query(TutorProfile).filter(
         TutorProfile.id == favorite_data.tutor_profile_id
     ).first()
-    
+
     if not tutor_profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tutor profile not found"
         )
-    
+
     # Create favorite
     favorite = FavoriteTutor(
         student_id=current_user.id,
         tutor_profile_id=favorite_data.tutor_profile_id
     )
-    
+
     try:
         db.add(favorite)
         db.commit()
@@ -94,18 +95,18 @@ async def remove_favorite(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can remove favorite tutors"
         )
-    
+
     favorite = db.query(FavoriteTutor).filter(
         FavoriteTutor.student_id == current_user.id,
         FavoriteTutor.tutor_profile_id == tutor_profile_id
     ).first()
-    
+
     if not favorite:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Favorite not found"
         )
-    
+
     db.delete(favorite)
     db.commit()
     logger.info(f"User {current_user.id} removed tutor {tutor_profile_id} from favorites")
@@ -124,16 +125,16 @@ async def check_favorite(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only students can have favorite tutors"
         )
-    
+
     favorite = db.query(FavoriteTutor).filter(
         FavoriteTutor.student_id == current_user.id,
         FavoriteTutor.tutor_profile_id == tutor_profile_id
     ).first()
-    
+
     if not favorite:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tutor is not in favorites"
         )
-    
+
     return favorite

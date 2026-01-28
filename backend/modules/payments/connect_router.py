@@ -12,16 +12,13 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
-from core.config import settings
 from core.dependencies import DatabaseSession, TutorUser
 from core.stripe_client import (
     create_connect_account,
     create_connect_account_link,
-    get_connect_account,
     is_connect_account_ready,
 )
 from models import TutorProfile
@@ -270,6 +267,7 @@ async def get_dashboard_link(
         )
 
     import stripe
+
     from core.stripe_client import get_stripe_client
 
     client = get_stripe_client()
@@ -323,6 +321,7 @@ async def get_payout_balance(
         )
 
     import stripe
+
     from core.stripe_client import get_stripe_client
 
     client = get_stripe_client()
@@ -390,6 +389,7 @@ async def get_payout_history(
         )
 
     import stripe
+
     from core.stripe_client import get_stripe_client
 
     client = get_stripe_client()
@@ -453,6 +453,7 @@ async def get_earnings_summary(
 ):
     """Get earnings summary from completed bookings."""
     from sqlalchemy import func
+
     from models import Booking
 
     tutor_profile = (

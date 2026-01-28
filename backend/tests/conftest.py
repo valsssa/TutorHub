@@ -1,5 +1,7 @@
 """Pytest configuration and shared fixtures."""
 
+from datetime import UTC
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
@@ -8,9 +10,8 @@ from sqlalchemy.pool import StaticPool
 
 from auth import get_password_hash
 from database import get_db
-from models.base import Base  # Use the same Base that models use
-
 from main import app
+from models.base import Base  # Use the same Base that models use
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -214,8 +215,8 @@ def test_booking(db_session, tutor_user, student_user, test_subject):
         tutor_profile_id=tutor_user.tutor_profile.id,
         student_id=student_user.id,
         subject_id=test_subject.id,
-        start_time=datetime.now(timezone.utc) + timedelta(days=1),
-        end_time=datetime.now(timezone.utc) + timedelta(days=1, hours=1),
+        start_time=datetime.now(UTC) + timedelta(days=1),
+        end_time=datetime.now(UTC) + timedelta(days=1, hours=1),
         topic="Calculus basics",
         hourly_rate=50.00,
         total_amount=50.00,

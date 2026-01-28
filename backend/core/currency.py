@@ -159,6 +159,7 @@ def get_tutor_lifetime_earnings(db: Session, tutor_profile_id: int) -> int:
         Total earnings in cents
     """
     from sqlalchemy import func
+
     from models import Booking
 
     result = (

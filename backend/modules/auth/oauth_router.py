@@ -14,15 +14,13 @@ from typing import Annotated
 from urllib.parse import urlencode
 
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.dependencies import DatabaseSession, get_current_user_optional
 from core.security import TokenManager
-from database import get_db
 from models import User, UserProfile
 
 logger = logging.getLogger(__name__)
@@ -208,7 +206,7 @@ async def google_callback(
         google_id = user_info.get("sub")
         first_name = user_info.get("given_name", "")
         last_name = user_info.get("family_name", "")
-        picture = user_info.get("picture")
+        user_info.get("picture")
 
         # Find or create user
         user = db.query(User).filter(User.email == email).first()

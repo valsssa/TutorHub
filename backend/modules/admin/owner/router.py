@@ -6,17 +6,16 @@ Requires 'owner' role (highest privilege level).
 """
 
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.config import Roles
 from core.dependencies import DatabaseSession, OwnerUser
-from models import Booking, Payment, TutorProfile, User
+from models import Booking, TutorProfile, User
 
 router = APIRouter(
     prefix="/api/owner",
@@ -369,7 +368,7 @@ def _calculate_health_metrics(db: Session) -> MarketplaceHealth:
 
 def _calculate_commission_tiers(db: Session) -> CommissionTierBreakdown:
     """Calculate distribution of tutors across commission tiers."""
-    from core.currency import COMMISSION_TIERS, get_tutor_lifetime_earnings
+    from core.currency import get_tutor_lifetime_earnings
 
     approved_tutors = (
         db.query(TutorProfile)

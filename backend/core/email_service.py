@@ -10,7 +10,6 @@ Handles all transactional email sending including:
 """
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from core.config import settings
@@ -38,7 +37,6 @@ class EmailService:
                 return None
 
             import sib_api_v3_sdk
-            from sib_api_v3_sdk.rest import ApiException
 
             configuration = sib_api_v3_sdk.Configuration()
             configuration.api_key["api-key"] = settings.BREVO_API_KEY

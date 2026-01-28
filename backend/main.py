@@ -7,8 +7,9 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from io import BytesIO
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -18,8 +19,6 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from io import BytesIO
-from fastapi import HTTPException
 
 from auth import get_password_hash
 from core.config import settings
@@ -31,21 +30,24 @@ from models import TutorProfile, User
 from modules.admin.audit.router import router as audit_router
 from modules.admin.owner.router import router as owner_router
 from modules.admin.presentation.api import router as admin_router
+from modules.auth.oauth_router import router as oauth_router
+from modules.auth.password_router import router as password_router
 
 # Import module routers
 from modules.auth.presentation.api import router as auth_router
-from modules.auth.oauth_router import router as oauth_router
-from modules.auth.password_router import router as password_router
 from modules.bookings.presentation.api import router as bookings_router
+from modules.integrations.calendar_router import router as calendar_router
+from modules.integrations.zoom_router import router as zoom_router
 from modules.messages.api import router as messages_router
 from modules.messages.websocket import router as websocket_router
 from modules.notifications.presentation.api import router as notifications_router
 from modules.packages.presentation.api import router as packages_router
-from modules.payments.router import router as payments_router
 from modules.payments.connect_router import router as connect_router
+from modules.payments.router import router as payments_router
 from modules.profiles.presentation.api import router as profiles_router
 from modules.reviews.presentation.api import router as reviews_router
-from modules.students.presentation.api import router as students_router, favorites_router
+from modules.students.presentation.api import favorites_router
+from modules.students.presentation.api import router as students_router
 from modules.subjects.presentation.api import router as subjects_router
 from modules.tutor_profile.presentation.api import router as tutor_profile_router
 from modules.tutor_profile.presentation.availability_api import (
@@ -55,8 +57,6 @@ from modules.users.avatar.router import router as avatar_router
 from modules.users.currency.router import router as currency_router
 from modules.users.preferences.router import router as preferences_router
 from modules.utils.presentation.api import router as utils_router
-from modules.integrations.calendar_router import router as calendar_router
-from modules.integrations.zoom_router import router as zoom_router
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -545,28 +545,28 @@ async def serve_legacy_avatar(
     tutor profile photo from MinIO storage.
     """
     from core.storage import MINIO_BUCKET, _s3_client
-    
+
     # Get user to find their avatar_key (which contains the tutor profile photo URL)
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.avatar_key:
         raise HTTPException(status_code=404, detail="Photo not found")
-    
+
     # Extract storage key from the avatar_key URL
     from core.storage import _extract_key_from_url
     storage_key = _extract_key_from_url(user.avatar_key)
-    
+
     # If extraction failed, try to construct key from tutor_profiles path
     if not storage_key:
         # Try tutor_profiles path format
         storage_key = f"tutor_profiles/{user_id}/photo/{filename}"
-    
+
     # Get file from MinIO
     try:
         client = _s3_client()
         response = client.get_object(Bucket=MINIO_BUCKET, Key=storage_key)
         content = response["Body"].read()
         content_type = response.get("ContentType", "image/jpeg")
-        
+
         return StreamingResponse(
             BytesIO(content),
             media_type=content_type,

@@ -172,7 +172,7 @@ class TestPaymentService:
         assert refund_amt_24h == Decimal("100.00")
 
         # Scenario 2: Booking in 6h (<12h) - no refund
-        booking_6h_total = Decimal("100.00")
+        Decimal("100.00")
         refund_amt_6h = Decimal("0.00")  # 0% refund
         assert refund_amt_6h == Decimal("0.00")
 
@@ -208,17 +208,6 @@ class TestPaymentService:
     def test_handle_webhook_payment_succeeded(self, db, test_booking):
         """Test Stripe webhook: payment_intent.succeeded"""
         # Given
-        webhook_event = {
-            "type": "payment_intent.succeeded",
-            "data": {
-                "object": {
-                    "id": test_booking.payment_intent_id,
-                    "amount": 10000,
-                    "currency": "usd",
-                    "status": "succeeded"
-                }
-            }
-        }
 
         # When - Mock webhook processing
         payment_status = "paid"
@@ -231,17 +220,6 @@ class TestPaymentService:
     def test_handle_webhook_payment_failed(self, db, test_booking):
         """Test Stripe webhook: payment_intent.payment_failed"""
         # Given
-        webhook_event = {
-            "type": "payment_intent.payment_failed",
-            "data": {
-                "object": {
-                    "id": test_booking.payment_intent_id,
-                    "last_payment_error": {
-                        "message": "Your card was declined"
-                    }
-                }
-            }
-        }
 
         # When - Mock webhook processing
         payment_status = "failed"
@@ -347,7 +325,7 @@ class TestPaymentWorkflows:
         """
         # This would require a booking fixture with start_time in <12h
         # For now, test the logic directly
-        total_amount = Decimal("100.00")
+        Decimal("100.00")
         refund_amount = Decimal("0.00")  # No refund for <12h
         assert refund_amount == Decimal("0.00")
 

@@ -4,12 +4,17 @@ Tutor Profile Service Tests
 Tests for tutor profile creation, updates, approval workflow, and business logic.
 """
 
+from datetime import UTC, datetime, time
 from decimal import Decimal
 
 import pytest
 from sqlalchemy.orm import Session
 
-from backend.modules.tutor_profile.application.services import TutorProfileService
+from backend.modules.tutor_profile.application.services import (
+    AvailabilityService,
+    TutorProfileService,
+)
+from models import TutorAvailability, TutorSubject
 
 
 @pytest.fixture
@@ -515,7 +520,7 @@ class TestProfileVisibility:
         )
 
         # Then
-        assert approved.is_approved == True
+        assert approved.is_approved
         assert approved.profile_status == "approved"
         assert approved.approved_by == test_admin_user.id
         assert approved.approved_at is not None
@@ -675,7 +680,7 @@ class TestAvailabilityService:
     def test_get_available_slots(self, db, test_tutor_profile_with_availability):
         """Test retrieving available time slots for a date"""
         # Given - Mon 9am-5pm availability
-        date = datetime(2025, 1, 6, tzinfo=timezone.utc)  # Monday
+        date = datetime(2025, 1, 6, tzinfo=UTC)  # Monday
 
         # When
         slots = AvailabilityService.get_available_slots(
@@ -706,7 +711,7 @@ class TestAvailabilityService:
     def test_available_slots_exclude_blackouts(self, db, test_tutor_profile, test_blackout):
         """Test that blackout periods exclude all slots"""
         # Given - Blackout Dec 20-27
-        date = datetime(2025, 12, 23, tzinfo=timezone.utc)
+        date = datetime(2025, 12, 23, tzinfo=UTC)
 
         # When
         slots = AvailabilityService.get_available_slots(db, test_tutor_profile.id, date)

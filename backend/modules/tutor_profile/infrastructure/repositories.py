@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session, joinedload
 
+from core.avatar_storage import build_avatar_url
 from models import (
     TutorAvailability,
     TutorCertification,
@@ -18,8 +19,6 @@ from models import (
     User,
     UserProfile,
 )
-
-from core.avatar_storage import build_avatar_url
 
 from ...tutor_profile.domain.entities import (
     TutorAvailabilityEntity,

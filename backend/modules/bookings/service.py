@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from core.avatar_storage import build_avatar_url
 from core.config import settings
-from core.currency import calculate_platform_fee, calculate_platform_fee_dynamic
+from core.currency import calculate_platform_fee_dynamic
 from core.utils import StringUtils
 from models import Booking, StudentPackage, TutorBlackout, TutorProfile, User
 from modules.bookings.policy_engine import CancellationPolicy, NoShowPolicy
@@ -461,7 +461,6 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     # Get tutor info
     tutor_profile = booking.tutor_profile
     tutor_user = tutor_profile.user if tutor_profile else None
-    tutor_user_profile = tutor_user.profile if tutor_user else None
 
     tutor_name = booking.tutor_name or (
         StringUtils.format_display_name(tutor_user.first_name, tutor_user.last_name, "Unknown")
@@ -482,7 +481,6 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
 
     # Get student info
     student = booking.student
-    student_profile = student.profile if student else None
 
     student_name = booking.student_name or (
         StringUtils.format_display_name(student.first_name, student.last_name, "Unknown")

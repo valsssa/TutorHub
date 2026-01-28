@@ -128,18 +128,18 @@ def aggregate_to_profile_response(
 def aggregate_to_public_profile(aggregate: TutorProfileAggregate) -> TutorPublicProfile:
     """Convert aggregate to TutorPublicProfile DTO."""
     subjects: list[str] = [subject.subject_name or "" for subject in aggregate.subjects]
-    
+
     # Format education list from educations entities
     education_list: list[str] = []
     for edu in aggregate.educations[:3]:  # Limit to top 3
         edu_str = f"{edu.degree or ''} in {edu.field_of_study or ''} - {edu.institution}".strip()
         if edu_str and edu_str != " in  - ":
             education_list.append(edu_str)
-    
+
     # If no structured education, use the legacy education field
     if not education_list and aggregate.education:
         education_list = [aggregate.education]
-    
+
     data = {
         "id": aggregate.id,
         "user_id": aggregate.user_id,

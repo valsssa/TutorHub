@@ -172,7 +172,7 @@ def seed_bookings(db: Session):
 
         # Get profile data for names
         tutor_user_profile = db.query(User).filter(User.id == tutor.user_id).first()
-        student_profile = db.query(StudentProfile).filter(StudentProfile.user_id == student.id).first()
+        db.query(StudentProfile).filter(StudentProfile.user_id == student.id).first()
 
         # Build names using user data (single source of truth)
         tutor_name = (
@@ -230,7 +230,7 @@ def seed_bookings(db: Session):
 
         # Get profile data for names
         tutor_user_profile = db.query(User).filter(User.id == tutor.user_id).first()
-        student_profile = db.query(StudentProfile).filter(StudentProfile.user_id == student.id).first()
+        db.query(StudentProfile).filter(StudentProfile.user_id == student.id).first()
 
         # Build names using user data (single source of truth)
         tutor_name = (

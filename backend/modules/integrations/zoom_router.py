@@ -13,13 +13,12 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.dependencies import CurrentUser, DatabaseSession, TutorUser
-from models import Booking, TutorProfile, User
+from models import Booking
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +81,12 @@ class ZoomClient:
             )
 
         # Check if token is still valid
-        if self._access_token and self._token_expires:
-            if datetime.now(UTC) < self._token_expires - timedelta(minutes=5):
-                return self._access_token
+        if (
+            self._access_token
+            and self._token_expires
+            and datetime.now(UTC) < self._token_expires - timedelta(minutes=5)
+        ):
+            return self._access_token
 
         # Get new token using Server-to-Server OAuth
         credentials = base64.b64encode(

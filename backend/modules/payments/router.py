@@ -12,18 +12,16 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Header, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from core.config import settings
-from core.dependencies import CurrentUser, DatabaseSession, get_current_user
+from core.dependencies import CurrentUser, DatabaseSession
 from core.stripe_client import (
     create_checkout_session,
     create_refund,
-    retrieve_checkout_session,
-    verify_webhook_signature,
     format_amount_for_display,
+    verify_webhook_signature,
 )
 from models import Booking, Payment, TutorProfile
 
