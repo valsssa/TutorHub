@@ -270,9 +270,9 @@ export default function TimeSlotPicker({
                   aspect-square flex items-center justify-center rounded-lg text-sm font-medium
                   transition-all duration-200
                   ${isPast ? "text-gray-300 cursor-not-allowed" : ""}
-                  ${!isPast && !selected ? "hover:bg-primary-50 text-gray-700" : ""}
-                  ${selected ? "bg-primary-500 text-white shadow-md scale-105" : ""}
-                  ${today && !selected ? "ring-2 ring-primary-300" : ""}
+                  ${!isPast && !selected ? "hover:bg-emerald-50 text-gray-700" : ""}
+                  ${selected ? "bg-emerald-500 text-white shadow-md scale-105" : ""}
+                  ${today && !selected ? "ring-2 ring-emerald-300" : ""}
                 `}
               >
                 {date.getDate()}
@@ -286,7 +286,7 @@ export default function TimeSlotPicker({
       {selectedDate && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-2 mb-4">
-            <FiClock className="w-5 h-5 text-primary-600" />
+            <FiClock className="w-5 h-5 text-emerald-600" />
             <h4 className="font-semibold text-gray-900">
               Available Times - {selectedDate.toLocaleDateString("en-US", {
                 weekday: "long",
@@ -298,7 +298,7 @@ export default function TimeSlotPicker({
 
           {loading ? (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
             </div>
           ) : availableSlots.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
@@ -314,8 +314,8 @@ export default function TimeSlotPicker({
                       transition-all duration-200
                       ${
                         isSlotSelected
-                          ? "border-primary-500 bg-primary-50 text-primary-700 shadow-sm"
-                          : "border-gray-200 hover:border-primary-300 hover:bg-primary-50 text-gray-700"
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm"
+                          : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700"
                       }
                     `}
                   >

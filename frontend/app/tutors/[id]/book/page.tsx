@@ -514,6 +514,40 @@ function BookingPageContent() {
                 </span>
               </label>
 
+              {/* Payment Security Badges */}
+              <div className="flex flex-wrap items-center justify-center gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                  <Lock size={14} />
+                  <span className="text-xs font-medium">256-bit SSL</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Visa */}
+                  <svg className="h-6 w-auto" viewBox="0 0 48 32" fill="none">
+                    <rect width="48" height="32" rx="4" fill="#1A1F71"/>
+                    <path d="M19.5 21.5h-3l1.9-11.5h3l-1.9 11.5zM15.4 10l-2.8 7.9-.3-1.6-1-5.1s-.1-.7-.9-.7h-4.6l-.1.3s1 .2 2.1.9l2.5 9.8h3l4.6-11.5h-2.5zM35.5 21.5h2.6l-2.3-11.5h-2.4c-.7 0-1.3.4-1.5 1l-4.3 10.5h3l.6-1.6h3.7l.6 1.6zm-3.2-3.8l1.5-4.2.9 4.2h-2.4zM29 13.2l.4-2.4s-1.3-.5-2.6-.5c-1.4 0-4.8.6-4.8 3.7 0 2.9 4 2.9 4 4.4s-3.6 1.2-4.8.3l-.4 2.5s1.3.6 3.3.6 5-1 5-3.8c0-2.9-4-3.2-4-4.4s2.8-1.1 3.9-.4z" fill="white"/>
+                  </svg>
+                  {/* Mastercard */}
+                  <svg className="h-6 w-auto" viewBox="0 0 48 32" fill="none">
+                    <rect width="48" height="32" rx="4" fill="#F7F7F7"/>
+                    <circle cx="19" cy="16" r="8" fill="#EB001B"/>
+                    <circle cx="29" cy="16" r="8" fill="#F79E1B"/>
+                    <path d="M24 10.3a8 8 0 0 0 0 11.4 8 8 0 0 0 0-11.4z" fill="#FF5F00"/>
+                  </svg>
+                  {/* Amex */}
+                  <svg className="h-6 w-auto" viewBox="0 0 48 32" fill="none">
+                    <rect width="48" height="32" rx="4" fill="#006FCF"/>
+                    <path d="M12 16l-4-6h3l2 3 2-3h3l-4 6 4 6h-3l-2-3-2 3h-3l4-6zM24 10h8l2 3 2-3h3l-4 6 4 6h-3l-2-3-2 3h-8v-12zm3 3v2h4v-2h-4zm0 4v2h4v-2h-4z" fill="white"/>
+                  </svg>
+                </div>
+                {/* Powered by Stripe */}
+                <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
+                  <span className="text-xs">Powered by</span>
+                  <svg className="h-4 w-auto" viewBox="0 0 60 25" fill="currentColor">
+                    <path d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95v3.32a10.5 10.5 0 0 1-4.56.95c-4.01 0-6.83-2.5-6.83-7.14 0-4.07 2.5-7.18 6.26-7.18 3.75 0 5.94 3.11 5.94 7.14v1.31zm-4.14-4.2c0-1.4-.72-2.71-2.09-2.71-1.31 0-2.27 1.16-2.5 2.71h4.59zM40.95 6.23c1.35 0 2.7.37 3.84 1.1v3.66c-1.02-.84-2.2-1.28-3.34-1.28-2.5 0-4.01 1.86-4.01 4.29 0 2.43 1.51 4.33 4.01 4.33 1.14 0 2.32-.44 3.34-1.28v3.66c-1.14.73-2.49 1.1-3.84 1.1-4.59 0-7.88-3.32-7.88-7.81s3.29-7.77 7.88-7.77zM25.96 5.88h4.14v15.64h-4.14V5.88zM25.96.48h4.14v3.66h-4.14V.48zM18.08 14.28h-3.84v-3.44h3.84V6.58l4.14-1.31v5.57h5.24v3.44h-5.24v3.88c0 1.93.95 2.71 2.32 2.71 1.02 0 1.97-.33 2.92-.84v3.66c-1.02.55-2.32.88-3.84.88-3.5 0-5.54-2.05-5.54-5.9v-4.39zM8.27 9.17c1.35 0 2.43.44 3.11 1.02V6.89a7.8 7.8 0 0 0-3.11-.66c-1.9 0-3.59.73-4.72 2.05V6.23H.48v15.29h3.84V10.99c.69-1.16 2.09-1.82 3.95-1.82z"/>
+                  </svg>
+                </div>
+              </div>
+
               <button
                 onClick={handleConfirm}
                 disabled={submitting || !selectedSubjectId}

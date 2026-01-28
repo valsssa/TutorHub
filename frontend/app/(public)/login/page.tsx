@@ -138,15 +138,12 @@ export default function LoginPage() {
                 />
                 Remember me
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  showError("Password reset is not yet available. Please contact support.");
-                }}
+              <Link
+                href="/help-center"
                 className="text-emerald-500 hover:underline focus:outline-none tap-target"
               >
-                Forgot password?
-              </button>
+                Need help signing in?
+              </Link>
             </div>
 
             <Button

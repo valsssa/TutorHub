@@ -118,13 +118,15 @@ export default function RegisterPage() {
         detectedPrefs.currency
       );
 
+      // Auto-login for both students and tutors
+      await auth.login(formValues.email, formValues.password);
+
       if (formValues.isTutor) {
-        await auth.login(formValues.email, formValues.password);
         showSuccess("Registration successful! Complete your tutor profile.");
         setTimeout(() => router.push("/tutor/onboarding"), 100);
       } else {
-        showSuccess("Registration successful! Please log in.");
-        setTimeout(() => router.push("/login"), 100);
+        showSuccess("Welcome to EduConnect! Let's find you a tutor.");
+        setTimeout(() => router.push("/tutors"), 100);
       }
     } catch (error: unknown) {
       const axiosError = error as {

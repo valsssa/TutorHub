@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Cookies from "js-cookie";
 import { motion } from "framer-motion";
-import { FiStar, FiUsers, FiBookOpen, FiAward, FiTrendingUp, FiCheck, FiArrowRight } from "react-icons/fi";
+import { FiStar, FiUsers, FiBookOpen, FiAward, FiTrendingUp, FiCheck, FiArrowRight, FiSearch, FiCalendar, FiPlay } from "react-icons/fi";
+import TestimonialCard, { placeholderTestimonials } from "@/components/TestimonialCard";
 import { tutors, subjects, auth } from "@/lib/api";
 import { TutorPublicSummary, Subject, User } from "@/types";
 import { PRICE_LIMITS, SORT_OPTIONS } from "@/types/filters";
@@ -285,14 +286,22 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
-                className="absolute -bottom-4 -left-2 lg:-bottom-8 lg:-left-8 bg-white dark:bg-slate-800 p-3 lg:p-4 rounded-xl lg:rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 lg:gap-4 max-w-[200px] lg:max-w-none"
+                className="group absolute -bottom-4 -left-2 lg:-bottom-8 lg:-left-8"
               >
-                <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-full text-emerald-600 dark:text-emerald-400">
-                  <FiCheck className="w-6 h-6" strokeWidth={3} />
+                <div className="bg-white dark:bg-slate-800 p-3 lg:p-4 rounded-xl lg:rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 lg:gap-4 max-w-[200px] lg:max-w-none cursor-help">
+                  <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-full text-emerald-600 dark:text-emerald-400">
+                    <FiCheck className="w-6 h-6" strokeWidth={3} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Satisfaction</p>
+                    <p className="text-lg font-black text-slate-900 dark:text-white">Guaranteed</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Satisfaction</p>
-                  <p className="text-lg font-black text-slate-900 dark:text-white">Guaranteed</p>
+                {/* Tooltip */}
+                <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute bottom-full left-0 mb-2 w-64 bg-slate-900 dark:bg-slate-700 text-white p-3 rounded-lg text-sm shadow-lg z-10">
+                  <p className="font-medium mb-1">Our Promise to You</p>
+                  <p className="text-slate-300 text-xs">Not the right fit? Try 2 more tutors free, or get a full refund. No questions asked.</p>
+                  <div className="absolute bottom-0 left-6 transform translate-y-1/2 rotate-45 w-2 h-2 bg-slate-900 dark:bg-slate-700"></div>
                 </div>
               </motion.div>
 
@@ -311,6 +320,112 @@ export default function HomePage() {
                 <p className="text-sm font-bold text-slate-900 dark:text-white">4.9/5 Average Rating</p>
               </motion.div>
             </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-16 md:py-20 bg-white dark:bg-slate-900">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+              How It Works
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Get started in minutes. Find your perfect tutor and begin learning today.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: FiSearch,
+                title: "Find Your Tutor",
+                description: "Browse 30,000+ verified experts. Filter by subject, price, and availability to find your perfect match.",
+                step: 1,
+              },
+              {
+                icon: FiCalendar,
+                title: "Book a Lesson",
+                description: "Choose a time that works for you. Pay securely online with our satisfaction guarantee.",
+                step: 2,
+              },
+              {
+                icon: FiPlay,
+                title: "Start Learning",
+                description: "Join your lesson from anywhere. Learn at your own pace and track your progress.",
+                step: 3,
+              },
+            ].map((item, index) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="text-center relative"
+              >
+                {/* Connector Line (hidden on mobile) */}
+                {index < 2 && (
+                  <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-0.5 bg-gradient-to-r from-emerald-200 to-transparent dark:from-emerald-800" />
+                )}
+
+                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4 relative">
+                  <item.icon className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+                  <span className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {item.step}
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                  {item.title}
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                  {item.description}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-16 md:py-20 bg-slate-50 dark:bg-slate-950">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold mb-4">
+              <FiStar className="w-3 h-3" />
+              Trusted by 500,000+ students
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+              What Our Students Say
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              Join thousands of satisfied learners who have transformed their education with EduConnect.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {placeholderTestimonials.map((testimonial, index) => (
+              <motion.div
+                key={testimonial.author}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <TestimonialCard testimonial={testimonial} />
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>

@@ -139,8 +139,8 @@ export default function FilterBar({
           transition-all duration-200 whitespace-nowrap
           ${
             active
-              ? "bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-md"
-              : "bg-white text-slate-700 border border-slate-200 hover:border-sky-300 hover:bg-sky-50"
+              ? "bg-emerald-600 text-white shadow-md"
+              : "bg-white text-slate-700 border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
           }
         `}
       >
@@ -198,7 +198,7 @@ export default function FilterBar({
                       }}
                       className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all ${
                         !selectedSubject
-                          ? "bg-sky-100 text-sky-700"
+                          ? "bg-emerald-100 text-emerald-700"
                           : "bg-slate-50 hover:bg-slate-100 text-slate-700"
                       }`}
                     >
@@ -213,7 +213,7 @@ export default function FilterBar({
                         }}
                         className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all ${
                           selectedSubject === subject.id
-                            ? "bg-sky-100 text-sky-700"
+                            ? "bg-emerald-100 text-emerald-700"
                             : "bg-slate-50 hover:bg-slate-100 text-slate-700"
                         }`}
                       >
@@ -244,7 +244,7 @@ export default function FilterBar({
                             tempPrice[1],
                           ])
                         }
-                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         min={PRICE_LIMITS.min}
                         max={tempPrice[1] - PRICE_LIMITS.step}
                       />
@@ -261,7 +261,7 @@ export default function FilterBar({
                             ),
                           ])
                         }
-                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         min={tempPrice[0] + PRICE_LIMITS.step}
                         max={PRICE_LIMITS.max}
                       />
@@ -283,7 +283,7 @@ export default function FilterBar({
                             ),
                           ])
                         }
-                        className="w-full h-2 bg-gradient-to-r from-sky-200 to-sky-500 rounded-full appearance-none cursor-pointer"
+                        className="w-full h-2 bg-gradient-to-r from-emerald-200 to-emerald-500 rounded-full appearance-none cursor-pointer"
                       />
                       <div className="flex justify-between text-xs text-slate-500">
                         <span>${PRICE_LIMITS.min}</span>
@@ -293,7 +293,7 @@ export default function FilterBar({
 
                     <button
                       onClick={handlePriceApply}
-                      className="w-full py-2 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-lg font-medium hover:shadow-md transition-all"
+                      className="w-full py-2 bg-emerald-600 text-white rounded-lg font-medium hover:shadow-md transition-all"
                     >
                       Apply
                     </button>
@@ -315,7 +315,7 @@ export default function FilterBar({
                       }}
                       className={`w-full px-3 py-2 rounded-lg text-sm font-medium text-left flex items-center justify-between transition-all ${
                         !minRating
-                          ? "bg-sky-100 text-sky-700"
+                          ? "bg-emerald-100 text-emerald-700"
                           : "bg-slate-50 hover:bg-slate-100 text-slate-700"
                       }`}
                     >
@@ -331,7 +331,7 @@ export default function FilterBar({
                         }}
                         className={`w-full px-3 py-2 rounded-lg text-sm font-medium text-left flex items-center justify-between transition-all ${
                           minRating === option.value
-                            ? "bg-sky-100 text-sky-700"
+                            ? "bg-emerald-100 text-emerald-700"
                             : "bg-slate-50 hover:bg-slate-100 text-slate-700"
                         }`}
                       >
@@ -359,7 +359,7 @@ export default function FilterBar({
                       }}
                       className={`w-full px-3 py-2 rounded-lg text-sm font-medium text-left flex items-center justify-between transition-all ${
                         !minExperience
-                          ? "bg-sky-100 text-sky-700"
+                          ? "bg-emerald-100 text-emerald-700"
                           : "bg-slate-50 hover:bg-slate-100 text-slate-700"
                       }`}
                     >
@@ -375,7 +375,7 @@ export default function FilterBar({
                         }}
                         className={`w-full px-3 py-2 rounded-lg text-sm font-medium text-left flex items-center justify-between transition-all ${
                           minExperience === option.value
-                            ? "bg-sky-100 text-sky-700"
+                            ? "bg-emerald-100 text-emerald-700"
                             : "bg-slate-50 hover:bg-slate-100 text-slate-700"
                         }`}
                       >
