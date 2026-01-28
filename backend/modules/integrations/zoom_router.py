@@ -135,7 +135,7 @@ class ZoomClient:
         # Format start time for Zoom (ISO 8601)
         start_time_str = start_time.strftime("%Y-%m-%dT%H:%M:%S")
 
-        meeting_data = {
+        meeting_payload = {
             "topic": topic,
             "type": 2,  # Scheduled meeting
             "start_time": start_time_str,
@@ -162,7 +162,7 @@ class ZoomClient:
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
                 },
-                json=meeting_data,
+                json=meeting_payload,
             )
 
             if response.status_code not in (200, 201):

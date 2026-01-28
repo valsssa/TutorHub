@@ -21,15 +21,15 @@ export interface Message {
 }
 
 export interface MessageThread {
-  other_user_id: number;
-  other_user_email: string;
-  other_user_role?: string;
-  booking_id?: number;
-  last_message: string;
-  last_message_time: string;
-  last_sender_id?: number;
-  total_messages?: number;
-  unread_count: number;
+  otherUserId: number;
+  otherUserEmail: string;
+  otherUserRole?: string;
+  bookingId?: number;
+  lastMessage: string;
+  lastMessageTime: string;
+  lastSenderId?: number;
+  totalMessages?: number;
+  unreadCount: number;
 }
 
 interface UseMessagingProps {

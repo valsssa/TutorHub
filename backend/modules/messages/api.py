@@ -180,9 +180,9 @@ async def send_message(
         return message
 
     except ValidationError as e:
-        error_msg = str(e)
-        logger.warning(f"Message validation failed: {error_msg}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+        error_message = str(e)
+        logger.warning(f"Message validation failed: {error_message}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_message)
     except Exception as e:
         logger.error(f"Unexpected error sending message: {e}", exc_info=True)
         # Return the actual error in development for debugging
@@ -328,7 +328,7 @@ async def search_messages(
     try:
         messages, total = service.search_messages(
             user_id=current_user.id,
-            search_query=q,
+            search_query=search_query,
             page=page,
             page_size=page_size,
         )

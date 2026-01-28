@@ -291,16 +291,16 @@ class MessageService:
 
                 # Access by index with User object
                 # Query columns order: other_user_id, User, booking_id, sender_id, message, last_time
-                user_obj = t[1]  # User object
-                avatar_key = getattr(user_obj, "avatar_key", None)
+                thread_user = t[1]  # User object
+                avatar_key = getattr(thread_user, "avatar_key", None)
                 threads.append(
                     {
                         "other_user_id": t[0],  # other_user_id
-                        "other_user_email": user_obj.email,
-                        "other_user_first_name": user_obj.first_name,
-                        "other_user_last_name": user_obj.last_name,
+                        "other_user_email": thread_user.email,
+                        "other_user_first_name": thread_user.first_name,
+                        "other_user_last_name": thread_user.last_name,
                         "other_user_avatar_url": build_avatar_url(avatar_key),
-                        "other_user_role": user_obj.role,
+                        "other_user_role": thread_user.role,
                         "booking_id": t[2],  # booking_id
                         "last_sender_id": t[3],  # sender_id
                         "last_message": t[4],  # message

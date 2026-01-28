@@ -277,7 +277,7 @@ class EmailService:
         subject_name: str,
         session_date: str,
         reason: str | None = None,
-        refund_info: str | None = None,
+        refund_details: str | None = None,
     ) -> bool:
         """Send booking cancellation notification."""
 
@@ -300,7 +300,7 @@ class EmailService:
                     {f'<p><strong>Reason:</strong> {reason}</p>' if reason else ''}
                 </div>
 
-                {f'<div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 20px 0;"><p style="margin: 0;"><strong>Refund:</strong> {refund_info}</p></div>' if refund_info else ''}
+                {f'<div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 20px 0;"><p style="margin: 0;"><strong>Refund:</strong> {refund_details}</p></div>' if refund_details else ''}
 
                 <p><a href="{settings.FRONTEND_URL}/tutors" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Find Another Tutor</a></p>
 

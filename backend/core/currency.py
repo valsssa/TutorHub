@@ -91,7 +91,7 @@ def format_price(amount: Decimal, currency: str, db: Session) -> str:
         Formatted price string (e.g., '$10.50')
     """
     currencies = load_supported_currencies(db)
-    currency_map = {c.code: c for c in currencies}
+    currency_map = {currency.code: currency for currency in currencies}
 
     currency_info = currency_map.get(currency)
     if not currency_info:

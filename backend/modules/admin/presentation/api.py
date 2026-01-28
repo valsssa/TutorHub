@@ -760,11 +760,11 @@ async def get_session_metrics(
 
         # Completion rate
         total_current = len(current_bookings)
-        completed_current = len([b for b in current_bookings if b.status == "completed"])
+        completed_current = len([booking for booking in current_bookings if booking.status == "completed"])
         completion_rate = (completed_current / total_current * 100) if total_current > 0 else 0
 
         total_previous = len(previous_bookings)
-        completed_previous = len([b for b in previous_bookings if b.status == "completed"])
+        completed_previous = len([booking for booking in previous_bookings if booking.status == "completed"])
         completion_rate_previous = (completed_previous / total_previous * 100) if total_previous > 0 else 0
         completion_change = completion_rate - completion_rate_previous
 

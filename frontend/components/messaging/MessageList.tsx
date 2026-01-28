@@ -76,7 +76,7 @@ export default function MessageList({
               <MessageBubble
                 key={msg.id}
                 body={msg.message}
-                sender={msg.sender_id === currentUserId ? "user" : "opponent"}
+                sender={msg.sender_id === currentUserId ? "user" : "otherUser"}
                 sentAt={msg.created_at}
                 status={
                   msg.sender_id === currentUserId

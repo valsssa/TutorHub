@@ -458,10 +458,17 @@ function parseDecimalFields(obj: unknown): void {
 }
 
 function normalizeUser(user: User): User {
-  const avatarUrl = user.avatarUrl ?? user.avatar_url ?? null;
+  const avatarUrl = user.avatar_url ?? user.avatarUrl ?? null;
+  const firstName = user.first_name ?? user.firstName ?? null;
+  const lastName = user.last_name ?? user.lastName ?? null;
+  const preferredLanguage = user.preferred_language ?? user.preferredLanguage ?? null;
+
   return {
     ...user,
     avatarUrl,
+    firstName,
+    lastName,
+    preferredLanguage,
   };
 }
 

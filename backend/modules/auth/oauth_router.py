@@ -190,13 +190,13 @@ async def google_callback(
         token = await google.authorize_access_token(request)
 
         # Get user info from ID token
-        user_info = token.get("userinfo")
-        if not user_info:
+        oauth_user_data = token.get("userinfo")
+        if not oauth_user_data:
             # Fetch from userinfo endpoint as fallback
-            resp = await google.get("https://openidconnect.googleapis.com/v1/userinfo")
-            user_info = resp.json()
+            response = await google.get("https://openidconnect.googleapis.com/v1/userinfo")
+            oauth_user_data = response.json()
 
-        email = user_info.get("email")
+        email = oauth_user_data.get("email")
         if not email:
             logger.error("No email in Google user info")
             return RedirectResponse(
@@ -204,10 +204,10 @@ async def google_callback(
             )
 
         email = StringUtils.normalize_email(email)
-        google_id = user_info.get("sub")
-        first_name = user_info.get("given_name", "")
-        last_name = user_info.get("family_name", "")
-        user_info.get("picture")
+        google_id = oauth_user_data.get("sub")
+        first_name = oauth_user_data.get("given_name", "")
+        last_name = oauth_user_data.get("family_name", "")
+        oauth_user_data.get("picture")
 
         # Find or create user
         user = db.query(User).filter(User.email == email).first()

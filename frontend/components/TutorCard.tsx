@@ -61,8 +61,8 @@ export default function TutorCard({
     checkAuth();
   }, []);
 
-  const normalizedFirstName = tutor.first_name?.trim() || tutor.firstName?.trim();
-  const normalizedLastName = tutor.last_name?.trim() || tutor.lastName?.trim();
+  const normalizedFirstName = tutor.firstName?.trim() || tutor.first_name?.trim() || '';
+  const normalizedLastName = tutor.lastName?.trim() || tutor.last_name?.trim() || '';
   const fullName =
     [normalizedFirstName, normalizedLastName].filter(Boolean).join(" ");
   const displayName = fullName || tutor.name || tutor.title;
@@ -208,9 +208,9 @@ export default function TutorCard({
           {tutor.subjects && tutor.subjects.length > 0 && (
             <div className="mb-4">
               <div className="flex flex-wrap gap-2">
-                {tutor.subjects.slice(0, 4).map((subject, idx) => (
+                {tutor.subjects.slice(0, 4).map((subject, index) => (
                   <span
-                    key={idx}
+                    key={index}
                     className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-medium border border-slate-200 dark:border-slate-700"
                   >
                     {subject}

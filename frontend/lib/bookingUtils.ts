@@ -56,17 +56,17 @@ export function calculateBookingTiming(
     (endDate.getTime() - startDate.getTime()) / (1000 * 60)
   );
 
-  const hoursUntil = Math.round(
+  const hoursUntilStart = Math.round(
     (startDate.getTime() - now.getTime()) / (1000 * 60 * 60)
   );
 
-  const canCancelFree = hoursUntil >= 12;
+  const canCancelFree = hoursUntilStart >= 12;
 
   return {
     startDate,
     endDate,
     duration,
-    hoursUntil,
+    hoursUntilStart,
     canCancelFree,
   };
 }

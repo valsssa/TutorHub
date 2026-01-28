@@ -86,10 +86,10 @@ def _validate_state(state: str) -> dict | None:
     """Validate and consume OAuth state token."""
     if state not in _calendar_states:
         return None
-    data = _calendar_states.pop(state)
-    if datetime.now(UTC) - data["created_at"] > timedelta(minutes=10):
+    calendar_state_data = _calendar_states.pop(state)
+    if datetime.now(UTC) - calendar_state_data["created_at"] > timedelta(minutes=10):
         return None
-    return data
+    return calendar_state_data
 
 
 # ============================================================================

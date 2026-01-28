@@ -46,11 +46,11 @@ export default function FilterBar({
   activeFiltersCount = 0,
 }: FilterBarProps) {
   const [activeDropdown, setActiveDropdown] = useState<FilterDropdown>(null);
-  const [tempPrice, setTempPrice] = useState<[number, number]>(priceRange);
+  const [tempPriceRangeRange, setTempPriceRange] = useState<[number, number]>(priceRange);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setTempPrice(priceRange);
+    setTempPriceRange(priceRange);
   }, [priceRange]);
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function FilterBar({
   };
 
   const handlePriceApply = () => {
-    onPriceChange(tempPrice);
+    onPriceChange(tempPriceRange);
     closeDropdown();
   };
 
@@ -234,35 +234,35 @@ export default function FilterBar({
                     <div className="flex items-center gap-3">
                       <input
                         type="number"
-                        value={tempPrice[0]}
+                        value={tempPriceRange[0]}
                         onChange={(e) =>
                           setTempPrice([
                             Math.min(
                               Number(e.target.value),
-                              tempPrice[1] - PRICE_LIMITS.step
+                              tempPriceRange[1] - PRICE_LIMITS.step
                             ),
-                            tempPrice[1],
+                            tempPriceRange[1],
                           ])
                         }
                         className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         min={PRICE_LIMITS.min}
-                        max={tempPrice[1] - PRICE_LIMITS.step}
+                        max={tempPriceRange[1] - PRICE_LIMITS.step}
                       />
                       <span className="text-slate-500">to</span>
                       <input
                         type="number"
-                        value={tempPrice[1]}
+                        value={tempPriceRange[1]}
                         onChange={(e) =>
                           setTempPrice([
-                            tempPrice[0],
+                            tempPriceRange[0],
                             Math.max(
                               Number(e.target.value),
-                              tempPrice[0] + PRICE_LIMITS.step
+                              tempPriceRange[0] + PRICE_LIMITS.step
                             ),
                           ])
                         }
                         className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        min={tempPrice[0] + PRICE_LIMITS.step}
+                        min={tempPriceRange[0] + PRICE_LIMITS.step}
                         max={PRICE_LIMITS.max}
                       />
                     </div>
@@ -273,13 +273,13 @@ export default function FilterBar({
                         min={PRICE_LIMITS.min}
                         max={PRICE_LIMITS.max}
                         step={PRICE_LIMITS.step}
-                        value={tempPrice[1]}
+                        value={tempPriceRange[1]}
                         onChange={(e) =>
                           setTempPrice([
-                            tempPrice[0],
+                            tempPriceRange[0],
                             Math.max(
                               Number(e.target.value),
-                              tempPrice[0] + PRICE_LIMITS.step
+                              tempPriceRange[0] + PRICE_LIMITS.step
                             ),
                           ])
                         }
