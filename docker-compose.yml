@@ -79,6 +79,36 @@ services:
       AVATAR_STORAGE_USE_SSL: ${AVATAR_STORAGE_USE_SSL:-true}
       AVATAR_STORAGE_URL_TTL_SECONDS: ${AVATAR_STORAGE_URL_TTL_SECONDS:-300}
       AVATAR_STORAGE_DEFAULT_URL: ${AVATAR_STORAGE_DEFAULT_URL:-https://placehold.co/300x300?text=Avatar}
+      # Stripe Payment Configuration
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_CONNECT_CLIENT_ID: ${STRIPE_CONNECT_CLIENT_ID}
+      STRIPE_CURRENCY: ${STRIPE_CURRENCY:-usd}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-https://edustream.valsa.solutions/bookings/{booking_id}?payment=success}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-https://edustream.valsa.solutions/bookings/{booking_id}?payment=cancelled}
+      STRIPE_CONNECT_REFRESH_URL: ${STRIPE_CONNECT_REFRESH_URL:-https://edustream.valsa.solutions/tutor/earnings?connect=refresh}
+      STRIPE_CONNECT_RETURN_URL: ${STRIPE_CONNECT_RETURN_URL:-https://edustream.valsa.solutions/tutor/earnings?connect=success}
+      # Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://api.valsa.solutions/api/auth/google/callback}
+      GOOGLE_CALENDAR_REDIRECT_URI: ${GOOGLE_CALENDAR_REDIRECT_URI:-https://api.valsa.solutions/api/integrations/calendar/callback}
+      OAUTH_STATE_SECRET: ${OAUTH_STATE_SECRET}
+      # Brevo Email
+      BREVO_API_KEY: ${BREVO_API_KEY}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-noreply@edustream.valsa.solutions}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-EduStream}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
+      # Zoom Integration
+      ZOOM_CLIENT_ID: ${ZOOM_CLIENT_ID}
+      ZOOM_CLIENT_SECRET: ${ZOOM_CLIENT_SECRET}
+      ZOOM_ACCOUNT_ID: ${ZOOM_ACCOUNT_ID}
+      ZOOM_REDIRECT_URI: ${ZOOM_REDIRECT_URI:-https://edustream.valsa.solutions/api/integrations/zoom/callback}
+      # Frontend URLs
+      FRONTEND_URL: ${FRONTEND_URL:-https://edustream.valsa.solutions}
+      FRONTEND_LOGIN_SUCCESS_URL: ${FRONTEND_LOGIN_SUCCESS_URL:-https://edustream.valsa.solutions/dashboard}
+      FRONTEND_LOGIN_ERROR_URL: ${FRONTEND_LOGIN_ERROR_URL:-https://edustream.valsa.solutions/login?error=oauth_failed}
     depends_on:
       db:
         condition: service_healthy

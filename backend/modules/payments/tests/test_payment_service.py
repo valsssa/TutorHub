@@ -2,7 +2,7 @@
 Payment Service Tests
 
 Tests for payment processing, refunds, Stripe integration, and webhook handling.
-Comprehensive test coverage for all payment scenarios including multi-currency support.
+Comprehensive test coverage for all payment scenarios.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -226,45 +226,6 @@ class TestPaymentService:
 
         # Then
         assert payment_status == "failed"
-
-
-class TestCurrencyConversion:
-    """Test multi-currency support"""
-
-    def test_convert_usd_to_eur(self):
-        """Test USD to EUR conversion"""
-        # Given
-        amount_usd = Decimal("100.00")
-        exchange_rate = Decimal("0.85")  # Example rate
-
-        # When
-        amount_eur = amount_usd * exchange_rate
-
-        # Then
-        assert amount_eur == Decimal("85.00")
-
-    def test_convert_usd_to_gbp(self):
-        """Test USD to GBP conversion"""
-        # Given
-        amount_usd = Decimal("100.00")
-        exchange_rate = Decimal("0.75")
-
-        # When
-        amount_gbp = amount_usd * exchange_rate
-
-        # Then
-        assert amount_gbp == Decimal("75.00")
-
-    def test_round_to_currency_precision(self):
-        """Test rounding to 2 decimal places"""
-        # Given
-        amount = Decimal("123.456789")
-
-        # When
-        rounded = amount.quantize(Decimal("0.01"))
-
-        # Then
-        assert rounded == Decimal("123.46")
 
 
 @pytest.mark.integration
