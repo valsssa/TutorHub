@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   User,
   Calendar,
@@ -13,22 +13,24 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { bookings, availability } from "@/lib/api";
+import { useToast } from "@/components/ToastContainer";
 
 interface TutorScheduleManagerProps {
   initialTab?: "Lesson" | "Time off" | "Extra slots";
 }
 
-export default function TutorScheduleManagerPage({
-  searchParams,
-}: {
-  searchParams: { tab?: string };
-}) {
+export default function TutorScheduleManagerPage() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams?.get("tab") || "Lesson";
+  // Handle URL-encoded spaces
+  const decodedTab = decodeURIComponent(tabParam);
+  
   return (
     <ProtectedRoute requiredRole="tutor">
       <ScheduleManagerContent
         initialTab={
-          (searchParams.tab as "Lesson" | "Time off" | "Extra slots") ||
-          "Lesson"
+          (decodedTab as "Lesson" | "Time off" | "Extra slots") || "Lesson"
         }
       />
     </ProtectedRoute>
@@ -39,10 +41,12 @@ function ScheduleManagerContent({
   initialTab = "Lesson",
 }: TutorScheduleManagerProps) {
   const router = useRouter();
+  const { showSuccess, showError } = useToast();
   const [activeTab, setActiveTab] = useState<
     "Lesson" | "Time off" | "Extra slots"
   >(initialTab);
   const [lessonType, setLessonType] = useState<"Single" | "Weekly">("Single");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Time off state
   const [timeOffTitle, setTimeOffTitle] = useState("Busy");
@@ -66,40 +70,80 @@ function ScheduleManagerContent({
   const [extraEndDate, setExtraEndDate] = useState("");
   const [extraEndTime, setExtraEndTime] = useState("21:00");
 
-  const handleScheduleLesson = () => {
-    // TODO: Implement API call to schedule lesson
-    console.log("Scheduling lesson:", {
-      studentName,
-      lessonType,
-      lessonDuration,
-      lessonDate,
-      lessonTime,
-    });
-    router.back();
+  const handleScheduleLesson = async () => {
+    if (!studentName.trim()) {
+      showError("Please enter a student name");
+      return;
+    }
+    if (!lessonDate) {
+      showError("Please select a date");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Tutors cannot create bookings via the student-only endpoint.
+      showError("Scheduling lessons from this page isn't supported yet. Ask the student to book the session.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleBookTimeOff = () => {
-    // TODO: Implement API call to book time off
-    console.log("Booking time off:", {
-      timeOffTitle,
-      isAllDay,
-      startDate,
-      startTime,
-      endDate,
-      endTime,
-    });
-    router.back();
+  const handleBookTimeOff = async () => {
+    if (!startDate || !endDate) {
+      showError("Please select start and end dates");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // No backend endpoint exists yet; avoid showing false success.
+      showError("Time off booking isn't supported yet. Please adjust availability manually or contact support.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleAddExtraSlots = () => {
-    // TODO: Implement API call to add extra slots
-    console.log("Adding extra slots:", {
-      extraStartDate,
-      extraStartTime,
-      extraEndDate,
-      extraEndTime,
-    });
-    router.back();
+  const handleAddExtraSlots = async () => {
+    if (!extraStartDate || !extraEndDate) {
+      showError("Please select start and end dates");
+      return;
+    }
+
+    const rangeStart = new Date(`${extraStartDate}T00:00:00`);
+    const rangeEnd = new Date(`${extraEndDate}T23:59:59`);
+    if (rangeEnd < rangeStart) {
+      showError("End date must be on or after start date");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const slotsToCreate: Array<Promise<unknown>> = [];
+      const cursor = new Date(rangeStart);
+
+      while (cursor <= rangeEnd) {
+        const dayOfWeek = cursor.getDay();
+        slotsToCreate.push(
+          availability.createAvailability({
+            day_of_week: dayOfWeek,
+            start_time: `${extraStartTime}:00`,
+            end_time: `${extraEndTime}:00`,
+            is_recurring: false,
+          })
+        );
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      await Promise.all(slotsToCreate);
+
+      showSuccess("Extra availability slots added successfully");
+      router.back();
+    } catch (error: any) {
+      showError(error.response?.data?.detail || "Failed to add extra slots");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -254,9 +298,10 @@ function ScheduleManagerContent({
                 {/* Submit Button */}
                 <button
                   onClick={handleScheduleLesson}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
                 >
-                  Schedule lesson
+                  {isSubmitting ? "Scheduling..." : "Schedule lesson"}
                 </button>
               </div>
             )}
@@ -382,9 +427,10 @@ function ScheduleManagerContent({
                 {/* Submit Button */}
                 <button
                   onClick={handleBookTimeOff}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
                 >
-                  Book time off
+                  {isSubmitting ? "Booking..." : "Book time off"}
                 </button>
               </div>
             )}
@@ -485,9 +531,10 @@ function ScheduleManagerContent({
                 {/* Submit Button */}
                 <button
                   onClick={handleAddExtraSlots}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
                 >
-                  Add
+                  {isSubmitting ? "Adding..." : "Add"}
                 </button>
               </div>
             )}

@@ -39,6 +39,9 @@ async def get_student_profile(
             db.add(profile)
             db.commit()
             db.refresh(profile)
+        # Ensure response includes user-level fields
+        profile.timezone = current_user.timezone
+        profile.preferred_language = profile.preferred_language or current_user.preferred_language
         return profile
     except Exception as e:
         logger.error(
@@ -75,6 +78,13 @@ async def update_student_profile(
         for field, value in update_fields.items():
             setattr(profile, field, value)
 
+        # Keep profile preferred_language in sync with user preference if provided.
+        # current_user is loaded in a separate session; persist the change on this db session.
+        if "preferred_language" in update_fields and update_fields["preferred_language"]:
+            user_record = db.query(User).filter(User.id == current_user.id).first()
+            if user_record:
+                user_record.preferred_language = update_fields["preferred_language"]
+
         # Update timestamp in application code (no DB triggers)
         from datetime import datetime
 
@@ -82,6 +92,8 @@ async def update_student_profile(
 
         db.commit()
         db.refresh(profile)
+        # Add derived fields for response
+        profile.timezone = current_user.timezone
         logger.info(f"Student profile updated successfully for user: {current_user.id}")
         return profile
     except Exception as e:
@@ -104,7 +116,7 @@ favorites_router = APIRouter(prefix="/api/favorites", tags=["favorites"])
 limiter_favorites = Limiter(key_func=get_remote_address)
 
 
-@favorites_router.get("/", response_model=list[FavoriteTutorResponse])
+@favorites_router.get("", response_model=list[FavoriteTutorResponse])
 @limiter_favorites.limit("20/minute")
 async def get_favorite_tutors(
     request: Request,
@@ -132,7 +144,7 @@ async def get_favorite_tutors(
         )
 
 
-@favorites_router.post("/", response_model=FavoriteTutorResponse)
+@favorites_router.post("", response_model=FavoriteTutorResponse)
 @limiter_favorites.limit("10/minute")
 async def add_favorite_tutor(
     request: Request,

@@ -186,6 +186,7 @@ export default function HomePage() {
       {/* Navigation Header */}
       {currentUser ? <Navbar user={currentUser} /> : <PublicHeader />}
 
+      <main id="main-content" role="main" className="flex-1 flex flex-col">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="container mx-auto px-4 py-8 md:py-12 lg:py-16 max-w-7xl">
@@ -239,11 +240,11 @@ export default function HomePage() {
                     Get Started Free
                   </Button>
                   <Button
-                    onClick={() => router.push("/tutors")}
+                    onClick={() => router.push("/become-a-tutor")}
                     variant="outline"
                     className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg w-full sm:w-auto"
                   >
-                    Browse Tutors
+                    Become a Tutor
                   </Button>
                 </div>
               )}
@@ -315,7 +316,7 @@ export default function HomePage() {
       </section>
 
       {/* Advanced Search Section */}
-      <section className="py-1 md:py-2 lg:py-4 bg-slate-50 dark:bg-slate-900">
+      <section className="pt-12 md:pt-16 lg:pt-20 pb-4 md:pb-6 lg:pb-8 mb-4 md:mb-6 lg:mb-8 bg-slate-50 dark:bg-slate-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <TutorSearchSection
@@ -340,7 +341,7 @@ export default function HomePage() {
 
       {/* Tutors Grid */}
       {(filteredTutors.length > 0 || filtering) && (
-        <section className="py-2 md:py-4 lg:py-6 bg-white dark:bg-slate-900">
+        <section className="py-2 md:py-4 lg:py-6 bg-slate-50 dark:bg-slate-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {filtering ? (
@@ -429,6 +430,8 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      </main>
 
       {/* Footer */}
       <Footer />

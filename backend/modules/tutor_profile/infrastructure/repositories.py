@@ -19,6 +19,8 @@ from models import (
     UserProfile,
 )
 
+from core.avatar_storage import build_avatar_url
+
 from ...tutor_profile.domain.entities import (
     TutorAvailabilityEntity,
     TutorCertificationEntity,
@@ -162,7 +164,6 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         title: str,
         headline: str | None,
         bio: str | None,
-        teaching_philosophy: str | None,
         experience_years: int,
         languages: list[str] | None,
     ) -> TutorProfileAggregate:
@@ -172,7 +173,6 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         profile.title = title
         profile.headline = headline
         profile.bio = bio
-        profile.teaching_philosophy = teaching_philosophy
         profile.experience_years = experience_years
         profile.languages = languages or []
 
@@ -506,10 +506,8 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             first_name = getattr(profile.user, "first_name", None)
             last_name = getattr(profile.user, "last_name", None)
             avatar_key = getattr(profile.user, "avatar_key", None)
-            # avatar_key should contain the full public URL from MinIO storage
-            # Format: {MINIO_PUBLIC_ENDPOINT}/{MINIO_BUCKET}/tutor_profiles/{user_id}/photo/{filename}
-            # If it's an old avatar URL format, it will need to be re-uploaded to get the correct URL
-            profile_photo_url = avatar_key
+
+            profile_photo_url = build_avatar_url(avatar_key, allow_absolute=True)
 
         return TutorProfileAggregate(
             id=profile.id,
@@ -520,7 +518,6 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             headline=profile.headline,
             bio=profile.bio,
             description=profile.description,
-            teaching_philosophy=profile.teaching_philosophy,
             hourly_rate=profile.hourly_rate or Decimal("0.00"),
             experience_years=profile.experience_years or 0,
             education=profile.education,

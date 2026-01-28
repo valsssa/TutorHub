@@ -37,10 +37,13 @@ interface ToastProviderProps {
 
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [screenReaderMessage, setScreenReaderMessage] = useState<string>("");
 
   const addToast = useCallback((message: string, type: ToastType) => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    console.info(`[toast:${type}] ${message}`);
+    // keep state empty to suppress UI popups
+    setToasts([]);
+    setScreenReaderMessage(message);
   }, []);
 
   const removeToast = useCallback((id: number) => {
@@ -65,16 +68,10 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ showSuccess, showError, showInfo }}>
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-md w-full">
-        {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => removeToast(toast.id)}
-          />
-        ))}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {screenReaderMessage}
       </div>
+      {/* Toast UI suppressed by request */}
     </ToastContext.Provider>
   );
 }

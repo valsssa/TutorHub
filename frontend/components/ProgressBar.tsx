@@ -52,20 +52,20 @@ export default function ProgressBar({
           <div className="flex items-center gap-2">
             {icon && <span className="text-lg">{icon}</span>}
             {label && (
-              <span className="text-sm font-medium text-text-secondary">
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
                 {label}
               </span>
             )}
           </div>
           {showPercentage && (
-            <span className="text-sm font-bold text-text-primary">
+            <span className="text-sm font-bold text-slate-900 dark:text-white">
               {Math.round(animatedValue)}%
             </span>
           )}
         </div>
       )}
       
-      <div className={`w-full bg-gray-200 rounded-full overflow-hidden ${sizeClasses[size]}`}>
+      <div className={`w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden ${sizeClasses[size]}`}>
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${animatedValue}%` }}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -22,10 +22,10 @@ import {
   FiUsers
 } from 'react-icons/fi'
 import { User } from '@/types'
-import { auth } from '@/lib/api'
+import { auth, messages } from '@/lib/api'
 import { authUtils } from '@/lib/auth'
-import { useToast } from './ToastContainer'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import Button from './Button'
 import NotificationBell from './NotificationBell'
 import Avatar from './Avatar'
@@ -36,11 +36,12 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const router = useRouter()
-  const { showSuccess } = useToast()
   const { theme, toggleTheme } = useTheme()
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const { lastMessage } = useWebSocket()
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -53,9 +54,56 @@ export default function Navbar({ user }: NavbarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Load unread message count
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const data = await messages.getUnreadCount()
+      setUnreadMessageCount(data.total || 0)
+    } catch (error) {
+      console.error('Failed to load unread message count:', error)
+      setUnreadMessageCount(0)
+    }
+  }, [])
+
+  // Load unread count on mount and when page becomes visible
+  useEffect(() => {
+    loadUnreadCount()
+
+    // Refresh count when page becomes visible (user returns to tab)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadUnreadCount()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Poll for updates every 30 seconds
+    const interval = setInterval(loadUnreadCount, 30000)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      clearInterval(interval)
+    }
+  }, [loadUnreadCount])
+
+  // Listen to WebSocket for new messages
+  useEffect(() => {
+    if (!lastMessage) return
+
+    if (lastMessage.type === 'new_message') {
+      // Increment count if message is for current user
+      const currentUserId = user?.id
+      if (lastMessage.recipient_id === currentUserId) {
+        setUnreadMessageCount((prev) => prev + 1)
+      }
+    } else if (lastMessage.type === 'thread_read' || lastMessage.type === 'message_read') {
+      // Decrement count when messages are read
+      loadUnreadCount()
+    }
+  }, [lastMessage, user?.id, loadUnreadCount])
+
   const handleLogout = () => {
     auth.logout()
-    showSuccess('Logged out successfully 👋')
     router.push('/')
   }
 
@@ -128,8 +176,9 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="tap-target p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
             aria-label="Toggle theme"
+            aria-pressed={theme === 'dark'}
           >
             {theme === 'dark' ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
           </button>
@@ -139,17 +188,22 @@ export default function Navbar({ user }: NavbarProps) {
           {/* Messages */}
           <Link
             href="/messages"
-            className="p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Messages"
+            className="relative tap-target p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+            aria-label={`Messages${unreadMessageCount > 0 ? ` (${unreadMessageCount} unread)` : ''}`}
           >
             <FiMessageSquare className="w-5 h-5" />
+            {unreadMessageCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-gradient-to-br from-red-500 to-red-600 rounded-full min-w-[20px] h-5 shadow-lg shadow-red-500/50 ring-2 ring-white dark:ring-slate-950">
+                {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+              </span>
+            )}
           </Link>
 
           {/* Saved Tutors */}
           {authUtils.isStudent(user) && (
             <button
               onClick={() => router.push('/saved-tutors')}
-              className="p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="tap-target p-2 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label="Saved tutors"
             >
               <FiHeart className="w-5 h-5" />
@@ -164,6 +218,9 @@ export default function Navbar({ user }: NavbarProps) {
             <button
               onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               className="flex items-center gap-3 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+              aria-haspopup="menu"
+              aria-expanded={userDropdownOpen}
+              aria-controls="user-menu"
             >
               {renderAvatar()}
               <span className="hidden sm:block text-sm font-bold text-slate-900 dark:text-white max-w-[120px] truncate">
@@ -180,6 +237,8 @@ export default function Navbar({ user }: NavbarProps) {
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                   className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-[10001]"
+                  id="user-menu"
+                  role="menu"
                 >
                   {/* User Info */}
                   <div className="px-5 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
@@ -204,10 +263,27 @@ export default function Navbar({ user }: NavbarProps) {
                     <Link
                       href="/messages"
                       onClick={() => setUserDropdownOpen(false)}
-                      className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
+                      className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center justify-between"
                     >
-                      <FiMessageSquare className="w-4 h-4" /> Messages
+                      <div className="flex items-center gap-3">
+                        <FiMessageSquare className="w-4 h-4" /> Messages
+                      </div>
+                      {unreadMessageCount > 0 && (
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold leading-none text-white bg-gradient-to-br from-red-500 to-red-600 rounded-full min-w-[20px] h-5 shadow-md shadow-red-500/30">
+                          {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                        </span>
+                      )}
                     </Link>
+
+                    {authUtils.isStudent(user) && (
+                      <Link
+                        href="/saved-tutors"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
+                      >
+                        <FiHeart className="w-4 h-4" /> Saved Tutors
+                      </Link>
+                    )}
 
                     {authUtils.isTutor(user) && (
                       <>
@@ -244,13 +320,6 @@ export default function Navbar({ user }: NavbarProps) {
                         >
                           <FiBook className="w-4 h-4" /> My Lessons
                         </Link>
-                        <Link
-                          href="/saved-tutors"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="w-full text-left px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-3"
-                        >
-                          <FiHeart className="w-4 h-4" /> Saved Tutors
-                        </Link>
                       </>
                     )}
 
@@ -282,13 +351,18 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="flex md:hidden items-center gap-4">
           <button
             onClick={toggleTheme}
-            className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full"
+            className="tap-target p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors rounded-full"
+            aria-label="Toggle theme"
+            aria-pressed={theme === 'dark'}
           >
             {theme === 'dark' ? <FiSun className="w-5 h-5" /> : <FiMoon className="w-5 h-5" />}
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 text-slate-600 dark:text-slate-300"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
           >
             {mobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
           </button>
@@ -301,7 +375,9 @@ export default function Navbar({ user }: NavbarProps) {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute top-16 left-0 w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xl md:hidden"
+              className="absolute top-16 left-0 w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xl md:hidden z-[9999]"
+              id="mobile-menu"
+              role="menu"
             >
               <div className="p-4 space-y-4">
                 {/* User Info */}
@@ -348,10 +424,24 @@ export default function Navbar({ user }: NavbarProps) {
                   <Link 
                     href="/messages"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
+                    className="relative text-left py-2 font-medium text-slate-700 dark:text-slate-300 flex items-center justify-between"
                   >
-                    Messages
+                    <span>Messages</span>
+                    {unreadMessageCount > 0 && (
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-bold leading-none text-white bg-gradient-to-br from-red-500 to-red-600 rounded-full min-w-[20px] h-5 shadow-md shadow-red-500/30">
+                        {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                      </span>
+                    )}
                   </Link>
+                  {authUtils.isStudent(user) && (
+                    <Link 
+                      href="/saved-tutors"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-left py-2 font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      Saved Tutors
+                    </Link>
+                  )}
                   <Link 
                     href="/settings"
                     onClick={() => setMobileMenuOpen(false)}

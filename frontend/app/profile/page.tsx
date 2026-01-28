@@ -137,30 +137,6 @@ function ProfileContent() {
                 allowRemoval={true}
               />
             </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                {firstName || lastName ? `${firstName} ${lastName}` : "Complete Your Profile"}
-              </h2>
-              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 mb-3">
-                <FiMail className="w-4 h-4" />
-                <span>{user.email}</span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  user.role === 'student' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                  user.role === 'tutor' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                }`}>
-                  {user.role}
-                </span>
-                {user.is_verified && (
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs font-semibold flex items-center gap-1">
-                    <FiAward className="w-3 h-3" />
-                    Verified
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
         </motion.div>
 
@@ -181,14 +157,14 @@ function ProfileContent() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="First Name *"
+                  label="First Name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Enter your first name"
                   required
                 />
                 <Input
-                  label="Last Name *"
+                  label="Last Name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Enter your last name"
@@ -205,11 +181,15 @@ function ProfileContent() {
               />
 
               <TextArea
-                label="Bio"
+                label="About you (shown on your public profile)"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                placeholder="Tell us a bit about yourself..."
-                rows={4}
+                placeholder="What are you studying? What motivates you to learn? What do you hope to achieve?"
+                minRows={4}
+                maxRows={8}
+                maxLength={600}
+                minLength={80}
+                helperText="Help tutors understand who you are and how they can best support your learning journey"
               />
             </div>
           </div>
@@ -231,21 +211,25 @@ function ProfileContent() {
 
             <div className="space-y-6">
               <TextArea
-                label="Learning Goals"
+                label="Learning goals (visible to tutors you book)"
                 value={learningGoals}
                 onChange={(e) => setLearningGoals(e.target.value)}
-                placeholder="What do you want to achieve? (e.g., Master Python programming, Improve conversational Spanish, etc.)"
-                rows={4}
-                helperText="Help tutors understand your objectives"
+                placeholder="What skills do you want to develop? What level do you want to reach? What's your timeline?"
+                minRows={4}
+                maxRows={8}
+                maxLength={500}
+                helperText="Specific goals help tutors create a focused learning plan for you"
               />
 
               <TextArea
-                label="Interests & Hobbies"
+                label="Interests and hobbies (helps tutors personalize lessons)"
                 value={interests}
                 onChange={(e) => setInterests(e.target.value)}
-                placeholder="What are your interests? (e.g., Technology, Languages, Music, Sports, etc.)"
-                rows={3}
-                helperText="Tutors can personalize lessons based on your interests"
+                placeholder="What topics excite you? What do you do in your free time? How do you prefer to learn?"
+                minRows={3}
+                maxRows={6}
+                maxLength={300}
+                helperText="Tutors can incorporate your interests to make lessons more engaging"
               />
             </div>
           </div>

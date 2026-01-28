@@ -20,6 +20,37 @@ export default function LoginPage() {
   const { showSuccess, showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
+  const loginAndRoute = async (
+    email: string,
+    password: string,
+    { showRoleToast = false }: { showRoleToast?: boolean } = {},
+  ) => {
+    setIsLoading(true);
+    try {
+      await auth.login(email, password);
+      const user = await auth.getCurrentUser();
+
+      if (showRoleToast) {
+        showSuccess(`Logged in as ${user.role}`);
+      }
+
+      // Route based on user role
+      if (user.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      const err = error as { response?: { data?: { detail?: string } }; message?: string };
+      showError(
+        err.response?.data?.detail ||
+          "Login failed. Please check your credentials.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const { values, errors, touched, handleChange, handleBlur, handleSubmit } =
     useFormValidation<LoginFormValues>(
       {
@@ -45,28 +76,7 @@ export default function LoginPage() {
     );
 
   const onSubmit = async (formValues: LoginFormValues) => {
-    setIsLoading(true);
-
-    try {
-      await auth.login(formValues.email, formValues.password);
-      const user = await auth.getCurrentUser();
-      showSuccess("Login successful!");
-
-      // Route based on user role
-      if (user.role === 'admin') {
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
-      }
-    } catch (error) {
-      const err = error as { response?: { data?: { detail?: string } }; message?: string };
-      showError(
-        err.response?.data?.detail ||
-          "Login failed. Please check your credentials.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
+    await loginAndRoute(formValues.email, formValues.password);
   };
 
   const fillDemoCredentials = (email: string, password: string) => {
@@ -121,7 +131,7 @@ export default function LoginPage() {
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-slate-500 dark:text-slate-400 cursor-pointer">
+              <label className="flex items-center gap-2 text-slate-500 dark:text-slate-400 cursor-pointer tap-target">
                 <input
                   type="checkbox"
                   className="rounded bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-0"
@@ -130,7 +140,10 @@ export default function LoginPage() {
               </label>
               <button
                 type="button"
-                className="text-emerald-500 hover:underline focus:outline-none"
+                onClick={() => {
+                  showError("Password reset is not yet available. Please contact support.");
+                }}
+                className="text-emerald-500 hover:underline focus:outline-none tap-target"
               >
                 Forgot password?
               </button>
@@ -159,7 +172,8 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Social Login Section */}
+          {/* Quick Login Buttons - Development only */}
+          {process.env.NODE_ENV === "development" && (
           <div className="mt-6">
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
@@ -167,27 +181,39 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400">
-                  Or continue with
+                  Or sign in with default account
                 </span>
               </div>
             </div>
 
-            <div className="flex justify-center gap-4">
+            <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => showSuccess("Google login simulated")}
-                className="flex items-center justify-center w-10 h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-                title="Sign in with Google"
+                onClick={() => loginAndRoute("admin@example.com", "admin123", { showRoleToast: true })}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900 border border-slate-900 dark:border-slate-200 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-300 transition-colors shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
+                <span>Sign in as Admin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => loginAndRoute("tutor@example.com", "tutor123", { showRoleToast: true })}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 dark:bg-blue-500 text-white border border-blue-600 dark:border-blue-500 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>Sign in as Tutor</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => loginAndRoute("student@example.com", "student123", { showRoleToast: true })}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-emerald-600 dark:bg-emerald-500 text-white border border-emerald-600 dark:border-emerald-500 rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>Sign in as Student</span>
               </button>
             </div>
           </div>
+          )}
 
           {/* Demo Credentials */}
           {process.env.NODE_ENV === "development" && (

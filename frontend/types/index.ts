@@ -11,14 +11,14 @@ export interface User {
   created_at: string;
   updated_at: string;
   avatar_url?: string | null;
+  /** Normalized camelCase alias set by frontend normalizeUser */
   avatarUrl?: string | null;
   currency: string;
   timezone: string;
   first_name?: string | null;
   last_name?: string | null;
-  country?: string | null;
-  bio?: string | null;
-  learning_goal?: string | null;
+  preferred_language?: string | null;
+  locale?: string | null;
 }
 
 export interface AvatarApiResponse {
@@ -101,7 +101,9 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   page_size: number;
-  pages: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 export interface TutorPublicSummary {
@@ -123,7 +125,6 @@ export interface TutorPublicSummary {
   subjects: string[];
   profile_photo_url?: string | null;
   education?: string[];
-  teaching_philosophy?: string;
   recent_review?: string;
   next_available_slots?: string[];
 }
@@ -164,6 +165,8 @@ export interface StudentProfile {
   interests?: string | null;
   total_sessions: number;
   credit_balance_cents?: number;
+   preferred_language?: string | null;
+   timezone: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -257,6 +260,7 @@ export interface MessageThread {
   other_user_email: string;
   other_user_first_name?: string | null;
   other_user_last_name?: string | null;
+  other_user_avatar_url?: string | null;
   other_user_role?: string;
   booking_id?: number;
   last_message: string;

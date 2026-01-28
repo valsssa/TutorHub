@@ -67,7 +67,9 @@ export default function PageLayout({
         )
       )}
 
-      <main className="flex-1">{children}</main>
+      <main id="main-content" role="main" className="flex-1">
+        {children}
+      </main>
 
       {showFooter && <Footer />}
     </div>

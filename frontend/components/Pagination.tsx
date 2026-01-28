@@ -60,7 +60,7 @@ export default function Pagination({
     <div className="flex flex-col items-center gap-4 mt-8">
       {/* Page info */}
       {totalItems !== undefined && (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Showing page <span className="font-semibold">{currentPage}</span> of{' '}
           <span className="font-semibold">{totalPages}</span>
           {' '}({totalItems} total)
@@ -75,8 +75,8 @@ export default function Pagination({
           disabled={!hasPrev}
           className={`px-4 py-2 rounded-lg font-medium transition-all ${
             hasPrev
-              ? 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400'
-              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              ? 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400'
+              : 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed'
           }`}
           aria-label="Previous page"
         >
@@ -101,10 +101,10 @@ export default function Pagination({
               <button
                 key={pageNum}
                 onClick={() => onPageChange(pageNum)}
-                className={`min-w-[40px] h-10 rounded-lg font-medium transition-all ${
+                className={`min-w-[44px] min-h-[44px] rounded-lg font-medium transition-all ${
                   isActive
                     ? 'bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-lg'
-                    : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400'
+                    : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400'
                 }`}
                 aria-label={`Page ${pageNum}`}
                 aria-current={isActive ? 'page' : undefined}
@@ -116,7 +116,7 @@ export default function Pagination({
         </div>
 
         {/* Mobile: Current page indicator */}
-        <div className="sm:hidden px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 font-medium">
+        <div className="sm:hidden px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-medium">
           {currentPage} / {totalPages}
         </div>
 
@@ -126,8 +126,8 @@ export default function Pagination({
           disabled={!hasNext}
           className={`px-4 py-2 rounded-lg font-medium transition-all ${
             hasNext
-              ? 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400'
-              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              ? 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-400'
+              : 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed'
           }`}
           aria-label="Next page"
         >

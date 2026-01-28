@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, DollarSign, Calendar, Globe, Users } from 'lucide-react';
 import Cookies from 'js-cookie';
@@ -54,12 +55,12 @@ export default function BecomeTutorPage() {
                             <p className="text-xl text-slate-300 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
                                 Join over 30,000 tutors teaching 120+ subjects. Set your own rates, manage your own schedule, and teach students globally.
                             </p>
-                            <button
-                                onClick={() => router.push('/tutor/onboarding')}
-                                className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-1"
+                            <Link
+                                href="/register?role=tutor"
+                                className="inline-block px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-1"
                             >
                                 Become a Tutor
-                            </button>
+                            </Link>
                         </div>
                         <div className="flex-1 relative">
                             <div className="relative z-10 bg-white dark:bg-slate-800 p-2 rounded-3xl shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
@@ -78,7 +79,7 @@ export default function BecomeTutorPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm text-slate-500 dark:text-slate-300 font-bold uppercase">Average Earnings</p>
-                                        <p className="text-xl font-bold text-slate-900 dark:text-white">$1,500/mo</p>
+                                        <p className="text-xl font-bold text-slate-900 dark:text-white">$2,500/mo</p>
                                     </div>
                                 </div>
                             </div>

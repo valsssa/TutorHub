@@ -203,3 +203,29 @@ def get_avatar_storage() -> AvatarStorageClient:
         public_endpoint=settings.AVATAR_STORAGE_PUBLIC_ENDPOINT,
         url_ttl_seconds=settings.AVATAR_STORAGE_URL_TTL_SECONDS,
     )
+
+
+def build_avatar_url(
+    key: str | None,
+    *,
+    default: str | None = None,
+    allow_absolute: bool = True,
+) -> str | None:
+    """
+    Build a public avatar URL from a storage key.
+
+    Args:
+        key: Storage key or absolute URL.
+        default: Value to return when key is falsy.
+        allow_absolute: If True, return key unchanged when it already looks absolute.
+    """
+    if not key:
+        return default
+
+    if allow_absolute and (key.startswith("http://") or key.startswith("https://")):
+        return key
+
+    storage = get_avatar_storage()
+    public_endpoint = storage.public_endpoint().rstrip("/")
+    bucket = storage.bucket()
+    return f"{public_endpoint}/{bucket}/{key}"

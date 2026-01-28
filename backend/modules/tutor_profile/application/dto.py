@@ -101,7 +101,6 @@ def aggregate_to_profile_response(
         "headline": aggregate.headline,
         "bio": aggregate.bio,
         "description": aggregate.description,
-        "teaching_philosophy": aggregate.teaching_philosophy,
         "hourly_rate": Decimal(aggregate.hourly_rate),
         "experience_years": aggregate.experience_years,
         "education": aggregate.education,
@@ -156,7 +155,7 @@ def aggregate_to_public_profile(aggregate: TutorProfileAggregate) -> TutorPublic
         "total_sessions": aggregate.total_sessions,
         "subjects": subjects,
         "education": education_list,
-        "teaching_philosophy": aggregate.teaching_philosophy,
+        "video_url": aggregate.video_url,
         "profile_photo_url": aggregate.profile_photo_url,
         "recent_review": None,  # Will be populated by service layer if needed
         "next_available_slots": [],  # Will be populated by service layer if needed

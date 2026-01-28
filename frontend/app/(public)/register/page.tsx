@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FiBook, FiCheck, FiArrowRight, FiArrowLeft, FiUser } from "react-icons/fi";
 import { auth } from "@/lib/api";
@@ -22,6 +22,7 @@ interface RegisterFormValues {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showSuccess, showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [detectedPrefs, setDetectedPrefs] = useState({ currency: "USD", timezone: "UTC" });
@@ -32,6 +33,10 @@ export default function RegisterPage() {
     setDetectedPrefs({ currency: prefs.currency, timezone: prefs.timezone });
   }, []);
 
+  // Check for role query parameter
+  const roleParam = searchParams?.get('role');
+  const initialIsTutor = roleParam === 'tutor';
+
   const { values, errors, touched, handleChange, handleBlur, handleSubmit } =
     useFormValidation<RegisterFormValues>(
       {
@@ -40,7 +45,7 @@ export default function RegisterPage() {
         email: "",
         password: "",
         confirmPassword: "",
-        isTutor: false,
+        isTutor: initialIsTutor,
       },
       {
         firstName: {
@@ -187,9 +192,11 @@ export default function RegisterPage() {
           </div>
 
           {/* Role Selection */}
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mb-6">
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mb-6" role="tablist" aria-label="Account type">
             <button
               type="button"
+              role="tab"
+              aria-selected={!values.isTutor}
               onClick={() => handleChange("isTutor", false)}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
                 !values.isTutor
@@ -201,6 +208,8 @@ export default function RegisterPage() {
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={values.isTutor}
               onClick={() => handleChange("isTutor", true)}
               className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
                 values.isTutor

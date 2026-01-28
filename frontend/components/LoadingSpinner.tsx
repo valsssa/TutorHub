@@ -18,10 +18,11 @@ export default function LoadingSpinner({
     : "border-emerald-200 dark:border-emerald-800 border-t-emerald-600 dark:border-t-emerald-400";
 
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex items-center justify-center" role="status" aria-label="Loading">
       <div
         className={`animate-spin rounded-full ${sizeClass} border-2 ${colorClass}`}
       ></div>
+      <span className="sr-only">Loading...</span>
     </div>
   );
 }

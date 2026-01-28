@@ -9,7 +9,7 @@ export default function PaymentsPage() {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">
-          💰 Payments & Billing
+          Payments & Billing
         </h2>
         <p className="text-slate-600">
           Manage your payment methods and transaction history

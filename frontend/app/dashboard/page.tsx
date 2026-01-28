@@ -138,8 +138,9 @@ function DashboardContent() {
 
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950" role="status" aria-label="Loading dashboard">
         <div className="animate-spin rounded-full h-12 w-12 border-2 border-emerald-200 dark:border-emerald-800 border-t-emerald-600 dark:border-t-emerald-400"></div>
+        <span className="sr-only">Loading dashboard...</span>
       </div>
     );
   }
@@ -166,13 +167,6 @@ function DashboardContent() {
         onEditProfile={() => router.push("/tutor/profile")}
         onViewProfile={() => router.push("/tutor/profile")}
         onUpdateSchedule={(mode) => router.push("/tutor/schedule")}
-        onQuickAction={(action) => {
-          if (action === 'schedule') {
-            router.push("/bookings");
-          } else if (action === 'timeoff' || action === 'extraslots') {
-            router.push("/tutor/schedule");
-          }
-        }}
         onStartSession={handleStartSession}
         onCancelSession={handleCancelSession}
         onAcceptRequest={handleAcceptRequest}

@@ -33,7 +33,7 @@ interface FilterBarProps {
 type FilterDropdown = "subject" | "price" | "rating" | "experience" | null;
 
 export default function FilterBar({
-  subjects,
+  subjects = [],
   selectedSubject,
   priceRange,
   minRating,
@@ -135,7 +135,7 @@ export default function FilterBar({
       <button
         onClick={() => toggleDropdown(type)}
         className={`
-          flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+          flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium tap-target
           transition-all duration-200 whitespace-nowrap
           ${
             active

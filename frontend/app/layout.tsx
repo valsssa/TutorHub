@@ -6,6 +6,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { LocaleProvider } from "@/contexts/LocaleContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { headers } from "next/headers";
+import Link from "next/link";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -35,6 +36,9 @@ export default function RootLayout({
         className={`${inter.className} bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 antialiased transition-colors duration-200`} 
         data-nonce={nonce}
       >
+        <Link href="#main-content" className="skip-link">
+          Skip to main content
+        </Link>
         <ErrorBoundary>
           <ThemeProvider>
             <LocaleProvider>

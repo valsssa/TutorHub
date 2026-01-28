@@ -5,7 +5,7 @@ import BookingsPageContent from "./BookingsPageContent";
 
 export default function BookingsPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute showNavbar={false}>
       <BookingsPageContent />
     </ProtectedRoute>
   );

@@ -23,7 +23,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { TutorProfile, Subject, Review } from "@/types";
-import { resolveAssetUrl } from "@/lib/media";
+import { resolveAssetUrl, getVideoInfo } from "@/lib/media";
 import { getApiBaseUrl } from "@/shared/utils/url";
 
 interface TutorProfileViewProps {
@@ -80,6 +80,7 @@ export default function TutorProfileView({
 }: TutorProfileViewProps) {
   const router = useRouter();
   const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   // Schedule Section State
   const [scheduleDuration, setScheduleDuration] = useState<25 | 50>(50);
@@ -365,6 +366,21 @@ export default function TutorProfileView({
                       <p className="text-xs">Sessions</p>
                     </div>
                   </div>
+                  {tutor.experience_years > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-full text-emerald-600 dark:text-emerald-400">
+                        <Award size={16} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-white">
+                          {tutor.experience_years}
+                        </p>
+                        <p className="text-xs">
+                          {tutor.experience_years === 1 ? "Year" : "Years"} Exp.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
                       <Globe size={16} />
@@ -384,60 +400,139 @@ export default function TutorProfileView({
           </div>
 
           {/* Video Introduction */}
-          {tutor.video_url && (
-            <div
-              className="bg-slate-900 rounded-3xl overflow-hidden aspect-video relative group cursor-pointer shadow-lg"
-              onClick={() =>
-                tutor.video_url && window.open(tutor.video_url, "_blank")
-              }
-            >
-              <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border border-white/50">
-                    <Play size={32} className="text-white fill-white ml-1" />
+          {tutor.video_url ? (() => {
+            const videoInfo = getVideoInfo(tutor.video_url);
+            
+            if (!videoInfo) {
+              // Fallback for unsupported URLs
+              return (
+                <div
+                  className="bg-slate-900 rounded-3xl overflow-hidden aspect-video relative shadow-lg group cursor-pointer"
+                  onClick={() => window.open(tutor.video_url, "_blank")}
+                >
+                  <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border border-white/50">
+                        <Play size={32} className="text-white fill-white ml-1" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-4 left-4">
+                      <p className="text-white font-semibold">Meet {firstName}</p>
+                      <p className="text-white/80 text-sm">
+                        Click to watch introduction
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="absolute bottom-4 left-4">
-                  <p className="text-white font-semibold">Meet {firstName}</p>
-                  <p className="text-white/80 text-sm">
-                    Click to watch introduction
-                  </p>
+              );
+            }
+
+            return (
+              <div className="bg-slate-900 rounded-3xl overflow-hidden aspect-video relative shadow-lg">
+                {isVideoPlaying ? (
+                  <div className="w-full h-full">
+                    <iframe
+                      src={videoInfo.embedUrl}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={`${firstName}'s introduction video`}
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsVideoPlaying(false);
+                      }}
+                      className="absolute top-4 right-4 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors z-10"
+                      aria-label="Close video"
+                    >
+                      <span className="text-xl leading-none">×</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="w-full h-full relative group cursor-pointer"
+                    onClick={() => setIsVideoPlaying(true)}
+                  >
+                    {videoInfo.thumbnailUrl ? (
+                      <img
+                        src={videoInfo.thumbnailUrl}
+                        alt={`${firstName}'s introduction video thumbnail`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to gradient if thumbnail fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900" />
+                    )}
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                      <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border-2 border-white/50 shadow-lg">
+                        <Play size={40} className="text-white fill-white ml-1" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <p className="text-white font-semibold text-lg drop-shadow-lg">
+                        Meet {firstName}
+                      </p>
+                      <p className="text-white/90 text-sm drop-shadow-md">
+                        Click to watch introduction
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
+            <div className="bg-slate-900 rounded-3xl overflow-hidden aspect-video relative shadow-lg">
+              <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+                <div className="text-center">
+                  <Play size={48} className="text-white/50 mx-auto mb-2" />
+                  <p className="text-white/70 text-sm">No intro video available</p>
                 </div>
               </div>
             </div>
           )}
 
           {/* About & Bio */}
-          {tutor.bio && (
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
-                About {firstName}
-              </h2>
-              <div
-                className={`prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 relative transition-all duration-500 ease-in-out ${isBioExpanded ? "" : "max-h-[140px] overflow-hidden"}`}
-              >
-                <p className="mb-4 leading-relaxed whitespace-pre-line">
-                  {tutor.bio}
-                </p>
-                {!isBioExpanded && (
-                  <div className="absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-white dark:from-slate-900 to-transparent"></div>
-                )}
-              </div>
-              <button
-                onClick={() => setIsBioExpanded(!isBioExpanded)}
-                className="mt-2 text-emerald-600 dark:text-emerald-400 font-bold hover:underline focus:outline-none"
-              >
-                {isBioExpanded ? "Show less" : "Show more"}
-              </button>
-            </div>
-          )}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+              About {firstName}
+            </h2>
+            {tutor.bio ? (
+              <>
+                <div
+                  className={`prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 relative transition-all duration-500 ease-in-out ${isBioExpanded ? "" : "max-h-[140px] overflow-hidden"}`}
+                >
+                  <p className="mb-4 leading-relaxed whitespace-pre-line">
+                    {tutor.bio}
+                  </p>
+                  {!isBioExpanded && (
+                    <div className="absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-white dark:from-slate-900 to-transparent"></div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setIsBioExpanded(!isBioExpanded)}
+                  className="mt-2 text-emerald-600 dark:text-emerald-400 font-bold hover:underline focus:outline-none"
+                >
+                  {isBioExpanded ? "Show less" : "Show more"}
+                </button>
+              </>
+            ) : (
+              <p className="text-slate-500 dark:text-slate-400 italic">
+                No bio available yet.
+              </p>
+            )}
+          </div>
 
           {/* Subjects / Expertise Tags */}
-          {tutor.subjects && tutor.subjects.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
-                Teaches
-              </h2>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+              Teaches
+            </h2>
+            {tutor.subjects && tutor.subjects.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {tutor.subjects.map((subject) => (
                   <span
@@ -448,15 +543,19 @@ export default function TutorProfileView({
                   </span>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-slate-500 dark:text-slate-400 italic">
+                No subjects listed yet.
+              </p>
+            )}
+          </div>
 
           {/* Languages Spoken */}
-          {tutor.languages && tutor.languages.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
-                I speak
-              </h2>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+              I speak
+            </h2>
+            {tutor.languages && tutor.languages.length > 0 ? (
               <div className="flex flex-wrap gap-3">
                 {tutor.languages.map((lang, idx) => (
                   <span
@@ -476,24 +575,32 @@ export default function TutorProfileView({
                   </span>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-slate-500 dark:text-slate-400 italic">
+                No languages listed yet.
+              </p>
+            )}
+          </div>
 
           {/* Teaching Philosophy / Description */}
-          {tutor.description && (
-            <div className="bg-emerald-50 dark:bg-emerald-900/10 rounded-3xl p-8 border border-emerald-100 dark:border-emerald-800/50 shadow-sm relative">
-              <Quote
-                size={40}
-                className="absolute top-6 right-6 text-emerald-200 dark:text-emerald-800/50 rotate-180"
-              />
-              <h2 className="text-xl font-bold text-emerald-900 dark:text-emerald-100 mb-4">
-                Teaching Philosophy
-              </h2>
+          <div className="bg-emerald-50 dark:bg-emerald-900/10 rounded-3xl p-8 border border-emerald-100 dark:border-emerald-800/50 shadow-sm relative">
+            <Quote
+              size={40}
+              className="absolute top-6 right-6 text-emerald-200 dark:text-emerald-800/50 rotate-180"
+            />
+            <h2 className="text-xl font-bold text-emerald-900 dark:text-emerald-100 mb-4">
+              Teaching Philosophy
+            </h2>
+            {tutor.description ? (
               <div className="text-lg italic text-emerald-800 dark:text-emerald-200 leading-relaxed relative z-10">
                 &ldquo;{tutor.description}&rdquo;
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-emerald-700 dark:text-emerald-300 italic relative z-10">
+                No teaching philosophy available yet.
+              </p>
+            )}
+          </div>
 
           {/* Educational Background */}
           {tutor.educations && tutor.educations.length > 0 && (
@@ -533,11 +640,11 @@ export default function TutorProfileView({
           )}
 
           {/* Certifications */}
-          {tutor.certifications && tutor.certifications.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
-                Certifications
-              </h2>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
+              Certifications
+            </h2>
+            {tutor.certifications && tutor.certifications.length > 0 ? (
               <div className="space-y-6">
                 {tutor.certifications.map((cert) => (
                   <div key={cert.id} className="flex gap-4">
@@ -568,8 +675,57 @@ export default function TutorProfileView({
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className="text-slate-500 dark:text-slate-400 italic">
+                No certifications listed yet.
+              </p>
+            )}
+          </div>
+
+          {/* Pricing Packages */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
+              Lesson Packages
+            </h2>
+            {tutor.pricing_options && tutor.pricing_options.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {tutor.pricing_options.map((option) => (
+                  <div
+                    key={option.id}
+                    className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-bold text-emerald-900 dark:text-emerald-100 text-lg">
+                        {option.title}
+                      </h3>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                          ${option.price}
+                        </p>
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                          {option.duration_minutes} min
+                        </p>
+                      </div>
+                    </div>
+                    {option.description && (
+                      <p className="text-sm text-emerald-800 dark:text-emerald-200 mt-2">
+                        {option.description}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-slate-500 dark:text-slate-400 italic mb-2">
+                  No lesson packages available yet.
+                </p>
+                <p className="text-sm text-slate-400 dark:text-slate-500">
+                  Standard hourly rate: ${tutor.hourly_rate || "N/A"}/hour
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Schedule Section */}
           <div
@@ -895,41 +1051,6 @@ export default function TutorProfileView({
                   </>
                 )}
               </div>
-
-              {/* Free Switch Promo */}
-              {!isOwnProfile && (
-                <div className="mt-6 bg-[#E0F2F1] dark:bg-emerald-900/20 rounded-xl p-4 flex items-start gap-4">
-                  <div className="relative shrink-0 mt-1">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm relative z-10">
-                      {tutor.profile_photo_url ? (
-                        <Image
-                          src={resolveAssetUrl(tutor.profile_photo_url)}
-                          alt=""
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
-                          {tutor.title.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    {/* Abstract cards behind */}
-                    <div className="absolute top-0 left-0 w-full h-full bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 rotate-6 scale-90 -z-10"></div>
-                    <div className="absolute top-0 left-0 w-full h-full bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 -rotate-6 scale-90 -z-20"></div>
-
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap z-20 text-slate-900 dark:text-white">
-                      Free switch
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                    If {displayName} isn&apos;t a match, get 2 more free trials
-                    to find the right tutor.
-                  </p>
-                </div>
-              )}
 
               {/* Popularity Stats */}
               <div className="pt-6 space-y-4">

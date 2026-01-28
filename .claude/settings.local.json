@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(docker compose:*)",
-      "Bash(docker cp:*)"
+      "Bash(docker cp:*)",
+      "Bash(npm run lint)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

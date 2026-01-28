@@ -21,6 +21,7 @@ from core.message_storage import (
 )
 from database import get_db
 from models import Message, MessageAttachment
+from core.avatar_storage import build_avatar_url
 from modules.messages.service import MessageService
 from modules.messages.websocket import manager
 from schemas import MessageResponse
@@ -56,6 +57,7 @@ class MessageThreadResponse(BaseModel):
     other_user_email: str
     other_user_first_name: str | None = None
     other_user_last_name: str | None = None
+    other_user_avatar_url: str | None = None
     other_user_role: str
     booking_id: int | None = None
     last_message: str
@@ -97,6 +99,7 @@ class UserBasicInfoResponse(BaseModel):
     email: str
     first_name: str | None = None
     last_name: str | None = None
+    avatar_url: str | None = None
     role: str
 
 
@@ -226,6 +229,7 @@ async def list_threads(
                 other_user_email=t["other_user_email"],
                 other_user_first_name=t.get("other_user_first_name"),
                 other_user_last_name=t.get("other_user_last_name"),
+                other_user_avatar_url=t.get("other_user_avatar_url"),
                 other_user_role=t["other_user_role"],
                 booking_id=t["booking_id"],
                 last_message=t["last_message"],
@@ -703,11 +707,13 @@ async def get_user_basic_info(
                 detail="User not found",
             )
 
+        avatar_key = getattr(user, "avatar_key", None)
         return UserBasicInfoResponse(
             id=user.id,
             email=user.email,
             first_name=getattr(user, "first_name", None),
             last_name=getattr(user, "last_name", None),
+            avatar_url=build_avatar_url(avatar_key),
             role=user.role,
         )
 

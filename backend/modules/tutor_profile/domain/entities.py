@@ -79,7 +79,6 @@ class TutorProfileAggregate:
     headline: str | None = None
     bio: str | None = None
     description: str | None = None
-    teaching_philosophy: str | None = None
     hourly_rate: Decimal = Decimal("0.00")
     experience_years: int = 0
     education: str | None = None

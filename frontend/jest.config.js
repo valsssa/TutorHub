@@ -17,6 +17,7 @@ const customJestConfig = {
     '<rootDir>/__tests__/test-utils.tsx',
     '<rootDir>/__tests__/utils/',
     '<rootDir>/__tests__/integration/', // Exclude integration tests from default run
+    '<rootDir>/e2e/', // Playwright suite runs separately
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',

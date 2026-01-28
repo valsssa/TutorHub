@@ -115,21 +115,21 @@ export default function NotificationCenter({
       />
 
       {/* Notification Panel */}
-      <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-96 max-w-full bg-white dark:bg-slate-900 shadow-2xl z-50 flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-bold text-gray-900">Notifications</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Notifications</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-2xl leading-none"
             >
               ×
             </button>
           </div>
           {unreadCount > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
                 {unreadCount} unread
               </span>
               <button
@@ -149,9 +149,9 @@ export default function NotificationCenter({
               <LoadingSpinner />
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-32 text-slate-500 dark:text-slate-400">
               <svg
-                className="w-16 h-16 mb-2 text-gray-300"
+                className="w-16 h-16 mb-2 text-slate-300 dark:text-slate-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -166,14 +166,14 @@ export default function NotificationCenter({
               <p>No notifications</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
                   className={`p-4 transition-colors ${
                     !notification.is_read
-                      ? "bg-primary-50 hover:bg-primary-100"
-                      : "hover:bg-gray-50"
+                      ? "bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
                   onClick={() =>
                     !notification.is_read && markAsRead(notification.id)
@@ -191,17 +191,17 @@ export default function NotificationCenter({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-1">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                           {notification.title}
                         </h3>
                         {!notification.is_read && (
                           <span className="ml-2 w-2 h-2 bg-primary-600 rounded-full flex-shrink-0" />
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">
                         {notification.message}
                       </p>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
                         {formatDate(notification.created_at)}
                       </span>
                     </div>

@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import Button from "../Button";
+import TextArea from "../TextArea";
 
 interface CancelBookingModalProps {
   isOpen: boolean;
@@ -56,14 +57,14 @@ export default function CancelBookingModal({
 
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-md w-full p-6">
           {/* Header */}
           <div className="mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
               Cancel Booking
             </h3>
             {tutorName && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                 Session with {tutorName}
               </p>
             )}
@@ -78,25 +79,18 @@ export default function CancelBookingModal({
 
           {/* Reason Input */}
           <div className="mb-6">
-            <label
-              htmlFor="cancel-reason"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Reason for cancellation (optional)
-            </label>
-            <textarea
+            <TextArea
               id="cancel-reason"
+              label="Reason for cancellation (sent to the tutor)"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Let the tutor know why you're canceling..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-              rows={4}
-              disabled={isSubmitting}
+              placeholder="What changed? Is there a scheduling conflict? Would you like to reschedule instead?"
+              minRows={3}
+              maxRows={6}
               maxLength={500}
+              disabled={isSubmitting}
+              helperText="Optional - helps the tutor understand and potentially accommodate your needs"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              {reason.length}/500 characters
-            </p>
           </div>
 
           {/* Actions */}

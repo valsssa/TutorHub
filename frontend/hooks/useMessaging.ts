@@ -140,9 +140,11 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
   };
 
   const handleMessageRead = (msg: WebSocketMessage) => {
+    // Update message read status in real-time
+    // This updates check marks from 1 to 2 when recipient reads the message
     setMessages((prev) =>
       prev.map((m) =>
-        m.id === msg.message_id
+        m.id === msg.message_id && !m.is_read
           ? { ...m, is_read: true, read_at: msg.read_at, delivery_state: "read" }
           : m
       )

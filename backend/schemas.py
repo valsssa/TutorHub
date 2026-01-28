@@ -98,10 +98,6 @@ class UserResponse(BaseModel):
 
     id: int
     email: str
-    first_name: str | None = None
-    last_name: str | None = None
-    preferred_language: str | None = None
-    locale: str | None = None
     first_name: str | None = Field(None, min_length=1, max_length=100)
     last_name: str | None = Field(None, min_length=1, max_length=100)
     role: str
@@ -359,7 +355,6 @@ class TutorAboutUpdate(BaseModel):
     title: str = Field(..., min_length=5, max_length=200)
     headline: str | None = Field(None, max_length=255)
     bio: str | None = None
-    teaching_philosophy: str | None = None
     experience_years: int = Field(default=0, ge=0)
     languages: list[str] | None = Field(default=None)
 
@@ -436,7 +431,6 @@ class TutorProfileResponse(BaseModel):
     headline: str | None
     bio: str | None
     description: str | None
-    teaching_philosophy: str | None
     hourly_rate: Decimal
     experience_years: int
     education: str | None
@@ -478,7 +472,7 @@ class TutorPublicProfile(BaseModel):
     total_sessions: int
     subjects: list[str] = []
     education: list[str] = []
-    teaching_philosophy: str | None = None
+    video_url: str | None = None
     profile_photo_url: str | None = None
     recent_review: str | None = None
     next_available_slots: list[str] = []
@@ -500,6 +494,7 @@ class StudentProfileUpdate(BaseModel):
     school_name: str | None = None
     learning_goals: str | None = None
     interests: str | None = None
+    preferred_language: str | None = None
 
 
 class StudentProfileResponse(BaseModel):
@@ -514,6 +509,8 @@ class StudentProfileResponse(BaseModel):
     learning_goals: str | None
     interests: str | None
     total_sessions: int
+    preferred_language: str | None
+    timezone: str
     created_at: datetime
     updated_at: datetime
 

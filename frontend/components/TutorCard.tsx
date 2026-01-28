@@ -36,6 +36,9 @@ export default function TutorCard({
   isSaved = false,
   onToggleSave,
   onViewProfile,
+  onBook,
+  onQuickBook,
+  onSlotBook,
   onMessage,
 }: TutorCardProps) {
   const router = useRouter();
@@ -255,6 +258,7 @@ export default function TutorCard({
               onClick={(e) => onToggleSave(e, tutor.id)}
               className="p-2 rounded-full bg-slate-100 dark:bg-slate-900/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all active:scale-90"
               title={isSaved ? "Remove from saved" : "Save tutor"}
+              aria-label={isSaved ? "Remove from saved" : "Save tutor"}
             >
               <FiHeart
                 className={`w-[18px] h-[18px] transition-colors duration-200 ${isSaved ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`}
@@ -316,14 +320,6 @@ export default function TutorCard({
           </div>
         )}
 
-        {/* Teaching Philosophy Snippet */}
-        {tutor.teaching_philosophy && (
-          <div className="mb-3 relative pl-3 border-l-2 border-emerald-500/30">
-            <p className="text-xs italic text-slate-500 dark:text-slate-400 line-clamp-2">
-              &ldquo;{tutor.teaching_philosophy}&rdquo;
-            </p>
-          </div>
-        )}
 
         {/* Subjects */}
         {tutor.subjects && tutor.subjects.length > 0 && (
@@ -361,7 +357,9 @@ export default function TutorCard({
                     key={idx}
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Handle slot booking
+                      if (onSlotBook) {
+                        onSlotBook(e, tutor, slot);
+                      }
                     }}
                     className="text-[10px] whitespace-nowrap bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
                   >
@@ -393,8 +391,9 @@ export default function TutorCard({
             }
             router.push(`/messages?user=${tutor.user_id}`);
           }}
-          className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+          className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
           title="Message Tutor"
+          aria-label="Message Tutor"
         >
           <FiMessageCircle className="w-6 h-6" />
         </button>

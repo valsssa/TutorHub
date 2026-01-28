@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import StepIndicator from "@/components/StepIndicator";
 import Button from "@/components/Button";
 import Input from "@/components/Input";
+import TextArea from "@/components/TextArea";
 import { useToast } from "@/components/ToastContainer";
 import { tutors, subjects as subjectsApi } from "@/lib/api";
 import type { Subject } from "@/types";
@@ -975,33 +976,22 @@ function TutorOnboardingContent() {
         </ul>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Profile description ({formData.description.length}/400)
-        </label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => updateFormData('description', e.target.value)}
-          rows={8}
-          className={`
-            w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
-            ${errors.description ? 'border-red-500' : 'border-gray-300'}
-          `}
-          placeholder="Write your profile description here..."
-        />
-        {errors.description && (
-          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-        )}
-        <div
-          className={`text-sm mt-1 ${
-            formData.description.length >= 400 ? 'text-green-600' : 'text-gray-500'
-          }`}
-        >
-          {formData.description.length >= 400
-            ? '✓ Minimum requirement met'
-            : 'Minimum 400 characters required'}
-        </div>
-      </div>
+      <TextArea
+        label="Profile description (this is the main text students see when deciding to book you)"
+        value={formData.description}
+        onChange={(e) => updateFormData('description', e.target.value)}
+        placeholder="Introduce yourself and your background. Explain your teaching experience and methods. Describe what a typical lesson looks like. Share what results students can expect."
+        minRows={8}
+        maxRows={15}
+        maxLength={2000}
+        minLength={400}
+        error={errors.description}
+        helperText={
+          formData.description.length >= 400
+            ? "Great! Your description meets the minimum requirement"
+            : `${400 - formData.description.length} more characters needed to meet the minimum requirement`
+        }
+      />
     </div>
   );
 

@@ -49,6 +49,8 @@ declare module "axios" {
   }
 }
 
+type RedirectingWindow = Window & { __redirecting?: boolean };
+
 // Rate limit state
 let rateLimitWarningShown = false;
 let lastRateLimitReset = 0;
@@ -237,20 +239,21 @@ function setCache(key: string, data: unknown): void {
   if (cache.size >= MAX_CACHE_SIZE) {
     const now = Date.now();
     const entries = Array.from(cache.entries());
-    
+
     // Remove stale entries first (older than 10 minutes)
     const staleEntries = entries.filter(([, v]) => now - v.timestamp > 10 * 60 * 1000);
     staleEntries.forEach(([k]) => cache.delete(k));
-    
+
     // If still at limit, remove least recently used
     if (cache.size >= MAX_CACHE_SIZE) {
-      const sortedByLRU = entries.sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+      // Clone array before sorting to avoid mutating the original
+      const sortedByLRU = [...entries].sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
       // Remove oldest 30%
       const toRemove = Math.ceil(MAX_CACHE_SIZE * 0.3);
       sortedByLRU.slice(0, toRemove).forEach(([k]) => cache.delete(k));
     }
   }
-  
+
   cache.set(key, {
     data,
     timestamp: Date.now(),
@@ -310,9 +313,15 @@ api.interceptors.response.use(
       Cookies.remove("token");
       if (
         typeof window !== "undefined" &&
-        window.location.pathname !== "/login"
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/register"
       ) {
-        window.location.href = "/login";
+        // Prevent multiple simultaneous redirects
+        const redirectingWindow = window as RedirectingWindow;
+        if (!redirectingWindow.__redirecting) {
+          redirectingWindow.__redirecting = true;
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);
@@ -544,7 +553,6 @@ export const tutors = {
       setCache(cacheKey, data);
     }
 
-    clearCache('/api/tutors'); // Clear cache after mutation
     return data;
   },
 
@@ -898,6 +906,7 @@ export const messages = {
     email: string;
     first_name?: string | null;
     last_name?: string | null;
+    avatar_url?: string | null;
     role: string;
   }> {
     const { data } = await api.get(`/api/messages/users/${userId}`);
@@ -1109,6 +1118,55 @@ export const favorites = {
       return null;
     }
     return response.data;
+  },
+};
+
+// ============================================================================
+// Availability (Tutor scheduling)
+// ============================================================================
+
+export interface AvailabilitySlot {
+  id?: number;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_recurring?: boolean;
+}
+
+export interface AvailableSlot {
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+}
+
+export const availability = {
+  async getMyAvailability(): Promise<AvailabilitySlot[]> {
+    const { data } = await api.get<AvailabilitySlot[]>("/api/tutors/availability");
+    return data;
+  },
+
+  async createAvailability(slot: Omit<AvailabilitySlot, "id">): Promise<AvailabilitySlot> {
+    const { data } = await api.post<AvailabilitySlot>("/api/tutors/availability", slot);
+    clearCache();
+    return data;
+  },
+
+  async deleteAvailability(availabilityId: number): Promise<void> {
+    await api.delete(`/api/tutors/availability/${availabilityId}`);
+    clearCache();
+  },
+
+  async createBulkAvailability(slots: Omit<AvailabilitySlot, "id">[]): Promise<{ message: string; count: number }> {
+    const { data } = await api.post<{ message: string; count: number }>("/api/tutors/availability/bulk", slots);
+    clearCache();
+    return data;
+  },
+
+  async getTutorAvailableSlots(tutorId: number, startDate: string, endDate: string): Promise<AvailableSlot[]> {
+    const { data } = await api.get<AvailableSlot[]>(`/api/tutors/${tutorId}/available-slots`, {
+      params: { start_date: startDate, end_date: endDate },
+    });
+    return data;
   },
 };
 

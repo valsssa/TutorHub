@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { Users, Bell, CheckCircle, Search, Award, Star } from 'lucide-react'
+import RejectReasonModal from '@/components/modals/RejectReasonModal'
 
 interface UserData {
   id: number
@@ -42,6 +44,21 @@ export default function UsersSection({
   approveTutor,
   rejectTutor
 }: UsersSectionProps) {
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [tutorToReject, setTutorToReject] = useState<number | null>(null)
+
+  const handleOpenRejectModal = (tutorId: number) => {
+    setTutorToReject(tutorId)
+    setRejectModalOpen(true)
+  }
+
+  const handleRejectConfirm = async (reason: string) => {
+    if (tutorToReject !== null) {
+      await rejectTutor(tutorToReject, reason)
+      setTutorToReject(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Pending Tutor Approvals */}
@@ -85,10 +102,7 @@ export default function UsersSection({
                     Approve
                   </button>
                   <button
-                    onClick={() => {
-                      const reason = prompt('Enter rejection reason:')
-                      if (reason) rejectTutor(tutor.id, reason)
-                    }}
+                    onClick={() => handleOpenRejectModal(tutor.id)}
                     className="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                   >
                     Reject
@@ -203,6 +217,16 @@ export default function UsersSection({
           </div>
         )}
       </div>
+
+      {/* Reject Reason Modal */}
+      <RejectReasonModal
+        isOpen={rejectModalOpen}
+        onClose={() => {
+          setRejectModalOpen(false)
+          setTutorToReject(null)
+        }}
+        onConfirm={handleRejectConfirm}
+      />
 
       {/* User Details Modal */}
       {selectedUser && (
@@ -340,11 +364,8 @@ export default function UsersSection({
                     </button>
                     <button
                       onClick={() => {
-                        const reason = prompt('Enter rejection reason:')
-                        if (reason) {
-                          rejectTutor(selectedUser.id, reason)
-                          setSelectedUser(null)
-                        }
+                        handleOpenRejectModal(selectedUser.id)
+                        setSelectedUser(null)
                       }}
                       className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
                     >

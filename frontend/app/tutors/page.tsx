@@ -313,13 +313,13 @@ function TutorsContent(): JSX.Element {
               </div>
 
               {/* Pagination */}
-              {paginatedData.pages > 1 && (
+              {paginatedData.total_pages > 1 && (
                 <Pagination
                   currentPage={paginatedData.page}
-                  totalPages={paginatedData.pages}
+                  totalPages={paginatedData.total_pages}
                   onPageChange={handlePageChange}
-                  hasNext={paginatedData.page < paginatedData.pages}
-                  hasPrev={paginatedData.page > 1}
+                  hasNext={paginatedData.has_next}
+                  hasPrev={paginatedData.has_prev}
                   totalItems={paginatedData.total}
                 />
               )}
