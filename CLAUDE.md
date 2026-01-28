@@ -568,15 +568,65 @@ docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 
 ### 🧰 6. Code Quality
 
-- 100 % type-hint coverage.  
-- Max file length ≈ 300 lines.  
-- Logging through centralized config — no `print()`.  
-- Format/lint with `black`, `isort`, `ruff` (enforced by pre-commit).  
-- Unit tests for all logic in `service.py`.  
-- Consistent naming:  
-  - snake_case → variables & functions  
-  - PascalCase → classes  
+- 100 % type-hint coverage.
+- Max file length ≈ 300 lines.
+- Logging through centralized config — no `print()`.
+- Format/lint with `ruff` (replaces black, isort, flake8) - enforced by pre-commit.
+- Unit tests for all logic in `service.py`.
+- Consistent naming:
+  - snake_case → variables & functions
+  - PascalCase → classes
   - kebab-case → branches
+
+**Linting & Code Quality Tools**:
+
+**Backend (Python)**:
+- **Ruff** - Fast linter & formatter (replaces Black, isort, flake8)
+- **MyPy** - Static type checker
+- **Bandit** - Security vulnerability scanner
+- **Safety** - Dependency vulnerability checker
+- **Pytest** - Testing with coverage reports
+
+**Frontend (TypeScript)**:
+- **ESLint** - JavaScript/TypeScript linter
+- **Prettier** - Code formatter (with Tailwind CSS support)
+- **TypeScript Compiler** - Type checking
+- **Next.js Lint** - Next.js best practices
+
+**Pre-commit Hooks**: Auto-run on every commit
+- File checks (trailing whitespace, EOF, large files)
+- Secret detection (no committed credentials)
+- All linters (Ruff, ESLint, Prettier)
+- Type checking (MyPy, TypeScript)
+- Security scanning (Bandit)
+
+**Quick Commands**:
+```bash
+# Run all linters (check mode)
+./scripts/lint-all.sh
+
+# Run all linters (fix mode)
+./scripts/lint-all.sh --fix
+
+# Backend only
+./scripts/lint-backend.sh [--fix]
+
+# Frontend only
+./scripts/lint-frontend.sh [--fix]
+
+# Setup pre-commit hooks (one-time)
+pip install pre-commit && pre-commit install
+
+# Run pre-commit manually
+pre-commit run --all-files
+```
+
+**See `LINTING.md` for comprehensive guide** including:
+- Tool configuration details
+- IDE integration
+- CI/CD setup
+- Troubleshooting
+- Best practices
 
 ---
 

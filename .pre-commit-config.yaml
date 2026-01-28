@@ -1,0 +1,143 @@
+# Pre-commit hooks for code quality
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: detect-private-key
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+
+  # Python: Ruff (replaces black, isort, flake8, pyupgrade)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+      # Run the formatter
+      - id: ruff-format
+        files: ^backend/
+
+  # Python: Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        files: ^backend/
+        args: [--ignore-missing-imports, --check-untyped-defs]
+        additional_dependencies:
+          - types-requests
+          - types-python-jose
+          - types-passlib
+          - sqlalchemy-stubs
+
+  # Python: Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.7
+    hooks:
+      - id: bandit
+        args: [-c, backend/.bandit.yaml, -r, backend/]
+        files: ^backend/
+
+  # Frontend: ESLint
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.0.0-beta.2
+    hooks:
+      - id: eslint
+        files: ^frontend/.*\.[jt]sx?$
+        types: [file]
+        args: [--fix, --max-warnings=0]
+        additional_dependencies:
+          - eslint@8.56.0
+          - eslint-config-next@14.0.0
+          - "@typescript-eslint/eslint-plugin@6.19.0"
+          - "@typescript-eslint/parser@6.19.0"
+
+  # Frontend: Prettier
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        files: ^frontend/.*\.(js|jsx|ts|tsx|css|scss|json|md)$
+        args: [--write]
+        additional_dependencies:
+          - prettier@3.2.4
+          - prettier-plugin-tailwindcss@0.5.11
+
+  # TypeScript: Type checking
+  - repo: local
+    hooks:
+      - id: tsc
+        name: TypeScript Type Check
+        entry: bash -c 'cd frontend && npm run type-check'
+        language: system
+        files: ^frontend/.*\.tsx?$
+        pass_filenames: false
+
+  # SQL: Format SQL files
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.0.0
+    hooks:
+      - id: sqlfluff-lint
+        files: ^database/.*\.sql$
+      - id: sqlfluff-fix
+        files: ^database/.*\.sql$
+
+  # Dockerfile: Lint Dockerfiles
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.1-beta
+    hooks:
+      - id: hadolint-docker
+        args: [--ignore, DL3008, --ignore, DL3018]
+
+  # Secrets detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: package-lock.json
+
+  # Markdown: Lint and format
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+        exclude: ^(node_modules/|frontend/node_modules/)
+
+  # Shell scripts: ShellCheck
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: [-x]
+
+# Exclude directories
+exclude: |
+  (?x)^(
+    frontend/node_modules/|
+    backend/.venv/|
+    backend/__pycache__/|
+    frontend/.next/|
+    .*\.min\.(js|css)$|
+    .*-lock\.(json|yaml)$
+  )

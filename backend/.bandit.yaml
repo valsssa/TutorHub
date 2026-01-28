@@ -1,0 +1,92 @@
+# Bandit security linter configuration
+# https://bandit.readthedocs.io/
+
+# Exclude paths
+exclude_dirs:
+  - /tests/
+  - /test_*.py
+  - /.venv/
+  - /venv/
+  - /env/
+  - /__pycache__/
+  - /alembic/versions/
+
+# Tests to skip
+skips:
+  # B101: Test for use of assert (allowed in tests)
+  - B101
+  # B601: Parameterized shell command (we use subprocess safely)
+  - B601
+
+# Tests to run (all except skipped)
+tests:
+  - B201  # Flask debug mode
+  - B301  # Pickle usage
+  - B302  # Marshal usage
+  - B303  # MD5 usage
+  - B304  # Insecure ciphers
+  - B305  # Insecure cipher modes
+  - B306  # mktemp usage
+  - B307  # Eval usage
+  - B308  # Mark safe usage
+  - B309  # HTTPSConnection usage
+  - B310  # URL open
+  - B311  # Random usage
+  - B312  # Telnet usage
+  - B313  # XML bad usage
+  - B314  # XML bad etree
+  - B315  # XML bad minidom
+  - B316  # XML bad pulldom
+  - B317  # XML bad sax
+  - B318  # XML bad expat
+  - B319  # XML bad lxml
+  - B320  # XML bad xmlrpc
+  - B321  # FTP usage
+  - B323  # Unverified context
+  - B324  # Hashlib usage
+  - B401  # Import telnetlib
+  - B402  # Import ftplib
+  - B403  # Import pickle
+  - B404  # Import subprocess
+  - B405  # Import xml etree
+  - B406  # Import xml sax
+  - B407  # Import xml expat
+  - B408  # Import xml minidom
+  - B409  # Import xml pulldom
+  - B410  # Import lxml
+  - B411  # Import xmlrpclib
+  - B412  # Import httpoxy
+  - B413  # Import pycrypto
+  - B501  # Request with verify=False
+  - B502  # SSL with bad version
+  - B503  # SSL with bad defaults
+  - B504  # SSL with no version
+  - B505  # Weak cryptographic key
+  - B506  # YAML load
+  - B507  # SSH no host key verification
+  - B601  # Parameterized shell
+  - B602  # Shell=True
+  - B603  # Process without shell
+  - B604  # Any other function
+  - B605  # Start process with shell
+  - B606  # Start process no shell
+  - B607  # Start process partial
+  - B608  # Hardcoded SQL
+  - B609  # Linux commands wildcard
+  - B610  # Django extra
+  - B611  # Django rawsql
+  - B701  # Jinja2 autoescape
+  - B702  # Mako templates
+  - B703  # Django mark safe
+
+# Severity levels
+severity:
+  - low
+  - medium
+  - high
+
+# Confidence levels
+confidence:
+  - low
+  - medium
+  - high

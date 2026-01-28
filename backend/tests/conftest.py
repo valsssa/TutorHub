@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -18,32 +18,56 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+# Enable foreign keys for SQLite
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Global session for dependency override
+_test_db = None
 
 
 def override_get_db():
     """Override database dependency for testing."""
-    try:
+    global _test_db
+    if _test_db is not None:
+        yield _test_db
+    else:
         db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
+        try:
+            yield db
+        finally:
+            db.close()
 
 
 # Override the dependency
 app.dependency_overrides[get_db] = override_get_db
 
 
-@pytest.fixture(scope="function")
-def db_session():
-    """Create fresh database for each test."""
+@pytest.fixture(scope="function", autouse=True)
+def setup_database():
+    """Create fresh database for each test automatically."""
     Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(scope="function")
+def db_session(setup_database):
+    """Create database session for each test."""
+    global _test_db
     db = TestingSessionLocal()
+    _test_db = db
     try:
         yield db
     finally:
+        _test_db = None
         db.close()
-        Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")
@@ -172,7 +196,7 @@ def test_subject(db_session):
 @pytest.fixture
 def test_booking(db_session, tutor_user, student_user, test_subject):
     """Create test booking."""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     from models import Booking
 
@@ -180,12 +204,16 @@ def test_booking(db_session, tutor_user, student_user, test_subject):
         tutor_profile_id=tutor_user.tutor_profile.id,
         student_id=student_user.id,
         subject_id=test_subject.id,
-        start_time=datetime.utcnow() + timedelta(days=1),
-        end_time=datetime.utcnow() + timedelta(days=1, hours=1),
+        start_time=datetime.now(timezone.utc) + timedelta(days=1),
+        end_time=datetime.now(timezone.utc) + timedelta(days=1, hours=1),
         topic="Calculus basics",
         hourly_rate=50.00,
         total_amount=50.00,
-        status="pending",
+        currency="USD",
+        status="PENDING",
+        tutor_name=f"{tutor_user.first_name or 'Test'} {tutor_user.last_name or 'Tutor'}",
+        student_name=f"{student_user.first_name or 'Test'} {student_user.last_name or 'Student'}",
+        subject_name=test_subject.name,
     )
     db_session.add(booking)
     db_session.commit()
