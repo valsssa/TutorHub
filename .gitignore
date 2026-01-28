@@ -110,3 +110,15 @@ Thumbs.db
 
 # Uploaded assets
 uploads/
+
+# Linting & Code Quality
+.mypy_cache/
+.ruff_cache/
+.eslintcache
+.prettiercache
+bandit-report.html
+mypy-report/
+
+# Pre-commit
+.pre-commit-cache/
+
