@@ -14,6 +14,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, Request, status
 from pydantic import BaseModel
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from core.dependencies import CurrentUser, DatabaseSession
@@ -23,7 +24,7 @@ from core.stripe_client import (
     format_amount_for_display,
     verify_webhook_signature,
 )
-from models import Booking, Payment, TutorProfile
+from models import Booking, Payment, StudentProfile, TutorProfile, WebhookEvent
 
 logger = logging.getLogger(__name__)
 
@@ -273,6 +274,10 @@ async def stripe_webhook(
     - payment_intent.succeeded: Payment confirmed
     - payment_intent.payment_failed: Payment failed
     - charge.refunded: Refund processed
+
+    Idempotency:
+    - Each event is tracked by stripe_event_id to prevent duplicate processing
+    - Returns success for already-processed events
     """
 
     # Get raw body for signature verification
@@ -282,9 +287,20 @@ async def stripe_webhook(
     event = verify_webhook_signature(payload, stripe_signature)
 
     event_type = event.type
+    event_id = event.id
     event_data = event.data.object
 
-    logger.info(f"Received Stripe webhook: {event_type}")
+    logger.info(f"Received Stripe webhook: {event_type} (event_id: {event_id})")
+
+    # Check if event was already processed (idempotency check)
+    existing_event = (
+        db.query(WebhookEvent)
+        .filter(WebhookEvent.stripe_event_id == event_id)
+        .first()
+    )
+    if existing_event:
+        logger.info(f"Webhook event {event_id} already processed, skipping")
+        return {"status": "already_processed"}
 
     try:
         if event_type == "checkout.session.completed":
@@ -304,6 +320,14 @@ async def stripe_webhook(
 
         else:
             logger.debug(f"Unhandled webhook event type: {event_type}")
+
+        # Record successful processing of this event
+        webhook_event = WebhookEvent(
+            stripe_event_id=event_id,
+            event_type=event_type,
+        )
+        db.add(webhook_event)
+        db.commit()
 
         return {"status": "success"}
 
@@ -582,8 +606,6 @@ async def request_refund(
 
 async def _handle_wallet_topup(db: Session, session: dict):
     """Handle successful wallet top-up payment."""
-    from models import StudentProfile
-
     metadata = session.get("metadata", {})
     student_id = metadata.get("student_id")
     student_profile_id = metadata.get("student_profile_id")
@@ -594,16 +616,22 @@ async def _handle_wallet_topup(db: Session, session: dict):
 
     amount_cents = session.get("amount_total", 0)
 
-    # Get student profile
+    # Verify student profile exists
     student_profile = db.query(StudentProfile).filter(StudentProfile.id == int(student_profile_id)).first()
     if not student_profile:
         logger.error(f"StudentProfile {student_profile_id} not found for wallet top-up")
         return
 
-    # Add credits to student balance
-    current_balance = student_profile.credit_balance_cents or 0
-    student_profile.credit_balance_cents = current_balance + amount_cents
-    student_profile.updated_at = datetime.now(UTC)
+    # Add credits to student balance using atomic SQL UPDATE to prevent race conditions
+    # This ensures concurrent top-ups don't lose money due to read-modify-write patterns
+    db.execute(
+        update(StudentProfile)
+        .where(StudentProfile.id == int(student_profile_id))
+        .values(
+            credit_balance_cents=StudentProfile.credit_balance_cents + amount_cents,
+            updated_at=datetime.now(UTC),
+        )
+    )
 
     # Update payment record
     payment = (
@@ -618,6 +646,9 @@ async def _handle_wallet_topup(db: Session, session: dict):
         payment.paid_at = datetime.now(UTC)
 
     db.commit()
+
+    # Refresh to get updated balance for logging
+    db.refresh(student_profile)
 
     logger.info(
         f"Wallet top-up completed for student {student_id}: "

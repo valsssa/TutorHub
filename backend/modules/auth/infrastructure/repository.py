@@ -28,6 +28,7 @@ class UserRepository:
             currency=getattr(user, "currency", "USD"),
             created_at=user.created_at,
             updated_at=user.updated_at,
+            password_changed_at=getattr(user, "password_changed_at", None),
         )
 
     def find_by_email(self, email: str) -> UserEntity | None:

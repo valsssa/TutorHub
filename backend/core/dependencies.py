@@ -20,7 +20,13 @@ async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
-    """Get the current authenticated user from JWT token."""
+    """Get the current authenticated user from JWT token.
+
+    Validates:
+    - Token signature and expiry
+    - Password change timestamp (invalidates tokens issued before password change)
+    - Role match (invalidates tokens with outdated role after demotion/promotion)
+    """
     try:
         payload = TokenManager.decode_token(token)
         email: str = payload.get("sub")
@@ -43,6 +49,35 @@ async def get_current_user(
 
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
+
+    # Validate token was issued after any password change
+    if user.password_changed_at:
+        token_pwd_ts = payload.get("pwd_ts")
+        if token_pwd_ts:
+            # token_pwd_ts is already a float timestamp from JWT
+            if user.password_changed_at.timestamp() > token_pwd_ts:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token invalidated by password change, please re-login",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        else:
+            # Token was issued before password tracking was implemented,
+            # but password has been changed since - invalidate
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token invalidated by password change, please re-login",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    # Validate role hasn't changed (prevents stale role after demotion/promotion)
+    token_role = payload.get("role")
+    if token_role and token_role != user.role:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token role outdated, please re-login",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     return user
 

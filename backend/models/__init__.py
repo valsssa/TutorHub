@@ -24,7 +24,7 @@ from .base import Base, JSONEncodedArray
 from .bookings import Booking, SessionMaterial
 from .messages import Message, MessageAttachment
 from .notifications import Notification, NotificationAnalytics, NotificationPreferences
-from .payments import Payment, Payout, Refund, SupportedCurrency
+from .payments import Payment, Payout, Refund, SupportedCurrency, WebhookEvent
 from .reviews import Review
 from .students import FavoriteTutor, StudentNote, StudentPackage, StudentProfile
 from .subjects import Subject
@@ -80,6 +80,7 @@ __all__ = [
     "Refund",
     "Payout",
     "SupportedCurrency",
+    "WebhookEvent",
     # Admin
     "Report",
     "AuditLog",

@@ -6,9 +6,10 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from core.rate_limiting import limiter
-
+from sqlalchemy import update
 from sqlalchemy.orm import Session
+
+from core.rate_limiting import limiter
 
 from core.audit import AuditLogger
 from core.dependencies import get_current_student_user, get_current_user
@@ -202,13 +203,18 @@ async def use_package_credit(
 
     Decision tracking: Records when student DECIDES to use a credit
     instead of paying per-session.
+
+    Uses atomic SQL operations to prevent race conditions where two
+    concurrent requests could consume the same credit.
     """
+    # First, acquire a lock on the package row to prevent race conditions
     package = (
         db.query(StudentPackage)
         .filter(
             StudentPackage.id == package_id,
             StudentPackage.student_id == current_user.id,
         )
+        .with_for_update(nowait=False)
         .first()
     )
 
@@ -218,26 +224,64 @@ async def use_package_credit(
     # Check package validity (includes expiration check)
     is_valid, error_message = PackageExpirationService.check_package_validity(package)
     if not is_valid:
-        # If expired, mark it and commit
+        # If expired, mark it atomically and commit
         if "expired" in error_message.lower() and package.status == "active":
-            package.status = "expired"
-            package.updated_at = datetime.utcnow()
+            db.execute(
+                update(StudentPackage)
+                .where(
+                    StudentPackage.id == package_id,
+                    StudentPackage.status == "active",
+                )
+                .values(
+                    status="expired",
+                    updated_at=datetime.utcnow(),
+                )
+            )
             db.commit()
         raise HTTPException(status_code=400, detail=error_message)
 
     try:
         old_remaining = package.sessions_remaining
 
-        # Deduct credit
-        package.sessions_remaining -= 1
-        package.sessions_used += 1
+        # Atomic credit deduction with validation guard
+        # This prevents race conditions where two requests could consume the same credit
+        result = db.execute(
+            update(StudentPackage)
+            .where(
+                StudentPackage.id == package_id,
+                StudentPackage.student_id == current_user.id,
+                StudentPackage.sessions_remaining > 0,
+                StudentPackage.status == "active",
+            )
+            .values(
+                sessions_remaining=StudentPackage.sessions_remaining - 1,
+                sessions_used=StudentPackage.sessions_used + 1,
+                updated_at=datetime.utcnow(),
+            )
+        )
 
-        # Auto-update status if exhausted
-        if package.sessions_remaining == 0:
-            package.status = "exhausted"
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="No credits available or package is not active",
+            )
 
-        # Update timestamp in application code (no DB triggers)
-        package.updated_at = datetime.now()
+        # Atomically update status to exhausted if credits are now zero
+        db.execute(
+            update(StudentPackage)
+            .where(
+                StudentPackage.id == package_id,
+                StudentPackage.sessions_remaining == 0,
+                StudentPackage.status == "active",
+            )
+            .values(
+                status="exhausted",
+                updated_at=datetime.utcnow(),
+            )
+        )
+
+        # Refresh to get updated values for audit logging
+        db.refresh(package)
 
         # Track credit usage decision
         AuditLogger.log_action(
@@ -265,6 +309,9 @@ async def use_package_credit(
             f"- {package.sessions_remaining} credits remaining"
         )
 
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"Error using package credit: {e}")

@@ -140,9 +140,16 @@ class AuthService:
                 detail="Account is inactive",
             )
 
-        # Create access token
+        # Create access token with role and password timestamp for security validation
+        token_data = {
+            "sub": user.email,
+            "role": user.role,
+        }
+        # Include password_changed_at timestamp if available (for token invalidation)
+        if user.password_changed_at:
+            token_data["pwd_ts"] = user.password_changed_at
         access_token = create_access_token(
-            data={"sub": user.email},
+            data=token_data,
             expires_delta=timedelta(minutes=30),
         )
 

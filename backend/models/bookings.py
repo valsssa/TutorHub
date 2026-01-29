@@ -29,6 +29,9 @@ class Booking(Base):
     start_time = Column(TIMESTAMP(timezone=True), nullable=False)
     end_time = Column(TIMESTAMP(timezone=True), nullable=False)
 
+    # Optimistic locking version for race condition prevention
+    version = Column(Integer, default=1, nullable=False)
+
     # Four independent status fields (booking flow redesign)
     session_state = Column(String(20), default="REQUESTED", nullable=False)
     session_outcome = Column(String(30), nullable=True)  # Set on terminal states

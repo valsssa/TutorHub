@@ -7,6 +7,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from core.dependencies import get_current_tutor_profile, get_current_user
@@ -172,6 +173,20 @@ async def create_booking(
 
     except HTTPException:
         raise
+    except IntegrityError as e:
+        # Handle database-level constraint violation (exclusion constraint for overlapping bookings)
+        # This is a safety net in case the application-level locking somehow fails
+        db.rollback()
+        error_str = str(e).lower()
+        if "bookings_no_time_overlap" in error_str or "overlap" in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Tutor is not available at this time: time slot already booked",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Booking conflicts with existing data",
+        )
     except Exception as e:
         db.rollback()
         raise HTTPException(

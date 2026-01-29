@@ -50,6 +50,8 @@ class User(Base):
     preferred_language = Column(String(5), nullable=False, default="en", server_default="en")
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    # Token security: tracks when password was last changed to invalidate old tokens
+    password_changed_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
     # Relationships
     profile = relationship(

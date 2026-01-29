@@ -17,6 +17,21 @@ from sqlalchemy.sql import func
 from .base import Base, JSONType
 
 
+class WebhookEvent(Base):
+    """Track processed Stripe webhook events for idempotency.
+
+    Stripe may deliver webhooks multiple times. This table ensures we only
+    process each event once, preventing duplicate payments/credits.
+    """
+
+    __tablename__ = "webhook_events"
+
+    id = Column(Integer, primary_key=True)
+    stripe_event_id = Column(String(255), unique=True, index=True, nullable=False)
+    event_type = Column(String(100), nullable=False)
+    processed_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
 class SupportedCurrency(Base):
     """Currency options supported by the platform."""
 

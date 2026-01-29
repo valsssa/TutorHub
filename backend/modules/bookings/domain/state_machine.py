@@ -3,6 +3,11 @@ Centralized booking state machine.
 
 Manages all state transitions for session_state, payment_state, and dispute_state.
 Enforces business rules and validates transitions.
+
+Race Condition Prevention:
+- Uses SELECT FOR UPDATE for pessimistic locking during transitions
+- Implements optimistic locking via version column
+- Makes transitions idempotent (returns success if already in target state)
 """
 
 from dataclasses import dataclass
@@ -21,6 +26,19 @@ from modules.bookings.domain.status import (
 
 if TYPE_CHECKING:
     from models import Booking
+    from sqlalchemy.orm import Session
+
+
+class OptimisticLockError(Exception):
+    """Raised when optimistic lock version mismatch is detected."""
+
+    pass
+
+
+class StateTransitionError(Exception):
+    """Raised when an invalid state transition is attempted."""
+
+    pass
 
 
 @dataclass
@@ -29,6 +47,7 @@ class TransitionResult:
 
     success: bool
     error_message: str | None = None
+    already_in_target_state: bool = False  # Indicates idempotent success
 
 
 class BookingStateMachine:
@@ -36,7 +55,69 @@ class BookingStateMachine:
     Centralized state machine for booking state management.
 
     Handles all state transitions with validation and business rule enforcement.
+    Uses pessimistic locking (SELECT FOR UPDATE) and optimistic locking (version)
+    to prevent race conditions.
     """
+
+    @staticmethod
+    def get_booking_with_lock(
+        db: "Session",
+        booking_id: int,
+        *,
+        nowait: bool = False,
+    ) -> "Booking | None":
+        """
+        Get a booking with a row-level lock for safe state transitions.
+
+        Uses SELECT ... FOR UPDATE to acquire an exclusive lock on the row,
+        preventing concurrent modifications.
+
+        Args:
+            db: SQLAlchemy session
+            booking_id: ID of the booking to lock
+            nowait: If True, fail immediately if lock cannot be acquired
+
+        Returns:
+            Locked Booking object or None if not found
+
+        Raises:
+            OperationalError: If nowait=True and lock cannot be acquired
+        """
+        from models import Booking
+
+        query = db.query(Booking).filter(Booking.id == booking_id)
+
+        if nowait:
+            query = query.with_for_update(nowait=True)
+        else:
+            query = query.with_for_update()
+
+        return query.first()
+
+    @staticmethod
+    def increment_version(booking: "Booking") -> None:
+        """
+        Increment the booking version after a state change.
+
+        This must be called after every state transition to maintain
+        optimistic locking integrity.
+        """
+        booking.version = (booking.version or 1) + 1
+        booking.updated_at = datetime.utcnow()
+
+    @staticmethod
+    def verify_version(booking: "Booking", expected_version: int) -> bool:
+        """
+        Verify the booking version matches expected value.
+
+        Args:
+            booking: The booking to check
+            expected_version: The version we expect the booking to have
+
+        Returns:
+            True if versions match, False otherwise
+        """
+        return booking.version == expected_version
 
     # Valid session_state transitions
     SESSION_STATE_TRANSITIONS: dict[SessionState, set[SessionState]] = {
@@ -162,7 +243,16 @@ class BookingStateMachine:
         Transitions:
         - session_state: REQUESTED → SCHEDULED
         - payment_state: PENDING → AUTHORIZED
+
+        Idempotent: Returns success if already in SCHEDULED state.
         """
+        # Idempotent check: already in target state
+        if booking.session_state == SessionState.SCHEDULED.value:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
         if not cls.can_transition_session_state(booking.session_state, SessionState.SCHEDULED):
             return TransitionResult(
                 success=False,
@@ -172,6 +262,7 @@ class BookingStateMachine:
         booking.session_state = SessionState.SCHEDULED.value
         booking.payment_state = PaymentState.AUTHORIZED.value
         booking.confirmed_at = datetime.utcnow()
+        cls.increment_version(booking)
 
         return TransitionResult(success=True)
 
@@ -184,7 +275,19 @@ class BookingStateMachine:
         - session_state: REQUESTED → CANCELLED
         - session_outcome: NOT_HELD
         - payment_state: PENDING → VOIDED
+
+        Idempotent: Returns success if already CANCELLED by tutor.
         """
+        # Idempotent check: already cancelled by tutor
+        if (
+            booking.session_state == SessionState.CANCELLED.value
+            and booking.cancelled_by_role == CancelledByRole.TUTOR.value
+        ):
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
         if not cls.can_transition_session_state(booking.session_state, SessionState.CANCELLED):
             return TransitionResult(
                 success=False,
@@ -196,6 +299,7 @@ class BookingStateMachine:
         booking.payment_state = PaymentState.VOIDED.value
         booking.cancelled_by_role = CancelledByRole.TUTOR.value
         booking.cancelled_at = datetime.utcnow()
+        cls.increment_version(booking)
 
         return TransitionResult(success=True)
 
@@ -218,7 +322,16 @@ class BookingStateMachine:
         - session_state: REQUESTED/SCHEDULED → CANCELLED
         - session_outcome: NOT_HELD
         - payment_state: Depends on refund policy
+
+        Idempotent: Returns success if already CANCELLED.
         """
+        # Idempotent check: already cancelled
+        if booking.session_state == SessionState.CANCELLED.value:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
         if not cls.is_cancellable(booking.session_state):
             return TransitionResult(
                 success=False,
@@ -246,6 +359,8 @@ class BookingStateMachine:
             elif current_payment == PaymentState.AUTHORIZED:
                 booking.payment_state = PaymentState.CAPTURED.value
 
+        cls.increment_version(booking)
+
         return TransitionResult(success=True)
 
     @classmethod
@@ -257,7 +372,27 @@ class BookingStateMachine:
         - session_state: REQUESTED → EXPIRED
         - session_outcome: NOT_HELD
         - payment_state: PENDING → VOIDED
+
+        Idempotent: Returns success if already EXPIRED.
         """
+        # Idempotent check: already expired
+        if booking.session_state == SessionState.EXPIRED.value:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
+        # Also idempotent if already in a terminal state that "beats" expiry
+        # (e.g., tutor accepted/declined before expiry job ran)
+        if booking.session_state in {
+            SessionState.SCHEDULED.value,
+            SessionState.CANCELLED.value,
+        }:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
         if booking.session_state != SessionState.REQUESTED.value:
             return TransitionResult(
                 success=False,
@@ -268,6 +403,7 @@ class BookingStateMachine:
         booking.session_outcome = SessionOutcome.NOT_HELD.value
         booking.payment_state = PaymentState.VOIDED.value
         booking.cancelled_by_role = CancelledByRole.SYSTEM.value
+        cls.increment_version(booking)
 
         return TransitionResult(success=True)
 
@@ -278,7 +414,23 @@ class BookingStateMachine:
 
         Transitions:
         - session_state: SCHEDULED → ACTIVE
+
+        Idempotent: Returns success if already ACTIVE.
         """
+        # Idempotent check: already active
+        if booking.session_state == SessionState.ACTIVE.value:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
+        # Also idempotent if session already ended
+        if booking.session_state == SessionState.ENDED.value:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
         if booking.session_state != SessionState.SCHEDULED.value:
             return TransitionResult(
                 success=False,
@@ -286,6 +438,8 @@ class BookingStateMachine:
             )
 
         booking.session_state = SessionState.ACTIVE.value
+        cls.increment_version(booking)
+
         return TransitionResult(success=True)
 
     @classmethod
@@ -305,7 +459,16 @@ class BookingStateMachine:
         - session_state: ACTIVE → ENDED
         - session_outcome: Set to provided outcome
         - payment_state: Based on outcome
+
+        Idempotent: Returns success if already ENDED with same outcome.
         """
+        # Idempotent check: already ended
+        if booking.session_state == SessionState.ENDED.value:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
         if booking.session_state != SessionState.ACTIVE.value:
             return TransitionResult(
                 success=False,
@@ -325,6 +488,8 @@ class BookingStateMachine:
             # Student gets refund when tutor is no-show
             booking.payment_state = PaymentState.REFUNDED.value
 
+        cls.increment_version(booking)
+
         return TransitionResult(success=True)
 
     @classmethod
@@ -337,7 +502,20 @@ class BookingStateMachine:
         Mark a no-show for a session.
 
         This can be called on ACTIVE or SCHEDULED sessions.
+
+        Idempotent: Returns success if already ENDED with no-show outcome.
         """
+        # Idempotent check: already ended with a no-show outcome
+        if booking.session_state == SessionState.ENDED.value:
+            if booking.session_outcome in {
+                SessionOutcome.NO_SHOW_STUDENT.value,
+                SessionOutcome.NO_SHOW_TUTOR.value,
+            }:
+                return TransitionResult(
+                    success=True,
+                    already_in_target_state=True,
+                )
+
         current_state = SessionState(booking.session_state)
 
         # Can mark no-show on SCHEDULED (after start time) or ACTIVE sessions
@@ -355,6 +533,8 @@ class BookingStateMachine:
         else:  # TUTOR
             booking.session_outcome = SessionOutcome.NO_SHOW_TUTOR.value
             booking.payment_state = PaymentState.REFUNDED.value
+
+        cls.increment_version(booking)
 
         return TransitionResult(success=True)
 

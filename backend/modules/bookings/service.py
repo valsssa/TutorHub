@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, update
 from sqlalchemy.orm import Session
 
 from core.avatar_storage import build_avatar_url
@@ -91,8 +91,10 @@ class BookingService:
                 detail="Student not found",
             )
 
-        # 4. Check for conflicts
-        conflicts = self.check_conflicts(tutor_profile_id, start_at, end_at)
+        # 4. Check for conflicts with row-level locking to prevent race conditions
+        # The use_lock=True ensures that concurrent booking requests for the same
+        # tutor's time slots are serialized, preventing double-booking
+        conflicts = self.check_conflicts(tutor_profile_id, start_at, end_at, use_lock=True)
         if conflicts:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -172,12 +174,26 @@ class BookingService:
         start_at: datetime,
         end_at: datetime,
         exclude_booking_id: int | None = None,
+        use_lock: bool = False,
     ) -> str:
         """
         Check for scheduling conflicts.
 
+        Args:
+            tutor_profile_id: Tutor profile to check
+            start_at: Proposed booking start time
+            end_at: Proposed booking end time
+            exclude_booking_id: Optional booking ID to exclude (for reschedules)
+            use_lock: If True, acquires row-level locks to prevent race conditions
+
         Returns:
             Empty string if no conflicts, error message otherwise
+
+        Note:
+            When use_lock=True, this method acquires FOR UPDATE locks on all
+            potentially conflicting bookings. This prevents double-booking
+            race conditions but should only be used within a transaction
+            that will be committed shortly after.
         """
         # Check for overlapping bookings
         tutor_profile = self.db.query(TutorProfile).filter(TutorProfile.id == tutor_profile_id).first()
@@ -200,6 +216,11 @@ class BookingService:
 
         if exclude_booking_id:
             query = query.filter(Booking.id != exclude_booking_id)
+
+        # Apply row-level locking to prevent race conditions during booking creation
+        # This ensures concurrent requests serialize when checking the same time slots
+        if use_lock:
+            query = query.with_for_update(nowait=False)
 
         existing = query.first()
         if existing:
@@ -437,18 +458,82 @@ class BookingService:
         return f"https://platform.example.com/session/{booking_id}?token={secure_token}"
 
     def _consume_package_credit(self, package_id: int) -> None:
-        """Decrement package sessions_remaining."""
-        package = self.db.query(StudentPackage).filter(StudentPackage.id == package_id).first()
-        if package and package.sessions_remaining > 0:
-            package.sessions_remaining -= 1
-            package.sessions_used += 1
+        """
+        Atomically decrement package sessions_remaining.
+
+        Uses atomic SQL UPDATE with WHERE guard to prevent race conditions
+        where two concurrent requests could consume the same credit.
+        """
+        # Atomic decrement with validation guard
+        result = self.db.execute(
+            update(StudentPackage)
+            .where(
+                StudentPackage.id == package_id,
+                StudentPackage.sessions_remaining > 0,
+                StudentPackage.status == "active",
+            )
+            .values(
+                sessions_remaining=StudentPackage.sessions_remaining - 1,
+                sessions_used=StudentPackage.sessions_used + 1,
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No package credits available or package is not active",
+            )
+
+        # Check if package is now exhausted and update status atomically
+        self.db.execute(
+            update(StudentPackage)
+            .where(
+                StudentPackage.id == package_id,
+                StudentPackage.sessions_remaining == 0,
+                StudentPackage.status == "active",
+            )
+            .values(
+                status="exhausted",
+                updated_at=datetime.now(UTC),
+            )
+        )
 
     def _restore_package_credit(self, package_id: int) -> None:
-        """Restore package credit on cancellation."""
-        package = self.db.query(StudentPackage).filter(StudentPackage.id == package_id).first()
-        if package:
-            package.sessions_remaining += 1
-            package.sessions_used = max(0, package.sessions_used - 1)
+        """
+        Atomically restore package credit on cancellation.
+
+        Uses atomic SQL UPDATE to prevent race conditions.
+        """
+        # Atomic increment - also reactivate exhausted packages
+        result = self.db.execute(
+            update(StudentPackage)
+            .where(
+                StudentPackage.id == package_id,
+                StudentPackage.sessions_used > 0,
+                StudentPackage.status.in_(["active", "exhausted"]),
+            )
+            .values(
+                sessions_remaining=StudentPackage.sessions_remaining + 1,
+                sessions_used=StudentPackage.sessions_used - 1,
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+        # If package was exhausted, reactivate it
+        if result.rowcount > 0:
+            self.db.execute(
+                update(StudentPackage)
+                .where(
+                    StudentPackage.id == package_id,
+                    StudentPackage.status == "exhausted",
+                    StudentPackage.sessions_remaining > 0,
+                )
+                .values(
+                    status="active",
+                    updated_at=datetime.now(UTC),
+                )
+            )
 
 
 # ============================================================================

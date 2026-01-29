@@ -20,6 +20,7 @@ class UserEntity:
     currency: str = "USD"
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    password_changed_at: datetime | None = None
 
     def is_admin(self) -> bool:
         """Check if user is admin."""
