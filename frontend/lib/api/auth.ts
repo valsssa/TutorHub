@@ -47,7 +47,12 @@ export const auth = {
       params.append("username", email);
       params.append("password", password);
 
-      const { data } = await api.post<{ access_token: string }>(
+      const { data } = await api.post<{
+        access_token: string;
+        refresh_token: string;
+        token_type: string;
+        expires_in: number;
+      }>(
         "/api/v1/auth/login",
         params.toString(),
         {
@@ -55,7 +60,25 @@ export const auth = {
         },
       );
 
+      // Calculate token expiry from expires_in (seconds)
+      const expiryTime = Date.now() + (data.expires_in * 1000);
+
+      // Store access token
       Cookies.set("token", data.access_token, {
+        expires: 7,
+        secure: true,
+        sameSite: 'strict'
+      });
+
+      // Store token expiry for proactive refresh
+      Cookies.set("token_expiry", expiryTime.toString(), {
+        expires: 7,
+        secure: true,
+        sameSite: 'strict'
+      });
+
+      // Store refresh token securely
+      Cookies.set("refresh_token", data.refresh_token, {
         expires: 7,
         secure: true,
         sameSite: 'strict'
@@ -64,7 +87,7 @@ export const auth = {
       // Clear cache on login to ensure fresh data
       clearCache();
 
-      logger.info(`Login successful for: ${email}`);
+      logger.info(`Login successful for: ${email}, token expires at ${new Date(expiryTime).toISOString()}`);
       return data.access_token;
     } catch (error) {
       logger.error(`Login failed for ${email}`, error);

@@ -248,13 +248,17 @@ class TestExpireBooking:
         assert mock_booking.payment_state == PaymentState.VOIDED.value
         assert mock_booking.cancelled_by_role == CancelledByRole.SYSTEM.value
 
-    def test_cannot_expire_scheduled_booking(self, mock_booking):
-        """Cannot expire SCHEDULED booking."""
+    def test_expire_scheduled_booking_is_idempotent(self, mock_booking):
+        """Expiring SCHEDULED booking is idempotent (tutor already accepted)."""
         mock_booking.session_state = SessionState.SCHEDULED.value
 
         result = BookingStateMachine.expire_booking(mock_booking)
 
-        assert result.success is False
+        # Idempotent: booking was already scheduled (tutor accepted before expiry job ran)
+        assert result.success is True
+        assert result.already_in_target_state is True
+        # State should remain SCHEDULED (not changed to EXPIRED)
+        assert mock_booking.session_state == SessionState.SCHEDULED.value
 
 
 # ============================================================================

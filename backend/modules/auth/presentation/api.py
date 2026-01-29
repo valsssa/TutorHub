@@ -17,7 +17,7 @@ from database import get_db
 from models import User
 from modules.auth.application.services import AuthService
 from modules.users.avatar.service import AvatarService
-from schemas import Token, UserCreate, UserResponse, UserSelfUpdate
+from schemas import Token, TokenRefreshRequest, TokenWithRefresh, UserCreate, UserResponse, UserSelfUpdate
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -136,19 +136,20 @@ def register(
 
 @router.post(
     "/login",
-    response_model=Token,
-    summary="User login (get JWT token)",
+    response_model=TokenWithRefresh,
+    summary="User login (get JWT tokens)",
     description="""
 **User Authentication**
 
-Authenticates user credentials and returns JWT access token for API authorization.
+Authenticates user credentials and returns JWT access and refresh tokens for API authorization.
 
 **Authentication Flow**:
 1. Client submits email (as username) and password via OAuth2 form
 2. Server checks for account lockout (brute-force protection)
 3. Server validates credentials (constant-time comparison)
-4. JWT token generated with 30-minute expiry
-5. Token includes user ID and role in claims
+4. Access token generated with 30-minute expiry
+5. Refresh token generated with 7-day expiry
+6. Tokens include user ID and role in claims
 
 **Security Features**:
 - Bcrypt password verification (constant-time)
@@ -156,11 +157,13 @@ Authenticates user credentials and returns JWT access token for API authorizatio
 - Account lockout: 5 failed attempts locks account for 15 minutes
 - Failed attempts logged for security monitoring
 - Email lookup uses case-insensitive indexed search
+- Refresh tokens invalidated on password change
 
 **Token Usage**:
-- Include in subsequent requests: `Authorization: Bearer <token>`
-- Token expires after 30 minutes
-- No refresh tokens in MVP (user must re-login)
+- Access token: Include in requests as `Authorization: Bearer <token>`
+- Refresh token: Store securely, use with `/auth/refresh` to get new access token
+- Access token expires after 30 minutes
+- Refresh token expires after 7 days
 
 **Common Errors**:
 - 401: Invalid credentials (email not found or wrong password)
@@ -173,12 +176,14 @@ Authenticates user credentials and returns JWT access token for API authorizatio
     """,
     responses={
         200: {
-            "description": "Login successful - JWT token returned",
+            "description": "Login successful - JWT tokens returned",
             "content": {
                 "application/json": {
                     "example": {
                         "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                         "token_type": "bearer",
+                        "expires_in": 1800,
                     }
                 }
             },
@@ -215,7 +220,7 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service),
 ):
-    """Login and get JWT token."""
+    """Login and get JWT tokens (access + refresh)."""
     client_host = request.client.host if request.client else "unknown"
     email = form_data.username
     logger.info(f"Login attempt from {client_host} for email: {email}")
@@ -255,6 +260,80 @@ async def login(
                     f"Failed login for {email}: {remaining} attempts remaining"
                 )
         raise
+
+
+@router.post(
+    "/refresh",
+    response_model=Token,
+    summary="Refresh access token",
+    description="""
+**Token Refresh**
+
+Exchanges a valid refresh token for a new access token.
+
+**Use Case**:
+- When access token is about to expire (or has expired)
+- Frontend should proactively refresh before expiry to avoid interruption
+- Recommended: Refresh when token has < 5 minutes remaining
+
+**Security Features**:
+- Refresh token validated for expiry and signature
+- User account status re-verified (must still be active)
+- Password change timestamp checked (tokens invalidated on password change)
+- Role verified (tokens invalidated if role changed)
+- Rate limited to prevent abuse
+
+**Token Lifecycle**:
+- Access token: 30 minutes
+- Refresh token: 7 days
+- On password change: Both tokens invalidated, user must re-login
+
+**Best Practices**:
+- Store refresh token securely (httpOnly cookie or secure storage)
+- Never expose refresh token in URLs or logs
+- Implement automatic refresh in API interceptor
+- On refresh failure, redirect user to login
+
+**Common Errors**:
+- 401: Invalid, expired, or revoked refresh token
+- 403: Account deactivated or role changed
+    """,
+    responses={
+        200: {
+            "description": "Token refreshed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "token_type": "bearer",
+                        "expires_in": 1800,
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Invalid or expired refresh token",
+            "content": {"application/json": {"example": {"detail": "Invalid or expired refresh token"}}},
+        },
+        403: {
+            "description": "Account inactive or role changed",
+            "content": {"application/json": {"example": {"detail": "Account is inactive"}}},
+        },
+    },
+)
+@limiter.limit("30/minute")
+async def refresh_token(
+    request: Request,
+    token_request: TokenRefreshRequest,
+    service: AuthService = Depends(get_auth_service),
+):
+    """Refresh access token using a valid refresh token."""
+    client_host = request.client.host if request.client else "unknown"
+    logger.info(f"Token refresh attempt from {client_host}")
+
+    token_data = service.refresh_access_token(token_request.refresh_token)
+    logger.info(f"Token refreshed successfully from {client_host}")
+    return token_data
 
 
 @router.get(

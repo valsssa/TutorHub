@@ -107,14 +107,14 @@ class AuthService:
 
     def authenticate_user(self, email: str, password: str) -> dict[str, Any]:
         """
-        Authenticate user and generate token.
+        Authenticate user and generate tokens.
 
         Args:
             email: User email
             password: Plain password
 
         Returns:
-            Dictionary with access_token and token_type
+            Dictionary with access_token, refresh_token, token_type, and expires_in
 
         Raises:
             HTTPException: If authentication fails
@@ -142,7 +142,7 @@ class AuthService:
                 detail="Account is inactive",
             )
 
-        # Create access token with role and password timestamp for security validation
+        # Create token data with role and password timestamp for security validation
         token_data = {
             "sub": user.email,
             "role": user.role,
@@ -150,16 +150,133 @@ class AuthService:
         # Include password_changed_at timestamp if available (for token invalidation)
         if user.password_changed_at:
             token_data["pwd_ts"] = user.password_changed_at.timestamp()
+
+        # Create access token (short-lived)
         access_token = create_access_token(
             data=token_data,
-            expires_delta=timedelta(minutes=30),
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        )
+
+        # Create refresh token (long-lived)
+        refresh_token = TokenManager.create_refresh_token(
+            data=token_data,
         )
 
         logger.info(f"User authenticated successfully: {user.email}, role: {user.role}")
 
         return {
             "access_token": access_token,
+            "refresh_token": refresh_token,
             "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
+        }
+
+    def refresh_access_token(self, refresh_token: str) -> dict[str, Any]:
+        """
+        Refresh an access token using a valid refresh token.
+
+        Args:
+            refresh_token: The refresh token to validate
+
+        Returns:
+            Dictionary with new access_token, token_type, and expires_in
+
+        Raises:
+            HTTPException: If refresh token is invalid or user no longer valid
+        """
+        from core.exceptions import AuthenticationError
+
+        logger.debug("Attempting to refresh access token")
+
+        try:
+            # Decode and validate refresh token
+            payload = TokenManager.decode_token(refresh_token, expected_type="refresh")
+        except AuthenticationError as e:
+            logger.warning(f"Invalid refresh token: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        email = payload.get("sub")
+        if not email:
+            logger.warning("Refresh token missing subject claim")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Find user to verify they still exist and are active
+        user = self.repository.find_by_email(email)
+
+        if not user:
+            logger.warning(f"Refresh token for non-existent user: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        if not user.is_active:
+            logger.warning(f"Refresh token for inactive account: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is inactive",
+            )
+
+        # Validate password timestamp - if password changed after token was issued,
+        # the refresh token should be invalidated
+        if user.password_changed_at:
+            token_pwd_ts = payload.get("pwd_ts")
+            if token_pwd_ts:
+                if user.password_changed_at.timestamp() > token_pwd_ts:
+                    logger.warning(f"Refresh token invalidated by password change for: {email}")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Session invalidated by password change, please re-login",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+            else:
+                # Token issued before password tracking - invalidate if password has changed
+                logger.warning(f"Legacy refresh token after password change for: {email}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Session invalidated by password change, please re-login",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+        # Validate role hasn't changed
+        token_role = payload.get("role")
+        if token_role and token_role != user.role:
+            logger.warning(f"Refresh token role mismatch for: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Role changed, please re-login",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Create new token data with current user state
+        token_data = {
+            "sub": user.email,
+            "role": user.role,
+        }
+        if user.password_changed_at:
+            token_data["pwd_ts"] = user.password_changed_at.timestamp()
+
+        # Create new access token
+        new_access_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        )
+
+        logger.info(f"Access token refreshed for user: {user.email}")
+
+        return {
+            "access_token": new_access_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         }
 
     def get_user_by_email(self, email: str) -> UserEntity | None:

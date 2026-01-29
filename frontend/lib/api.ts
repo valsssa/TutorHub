@@ -175,17 +175,56 @@ api.interceptors.response.use(
   async (error) => {
     const config = error.config;
 
-    // Handle authentication errors (401)
-    if (error.response?.status === 401) {
-      logger.warn("Received 401 Unauthorized, clearing auth data");
-      clearAuthData();
+    // Skip retry logic for auth endpoints
+    const isAuthEndpoint = config?.url?.includes('/auth/login') ||
+      config?.url?.includes('/auth/register') ||
+      config?.url?.includes('/auth/refresh');
 
-      // Redirect to login if we're in browser
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.href = '/login?expired=true';
+    // Handle authentication errors (401)
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      // Skip if we're already retrying this request after refresh
+      if (config?.__isRetryAfterRefresh) {
+        logger.warn("401 after refresh attempt, clearing auth and redirecting");
+        clearAuthData();
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login?expired=true';
+        }
+        return Promise.reject(error);
       }
 
-      return Promise.reject(error);
+      logger.warn("Received 401 Unauthorized, attempting token refresh");
+
+      // Try to refresh the token
+      if (!isRefreshing) {
+        isRefreshing = true;
+        const newToken = await refreshAccessToken();
+        isRefreshing = false;
+
+        if (newToken) {
+          notifyRefreshSubscribers(newToken);
+
+          // Retry the original request with new token
+          config.headers.Authorization = `Bearer ${newToken}`;
+          config.__isRetryAfterRefresh = true;
+          return api(config);
+        } else {
+          // Refresh failed, clear auth and redirect
+          clearAuthData();
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login?expired=true';
+          }
+          return Promise.reject(error);
+        }
+      } else {
+        // Wait for the ongoing refresh to complete and retry
+        return new Promise((resolve, reject) => {
+          subscribeToTokenRefresh((newToken) => {
+            config.headers.Authorization = `Bearer ${newToken}`;
+            config.__isRetryAfterRefresh = true;
+            resolve(api(config));
+          });
+        });
+      }
     }
 
     // Handle rate limit errors (429)
@@ -304,7 +343,22 @@ export function clearCache(pattern?: string): void {
   }
 }
 
-// Helper to check if token is expired
+// Token refresh state management
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+// Subscribe to token refresh completion
+function subscribeToTokenRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
+// Notify all subscribers that token has been refreshed
+function notifyRefreshSubscribers(token: string) {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
+
+// Helper to check if token is expired or about to expire
 function isTokenExpired(): boolean {
   const tokenExpiry = Cookies.get("token_expiry");
   if (!tokenExpiry) return false;
@@ -316,28 +370,134 @@ function isTokenExpired(): boolean {
   return currentTime >= expiryTime;
 }
 
+// Helper to check if token is close to expiring (within 5 minutes)
+function isTokenExpiringSoon(): boolean {
+  const tokenExpiry = Cookies.get("token_expiry");
+  if (!tokenExpiry) return false;
+
+  const expiryTime = parseInt(tokenExpiry, 10);
+  const currentTime = Date.now();
+  const fiveMinutesMs = 5 * 60 * 1000;
+
+  // Token expiring soon if within 5 minutes of expiry
+  return currentTime >= expiryTime - fiveMinutesMs;
+}
+
 // Helper to clear auth data
 function clearAuthData() {
   Cookies.remove("token");
   Cookies.remove("token_expiry");
+  Cookies.remove("refresh_token");
   clearCache(); // Clear all cached data
 }
 
-// Add auth token to requests
-api.interceptors.request.use((config) => {
+// Helper to refresh the access token
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = Cookies.get("refresh_token");
+
+  if (!refreshToken) {
+    logger.warn("No refresh token available for token refresh");
+    return null;
+  }
+
+  try {
+    logger.info("Attempting to refresh access token");
+
+    // Make refresh request directly to avoid interceptors
+    const response = await axios.post<{
+      access_token: string;
+      token_type: string;
+      expires_in: number;
+    }>(
+      `${API_URL}/api/v1/auth/refresh`,
+      { refresh_token: refreshToken },
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 10000,
+      }
+    );
+
+    const { access_token, expires_in } = response.data;
+    const expiryTime = Date.now() + expires_in * 1000;
+
+    // Store the new access token
+    Cookies.set("token", access_token, {
+      expires: 7,
+      secure: true,
+      sameSite: 'strict'
+    });
+
+    Cookies.set("token_expiry", expiryTime.toString(), {
+      expires: 7,
+      secure: true,
+      sameSite: 'strict'
+    });
+
+    logger.info(`Access token refreshed, expires at ${new Date(expiryTime).toISOString()}`);
+    return access_token;
+  } catch (error) {
+    logger.error("Failed to refresh access token", error);
+    // Clear all auth data on refresh failure
+    clearAuthData();
+    return null;
+  }
+}
+
+// Add auth token to requests with automatic refresh
+api.interceptors.request.use(async (config) => {
   const token = Cookies.get("token");
 
-  // Check if token is expired before making request
+  // Skip auth for login/register/refresh endpoints
+  const isAuthEndpoint = config.url?.includes('/auth/login') ||
+    config.url?.includes('/auth/register') ||
+    config.url?.includes('/auth/refresh');
+
+  if (isAuthEndpoint) {
+    return config;
+  }
+
+  // Check if token is expired
   if (token && isTokenExpired()) {
-    logger.warn("Token expired, clearing auth data");
-    clearAuthData();
+    logger.warn("Token expired, attempting refresh");
 
-    // Redirect to login if we're in browser
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login?expired=true';
+    // Try to refresh the token
+    if (!isRefreshing) {
+      isRefreshing = true;
+      const newToken = await refreshAccessToken();
+      isRefreshing = false;
+
+      if (newToken) {
+        notifyRefreshSubscribers(newToken);
+        config.headers.Authorization = `Bearer ${newToken}`;
+        return config;
+      } else {
+        // Refresh failed, redirect to login
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login?expired=true';
+        }
+        return Promise.reject(new Error('Token expired and refresh failed'));
+      }
+    } else {
+      // Wait for the ongoing refresh to complete
+      return new Promise((resolve) => {
+        subscribeToTokenRefresh((newToken) => {
+          config.headers.Authorization = `Bearer ${newToken}`;
+          resolve(config);
+        });
+      });
     }
+  }
 
-    return Promise.reject(new Error('Token expired'));
+  // Proactively refresh if token is expiring soon (within 5 minutes)
+  if (token && isTokenExpiringSoon() && !isRefreshing) {
+    logger.info("Token expiring soon, proactively refreshing");
+    isRefreshing = true;
+    refreshAccessToken().then((newToken) => {
+      isRefreshing = false;
+      if (newToken) {
+        notifyRefreshSubscribers(newToken);
+      }
+    });
   }
 
   if (token) {
@@ -526,7 +686,12 @@ export const auth = {
       params.append("username", email);
       params.append("password", password);
 
-      const { data } = await api.post<{ access_token: string }>(
+      const { data } = await api.post<{
+        access_token: string;
+        refresh_token: string;
+        token_type: string;
+        expires_in: number;
+      }>(
         "/api/v1/auth/login",
         params.toString(),
         {
@@ -534,17 +699,26 @@ export const auth = {
         },
       );
 
-      // Token expires in 30 minutes (backend default)
-      const expiryTime = Date.now() + (30 * 60 * 1000); // 30 minutes from now
+      // Calculate token expiry from expires_in (seconds)
+      const expiryTime = Date.now() + (data.expires_in * 1000);
 
+      // Store access token
       Cookies.set("token", data.access_token, {
         expires: 7,
         secure: true,
         sameSite: 'strict'
       });
 
+      // Store token expiry for proactive refresh
       Cookies.set("token_expiry", expiryTime.toString(), {
         expires: 7,
+        secure: true,
+        sameSite: 'strict'
+      });
+
+      // Store refresh token securely
+      Cookies.set("refresh_token", data.refresh_token, {
+        expires: 7, // Match refresh token lifetime
         secure: true,
         sameSite: 'strict'
       });
@@ -574,7 +748,7 @@ export const auth = {
 
   logout() {
     logger.info("User logging out");
-    Cookies.remove("token");
+    clearAuthData(); // Clears token, token_expiry, refresh_token, and cache
     if (typeof window !== "undefined") {
       window.location.href = "/";
     }

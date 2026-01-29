@@ -108,11 +108,49 @@ Modern alternative to JWT with opinionated security.
 
 **Why not chosen:** JWT widely understood; team familiarity more valuable.
 
+## Refresh Token Implementation (Added 2026-01-29)
+
+To improve user experience and security, we added refresh tokens:
+
+### Token Lifecycle
+
+- **Access Token**: 30 minutes (short-lived for security)
+- **Refresh Token**: 7 days (long-lived for convenience)
+
+### Flow
+
+1. User logs in -> receives both access_token and refresh_token
+2. Access token used for API requests in Authorization header
+3. When access token expires (or ~5 min before), frontend uses refresh token to get new access token
+4. If refresh token invalid/expired, user must re-login
+
+### Security Measures
+
+- Refresh tokens invalidated on password change (via `pwd_ts` claim)
+- Refresh tokens invalidated on role change
+- Unique `jti` claim in refresh tokens for potential revocation tracking
+- Token type validation prevents using access token as refresh token
+- Concurrent refresh requests handled via subscriber pattern
+
+### Frontend Implementation
+
+- Automatic token refresh in axios request interceptor
+- Proactive refresh when token has < 5 minutes remaining
+- 401 response triggers refresh attempt before failing
+- Concurrent requests queue during refresh to avoid race conditions
+- Cross-tab auth state sync via cookies
+
+### Endpoints
+
+- `POST /api/v1/auth/login`: Returns access_token + refresh_token
+- `POST /api/v1/auth/refresh`: Exchanges refresh_token for new access_token
+
 ## Future Considerations
 
-- Add refresh token rotation for longer sessions
 - Consider RS256 (asymmetric) if extracting auth to microservice
-- Implement token revocation list for logout
+- Implement refresh token rotation (issue new refresh token on each refresh)
+- Add token revocation list for immediate logout across all sessions
+- Consider sliding session with refresh token rotation
 
 ## References
 

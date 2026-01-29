@@ -90,10 +90,11 @@ class UserLogin(BaseModel):
 
 
 class Token(BaseModel):
-    """JWT token response."""
+    """JWT token response (for refresh endpoint)."""
 
     access_token: str
     token_type: str = "bearer"
+    expires_in: int | None = None  # Access token expiry in seconds (optional for backwards compat)
 
 
 class TokenWithRefresh(BaseModel):
