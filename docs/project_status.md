@@ -118,13 +118,14 @@ See [TODO_PHASE_0_STABILIZATION.md](./TODO_PHASE_0_STABILIZATION.md) for detaile
 
 ### Phase 0 Stabilization
 - [x] Security configuration review ✅ (SECURITY_AUDIT.md created)
-- [x] Backend test coverage improvement (4 comprehensive test files created)
-- [ ] Frontend test coverage improvement (target: 70%)
+- [x] Backend test coverage improvement ✅ (4 comprehensive test files created)
+- [x] Frontend test coverage improvement ✅ (4 comprehensive test files created)
 
 ### Bug Fixes
-- [ ] Payment flow edge cases
+- [x] Payment flow edge cases ✅ (circuit breaker, idempotency, retry tracking)
 - [x] Auth token expiration handling ✅ (refresh tokens implemented)
 - [x] WebSocket reconnection stability ✅ (COMPLETED 2026-01-29)
+- [x] Timezone display bugs ✅ (dual timezone display, DST handling)
 
 ### Distributed Tracing (2026-01-29)
 - ✅ OpenTelemetry integration with FastAPI
@@ -132,14 +133,33 @@ See [TODO_PHASE_0_STABILIZATION.md](./TODO_PHASE_0_STABILIZATION.md) for detaile
 - ✅ Jaeger/OTLP exporters support
 - ✅ SQLAlchemy, external API, background job tracing
 
+### Celery Migration (2026-01-29)
+- ✅ Celery workers with Redis broker
+- ✅ Persistent job queue with retry logic
+- ✅ Beat schedule for periodic tasks
+- ✅ Flower monitoring dashboard
+
+### Frontend Improvements (2026-01-29)
+- ✅ Centralized cache with SWR pattern
+- ✅ Automatic cache invalidation on mutations
+- ✅ Optimistic updates with rollback
+- ✅ Cache event subscription system
+
+### ADR Documentation (2026-01-29)
+- ✅ ADR-006: APScheduler for Background Jobs
+- ✅ ADR-007: Next.js for Frontend
+- ✅ ADR-008: MinIO for Object Storage
+- ✅ ADR-009: Brevo for Email
+- ✅ ADR-010: Booking State Machine Design
+
 ---
 
 ## Pending (Next Steps)
 
 ### Phase 0 Remaining
-- [ ] Complete backend test coverage (80%)
-- [ ] Complete frontend test coverage (70%)
-- [ ] Security audit and hardening
+- [ ] Mobile responsiveness fixes
+- [ ] UI polish (loading states, error messages)
+- [ ] Notification delivery improvements
 
 ### Phase 1: MVP Launch (Weeks 5-12)
 - [ ] AI tutor matching
@@ -147,9 +167,9 @@ See [TODO_PHASE_0_STABILIZATION.md](./TODO_PHASE_0_STABILIZATION.md) for detaile
 - [ ] Marketing integrations
 - [ ] Production deployment
 
-### Technical Debt
-- [ ] APScheduler → Celery migration
-- [ ] Distributed tracing
+### Technical Debt (Remaining)
+- [ ] Alembic migration tooling
+- [ ] Multi-region preparation
 
 ---
 

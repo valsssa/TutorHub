@@ -50,54 +50,30 @@ LOW EFFORT ───────────────┼───────
 ---
 
 ### 2. APScheduler → Celery Migration
-**Status**: 🔴 Not Started
+**Status**: 🟢 COMPLETE ✅
+**Completed**: 2026-01-29
 **Effort**: Medium
 **Impact**: High
-**Risk if Ignored**: Jobs lost on restart, no visibility, no retry logic
 
-**Current State**:
-- APScheduler runs in-process with backend
-- Jobs lost if backend restarts during execution
-- No job queue, no retry, no monitoring
+**What Was Done**:
+- ✅ Celery workers with Redis broker configured
+- ✅ Persistent job queue with Redis backend
+- ✅ Retry logic with exponential backoff and jitter
+- ✅ Flower monitoring dashboard (optional, in docker-compose)
+- ✅ Beat schedule for periodic tasks
+- ✅ APScheduler code kept for backward compatibility with deprecation notices
 
-**Target State**:
-- Celery workers with Redis broker
-- Persistent job queue
-- Retry logic with exponential backoff
-- Flower monitoring dashboard
+**Files Created**:
+- `backend/core/celery_app.py` - Celery configuration
+- `backend/tasks/__init__.py` - Task package
+- `backend/tasks/booking_tasks.py` - Migrated booking jobs
 
-**Implementation**:
-```python
-# Current (APScheduler)
-scheduler.add_job(expire_requests, 'interval', minutes=5)
-
-# Target (Celery)
-@celery_app.task(bind=True, max_retries=3)
-def expire_requests(self):
-    try:
-        # ... task logic
-    except Exception as exc:
-        self.retry(exc=exc, countdown=60)
-
-celery_app.conf.beat_schedule = {
-    'expire-requests': {
-        'task': 'tasks.expire_requests',
-        'schedule': crontab(minute='*/5'),
-    },
-}
-```
-
-**Files to Modify**:
-- `backend/core/scheduler.py` → `backend/core/celery.py`
-- `backend/modules/bookings/jobs.py`
-- `docker-compose.yml` (add Celery worker, beat)
-
-**New Files**:
-- `backend/core/celery.py`
-- `backend/tasks/`
-
-**Assigned**: [ ]
-**Target Date**: [ ]
+**Files Modified**:
+- `docker-compose.yml` - Added celery-worker, celery-beat, flower services
+- `backend/requirements.txt` - Added celery[redis], flower
+- `backend/core/scheduler.py` - Added deprecation notice
+- `backend/modules/bookings/jobs.py` - Added deprecation notice
+- `CLAUDE.md` - Documented Celery commands
 
 ---
 
@@ -233,27 +209,28 @@ celery_app.conf.beat_schedule = {
 ---
 
 ### 7. Frontend Cache Improvements
-**Status**: 🔴 Not Started
+**Status**: 🟢 COMPLETE ✅
+**Completed**: 2026-01-29
 **Effort**: Low
 **Impact**: Medium
-**Risk if Ignored**: Stale data bugs
 
-**Current State**:
-- Manual cache invalidation
-- No consistent pattern
-- Some stale data issues
+**What Was Done**:
+- ✅ Centralized cache management with `frontend/lib/cache.ts`
+- ✅ Automatic invalidation on mutations (POST/PUT/PATCH/DELETE)
+- ✅ Stale-while-revalidate (SWR) pattern implemented
+- ✅ Related cache invalidation (updating tutors invalidates favorites)
+- ✅ Optimistic update support with rollback
+- ✅ Cache event subscription system
+- ✅ React hooks: useCachedData, useMutation, useOptimisticUpdate
 
-**Target State**:
-- Automatic invalidation on mutations
-- SWR/React Query integration
-- Clear cache patterns
+**Files Created**:
+- `frontend/lib/cache.ts` - Centralized cache module
+- `frontend/hooks/useCache.ts` - React cache hooks
+- `frontend/__tests__/lib/cache.test.ts` - Cache tests
+- `frontend/__tests__/hooks/useCache.test.ts` - Hook tests
 
-**Files to Modify**:
-- `frontend/lib/api.ts`
-- `frontend/hooks/useApi.ts`
-
-**Assigned**: [ ]
-**Target Date**: [ ]
+**Files Modified**:
+- `frontend/lib/api.ts` - Integrated with cache module
 
 ---
 
@@ -285,31 +262,24 @@ celery_app.conf.beat_schedule = {
 ## Low Priority (Nice to Have)
 
 ### 9. Architecture Decision Records
-**Status**: 🟡 Partial
+**Status**: 🟢 COMPLETE ✅
+**Completed**: 2026-01-29
 **Effort**: Low
 **Impact**: Low
-**Risk if Ignored**: Onboarding friction, lost context
 
-**Current State**:
-- 5 ADRs exist in `docs/architecture/decisions/`
-- Many decisions undocumented
+**What Was Done**:
+- ✅ 10 ADRs now exist in `docs/architecture/decisions/`
+- ✅ All major decisions documented
+- ✅ Template in use consistently
 
-**Target State**:
-- ADRs for all major decisions
-- Template in use
-- New decisions documented
-
-**ADRs to Create**:
-- [ ] ADR-006: APScheduler for Background Jobs
-- [ ] ADR-007: Next.js for Frontend
-- [ ] ADR-008: MinIO for Object Storage
-- [ ] ADR-009: Brevo for Email
-- [ ] ADR-010: Booking State Machine Design
+**ADRs Created**:
+- ✅ ADR-006: APScheduler for Background Jobs
+- ✅ ADR-007: Next.js for Frontend
+- ✅ ADR-008: MinIO for Object Storage
+- ✅ ADR-009: Brevo for Email
+- ✅ ADR-010: Booking State Machine Design
 
 **Files Location**: `docs/architecture/decisions/`
-
-**Assigned**: [ ]
-**Target Date**: [ ]
 
 ---
 
@@ -398,7 +368,9 @@ celery_app.conf.beat_schedule = {
 | Feature Flags | ✅ Complete | 2026-01-29 |
 | Load Testing | ✅ Complete | 2026-01-29 |
 | Distributed Tracing | ✅ Complete | 2026-01-29 |
-| APScheduler→Celery | 🔴 Not Started | - |
+| APScheduler→Celery | ✅ Complete | 2026-01-29 |
+| Frontend Cache | ✅ Complete | 2026-01-29 |
+| ADRs | ✅ Complete | 2026-01-29 |
 | Multi-region prep | 🔴 Not Started | - |
 | Alembic | 🔴 Not Started | - |
 

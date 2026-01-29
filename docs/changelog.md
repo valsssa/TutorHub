@@ -25,6 +25,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Refresh token support for authentication (`backend/modules/auth/presentation/api.py`)
 - WebSocket stability improvements (reconnection, message queue, ack system)
 - Backend test coverage expansion (payments, auth, tutor approval, packages)
+- Frontend test coverage expansion (api, featureFlags, useWebSocket, ProtectedRoute, cache)
+- Celery task queue migration (`backend/core/celery_app.py`, `backend/tasks/`)
+- Payment reliability module with circuit breaker (`backend/core/payment_reliability.py`)
+- Frontend cache improvements with SWR pattern (`frontend/lib/cache.ts`, `frontend/hooks/useCache.ts`)
+- Timezone display fixes with dual timezone support
+- 5 new Architecture Decision Records (ADR-006 through ADR-010)
 
 ### Changed
 - Standardized currency fields across tables
