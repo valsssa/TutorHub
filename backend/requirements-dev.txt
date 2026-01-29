@@ -1,0 +1,43 @@
+# =============================================================================
+# Development Requirements - Includes testing, linting, optional features
+# Use: pip install -r requirements-dev.txt
+# =============================================================================
+
+# Include production requirements
+-r requirements-prod.txt
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.8
+
+# Linting & Formatting
+ruff>=0.1.0
+black>=23.0.0
+isort>=5.0.0
+mypy>=1.0.0
+
+# Type stubs
+types-redis
+types-requests
+types-Pillow
+
+# Celery Monitoring (optional)
+flower==2.0.1
+
+# Google Integration (optional)
+google-api-python-client==2.111.0
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0
+
+# Legacy Scheduler (deprecated, kept for compatibility)
+apscheduler==3.10.4
+
+# OpenTelemetry (optional - disabled by default)
+opentelemetry-api==1.22.0
+opentelemetry-sdk==1.22.0
+opentelemetry-instrumentation-fastapi==0.43b0
+opentelemetry-instrumentation-sqlalchemy==0.43b0
+opentelemetry-instrumentation-httpx==0.43b0
+opentelemetry-instrumentation-requests==0.43b0
+opentelemetry-exporter-otlp==1.22.0
+opentelemetry-exporter-jaeger==1.21.0

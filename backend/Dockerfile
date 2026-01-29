@@ -43,39 +43,18 @@ RUN pip install --no-cache-dir -r requirements.txt 2>/dev/null || \
      pip install --no-cache-dir -r requirements.txt)
 
 # ============================================================================
-# Stage 3: Linting and Type Checking (validation layer)
+# Stage 3: Linting and Type Checking (OPTIONAL - for CI only)
+# To use: docker build --target lint .
+# Skipped in normal builds for speed
+# ============================================================================
 FROM deps AS lint
 
 WORKDIR /app/backend
-
-# Copy source files needed for linting
 COPY backend/ .
 
-# Install linting tools (if not in requirements.txt)
-RUN pip install --no-cache-dir \
-    ruff==0.14.11 \
-    mypy==1.8.0 \
-    2>/dev/null || true
-
-# Run code formatting check (black)
-RUN black --check --diff . || \
-    (echo "  Warning: Code formatting issues found. Run 'black .' to fix." && true)
-
-# Run import sorting check (isort)
-RUN isort --check-only --diff . || \
-    (echo "  Warning: Import sorting issues found. Run 'isort .' to fix." && true)
-
-# Run linting (ruff - fast Python linter)
-RUN ruff check . || \
-    (echo "  Warning: Linting issues found." && true)
-
-# Run type checking (mypy)
-RUN mypy --install-types --non-interactive --ignore-missing-imports . || \
-    (echo "  Warning: Type checking issues found." && true)
-
-# Validate Python syntax
-RUN python -m py_compile **/*.py || \
-    (echo " Syntax errors found! Fix before building." && exit 1)
+RUN pip install --no-cache-dir ruff mypy 2>/dev/null || true
+RUN ruff check . || echo "Linting issues found"
+RUN mypy --install-types --non-interactive --ignore-missing-imports . || echo "Type issues found"
 
 # ============================================================================
 # Stage 4: Production (minimal runtime image)

@@ -8,7 +8,7 @@ interface ViewNotesModalProps {
   booking: BookingDTO | null;
   isOpen: boolean;
   onClose: () => void;
-  userRole: "student" | "tutor" | "admin";
+  userRole: "student" | "tutor" | "admin" | "owner";
 }
 
 export default function ViewNotesModal({

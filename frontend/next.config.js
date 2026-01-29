@@ -2,6 +2,7 @@ const { withSentryConfig } = require("@sentry/nextjs");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone', // Standalone output for minimal Docker images
   reactStrictMode: true,
   swcMinify: true, // Enable SWC minification for better performance
   poweredByHeader: false, // Remove X-Powered-By header for security

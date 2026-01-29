@@ -14,7 +14,7 @@ import {
   FiTrendingUp
 } from "react-icons/fi";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { auth, students } from "@/lib/api";
+import api, { auth, students } from "@/lib/api";
 import { User, StudentProfile } from "@/types";
 import { useToast } from "@/components/ToastContainer";
 import LoadingSpinner from "@/components/LoadingSpinner";

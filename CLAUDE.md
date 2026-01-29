@@ -12,10 +12,33 @@ EduStream is a student-tutor booking platform MVP with role-based access control
 
 ## Essential Commands
 
-### Development
+### Fast Development (Recommended)
 
 ```bash
-# Start all services (always use Docker, never run services directly)
+# Quick start with Makefile (recommended)
+make dev          # Start dev environment (backend + frontend + db)
+make minimal      # Start minimal (backend + db + redis only) - FASTEST
+make full         # Start all services including Celery workers
+
+# Or use docker-compose.fast.yml directly
+docker compose -f docker-compose.fast.yml up db redis backend -d        # Minimal
+docker compose -f docker-compose.fast.yml up db redis minio backend frontend -d  # Dev
+docker compose -f docker-compose.fast.yml --profile workers up -d       # Full
+
+# View logs
+make logs         # All services
+make logs-b       # Backend only
+make logs-f       # Frontend only
+
+# Stop and clean
+make stop         # Stop all services
+make clean        # Stop and remove volumes
+```
+
+### Standard Development (Legacy)
+
+```bash
+# Start all services (slower, includes lint stages)
 docker compose up --build -d
 
 # View logs
@@ -24,6 +47,16 @@ docker compose logs -f frontend
 
 # Clean reset (removes volumes)
 docker compose down -v
+```
+
+### Production Build
+
+```bash
+# Build production images
+docker compose -f docker-compose.prod.yml build --parallel
+
+# Deploy production
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 ### Testing

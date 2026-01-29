@@ -6,7 +6,10 @@ import { X, Save } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppShell from "@/components/AppShell";
 import { auth, tutorStudentNotes } from "@/lib/api";
+import { createLogger } from "@/lib/logger";
 import { User } from "@/types";
+
+const logger = createLogger('EditStudentNotes');
 import LoadingSpinner from "@/components/LoadingSpinner";
 import TextArea from "@/components/TextArea";
 import { useToast } from "@/components/ToastContainer";

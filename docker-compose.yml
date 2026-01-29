@@ -1,22 +1,37 @@
+# =============================================================================
+# EduStream Docker Compose - Main Configuration
+# All variables are loaded from .env file - DO NOT hardcode values here
+# =============================================================================
+
 services:
+  # ---------------------------------------------------------------------------
+  # Database
+  # ---------------------------------------------------------------------------
   db:
+    container_name: edustream-db
     image: postgres:17-alpine
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-authapp}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
   redis:
+    container_name: edustream-redis
     image: redis:7-alpine
     ports:
       - "6379:6379"
@@ -28,100 +43,46 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # MinIO (Object Storage)
+  # ---------------------------------------------------------------------------
   minio:
+    container_name: edustream-minio
     image: minio/minio:RELEASE.2024-07-26T20-48-21Z
     command: server /data --console-address ":9001"
+    env_file:
+      - .env
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - minio_data:/data
 
+  # ---------------------------------------------------------------------------
+  # Backend API
+  # ---------------------------------------------------------------------------
   backend:
+    container_name: edustream-backend
     build:
       context: .
       dockerfile: backend/Dockerfile
+      target: production
+      cache_from:
+        - edustream-backend:latest
+    image: edustream-backend:latest
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-authapp}
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
-      ALGORITHM: ${ALGORITHM:-HS256}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://edustream.valsa.solutions,http://edustream.valsa.solutions}
-      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
-      REGISTRATION_RATE_LIMIT_PER_MINUTE: ${REGISTRATION_RATE_LIMIT_PER_MINUTE:-5}
-      LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-10}
-      # Redis Configuration
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      # Account Lockout (Brute-force Protection)
-      ACCOUNT_LOCKOUT_MAX_ATTEMPTS: ${ACCOUNT_LOCKOUT_MAX_ATTEMPTS:-5}
-      ACCOUNT_LOCKOUT_DURATION_SECONDS: ${ACCOUNT_LOCKOUT_DURATION_SECONDS:-900}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@example.com}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
-      DEFAULT_TUTOR_EMAIL: ${DEFAULT_TUTOR_EMAIL:-tutor@example.com}
-      DEFAULT_TUTOR_PASSWORD: ${DEFAULT_TUTOR_PASSWORD:-tutor123}
-      DEFAULT_STUDENT_EMAIL: ${DEFAULT_STUDENT_EMAIL:-student@example.com}
-      DEFAULT_STUDENT_PASSWORD: ${DEFAULT_STUDENT_PASSWORD:-student123}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
-      MINIO_BUCKET: ${MINIO_BUCKET:-tutor-assets}
-      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT}
-      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
-      AVATAR_STORAGE_ENDPOINT: ${AVATAR_STORAGE_ENDPOINT:-http://minio:9000}
-      AVATAR_STORAGE_ACCESS_KEY: ${AVATAR_STORAGE_ACCESS_KEY:-minioadmin}
-      AVATAR_STORAGE_SECRET_KEY: ${AVATAR_STORAGE_SECRET_KEY:-minioadmin123}
-      AVATAR_STORAGE_BUCKET: ${AVATAR_STORAGE_BUCKET:-user-avatars}
-      AVATAR_STORAGE_REGION: ${AVATAR_STORAGE_REGION:-}
-      AVATAR_STORAGE_PUBLIC_ENDPOINT: ${AVATAR_STORAGE_PUBLIC_ENDPOINT}
-      AVATAR_STORAGE_USE_SSL: ${AVATAR_STORAGE_USE_SSL:-true}
-      AVATAR_STORAGE_URL_TTL_SECONDS: ${AVATAR_STORAGE_URL_TTL_SECONDS:-300}
-      AVATAR_STORAGE_DEFAULT_URL: ${AVATAR_STORAGE_DEFAULT_URL:-https://placehold.co/300x300?text=Avatar}
-      # Stripe Payment Configuration
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      STRIPE_CONNECT_CLIENT_ID: ${STRIPE_CONNECT_CLIENT_ID}
-      STRIPE_CURRENCY: ${STRIPE_CURRENCY:-usd}
-      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-https://edustream.valsa.solutions/bookings/{booking_id}?payment=success}
-      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-https://edustream.valsa.solutions/bookings/{booking_id}?payment=cancelled}
-      STRIPE_CONNECT_REFRESH_URL: ${STRIPE_CONNECT_REFRESH_URL:-https://edustream.valsa.solutions/tutor/earnings?connect=refresh}
-      STRIPE_CONNECT_RETURN_URL: ${STRIPE_CONNECT_RETURN_URL:-https://edustream.valsa.solutions/tutor/earnings?connect=success}
-      # Google OAuth
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-https://api.valsa.solutions/api/auth/google/callback}
-      GOOGLE_CALENDAR_REDIRECT_URI: ${GOOGLE_CALENDAR_REDIRECT_URI:-https://api.valsa.solutions/api/integrations/calendar/callback}
-      OAUTH_STATE_SECRET: ${OAUTH_STATE_SECRET}
-      # Brevo Email
-      BREVO_API_KEY: ${BREVO_API_KEY}
-      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-noreply@edustream.valsa.solutions}
-      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-EduStream}
-      EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
-      # Zoom Integration
-      ZOOM_CLIENT_ID: ${ZOOM_CLIENT_ID}
-      ZOOM_CLIENT_SECRET: ${ZOOM_CLIENT_SECRET}
-      ZOOM_ACCOUNT_ID: ${ZOOM_ACCOUNT_ID}
-      ZOOM_REDIRECT_URI: ${ZOOM_REDIRECT_URI:-https://edustream.valsa.solutions/api/integrations/zoom/callback}
-      # Frontend URLs
-      FRONTEND_URL: ${FRONTEND_URL:-https://edustream.valsa.solutions}
-      FRONTEND_LOGIN_SUCCESS_URL: ${FRONTEND_LOGIN_SUCCESS_URL:-https://edustream.valsa.solutions/dashboard}
-      FRONTEND_LOGIN_ERROR_URL: ${FRONTEND_LOGIN_ERROR_URL:-https://edustream.valsa.solutions/login?error=oauth_failed}
-      # Distributed Tracing (OpenTelemetry)
-      TRACING_ENABLED: ${TRACING_ENABLED:-false}
-      TRACING_EXPORTER: ${TRACING_EXPORTER:-console}
-      TRACING_SERVICE_NAME: ${TRACING_SERVICE_NAME:-edustream-api}
-      TRACING_SAMPLE_RATE: ${TRACING_SAMPLE_RATE:-1.0}
-      JAEGER_AGENT_HOST: ${JAEGER_AGENT_HOST:-jaeger}
-      JAEGER_AGENT_PORT: ${JAEGER_AGENT_PORT:-6831}
-      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-http://jaeger:4317}
+      # Constructed URLs (must reference container names)
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
     depends_on:
       db:
         condition: service_healthy
@@ -130,19 +91,24 @@ services:
       minio:
         condition: service_started
 
+  # ---------------------------------------------------------------------------
+  # Frontend
+  # ---------------------------------------------------------------------------
   frontend:
+    container_name: edustream-frontend
     build:
       context: ./frontend
+      target: runner
+      cache_from:
+        - edustream-frontend:latest
       args:
-        NODE_OPTIONS: "--max-old-space-size=2048"
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions}
-        NEXT_PUBLIC_LOG_LEVEL: ${NEXT_PUBLIC_LOG_LEVEL:-INFO}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_LOG_LEVEL: ${NEXT_PUBLIC_LOG_LEVEL}
+    image: edustream-frontend:latest
     ports:
       - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions}
-      NEXT_PUBLIC_LOG_LEVEL: ${NEXT_PUBLIC_LOG_LEVEL:-INFO}
-      NODE_ENV: ${NODE_ENV:-production}
+    env_file:
+      - .env
     depends_on:
       - backend
     deploy:
@@ -150,22 +116,20 @@ services:
         limits:
           memory: 4G
 
-  # ==========================================================================
+  # ---------------------------------------------------------------------------
   # Celery Worker - Background Task Processing
-  # Handles booking state transitions and other async tasks
-  # ==========================================================================
+  # ---------------------------------------------------------------------------
   celery-worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    container_name: edustream-celery-worker
+    image: edustream-backend:latest
     command: celery -A core.celery_app worker --loglevel=info --concurrency=2 -Q bookings,celery
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-authapp}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
     depends_on:
       db:
         condition: service_healthy
@@ -177,22 +141,20 @@ services:
           memory: 512M
     restart: unless-stopped
 
-  # ==========================================================================
+  # ---------------------------------------------------------------------------
   # Celery Beat - Periodic Task Scheduler
-  # Schedules recurring tasks (expire requests, start/end sessions)
-  # ==========================================================================
+  # ---------------------------------------------------------------------------
   celery-beat:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    container_name: edustream-celery-beat
+    image: edustream-backend:latest
     command: celery -A core.celery_app beat --loglevel=info
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-authapp}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
     depends_on:
       - celery-worker
       - redis
@@ -202,59 +164,40 @@ services:
           memory: 256M
     restart: unless-stopped
 
-  # ==========================================================================
-  # Flower - Celery Monitoring Dashboard (Optional)
-  # Uncomment to enable real-time task monitoring
-  # ==========================================================================
+  # ---------------------------------------------------------------------------
+  # Flower - Celery Monitoring (Optional)
+  # ---------------------------------------------------------------------------
   # flower:
-  #   build:
-  #     context: .
-  #     dockerfile: backend/Dockerfile
+  #   container_name: edustream-flower
+  #   image: edustream-backend:latest
   #   command: celery -A core.celery_app flower --port=5555
   #   ports:
   #     - "5555:5555"
+  #   env_file:
+  #     - .env
   #   environment:
-  #     CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
-  #     CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
-  #     FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-admin:admin}  # Set in production!
+  #     CELERY_BROKER_URL: redis://redis:6379/1
+  #     CELERY_RESULT_BACKEND: redis://redis:6379/2
   #   depends_on:
   #     - celery-worker
-  #     - redis
   #   deploy:
   #     resources:
   #       limits:
   #         memory: 256M
-  #
-  # To enable Flower monitoring:
-  # 1. Uncomment the flower service above
-  # 2. Set FLOWER_BASIC_AUTH environment variable for production
-  # 3. Access Flower UI at http://localhost:5555
 
-  # ==========================================================================
+  # ---------------------------------------------------------------------------
   # Jaeger - Distributed Tracing (Optional)
-  # Uncomment to enable distributed tracing visualization
-  # ==========================================================================
+  # ---------------------------------------------------------------------------
   # jaeger:
+  #   container_name: edustream-jaeger
   #   image: jaegertracing/all-in-one:1.54
   #   environment:
   #     COLLECTOR_OTLP_ENABLED: "true"
   #   ports:
-  #     - "16686:16686"  # Jaeger UI
-  #     - "4317:4317"    # OTLP gRPC
-  #     - "4318:4318"    # OTLP HTTP
-  #     - "6831:6831/udp"  # Jaeger Thrift compact
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "wget --spider --quiet http://localhost:16686/ || exit 1"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #
-  # To enable Jaeger tracing:
-  # 1. Uncomment the jaeger service above
-  # 2. Set environment variables:
-  #    TRACING_ENABLED=true
-  #    TRACING_EXPORTER=otlp  (or jaeger)
-  # 3. Access Jaeger UI at http://localhost:16686
+  #     - "16686:16686"
+  #     - "4317:4317"
+  #     - "4318:4318"
+  #     - "6831:6831/udp"
 
 volumes:
   postgres_data:

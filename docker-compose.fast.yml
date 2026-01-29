@@ -1,0 +1,174 @@
+# =============================================================================
+# FAST Docker Compose - Optimized for Speed
+# All variables are loaded from .env file - DO NOT hardcode values here
+# Use: docker compose -f docker-compose.fast.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Database
+  # ---------------------------------------------------------------------------
+  db:
+    container_name: edustream-dev-db
+    image: postgres:17-alpine
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
+  redis:
+    container_name: edustream-dev-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # MinIO (Object Storage)
+  # ---------------------------------------------------------------------------
+  minio:
+    container_name: edustream-dev-minio
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data_dev:/data
+
+  # ---------------------------------------------------------------------------
+  # Backend (Fast Build)
+  # ---------------------------------------------------------------------------
+  backend:
+    container_name: edustream-dev-backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.fast
+      target: development
+    image: edustream-backend:dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend:cached
+      - ./database:/app/database:cached
+    env_file:
+      - .env
+    environment:
+      # Database (constructed from .env vars)
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      # Override for local development
+      MINIO_ENDPOINT: http://minio:9000
+      AVATAR_STORAGE_ENDPOINT: http://minio:9000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Fast Build)
+  # ---------------------------------------------------------------------------
+  frontend:
+    container_name: edustream-dev-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.fast
+      target: development
+    image: edustream-frontend:dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+      - /app/.next
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      # Override API URL for local development
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker (uses same backend image)
+  # ---------------------------------------------------------------------------
+  celery-worker:
+    container_name: edustream-dev-celery-worker
+    image: edustream-backend:dev
+    command: celery -A core.celery_app worker --loglevel=info --concurrency=2
+    volumes:
+      - ./backend:/app/backend:cached
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      - backend
+      - redis
+    profiles:
+      - workers
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat (uses same backend image)
+  # ---------------------------------------------------------------------------
+  celery-beat:
+    container_name: edustream-dev-celery-beat
+    image: edustream-backend:dev
+    command: celery -A core.celery_app beat --loglevel=info
+    volumes:
+      - ./backend:/app/backend:cached
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      - celery-worker
+    profiles:
+      - workers
+    restart: unless-stopped
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+  minio_data_dev:
