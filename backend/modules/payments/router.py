@@ -13,8 +13,8 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Header, HTTPException, Request, status
-from pydantic import BaseModel
-from sqlalchemy import update
+from pydantic import BaseModel, field_validator
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from core.dependencies import CurrentUser, DatabaseSession
@@ -24,7 +24,7 @@ from core.stripe_client import (
     format_amount_for_display,
     verify_webhook_signature,
 )
-from models import Booking, Payment, StudentProfile, TutorProfile, WebhookEvent
+from models import Booking, Payment, Refund, StudentProfile, TutorProfile, WebhookEvent
 
 logger = logging.getLogger(__name__)
 
@@ -63,17 +63,35 @@ class PaymentStatusResponse(BaseModel):
 
 
 class RefundRequest(BaseModel):
-    """Refund request."""
+    """Refund request.
+
+    Supports both full and partial refunds. If amount_cents is not provided,
+    a full refund of the remaining refundable amount will be processed.
+    """
+
     booking_id: int
+    amount_cents: int | None = None
     reason: str | None = None
+
+    @field_validator("amount_cents")
+    @classmethod
+    def validate_amount_positive(cls, v: int | None) -> int | None:
+        """Ensure amount is positive if provided."""
+        if v is not None and v <= 0:
+            msg = "Refund amount must be positive"
+            raise ValueError(msg)
+        return v
 
 
 class RefundResponse(BaseModel):
     """Refund response."""
+
     booking_id: int
     refund_id: str
     amount_cents: int
     status: str
+    total_refunded_cents: int
+    remaining_refundable_cents: int
 
 
 # ============================================================================
@@ -148,12 +166,28 @@ async def create_checkout(
             detail="Booking is already paid",
         )
 
-    # Get tutor's Connect account (if they have one)
+    # Get tutor's Connect account (if they have one and it's fully verified)
     tutor_connect_account_id = None
     if booking.tutor_profile:
         tutor_profile = booking.tutor_profile
-        # Check if tutor has stripe_account_id (you may need to add this field)
-        tutor_connect_account_id = getattr(tutor_profile, 'stripe_account_id', None)
+        stripe_account_id = getattr(tutor_profile, 'stripe_account_id', None)
+
+        if stripe_account_id:
+            # Check if Connect account is fully verified with payouts enabled
+            payouts_enabled = getattr(tutor_profile, 'stripe_payouts_enabled', False)
+            charges_enabled = getattr(tutor_profile, 'stripe_charges_enabled', False)
+
+            if payouts_enabled and charges_enabled:
+                tutor_connect_account_id = stripe_account_id
+            else:
+                # Tutor has Connect account but it's not fully onboarded
+                # Funds will be held on platform until tutor completes verification
+                logger.warning(
+                    f"Tutor {tutor_profile.id} (user_id={tutor_profile.user_id}) has Connect "
+                    f"account {stripe_account_id} but payouts_enabled={payouts_enabled}, "
+                    f"charges_enabled={charges_enabled}. Creating payment without destination "
+                    f"transfer - funds will be held on platform for admin review."
+                )
 
     # Create checkout session
     session = create_checkout_session(
@@ -527,6 +561,9 @@ async def request_refund(
     """
     Process a refund for a booking.
 
+    Supports both full and partial refunds. Validates that cumulative refunds
+    do not exceed the original payment amount.
+
     Currently admin-only. In the future, may allow automatic refunds
     based on cancellation policy.
     """
@@ -547,12 +584,12 @@ async def request_refund(
             detail="Booking not found",
         )
 
-    # Get payment
+    # Get payment - allow refunds on completed or partially_refunded payments
     payment = (
         db.query(Payment)
         .filter(
             Payment.booking_id == booking.id,
-            Payment.status == "completed",
+            Payment.status.in_(["completed", "partially_refunded"]),
         )
         .first()
     )
@@ -569,9 +606,56 @@ async def request_refund(
             detail="Payment was not processed through Stripe",
         )
 
-    # Process refund
-    refund = create_refund(
+    # Calculate total already refunded for this payment
+    total_refunded: int = (
+        db.query(func.coalesce(func.sum(Refund.amount_cents), 0))
+        .filter(Refund.payment_id == payment.id)
+        .scalar()
+    )
+
+    # Calculate maximum refundable amount
+    max_refundable = payment.amount_cents - total_refunded
+
+    if max_refundable <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Payment has already been fully refunded",
+        )
+
+    # Determine refund amount
+    if request.amount_cents is None:
+        # Full refund of remaining amount
+        refund_amount_cents = max_refundable
+    else:
+        refund_amount_cents = request.amount_cents
+
+    # Validate refund amount doesn't exceed remaining refundable amount
+    if refund_amount_cents > max_refundable:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Refund amount ({refund_amount_cents} cents) exceeds "
+                f"remaining refundable amount ({max_refundable} cents). "
+                f"Original payment: {payment.amount_cents} cents, "
+                f"already refunded: {total_refunded} cents."
+            ),
+        )
+
+    # Map reason to valid Refund model enum value
+    reason_mapping = {
+        "student_cancel": "STUDENT_CANCEL",
+        "tutor_cancel": "TUTOR_CANCEL",
+        "no_show_tutor": "NO_SHOW_TUTOR",
+        "goodwill": "GOODWILL",
+    }
+    refund_reason = reason_mapping.get(
+        (request.reason or "").lower().replace(" ", "_"), "OTHER"
+    )
+
+    # Process refund through Stripe
+    stripe_refund = create_refund(
         payment_intent_id=payment.stripe_payment_intent_id,
+        amount_cents=refund_amount_cents,
         reason="requested_by_customer",
         metadata={
             "booking_id": str(booking.id),
@@ -580,36 +664,66 @@ async def request_refund(
         },
     )
 
+    # Create Refund record to track this refund
+    refund_record = Refund(
+        payment_id=payment.id,
+        booking_id=booking.id,
+        amount_cents=refund_amount_cents,
+        currency=payment.currency,
+        reason=refund_reason,
+        provider_refund_id=stripe_refund.id,
+        refund_metadata={
+            "admin_user_id": current_user.id,
+            "reason_text": request.reason or "Admin refund",
+        },
+    )
+    db.add(refund_record)
+
+    # Calculate new totals
+    new_total_refunded = total_refunded + refund_amount_cents
+    new_remaining_refundable = payment.amount_cents - new_total_refunded
+
     # Update payment record
-    payment.status = "refunded"
+    if new_remaining_refundable == 0:
+        payment.status = "refunded"
+    else:
+        payment.status = "partially_refunded"
+
     payment.refunded_at = datetime.now(UTC)
-    payment.refund_amount_cents = refund.amount
+    payment.refund_amount_cents = new_total_refunded
 
-    # Update booking status
-    booking.status = "REFUNDED"
-    booking.updated_at = datetime.now(UTC)
+    # Update booking status only for full refunds
+    if new_remaining_refundable == 0:
+        booking.status = "REFUNDED"
+        booking.updated_at = datetime.now(UTC)
 
-    # Restore package credit if this was a package booking
-    if booking.package_id:
-        from modules.bookings.service import BookingService
+        # Restore package credit if this was a package booking (only on full refund)
+        if booking.package_id:
+            from modules.bookings.service import BookingService
 
-        service = BookingService(db)
-        restored = service._restore_package_credit(booking.package_id)
-        if restored:
-            logger.info(f"Restored package credit for booking {booking.id}, package {booking.package_id}")
+            service = BookingService(db)
+            restored = service._restore_package_credit(booking.package_id)
+            if restored:
+                logger.info(
+                    f"Restored package credit for booking {booking.id}, "
+                    f"package {booking.package_id}"
+                )
 
     db.commit()
 
     logger.info(
-        f"Refund {refund.id} processed for booking {booking.id} "
-        f"by admin {current_user.id}"
+        f"Refund {stripe_refund.id} processed for booking {booking.id} "
+        f"by admin {current_user.id}: {refund_amount_cents} cents "
+        f"(total refunded: {new_total_refunded}/{payment.amount_cents} cents)"
     )
 
     return RefundResponse(
         booking_id=booking.id,
-        refund_id=refund.id,
-        amount_cents=refund.amount,
+        refund_id=stripe_refund.id,
+        amount_cents=refund_amount_cents,
         status="succeeded",
+        total_refunded_cents=new_total_refunded,
+        remaining_refundable_cents=new_remaining_refundable,
     )
 
 

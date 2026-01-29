@@ -1,10 +1,35 @@
 """
 APScheduler setup for background jobs.
 
+DEPRECATION NOTICE:
+    This module is deprecated in favor of Celery workers.
+    See backend/core/celery_app.py and backend/tasks/booking_tasks.py.
+
+    APScheduler limitations that led to migration:
+    - Jobs run in-process with backend, lost if backend restarts
+    - No persistent job queue
+    - No retry logic with exponential backoff
+    - No monitoring dashboard
+
+    The APScheduler code is retained for:
+    - Backwards compatibility during incremental migration
+    - Fallback if Celery infrastructure is not available
+    - Reference implementation
+
+    To switch to Celery:
+    1. Ensure celery-worker and celery-beat services are running
+    2. Comment out lifespan_scheduler usage in main.py
+    3. Jobs will run via Celery Beat schedule
+
+    Migration timeline:
+    - Phase 1 (current): Celery infrastructure added, APScheduler still active
+    - Phase 2: Switch to Celery, APScheduler disabled
+    - Phase 3: Remove APScheduler code entirely
+
 Handles auto-transition jobs for booking state management:
-- expire_requests: REQUESTED → EXPIRED (every 5 min, 24h timeout)
-- start_sessions: SCHEDULED → ACTIVE (every 1 min, at start_time)
-- end_sessions: ACTIVE → ENDED (every 1 min, at end_time + grace)
+- expire_requests: REQUESTED -> EXPIRED (every 5 min, 24h timeout)
+- start_sessions: SCHEDULED -> ACTIVE (every 1 min, at start_time)
+- end_sessions: ACTIVE -> ENDED (every 1 min, at end_time + grace)
 """
 
 import logging

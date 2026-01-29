@@ -32,22 +32,31 @@ class UserRepository:
         )
 
     def find_by_email(self, email: str) -> UserEntity | None:
-        """Find user by email (case-insensitive)."""
+        """Find user by email (case-insensitive), excluding soft-deleted users."""
         from sqlalchemy import func
 
-        user = self.db.query(User).filter(func.lower(User.email) == email.lower()).first()
+        user = self.db.query(User).filter(
+            func.lower(User.email) == email.lower(),
+            User.deleted_at.is_(None),
+        ).first()
         return self._to_entity(user) if user else None
 
     def find_by_id(self, user_id: int) -> UserEntity | None:
-        """Find user by ID."""
-        user = self.db.query(User).filter(User.id == user_id).first()
+        """Find user by ID, excluding soft-deleted users."""
+        user = self.db.query(User).filter(
+            User.id == user_id,
+            User.deleted_at.is_(None),
+        ).first()
         return self._to_entity(user) if user else None
 
     def exists_by_email(self, email: str) -> bool:
-        """Check if user exists by email."""
+        """Check if user exists by email, excluding soft-deleted users."""
         from sqlalchemy import func
 
-        return self.db.query(User).filter(func.lower(User.email) == email.lower()).first() is not None
+        return self.db.query(User).filter(
+            func.lower(User.email) == email.lower(),
+            User.deleted_at.is_(None),
+        ).first() is not None
 
     def create(self, entity: UserEntity) -> UserEntity:
         """Create new user."""
@@ -98,8 +107,8 @@ class UserRepository:
         return True
 
     def find_all(self, skip: int = 0, limit: int = 100, active_only: bool = False) -> list[UserEntity]:
-        """Find all users with pagination."""
-        query = self.db.query(User)
+        """Find all users with pagination, excluding soft-deleted users."""
+        query = self.db.query(User).filter(User.deleted_at.is_(None))
 
         if active_only:
             query = query.filter(User.is_active.is_(True))
@@ -108,8 +117,8 @@ class UserRepository:
         return [self._to_entity(user) for user in users]
 
     def count(self, active_only: bool = False) -> int:
-        """Count total users."""
-        query = self.db.query(User)
+        """Count total users, excluding soft-deleted users."""
+        query = self.db.query(User).filter(User.deleted_at.is_(None))
 
         if active_only:
             query = query.filter(User.is_active.is_(True))
@@ -117,6 +126,9 @@ class UserRepository:
         return query.count()
 
     def find_by_role(self, role: str, skip: int = 0, limit: int = 100) -> list[UserEntity]:
-        """Find users by role with pagination."""
-        users = self.db.query(User).filter(User.role == role).offset(skip).limit(limit).all()
+        """Find users by role with pagination, excluding soft-deleted users."""
+        users = self.db.query(User).filter(
+            User.role == role,
+            User.deleted_at.is_(None),
+        ).offset(skip).limit(limit).all()
         return [self._to_entity(user) for user in users]

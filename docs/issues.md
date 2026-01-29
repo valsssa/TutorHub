@@ -13,8 +13,8 @@ This document identifies **68 borderline cases** across the EduStream platform, 
 
 | Severity | Count | Fixed | Remaining | Description |
 |----------|-------|-------|-----------|-------------|
-| **CRITICAL** | 12 | 6 | 6 | Data loss, financial loss, security breach |
-| **HIGH** | 24 | 4 | 20 | Significant user impact, race conditions |
+| **CRITICAL** | 12 | 7 | 5 | Data loss, financial loss, security breach |
+| **HIGH** | 24 | 9 | 15 | Significant user impact, race conditions |
 | **MEDIUM** | 22 | 0 | 22 | Poor UX, inconsistent state, operational issues |
 | **LOW** | 10 | 0 | 10 | Minor inconsistencies, edge cases unlikely to occur |
 
@@ -37,11 +37,19 @@ This document identifies **68 borderline cases** across the EduStream platform, 
 | **7.1 No Optimistic Locking** | HIGH | Version column + increment on state changes | `models/bookings.py`, `bookings/state_machine.py`, migration 035 |
 | **State Machine Races** | HIGH | Idempotent transitions for all state methods | `bookings/state_machine.py` |
 
+| **1.4 Dual No-Show Reports** | HIGH | Row locking + auto-escalate to dispute | `bookings/state_machine.py`, `bookings/api.py` |
+| **1.6 Dispute on Refunded Booking** | HIGH | Payment state validation | `bookings/state_machine.py` |
+| **2.5 Package Credit Restore** | HIGH | restore_package_credit flag | `bookings/state_machine.py`, `bookings/service.py`, `payments/router.py` |
+| **3.3 OAuth State in Memory** | HIGH | Redis-backed state storage | `core/oauth_state.py`, `auth/oauth_router.py` |
+| **3.6 Account Lockout** | HIGH | Redis-backed lockout tracking | `core/account_lockout.py`, `auth/api.py` |
+| **6.1 DST Availability Bug** | CRITICAL | Timezone column + ZoneInfo conversion | `models/tutors.py`, `availability_api.py`, migration 037 |
+
 ### New Migrations Created
 - `035_add_booking_overlap_constraint.sql` - Exclusion constraint for double-booking prevention
 - `035_add_booking_version_column.sql` - Version column for optimistic locking
 - `035_create_webhook_events.sql` - Webhook idempotency tracking
 - `036_add_password_changed_at.sql` - Token invalidation support
+- `037_add_availability_timezone.sql` - Timezone support for tutor availability
 
 ---
 
@@ -187,7 +195,9 @@ sessions_to_start = db.query(Booking).filter(
 
 ---
 
-### 1.4 Dual No-Show Reports
+### 1.4 Dual No-Show Reports ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via row locking + auto-escalation to dispute on conflict
 
 **Trigger conditions:**
 - Both tutor and student report no-show simultaneously
@@ -265,7 +275,9 @@ if not booking.tutor_joined_at and not booking.student_joined_at:
 
 ---
 
-### 1.6 Dispute on Already-Refunded Booking
+### 1.6 Dispute on Already-Refunded Booking ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via payment state validation in open_dispute() and resolve_dispute()
 
 **Trigger conditions:**
 - Tutor cancels < 12h before session → automatic refund
@@ -523,7 +535,9 @@ stripe.Account.modify(
 
 ---
 
-### 2.5 Package Credit Not Restored on Refund
+### 2.5 Package Credit Not Restored on Refund ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via restore_package_credit flag in state machine + refund handlers
 
 **Trigger conditions:**
 - Student books session using package credit
@@ -777,7 +791,9 @@ if user.password_changed_at.timestamp() > payload["pwd_changed"]:
 
 ---
 
-### 3.3 OAuth State Tokens in Memory
+### 3.3 OAuth State Tokens in Memory ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via Redis-backed OAuth state storage with TTL
 
 **Trigger conditions:**
 - Multiple backend instances (horizontal scaling)
@@ -909,7 +925,9 @@ if not recipient or recipient.id == current_user.id:
 
 ---
 
-### 3.6 No Rate Limiting Account Lockout
+### 3.6 No Rate Limiting Account Lockout ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via Redis-backed account lockout (5 attempts / 15 min)
 
 **Trigger conditions:**
 - Attacker performs distributed brute-force
@@ -1374,7 +1392,9 @@ if conflicting_bookings:
 
 ## 6. Timezone Handling
 
-### 6.1 DST Shift Breaks Availability (CRITICAL)
+### 6.1 DST Shift Breaks Availability (CRITICAL) ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via timezone column in TutorAvailability + proper ZoneInfo conversion
 
 **Trigger conditions:**
 - Tutor in America/New_York (EST/EDT)

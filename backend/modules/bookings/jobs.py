@@ -1,6 +1,20 @@
 """
 Background jobs for booking auto-transitions.
 
+DEPRECATION NOTICE:
+    This module is deprecated in favor of Celery tasks.
+    See backend/tasks/booking_tasks.py for the Celery implementation.
+
+    These async jobs are used by APScheduler (core/scheduler.py) which runs
+    in-process with the backend. The new Celery implementation provides:
+    - Persistent job queue (survives backend restarts)
+    - Retry logic with exponential backoff
+    - Worker process isolation
+    - Monitoring via Flower dashboard
+
+    This code is retained for backwards compatibility during the migration period.
+    Once Celery is fully deployed, this module will be removed.
+
 Jobs run on schedule to automatically transition booking states:
 - expire_requests: REQUESTED -> EXPIRED (every 5 min, 24h timeout)
 - start_sessions: SCHEDULED -> ACTIVE (every 1 min, at start_time)

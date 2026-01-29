@@ -40,7 +40,10 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = db.query(User).filter(User.email == StringUtils.normalize_email(email)).first()
+    user = db.query(User).filter(
+        User.email == StringUtils.normalize_email(email),
+        User.deleted_at.is_(None),  # Exclude soft-deleted users
+    ).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -102,7 +105,10 @@ async def get_current_user_optional(
     except AuthenticationError:
         return None
 
-    user = db.query(User).filter(User.email == StringUtils.normalize_email(email)).first()
+    user = db.query(User).filter(
+        User.email == StringUtils.normalize_email(email),
+        User.deleted_at.is_(None),  # Exclude soft-deleted users
+    ).first()
     if user is None or not user.is_active:
         return None
 

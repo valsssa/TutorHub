@@ -180,10 +180,39 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Prevent admin from changing their own role
-    if user.id == current_user.id and user_update.role and user_update.role != "admin":
-        logger.warning(f"Admin {current_user.email} attempted to change their own role")
-        raise HTTPException(status_code=400, detail="Cannot change your own role")
+    # Prevent admin from modifying their own account in restricted ways
+    if user.id == current_user.id:
+        if user_update.is_active is False:
+            logger.warning(f"Admin {current_user.email} attempted to deactivate their own account")
+            raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+        if user_update.role and user_update.role != user.role:
+            logger.warning(f"Admin {current_user.email} attempted to change their own role")
+            raise HTTPException(status_code=400, detail="Cannot change your own role")
+
+    # Prevent removing the last active admin
+    if user.role == "admin" and user.is_active:
+        is_losing_admin_status = (
+            (user_update.role is not None and user_update.role != "admin")
+            or (user_update.is_active is False)
+        )
+        if is_losing_admin_status:
+            other_active_admins = (
+                db.query(User)
+                .filter(
+                    User.role == "admin",
+                    User.is_active.is_(True),
+                    User.deleted_at.is_(None),
+                    User.id != user.id,
+                )
+                .count()
+            )
+            if other_active_admins == 0:
+                logger.warning(
+                    f"Admin {current_user.email} attempted to remove last admin {user.email}"
+                )
+                raise HTTPException(
+                    status_code=400, detail="Cannot remove the last active admin"
+                )
 
     try:
         # Track original role for change detection
@@ -322,6 +351,26 @@ async def delete_user(
 
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
+
+    # Prevent deleting the last active admin
+    if user.role == "admin" and user.is_active:
+        other_active_admins = (
+            db.query(User)
+            .filter(
+                User.role == "admin",
+                User.is_active.is_(True),
+                User.deleted_at.is_(None),
+                User.id != user.id,
+            )
+            .count()
+        )
+        if other_active_admins == 0:
+            logger.warning(
+                f"Admin {current_user.email} attempted to delete last admin {user.email}"
+            )
+            raise HTTPException(
+                status_code=400, detail="Cannot remove the last active admin"
+            )
 
     try:
         # Soft delete instead of hard delete

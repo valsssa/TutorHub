@@ -38,11 +38,12 @@
   - ✅ Create metrics dashboard specifications
   - File: `docs/METRICS.md`
 
-- [ ] **Review security configuration**
-  - Verify all rate limits active
-  - Check CSP headers
-  - Audit admin endpoints
-  - Files: `backend/core/rate_limiting.py`, `frontend/middleware.ts`
+- [x] **Review security configuration** ✅ COMPLETED (2026-01-29)
+  - ✅ Verified all rate limits active (5/min registration, 10/min login)
+  - ✅ Checked CSP headers (backend + frontend)
+  - ✅ Audited admin endpoints (all require admin role)
+  - ✅ Created comprehensive security audit report
+  - File: `docs/SECURITY_AUDIT.md`
 
 ---
 
@@ -63,11 +64,12 @@
   - Verify refund flow
   - Files: `backend/modules/payments/router.py`
 
-- [ ] **Fix critical auth issues**
-  - Token expiration handling
-  - OAuth state validation
-  - Session management
-  - Files: `backend/modules/auth/`, `frontend/lib/auth.ts`
+- [x] **Fix critical auth issues** ✅ COMPLETED (2026-01-29)
+  - ✅ Token expiration handling (refresh tokens implemented)
+  - ✅ OAuth state validation (Redis-backed with TTL)
+  - ✅ Session management (automatic token refresh)
+  - ✅ Concurrent request handling during refresh
+  - Files: `backend/core/security.py`, `backend/modules/auth/presentation/api.py`, `frontend/lib/api.ts`
 
 ### 🟠 P1 - High Priority
 
@@ -83,11 +85,16 @@
   - Fix modal behavior on mobile
   - Files: `frontend/components/`, `frontend/app/`
 
-- [ ] **Fix WebSocket connection stability**
-  - Handle reconnection logic
-  - Fix message delivery confirmation
-  - Test under poor network conditions
-  - Files: `frontend/lib/websocket.ts`, `backend/modules/messages/websocket.py`
+- [x] **Fix WebSocket connection stability** COMPLETED (2026-01-29)
+  - Exponential backoff reconnection with jitter (1s -> 60s)
+  - Message queue for offline handling with retry
+  - Message acknowledgment system with timeout
+  - Visibility/network change detection (tab focus, online/offline)
+  - Token expiration handling
+  - Multi-tab coordination via BroadcastChannel
+  - Enhanced ConnectionStatus component with reconnection states
+  - Server-side connection health monitoring with cleanup
+  - Files: `frontend/lib/websocket.ts`, `frontend/hooks/useWebSocket.ts`, `frontend/components/messaging/ConnectionStatus.tsx`, `backend/modules/messages/websocket.py`
 
 ### 🟡 P2 - Medium Priority
 

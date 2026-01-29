@@ -180,8 +180,11 @@ async def google_callback(
         last_name = oauth_user_data.get("family_name", "")
         oauth_user_data.get("picture")
 
-        # Find or create user
-        user = db.query(User).filter(User.email == email).first()
+        # Find or create user - exclude soft-deleted users
+        user = db.query(User).filter(
+            User.email == email,
+            User.deleted_at.is_(None),
+        ).first()
         is_new_user = False
 
         if user:

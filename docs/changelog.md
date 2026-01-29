@@ -20,6 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - On-call procedures (`docs/ON_CALL.md`)
 - Support processes documentation (`docs/SUPPORT.md`)
 - Engineer onboarding guide (`docs/ONBOARDING.md`)
+- Security audit report (`docs/SECURITY_AUDIT.md`)
+- Distributed tracing with OpenTelemetry (`backend/core/tracing.py`, `backend/core/tracing_middleware.py`)
+- Refresh token support for authentication (`backend/modules/auth/presentation/api.py`)
+- WebSocket stability improvements (reconnection, message queue, ack system)
+- Backend test coverage expansion (payments, auth, tutor approval, packages)
 
 ### Changed
 - Standardized currency fields across tables

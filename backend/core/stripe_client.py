@@ -6,9 +6,15 @@ Handles all Stripe API interactions including:
 - Connect account management for tutor payouts
 - Webhook event processing
 - Refund processing
+
+Features:
+- Circuit breaker pattern for resilience
+- Idempotency keys for double-payment prevention
+- Timeout handling and recovery
 """
 
 import logging
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -16,6 +22,12 @@ import stripe
 from fastapi import HTTPException, status
 
 from core.config import settings
+from core.payment_reliability import (
+    CircuitOpenError,
+    generate_idempotency_key,
+    handle_stripe_error,
+    stripe_circuit_breaker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -354,25 +366,54 @@ def create_transfer_to_tutor(
 # ============================================================================
 
 
+class RefundResult:
+    """Result of a refund operation with additional context."""
+
+    def __init__(
+        self,
+        refund: stripe.Refund,
+        was_existing: bool = False,
+    ):
+        self.refund = refund
+        self.was_existing = was_existing
+        self.id = refund.id
+        self.amount = refund.amount
+        self.status = refund.status
+
+
 def create_refund(
     payment_intent_id: str,
+    booking_id: int,
     amount_cents: int | None = None,
     reason: str = "requested_by_customer",
     metadata: dict[str, Any] | None = None,
-) -> stripe.Refund:
+) -> RefundResult:
     """
-    Create a refund for a payment.
+    Create a refund for a payment with idempotency and timeout handling.
+
+    Uses an idempotency key based on booking_id and date to prevent double-refunds.
+    If a timeout occurs, checks for existing refunds before raising an error.
 
     Args:
         payment_intent_id: Stripe PaymentIntent ID
+        booking_id: Internal booking ID (used for idempotency key)
         amount_cents: Amount to refund (None for full refund)
         reason: Refund reason code
         metadata: Additional metadata
 
     Returns:
-        Stripe Refund object
+        RefundResult object containing refund and context
+
+    Raises:
+        HTTPException: If refund fails and no existing refund found
     """
+    from datetime import UTC, datetime
+
     client = get_stripe_client()
+
+    # Generate idempotency key to prevent double-refunds
+    # Using booking_id + date ensures same-day retries are safe
+    idempotency_key = f"refund_{booking_id}_{datetime.now(UTC).date().isoformat()}"
 
     refund_params = {
         "payment_intent": payment_intent_id,
@@ -384,19 +425,110 @@ def create_refund(
         refund_params["amount"] = amount_cents
 
     try:
-        refund = client.Refund.create(**refund_params)
+        refund = client.Refund.create(
+            **refund_params,
+            idempotency_key=idempotency_key,
+        )
         logger.info(
             f"Created refund {refund.id} for payment {payment_intent_id}, "
-            f"amount: {amount_cents or 'full'}"
+            f"booking {booking_id}, amount: {amount_cents or 'full'}"
         )
-        return refund
+        return RefundResult(refund=refund, was_existing=False)
+
+    except (stripe.error.APIConnectionError, stripe.error.Timeout) as e:
+        # Timeout or connection error - refund may or may not have been created
+        logger.warning(
+            f"Stripe timeout/connection error during refund for booking {booking_id}: {e}"
+        )
+
+        # Check if refund was actually created before the timeout
+        existing_refund = _find_existing_refund(client, payment_intent_id)
+        if existing_refund:
+            logger.info(
+                f"Found existing refund {existing_refund.id} after timeout "
+                f"for booking {booking_id}"
+            )
+            return RefundResult(refund=existing_refund, was_existing=True)
+
+        # No existing refund found - safe to tell user to retry
+        logger.error(
+            f"Refund timeout for booking {booking_id}, no existing refund found"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable. Please retry in a moment.",
+        )
+
+    except stripe.error.IdempotencyError as e:
+        # Idempotency conflict - a refund with this key already exists
+        logger.warning(
+            f"Idempotency conflict for booking {booking_id}: {e}"
+        )
+
+        # Retrieve the existing refund
+        existing_refund = _find_existing_refund(client, payment_intent_id)
+        if existing_refund:
+            logger.info(
+                f"Returning existing refund {existing_refund.id} "
+                f"(idempotency) for booking {booking_id}"
+            )
+            return RefundResult(refund=existing_refund, was_existing=True)
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A refund request is already being processed for this booking.",
+        )
+
+    except stripe.error.InvalidRequestError as e:
+        # Check if it's because a refund already exists
+        if "has already been refunded" in str(e).lower():
+            existing_refund = _find_existing_refund(client, payment_intent_id)
+            if existing_refund:
+                logger.info(
+                    f"Payment already refunded, returning existing refund "
+                    f"{existing_refund.id} for booking {booking_id}"
+                )
+                return RefundResult(refund=existing_refund, was_existing=True)
+
+        logger.error(f"Invalid refund request for booking {booking_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Refund request invalid: {e.user_message or str(e)}",
+        )
 
     except stripe.error.StripeError as e:
-        logger.error(f"Error creating refund: {e}")
+        logger.error(f"Stripe error creating refund for booking {booking_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Refund failed. Please contact support.",
         )
+
+
+def _find_existing_refund(
+    client: stripe,
+    payment_intent_id: str,
+) -> stripe.Refund | None:
+    """
+    Find an existing refund for a payment intent.
+
+    Args:
+        client: Configured Stripe client
+        payment_intent_id: Stripe PaymentIntent ID
+
+    Returns:
+        Most recent refund if found, None otherwise
+    """
+    try:
+        refunds = client.Refund.list(
+            payment_intent=payment_intent_id,
+            limit=1,
+        )
+        if refunds.data:
+            return refunds.data[0]
+        return None
+    except stripe.error.StripeError as e:
+        logger.error(f"Error checking for existing refunds: {e}")
+        return None
 
 
 # ============================================================================

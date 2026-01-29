@@ -102,19 +102,35 @@ See [TODO_PHASE_0_STABILIZATION.md](./TODO_PHASE_0_STABILIZATION.md) for detaile
 - ✅ Frontend client & React hooks (`frontend/lib/featureFlags.ts`)
 - ✅ Percentage rollouts, allowlist/denylist support
 
+### WebSocket Stability (2026-01-29)
+- ✅ Exponential backoff reconnection with jitter (1s -> 60s)
+- ✅ Message queue for offline handling with retry
+- ✅ Message acknowledgment system with timeout
+- ✅ Visibility/network change detection
+- ✅ Token expiration handling
+- ✅ Multi-tab coordination via BroadcastChannel
+- ✅ Enhanced ConnectionStatus component
+- ✅ Server-side connection health monitoring
+
 ---
 
 ## In Progress
 
 ### Phase 0 Stabilization
-- [ ] Security configuration review
-- [ ] Backend test coverage improvement (target: 80%)
+- [x] Security configuration review ✅ (SECURITY_AUDIT.md created)
+- [x] Backend test coverage improvement (4 comprehensive test files created)
 - [ ] Frontend test coverage improvement (target: 70%)
 
 ### Bug Fixes
 - [ ] Payment flow edge cases
-- [ ] Auth token expiration handling
-- [ ] WebSocket reconnection stability
+- [x] Auth token expiration handling ✅ (refresh tokens implemented)
+- [x] WebSocket reconnection stability ✅ (COMPLETED 2026-01-29)
+
+### Distributed Tracing (2026-01-29)
+- ✅ OpenTelemetry integration with FastAPI
+- ✅ Trace ID correlation in all requests
+- ✅ Jaeger/OTLP exporters support
+- ✅ SQLAlchemy, external API, background job tracing
 
 ---
 

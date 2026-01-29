@@ -151,6 +151,86 @@ services:
           memory: 4G
 
   # ==========================================================================
+  # Celery Worker - Background Task Processing
+  # Handles booking state transitions and other async tasks
+  # ==========================================================================
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: celery -A core.celery_app worker --loglevel=info --concurrency=2 -Q bookings,celery
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-authapp}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Celery Beat - Periodic Task Scheduler
+  # Schedules recurring tasks (expire requests, start/end sessions)
+  # ==========================================================================
+  celery-beat:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: celery -A core.celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-authapp}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    depends_on:
+      - celery-worker
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Flower - Celery Monitoring Dashboard (Optional)
+  # Uncomment to enable real-time task monitoring
+  # ==========================================================================
+  # flower:
+  #   build:
+  #     context: .
+  #     dockerfile: backend/Dockerfile
+  #   command: celery -A core.celery_app flower --port=5555
+  #   ports:
+  #     - "5555:5555"
+  #   environment:
+  #     CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/1}
+  #     CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+  #     FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-admin:admin}  # Set in production!
+  #   depends_on:
+  #     - celery-worker
+  #     - redis
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 256M
+  #
+  # To enable Flower monitoring:
+  # 1. Uncomment the flower service above
+  # 2. Set FLOWER_BASIC_AUTH environment variable for production
+  # 3. Access Flower UI at http://localhost:5555
+
+  # ==========================================================================
   # Jaeger - Distributed Tracing (Optional)
   # Uncomment to enable distributed tracing visualization
   # ==========================================================================

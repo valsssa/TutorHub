@@ -91,7 +91,37 @@ The bookings module uses a four-field status system (`backend/modules/bookings/d
 - `PaymentState`: pending, authorized, captured, refunded, released_to_tutor, failed
 - `DisputeState`: none, filed, under_review, resolved_student_favor, resolved_tutor_favor
 
-State transitions are enforced by `BookingStateMachine` class. Background jobs in `jobs.py` handle auto-transitions (expire, start, end sessions) via APScheduler.
+State transitions are enforced by `BookingStateMachine` class. Background jobs handle auto-transitions (expire, start, end sessions).
+
+### Background Task Processing (Celery)
+
+The project uses Celery with Redis for reliable background task processing:
+
+**Architecture**:
+- `backend/core/celery_app.py` - Celery configuration with Redis broker
+- `backend/tasks/booking_tasks.py` - Booking state transition tasks
+- `celery-worker` service - Processes tasks from Redis queue
+- `celery-beat` service - Schedules periodic tasks
+
+**Tasks**:
+- `expire_requests`: REQUESTED -> EXPIRED (every 5 min, 24h timeout)
+- `start_sessions`: SCHEDULED -> ACTIVE (every 1 min, at start_time)
+- `end_sessions`: ACTIVE -> ENDED (every 1 min, at end_time + grace)
+
+**Commands**:
+```bash
+# View Celery worker logs
+docker compose logs -f celery-worker
+
+# View Celery beat logs
+docker compose logs -f celery-beat
+
+# Enable Flower monitoring (uncomment in docker-compose.yml)
+# Access at http://localhost:5555
+```
+
+**Migration from APScheduler**:
+The legacy APScheduler implementation in `core/scheduler.py` and `modules/bookings/jobs.py` is deprecated but retained for backwards compatibility. Celery provides persistent queues, retry logic with exponential backoff, and monitoring capabilities.
 
 ### Database
 

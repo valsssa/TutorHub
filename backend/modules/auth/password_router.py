@@ -81,8 +81,11 @@ async def request_password_reset(
 
     email = StringUtils.normalize_email(request.email)
 
-    # Find user (don't reveal if exists)
-    user = db.query(User).filter(User.email == email).first()
+    # Find user (don't reveal if exists) - exclude soft-deleted users
+    user = db.query(User).filter(
+        User.email == email,
+        User.deleted_at.is_(None),
+    ).first()
 
     if user and user.is_active:
         # Generate reset token
@@ -174,8 +177,11 @@ async def reset_password(
             detail="Reset token has expired",
         )
 
-    # Get user
-    user = db.query(User).filter(User.id == token_data["user_id"]).first()
+    # Get user - exclude soft-deleted users
+    user = db.query(User).filter(
+        User.id == token_data["user_id"],
+        User.deleted_at.is_(None),
+    ).first()
 
     if not user or not user.is_active:
         raise HTTPException(

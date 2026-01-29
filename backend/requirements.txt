@@ -28,6 +28,9 @@ google-auth==2.27.0
 google-auth-oauthlib==1.2.0
 sentry-sdk[fastapi]==1.40.0
 apscheduler==3.10.4
+# Celery for background task processing (replacing APScheduler)
+celery[redis]==5.3.6
+flower==2.0.1
 # OpenTelemetry Distributed Tracing (optional - tracing works without these)
 opentelemetry-api==1.22.0
 opentelemetry-sdk==1.22.0

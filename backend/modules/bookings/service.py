@@ -254,49 +254,99 @@ class BookingService:
         from core.timezone import is_valid_timezone
         from models import TutorAvailability
 
-        # Convert Python weekday (Mon=0, Sun=6) to JS convention (Sun=0, Sat=6)
-        # This matches the convention used in availability_api.py
-        python_weekday = start_at.weekday()  # Monday=0, Sunday=6
-        day_of_week = (python_weekday + 1) % 7  # Convert to Sunday=0, Saturday=6
-
         if tutor_profile:
-            # Get all availability slots for this day
+            # FIX: Convert UTC start time to tutor's timezone before extracting day_of_week
+            # This prevents timezone mismatch where booking at 11pm Tuesday UTC could be
+            # Wednesday in tutor's timezone (e.g., Asia/Tokyo), causing wrong day comparison
+            tutor_tz_str = tutor_profile.user.timezone if tutor_profile.user else None
+            if not tutor_tz_str or not is_valid_timezone(tutor_tz_str):
+                tutor_tz_str = "UTC"
+            tutor_tz = ZoneInfo(tutor_tz_str)
+
+            # Convert booking start time to tutor's local time
+            local_start = start_at.astimezone(tutor_tz)
+            local_end = end_at.astimezone(tutor_tz)
+
+            # Convert Python weekday (Mon=0, Sun=6) to JS convention (Sun=0, Sat=6)
+            # using the LOCAL day of the tutor, not UTC day
+            python_weekday = local_start.weekday()  # Monday=0, Sunday=6
+            day_of_week = (python_weekday + 1) % 7  # Convert to Sunday=0, Saturday=6
+
+            # Handle case where session spans midnight in tutor's timezone
+            # In this case, we need to check availability for both days
+            local_end_weekday = local_end.weekday()
+            end_day_of_week = (local_end_weekday + 1) % 7
+            spans_midnight = local_start.date() != local_end.date()
+
+            # Determine which days to query availability for
+            days_to_check = [day_of_week]
+            if spans_midnight and end_day_of_week != day_of_week:
+                days_to_check.append(end_day_of_week)
+
+            # Get all availability slots for the relevant day(s)
             availabilities = (
                 self.db.query(TutorAvailability)
                 .filter(
                     TutorAvailability.tutor_profile_id == tutor_profile.id,
-                    TutorAvailability.day_of_week == day_of_week,
+                    TutorAvailability.day_of_week.in_(days_to_check),
                 )
                 .all()
             )
 
-            # Check if booking falls within any availability window using DST-aware conversion
+            # Check if booking falls within any availability window
+            # We compare in the tutor's local timezone for consistency
             is_within_availability = False
+            local_start_time = local_start.time()
+            local_end_time = local_end.time()
+
             for availability in availabilities:
-                # Get the timezone for this availability slot
-                avail_tz_str = getattr(availability, 'timezone', None) or "UTC"
+                # Get the timezone for this availability slot (may differ from tutor's profile timezone)
+                avail_tz_str = getattr(availability, 'timezone', None) or tutor_tz_str
                 if not is_valid_timezone(avail_tz_str):
-                    avail_tz_str = "UTC"
+                    avail_tz_str = tutor_tz_str
                 avail_tz = ZoneInfo(avail_tz_str)
 
-                # Convert availability times to UTC for the booking date
-                # This properly handles DST - e.g., 9am EST becomes different UTC
-                # depending on whether DST is in effect on the booking date
-                booking_date = start_at.date()
-                local_avail_start = datetime.combine(booking_date, availability.start_time)
-                local_avail_end = datetime.combine(booking_date, availability.end_time)
+                # Convert availability times to tutor's timezone if they differ
+                # This handles cases where availability was set in a different timezone
+                if avail_tz_str != tutor_tz_str:
+                    # Convert availability window from its timezone to tutor's timezone
+                    avail_date = local_start.date()
+                    avail_start_dt = datetime.combine(avail_date, availability.start_time).replace(tzinfo=avail_tz)
+                    avail_end_dt = datetime.combine(avail_date, availability.end_time).replace(tzinfo=avail_tz)
+                    avail_start_in_tutor_tz = avail_start_dt.astimezone(tutor_tz).time()
+                    avail_end_in_tutor_tz = avail_end_dt.astimezone(tutor_tz).time()
+                else:
+                    avail_start_in_tutor_tz = availability.start_time
+                    avail_end_in_tutor_tz = availability.end_time
 
-                # Localize to availability timezone and convert to UTC
-                avail_start_utc = local_avail_start.replace(tzinfo=avail_tz).astimezone(ZoneInfo("UTC"))
-                avail_end_utc = local_avail_end.replace(tzinfo=avail_tz).astimezone(ZoneInfo("UTC"))
+                # Check if this availability slot is for the correct day
+                avail_day = availability.day_of_week
 
-                # Compare UTC times
-                if avail_start_utc <= start_at and avail_end_utc >= end_at:
-                    is_within_availability = True
-                    break
+                if not spans_midnight:
+                    # Simple case: booking doesn't span midnight
+                    if avail_day == day_of_week:
+                        if avail_start_in_tutor_tz <= local_start_time and avail_end_in_tutor_tz >= local_end_time:
+                            is_within_availability = True
+                            break
+                else:
+                    # Complex case: booking spans midnight in tutor's timezone
+                    # Need to check if both the start and end portions are covered
+                    # For simplicity, we require a single availability window that covers the full session
+                    # by converting both times to the availability date and checking overlap
+                    avail_date = local_start.date() if avail_day == day_of_week else local_end.date()
+                    avail_start_dt = datetime.combine(avail_date, avail_start_in_tutor_tz).replace(tzinfo=tutor_tz)
+                    avail_end_dt = datetime.combine(avail_date, avail_end_in_tutor_tz).replace(tzinfo=tutor_tz)
+
+                    # Check if booking window falls within availability window
+                    if avail_start_dt <= local_start and avail_end_dt >= local_end:
+                        is_within_availability = True
+                        break
 
             if not is_within_availability:
-                return f"Tutor not available on {start_at.strftime('%A')} at {start_at.strftime('%H:%M')} UTC"
+                # Provide informative error message with tutor's local time
+                local_day_name = local_start.strftime('%A')
+                local_time_str = local_start.strftime('%H:%M')
+                return f"Tutor not available on {local_day_name} at {local_time_str} (tutor's local time)"
 
         return ""
 

@@ -6,9 +6,12 @@ import {
   FiChevronRight,
   FiCalendar,
   FiClock,
+  FiGlobe,
 } from "react-icons/fi";
 import { getApiBaseUrl } from "@/shared/utils/url";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useTimezone } from "@/contexts/TimezoneContext";
+import { formatTimeInTimezone, getTimezoneOffset } from "@/lib/timezone";
 
 interface TimeSlot {
   start_time: string;
@@ -20,6 +23,8 @@ interface TimeSlotPickerProps {
   tutorId: number;
   onSelectSlot: (startTime: string, endTime: string) => void;
   selectedStartTime?: string;
+  /** Optional: tutor's timezone for dual display */
+  tutorTimezone?: string;
 }
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -42,6 +47,7 @@ export default function TimeSlotPicker({
   tutorId,
   onSelectSlot,
   selectedStartTime,
+  tutorTimezone,
 }: TimeSlotPickerProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -49,6 +55,7 @@ export default function TimeSlotPicker({
   const [loading, setLoading] = useState(false);
   const [slotsCache, setSlotsCache] = useState<Record<string, TimeSlot[]>>({});
   const { lastMessage } = useWebSocket();
+  const { userTimezone, isLoaded: timezoneLoaded } = useTimezone();
 
   // Refetch slots for the currently selected date
   const refetchSelectedDate = useCallback(() => {
@@ -186,13 +193,26 @@ export default function TimeSlotPicker({
     setSelectedDate(date);
   };
 
+  /**
+   * Format time in user's timezone with optional tutor timezone indication
+   */
   const formatTime = (timeString: string) => {
-    const date = new Date(timeString);
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
+    const userTime = formatTimeInTimezone(timeString, userTimezone);
+    const userAbbr = getTimezoneOffset(userTimezone);
+
+    // If tutor is in a different timezone, show both
+    if (tutorTimezone && tutorTimezone !== userTimezone) {
+      const tutorTime = formatTimeInTimezone(timeString, tutorTimezone);
+      const tutorAbbr = getTimezoneOffset(tutorTimezone);
+      return (
+        <span className="flex flex-col items-center">
+          <span>{userTime} {userAbbr}</span>
+          <span className="text-xs text-gray-500">({tutorTime} {tutorAbbr} tutor)</span>
+        </span>
+      );
+    }
+
+    return `${userTime} ${userAbbr}`;
   };
 
   const isToday = (date: Date) => {
@@ -285,15 +305,24 @@ export default function TimeSlotPicker({
       {/* Time Slots Section */}
       {selectedDate && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <FiClock className="w-5 h-5 text-emerald-600" />
-            <h4 className="font-semibold text-gray-900">
-              Available Times - {selectedDate.toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-            </h4>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FiClock className="w-5 h-5 text-emerald-600" />
+              <h4 className="font-semibold text-gray-900">
+                Available Times - {selectedDate.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  timeZone: userTimezone,
+                })}
+              </h4>
+            </div>
+            {timezoneLoaded && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <FiGlobe className="w-3 h-3" />
+                <span>{getTimezoneOffset(userTimezone)}</span>
+              </div>
+            )}
           </div>
 
           {loading ? (

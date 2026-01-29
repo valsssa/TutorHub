@@ -216,12 +216,17 @@ async def create_availability(
         )
 
     try:
+        # Use tutor's profile timezone for the availability slot
+        # This ensures proper DST handling when generating available slots
+        tutor_timezone = profile.timezone or profile.user.timezone or "UTC"
+
         availability = TutorAvailability(
             tutor_profile_id=profile.id,
             day_of_week=availability_data.day_of_week,
             start_time=availability_data.start_time,
             end_time=availability_data.end_time,
             is_recurring=availability_data.is_recurring,
+            timezone=tutor_timezone,
         )
         db.add(availability)
         db.commit()
@@ -230,7 +235,8 @@ async def create_availability(
         logger.info(
             f"Availability created for tutor profile {profile.id}: "
             f"Day {availability_data.day_of_week}, "
-            f"{availability_data.start_time}-{availability_data.end_time}"
+            f"{availability_data.start_time}-{availability_data.end_time} "
+            f"(timezone: {tutor_timezone})"
         )
         return availability
     except Exception as e:
@@ -286,6 +292,9 @@ async def create_bulk_availability(
     # Clear existing availability
     db.query(TutorAvailability).filter(TutorAvailability.tutor_profile_id == profile.id).delete()
 
+    # Use tutor's profile timezone for all availability slots
+    tutor_timezone = profile.timezone or profile.user.timezone or "UTC"
+
     created_slots = []
     skipped_count = 0
     try:
@@ -300,6 +309,7 @@ async def create_bulk_availability(
                 start_time=av_data.start_time,
                 end_time=av_data.end_time,
                 is_recurring=av_data.is_recurring,
+                timezone=tutor_timezone,
             )
             db.add(availability)
             created_slots.append(availability)

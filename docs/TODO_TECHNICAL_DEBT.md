@@ -205,37 +205,30 @@ celery_app.conf.beat_schedule = {
 ---
 
 ### 6. Distributed Tracing
-**Status**: 🔴 Not Started
+**Status**: 🟢 COMPLETE ✅
+**Completed**: 2026-01-29
 **Effort**: Medium
 **Impact**: Medium
-**Risk if Ignored**: Hard to debug at scale
 
-**Current State**:
-- No correlation IDs
-- Logs not linked across services
-- No trace visualization
+**What Was Done**:
+- ✅ OpenTelemetry integration with FastAPI
+- ✅ Correlation IDs in all requests (X-Trace-ID header)
+- ✅ Jaeger/OTLP exporters support
+- ✅ SQLAlchemy query tracing
+- ✅ External API call tracing (Stripe, Brevo, Zoom, Google)
+- ✅ Background job tracing
+- ✅ Logging integration with trace IDs
 
-**Target State**:
-- OpenTelemetry integration
-- Correlation IDs in all requests
-- Jaeger/Tempo for visualization
+**Files Created**:
+- `backend/core/tracing.py` - Main tracing module
+- `backend/core/tracing_middleware.py` - HTTP request tracing
+- Updated `docker-compose.yml` with Jaeger service (commented)
+- Updated `docs/architecture.md` with observability section
 
-**Implementation**:
-```python
-from opentelemetry import trace
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-
-# Auto-instrument FastAPI
-FastAPIInstrumentor.instrument_app(app)
-```
-
-**Files to Create**:
-- `backend/core/tracing.py`
-- `docker-compose.yml` (add Jaeger)
-
-**Assigned**: [ ]
-**Target Date**: [ ]
+**Configuration**:
+- TRACING_ENABLED=true/false
+- TRACING_EXPORTER=jaeger/otlp/console
+- TRACING_SAMPLE_RATE=0.1 (production)
 
 ---
 
@@ -404,8 +397,8 @@ FastAPIInstrumentor.instrument_app(app)
 | Runbooks | ✅ Complete | 2026-01-29 |
 | Feature Flags | ✅ Complete | 2026-01-29 |
 | Load Testing | ✅ Complete | 2026-01-29 |
+| Distributed Tracing | ✅ Complete | 2026-01-29 |
 | APScheduler→Celery | 🔴 Not Started | - |
-| Distributed Tracing | 🔴 Not Started | - |
 | Multi-region prep | 🔴 Not Started | - |
 | Alembic | 🔴 Not Started | - |
 
