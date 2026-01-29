@@ -22,7 +22,7 @@ describe('Favorites API', () => {
 
       const result = await favorites.getFavorites()
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/favorites')
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/v1/favorites')
       expect(result).toEqual(mockResponse)
     })
 
@@ -49,7 +49,7 @@ describe('Favorites API', () => {
 
       const result = await favorites.addFavorite(tutorProfileId)
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/favorites', {
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/v1/favorites', {
         tutor_profile_id: tutorProfileId,
       })
       expect(result).toEqual(mockFavorite)
@@ -70,7 +70,7 @@ describe('Favorites API', () => {
 
       await expect(favorites.removeFavorite(tutorProfileId)).resolves.toBeUndefined()
 
-      expect(mockAxiosInstance.delete).toHaveBeenCalledWith(`/api/favorites/${tutorProfileId}`)
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith(`/api/v1/favorites/${tutorProfileId}`)
     })
 
     it('should handle API errors when removing favorite', async () => {
@@ -88,7 +88,7 @@ describe('Favorites API', () => {
 
       const result = await favorites.checkFavorite(tutorProfileId)
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/api/favorites/${tutorProfileId}`, {
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/api/v1/favorites/${tutorProfileId}`, {
         suppressErrorLog: true,
         validateStatus: expect.any(Function),
       })
@@ -144,7 +144,7 @@ describe('Favorites API', () => {
 
       await favorites.addFavorite(tutorProfileId)
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/favorites', {
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/v1/favorites', {
         tutor_profile_id: tutorProfileId,
       })
     })
@@ -163,10 +163,10 @@ describe('Favorites API', () => {
       expect(mockAxiosInstance.post).toHaveBeenCalledTimes(1)
       expect(mockAxiosInstance.delete).toHaveBeenCalledTimes(1)
 
-      expect(mockAxiosInstance.get).toHaveBeenNthCalledWith(1, '/api/favorites')
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/favorites', { tutor_profile_id: 1 })
-      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/favorites/1')
-      expect(mockAxiosInstance.get).toHaveBeenNthCalledWith(2, '/api/favorites/1', {
+      expect(mockAxiosInstance.get).toHaveBeenNthCalledWith(1, '/api/v1/favorites')
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/v1/favorites', { tutor_profile_id: 1 })
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/v1/favorites/1')
+      expect(mockAxiosInstance.get).toHaveBeenNthCalledWith(2, '/api/v1/favorites/1', {
         suppressErrorLog: true,
         validateStatus: expect.any(Function),
       })

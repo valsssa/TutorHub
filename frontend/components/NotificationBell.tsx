@@ -14,7 +14,7 @@ interface Notification {
   link?: string | null;
   is_read: boolean;
   created_at: string;
-  category?: string;
+  category?: string | null;
   priority?: number;
 }
 
@@ -51,18 +51,20 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!lastMessage) return;
 
-    if (lastMessage.type === "notification") {
+    const msg = lastMessage as { type?: string; notification_id?: number; notification_type?: string; title?: string; message?: string; link?: string | null; created_at?: string; category?: string | null; priority?: number };
+
+    if (msg.type === "notification") {
       // Add new notification to list
       const newNotification: Notification = {
-        id: lastMessage.notification_id,
-        type: lastMessage.notification_type,
-        title: lastMessage.title,
-        message: lastMessage.message,
-        link: lastMessage.link,
+        id: msg.notification_id ?? 0,
+        type: msg.notification_type ?? "",
+        title: msg.title ?? "",
+        message: msg.message ?? "",
+        link: msg.link,
         is_read: false,
-        created_at: lastMessage.created_at,
-        category: lastMessage.category,
-        priority: lastMessage.priority,
+        created_at: msg.created_at ?? new Date().toISOString(),
+        category: msg.category,
+        priority: msg.priority,
       };
       setNotifications((prev) => [newNotification, ...prev]);
       setUnreadCount((prev) => prev + 1);
@@ -116,7 +118,7 @@ export default function NotificationBell() {
     }
   };
 
-  const getNotificationIcon = (type: string, category?: string) => {
+  const getNotificationIcon = (type: string, category?: string | null) => {
     switch (type) {
       case "new_message":
         return <FiMail className="w-4 h-4 text-blue-600" />;

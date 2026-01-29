@@ -50,7 +50,7 @@ function EditPayoutMethodsContent() {
         setUser(currentUser);
 
         // Load Stripe Connect status from API
-        const statusResponse = await api.get('/api/tutor/connect/status');
+        const statusResponse = await api.get('/api/v1/tutor/connect/status');
         if (statusResponse.data.has_account) {
           setPayoutForm((prev) => ({
             ...prev,
@@ -73,7 +73,7 @@ function EditPayoutMethodsContent() {
     setSaving(true);
     try {
       // Redirect to Stripe Express Dashboard for payout method management
-      const dashboardResponse = await api.get('/api/tutor/connect/dashboard-link');
+      const dashboardResponse = await api.get('/api/v1/tutor/connect/dashboard-link');
       if (dashboardResponse.data.url) {
         // Open Stripe dashboard in new tab
         window.open(dashboardResponse.data.url, '_blank');

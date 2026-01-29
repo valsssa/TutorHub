@@ -110,7 +110,7 @@ function WalletContent() {
 
     try {
       // Create Stripe checkout session
-      const response = await api.post('/api/wallet/checkout', {
+      const response = await api.post('/api/v1/wallet/checkout', {
         amount_cents: Math.round(selectedAmount * 100),
         currency: user?.currency || 'USD'
       });

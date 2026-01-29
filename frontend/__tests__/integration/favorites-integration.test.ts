@@ -84,13 +84,13 @@ describe('Favorites API Integration Tests', () => {
   afterEach(async () => {
     // Clean up: remove all favorites for the test student
     try {
-      const favoritesResponse = await api.get('/api/favorites/', {
+      const favoritesResponse = await api.get('/api/v1/favorites/', {
         headers: { Authorization: `Bearer ${studentToken}` },
       })
       
       const favorites = favoritesResponse.data
       for (const fav of favorites) {
-        await api.delete(`/api/favorites/${fav.tutor_profile_id}`, {
+        await api.delete(`/api/v1/favorites/${fav.tutor_profile_id}`, {
           headers: { Authorization: `Bearer ${studentToken}` },
         })
       }
@@ -101,7 +101,7 @@ describe('Favorites API Integration Tests', () => {
 
   describe('GET /api/favorites', () => {
     it('should return empty array when user has no favorites', async () => {
-      const response = await api.get('/api/favorites/', {
+      const response = await api.get('/api/v1/favorites/', {
         headers: { Authorization: `Bearer ${studentToken}` },
       })
 
@@ -113,12 +113,12 @@ describe('Favorites API Integration Tests', () => {
     it('should return list of favorites when user has saved tutors', async () => {
       // Add a favorite first
       await api.post(
-        '/api/favorites/',
+        '/api/v1/favorites/',
         { tutor_profile_id: tutorProfileId },
         { headers: { Authorization: `Bearer ${studentToken}` } }
       )
 
-      const response = await api.get('/api/favorites/', {
+      const response = await api.get('/api/v1/favorites/', {
         headers: { Authorization: `Bearer ${studentToken}` },
       })
 
@@ -130,7 +130,7 @@ describe('Favorites API Integration Tests', () => {
 
     it('should return 401 when not authenticated', async () => {
       try {
-        await api.get('/api/favorites/')
+        await api.get('/api/v1/favorites/')
         fail('Should have thrown an error')
       } catch (error: any) {
         expect(error.response.status).toBe(401)
@@ -141,7 +141,7 @@ describe('Favorites API Integration Tests', () => {
   describe('POST /api/favorites', () => {
     it('should successfully add tutor to favorites', async () => {
       const response = await api.post(
-        '/api/favorites/',
+        '/api/v1/favorites/',
         { tutor_profile_id: tutorProfileId },
         { headers: { Authorization: `Bearer ${studentToken}` } }
       )
@@ -155,7 +155,7 @@ describe('Favorites API Integration Tests', () => {
     it('should return 422 when tutor_profile_id is missing', async () => {
       try {
         await api.post(
-          '/api/favorites/',
+          '/api/v1/favorites/',
           {},
           { headers: { Authorization: `Bearer ${studentToken}` } }
         )
@@ -168,7 +168,7 @@ describe('Favorites API Integration Tests', () => {
     it('should return 404 when tutor profile does not exist', async () => {
       try {
         await api.post(
-          '/api/favorites/',
+          '/api/v1/favorites/',
           { tutor_profile_id: 999999 },
           { headers: { Authorization: `Bearer ${studentToken}` } }
         )
@@ -181,7 +181,7 @@ describe('Favorites API Integration Tests', () => {
     it('should return 400 when trying to add duplicate favorite', async () => {
       // Add favorite first time
       await api.post(
-        '/api/favorites/',
+        '/api/v1/favorites/',
         { tutor_profile_id: tutorProfileId },
         { headers: { Authorization: `Bearer ${studentToken}` } }
       )
@@ -189,7 +189,7 @@ describe('Favorites API Integration Tests', () => {
       // Try to add again
       try {
         await api.post(
-          '/api/favorites/',
+          '/api/v1/favorites/',
           { tutor_profile_id: tutorProfileId },
           { headers: { Authorization: `Bearer ${studentToken}` } }
         )
@@ -204,13 +204,13 @@ describe('Favorites API Integration Tests', () => {
     it('should successfully remove tutor from favorites', async () => {
       // Add favorite first
       await api.post(
-        '/api/favorites/',
+        '/api/v1/favorites/',
         { tutor_profile_id: tutorProfileId },
         { headers: { Authorization: `Bearer ${studentToken}` } }
       )
 
       // Remove it
-      const response = await api.delete(`/api/favorites/${tutorProfileId}`, {
+      const response = await api.delete(`/api/v1/favorites/${tutorProfileId}`, {
         headers: { Authorization: `Bearer ${studentToken}` },
       })
 
@@ -218,7 +218,7 @@ describe('Favorites API Integration Tests', () => {
       expect(response.data).toHaveProperty('message')
 
       // Verify it's removed
-      const favoritesResponse = await api.get('/api/favorites/', {
+      const favoritesResponse = await api.get('/api/v1/favorites/', {
         headers: { Authorization: `Bearer ${studentToken}` },
       })
       
@@ -227,7 +227,7 @@ describe('Favorites API Integration Tests', () => {
 
     it('should return 404 when trying to remove non-existent favorite', async () => {
       try {
-        await api.delete('/api/favorites/999999', {
+        await api.delete('/api/v1/favorites/999999', {
           headers: { Authorization: `Bearer ${studentToken}` },
         })
         fail('Should have thrown an error')
@@ -241,12 +241,12 @@ describe('Favorites API Integration Tests', () => {
     it('should return favorite when tutor is saved', async () => {
       // Add favorite first
       await api.post(
-        '/api/favorites/',
+        '/api/v1/favorites/',
         { tutor_profile_id: tutorProfileId },
         { headers: { Authorization: `Bearer ${studentToken}` } }
       )
 
-      const response = await api.get(`/api/favorites/${tutorProfileId}`, {
+      const response = await api.get(`/api/v1/favorites/${tutorProfileId}`, {
         headers: { Authorization: `Bearer ${studentToken}` },
       })
 
@@ -256,7 +256,7 @@ describe('Favorites API Integration Tests', () => {
 
     it('should return 404 when tutor is not in favorites', async () => {
       try {
-        await api.get(`/api/favorites/${tutorProfileId}`, {
+        await api.get(`/api/v1/favorites/${tutorProfileId}`, {
           headers: { Authorization: `Bearer ${studentToken}` },
         })
         fail('Should have thrown an error')
@@ -282,7 +282,7 @@ describe('Favorites API Integration Tests', () => {
 
       // Try to access favorites as tutor (should fail)
       try {
-        await api.get('/api/favorites/', {
+        await api.get('/api/v1/favorites/', {
           headers: { Authorization: `Bearer ${tutorToken}` },
         })
         fail('Should have thrown an error')
@@ -295,13 +295,13 @@ describe('Favorites API Integration Tests', () => {
       // This test assumes you have proper data isolation
       // Add a favorite for the student
       await api.post(
-        '/api/favorites/',
+        '/api/v1/favorites/',
         { tutor_profile_id: tutorProfileId },
         { headers: { Authorization: `Bearer ${studentToken}` } }
       )
 
       // Get the favorite count
-      const response = await api.get('/api/favorites/', {
+      const response = await api.get('/api/v1/favorites/', {
         headers: { Authorization: `Bearer ${studentToken}` },
       })
 
@@ -314,7 +314,7 @@ describe('Favorites API Integration Tests', () => {
     it('should maintain referential integrity with tutor profiles', async () => {
       // Add favorite
       const addResponse = await api.post(
-        '/api/favorites/',
+        '/api/v1/favorites/',
         { tutor_profile_id: tutorProfileId },
         { headers: { Authorization: `Bearer ${studentToken}` } }
       )
@@ -328,7 +328,7 @@ describe('Favorites API Integration Tests', () => {
 
     it('should include timestamps in favorite records', async () => {
       const response = await api.post(
-        '/api/favorites/',
+        '/api/v1/favorites/',
         { tutor_profile_id: tutorProfileId },
         { headers: { Authorization: `Bearer ${studentToken}` } }
       )

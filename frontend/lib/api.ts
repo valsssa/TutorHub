@@ -828,12 +828,12 @@ export const tutors = {
   },
 
   async get(tutorId: number): Promise<TutorProfile> {
-    const { data } = await api.get<TutorProfile>(`/api/tutors/${tutorId}`);
+    const { data } = await api.get<TutorProfile>(`/api/v1/tutors/${tutorId}`);
     return data;
   },
 
   async getPublic(tutorId: number): Promise<TutorPublicSummary> {
-    const { data } = await api.get<TutorPublicSummary>(`/api/tutors/${tutorId}/public`);
+    const { data } = await api.get<TutorPublicSummary>(`/api/v1/tutors/${tutorId}/public`);
     return data;
   },
 
@@ -960,7 +960,7 @@ export const tutors = {
   },
 
   async getReviews(tutorId: number): Promise<Review[]> {
-    const { data } = await api.get<Review[]>(`/api/reviews/tutors/${tutorId}`);
+    const { data } = await api.get<Review[]>(`/api/v1/reviews/tutors/${tutorId}`);
     return data;
   },
 
@@ -1003,7 +1003,7 @@ export const bookings = {
    * Get single booking details
    */
   async get(bookingId: number): Promise<BookingDTO> {
-    const { data } = await api.get<BookingDTO>(`/api/bookings/${bookingId}`);
+    const { data } = await api.get<BookingDTO>(`/api/v1/bookings/${bookingId}`);
     return data;
   },
 
@@ -1019,7 +1019,7 @@ export const bookings = {
    * Cancel booking with reason
    */
   async cancel(bookingId: number, request: BookingCancelRequest): Promise<BookingDTO> {
-    const { data } = await api.post<BookingDTO>(`/api/bookings/${bookingId}/cancel`, request);
+    const { data } = await api.post<BookingDTO>(`/api/v1/bookings/${bookingId}/cancel`, request);
     return data;
   },
 
@@ -1027,7 +1027,7 @@ export const bookings = {
    * Reschedule booking to new time
    */
   async reschedule(bookingId: number, request: BookingRescheduleRequest): Promise<BookingDTO> {
-    const { data } = await api.post<BookingDTO>(`/api/bookings/${bookingId}/reschedule`, request);
+    const { data } = await api.post<BookingDTO>(`/api/v1/bookings/${bookingId}/reschedule`, request);
     return data;
   },
 
@@ -1035,7 +1035,7 @@ export const bookings = {
    * Tutor confirms pending booking
    */
   async confirm(bookingId: number, notes_tutor?: string): Promise<BookingDTO> {
-    const { data } = await api.post<BookingDTO>(`/api/tutor/bookings/${bookingId}/confirm`, {
+    const { data } = await api.post<BookingDTO>(`/api/v1/tutor/bookings/${bookingId}/confirm`, {
       notes_tutor,
     });
     return data;
@@ -1045,7 +1045,7 @@ export const bookings = {
    * Tutor declines pending booking
    */
   async decline(bookingId: number, reason?: string): Promise<BookingDTO> {
-    const { data } = await api.post<BookingDTO>(`/api/tutor/bookings/${bookingId}/decline`, {
+    const { data } = await api.post<BookingDTO>(`/api/v1/tutor/bookings/${bookingId}/decline`, {
       reason,
     });
     return data;
@@ -1055,7 +1055,7 @@ export const bookings = {
    * Tutor marks student as no-show
    */
   async markStudentNoShow(bookingId: number, notes?: string): Promise<BookingDTO> {
-    const { data } = await api.post<BookingDTO>(`/api/tutor/bookings/${bookingId}/mark-no-show-student`, {
+    const { data } = await api.post<BookingDTO>(`/api/v1/tutor/bookings/${bookingId}/mark-no-show-student`, {
       notes,
     });
     return data;
@@ -1065,7 +1065,7 @@ export const bookings = {
    * Student marks tutor as no-show
    */
   async markTutorNoShow(bookingId: number, notes?: string): Promise<BookingDTO> {
-    const { data } = await api.post<BookingDTO>(`/api/tutor/bookings/${bookingId}/mark-no-show-tutor`, {
+    const { data } = await api.post<BookingDTO>(`/api/v1/tutor/bookings/${bookingId}/mark-no-show-tutor`, {
       notes,
     });
     return data;
@@ -1115,7 +1115,7 @@ export const packages = {
 
   async useCredit(packageId: number): Promise<StudentPackage> {
     const { data } = await api.patch<StudentPackage>(
-      `/api/packages/${packageId}/use-credit`
+      `/api/v1/packages/${packageId}/use-credit`
     );
     return data;
   },
@@ -1159,7 +1159,7 @@ export const messages = {
     avatar_url?: string | null;
     role: string;
   }> {
-    const { data } = await api.get(`/api/messages/users/${userId}`);
+    const { data } = await api.get(`/api/v1/messages/users/${userId}`);
     return data;
   },
 
@@ -1170,7 +1170,7 @@ export const messages = {
     pageSize: number = 50
   ): Promise<Message[]> {
     const { data } = await api.get<{ messages: Message[] }>(
-      `/api/messages/threads/${otherUserId}`,
+      `/api/v1/messages/threads/${otherUserId}`,
       {
         params: {
           booking_id: bookingId,
@@ -1198,11 +1198,11 @@ export const messages = {
   },
 
   async markRead(messageId: number): Promise<void> {
-    await api.patch(`/api/messages/${messageId}/read`);
+    await api.patch(`/api/v1/messages/${messageId}/read`);
   },
 
   async markThreadRead(otherUserId: number, bookingId?: number): Promise<void> {
-    await api.patch(`/api/messages/threads/${otherUserId}/read-all`, null, {
+    await api.patch(`/api/v1/messages/threads/${otherUserId}/read-all`, null, {
       params: bookingId ? { booking_id: bookingId } : undefined,
     });
   },
@@ -1213,14 +1213,14 @@ export const messages = {
   },
 
   async editMessage(messageId: number, newMessage: string): Promise<Message> {
-    const { data } = await api.patch<Message>(`/api/messages/${messageId}`, {
+    const { data } = await api.patch<Message>(`/api/v1/messages/${messageId}`, {
       message: newMessage,
     });
     return data;
   },
 
   async deleteMessage(messageId: number): Promise<void> {
-    await api.delete(`/api/messages/${messageId}`);
+    await api.delete(`/api/v1/messages/${messageId}`);
   },
 };
 
@@ -1259,7 +1259,7 @@ export const avatars = {
     const formData = new FormData();
     formData.append("file", file);
     const { data } = await api.patch<AvatarApiResponse>(
-      `/api/admin/users/${userId}/avatar`,
+      `/api/v1/admin/users/${userId}/avatar`,
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -1357,7 +1357,7 @@ export const notifications = {
     if (options?.category) params.append('category', options.category);
     if (options?.unread_only) params.append('unread_only', 'true');
     const query = params.toString();
-    const { data } = await api.get<NotificationListResponse>(`/api/notifications${query ? `?${query}` : ''}`);
+    const { data } = await api.get<NotificationListResponse>(`/api/v1/notifications${query ? `?${query}` : ''}`);
     return data.items;
   },
 
@@ -1368,7 +1368,7 @@ export const notifications = {
     if (options?.category) params.append('category', options.category);
     if (options?.unread_only) params.append('unread_only', 'true');
     const query = params.toString();
-    const { data } = await api.get<NotificationListResponse>(`/api/notifications${query ? `?${query}` : ''}`);
+    const { data } = await api.get<NotificationListResponse>(`/api/v1/notifications${query ? `?${query}` : ''}`);
     return data;
   },
 
@@ -1378,7 +1378,7 @@ export const notifications = {
   },
 
   async markAsRead(notificationId: number): Promise<void> {
-    await api.patch(`/api/notifications/${notificationId}/read`);
+    await api.patch(`/api/v1/notifications/${notificationId}/read`);
   },
 
   async markAllAsRead(): Promise<void> {
@@ -1386,15 +1386,15 @@ export const notifications = {
   },
 
   async markRead(notificationId: number): Promise<void> {
-    await api.patch(`/api/notifications/${notificationId}/read`);
+    await api.patch(`/api/v1/notifications/${notificationId}/read`);
   },
 
   async dismiss(notificationId: number): Promise<void> {
-    await api.patch(`/api/notifications/${notificationId}/dismiss`);
+    await api.patch(`/api/v1/notifications/${notificationId}/dismiss`);
   },
 
   async delete(notificationId: number): Promise<void> {
-    await api.delete(`/api/notifications/${notificationId}`);
+    await api.delete(`/api/v1/notifications/${notificationId}`);
   },
 
   async getPreferences(): Promise<NotificationPreferences> {
@@ -1425,11 +1425,11 @@ export const favorites = {
   },
 
   async removeFavorite(tutorProfileId: number): Promise<void> {
-    await api.delete(`/api/favorites/${tutorProfileId}`);
+    await api.delete(`/api/v1/favorites/${tutorProfileId}`);
   },
 
   async checkFavorite(tutorProfileId: number): Promise<FavoriteTutor | null> {
-    const response = await api.get(`/api/favorites/${tutorProfileId}`, {
+    const response = await api.get(`/api/v1/favorites/${tutorProfileId}`, {
       suppressErrorLog: true,
       validateStatus: (status) => status === 404 || (status >= 200 && status < 300),
     });
@@ -1470,7 +1470,7 @@ export const availability = {
   },
 
   async deleteAvailability(availabilityId: number): Promise<void> {
-    await api.delete(`/api/tutors/availability/${availabilityId}`);
+    await api.delete(`/api/v1/tutors/availability/${availabilityId}`);
   },
 
   async createBulkAvailability(slots: Omit<AvailabilitySlot, "id">[]): Promise<{ message: string; count: number }> {
@@ -1479,7 +1479,7 @@ export const availability = {
   },
 
   async getTutorAvailableSlots(tutorId: number, startDate: string, endDate: string): Promise<AvailableSlot[]> {
-    const { data } = await api.get<AvailableSlot[]>(`/api/tutors/${tutorId}/available-slots`, {
+    const { data } = await api.get<AvailableSlot[]>(`/api/v1/tutors/${tutorId}/available-slots`, {
       params: { start_date: startDate, end_date: endDate },
     });
     return data;
@@ -1494,12 +1494,12 @@ export const admin = {
   },
 
   async updateUser(userId: number, updates: Partial<User>): Promise<User> {
-    const { data } = await api.put<User>(`/api/admin/users/${userId}`, updates);
+    const { data } = await api.put<User>(`/api/v1/admin/users/${userId}`, updates);
     return normalizeUser(data);
   },
 
   async deleteUser(userId: number) {
-    await api.delete(`/api/admin/users/${userId}`);
+    await api.delete(`/api/v1/admin/users/${userId}`);
   },
 
   async listPendingTutors(page: number = 1, pageSize: number = 20): Promise<{ items: TutorProfile[]; total: number; page: number; page_size: number }> {
@@ -1518,7 +1518,7 @@ export const admin = {
 
   async approveTutor(tutorId: number): Promise<TutorProfile> {
     const { data } = await api.post<TutorProfile>(
-      `/api/admin/tutors/${tutorId}/approve`,
+      `/api/v1/admin/tutors/${tutorId}/approve`,
       {},
     );
     return data;
@@ -1529,7 +1529,7 @@ export const admin = {
     rejectionReason: string,
   ): Promise<TutorProfile> {
     const { data } = await api.post<TutorProfile>(
-      `/api/admin/tutors/${tutorId}/reject`,
+      `/api/v1/admin/tutors/${tutorId}/reject`,
       { rejection_reason: rejectionReason },
     );
     return data;
@@ -1554,7 +1554,7 @@ export const admin = {
   async getRecentActivities(limit: number = 50): Promise<unknown[]> {
     return swrFetch(getCacheKey("/api/v1/admin/dashboard/recent-activities", { limit }), {
       resourceType: "admin",
-      fetcher: async () => (await api.get(`/api/admin/dashboard/recent-activities?limit=${limit}`)).data,
+      fetcher: async () => (await api.get(`/api/v1/admin/dashboard/recent-activities?limit=${limit}`)).data,
       logger,
       label: "Recent activities",
     });
@@ -1566,7 +1566,7 @@ export const admin = {
   async getUpcomingSessions(limit: number = 50): Promise<unknown[]> {
     return swrFetch(getCacheKey("/api/v1/admin/dashboard/upcoming-sessions", { limit }), {
       resourceType: "admin",
-      fetcher: async () => (await api.get(`/api/admin/dashboard/upcoming-sessions?limit=${limit}`)).data,
+      fetcher: async () => (await api.get(`/api/v1/admin/dashboard/upcoming-sessions?limit=${limit}`)).data,
       logger,
       label: "Upcoming sessions",
     });
@@ -1590,7 +1590,7 @@ export const admin = {
   async getMonthlyRevenue(months: number = 6): Promise<unknown[]> {
     return swrFetch(getCacheKey("/api/v1/admin/dashboard/monthly-revenue", { months }), {
       resourceType: "admin",
-      fetcher: async () => (await api.get(`/api/admin/dashboard/monthly-revenue?months=${months}`)).data,
+      fetcher: async () => (await api.get(`/api/v1/admin/dashboard/monthly-revenue?months=${months}`)).data,
       logger,
       label: "Monthly revenue",
     });
@@ -1614,7 +1614,7 @@ export const admin = {
   async getUserGrowth(months: number = 6): Promise<unknown[]> {
     return swrFetch(getCacheKey("/api/v1/admin/dashboard/user-growth", { months }), {
       resourceType: "admin",
-      fetcher: async () => (await api.get(`/api/admin/dashboard/user-growth?months=${months}`)).data,
+      fetcher: async () => (await api.get(`/api/v1/admin/dashboard/user-growth?months=${months}`)).data,
       logger,
       label: "User growth",
     });
@@ -1694,7 +1694,7 @@ export const owner = {
 export const tutorStudentNotes = {
   async getNote(studentId: number): Promise<{ id: number; notes: string | null } | null> {
     try {
-      const { data } = await api.get(`/api/tutor/student-notes/${studentId}`);
+      const { data } = await api.get(`/api/v1/tutor/student-notes/${studentId}`);
       return data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -1705,11 +1705,11 @@ export const tutorStudentNotes = {
   },
 
   async updateNote(studentId: number, notes: string): Promise<void> {
-    await api.put(`/api/tutor/student-notes/${studentId}`, { notes });
+    await api.put(`/api/v1/tutor/student-notes/${studentId}`, { notes });
   },
 
   async deleteNote(studentId: number): Promise<void> {
-    await api.delete(`/api/tutor/student-notes/${studentId}`);
+    await api.delete(`/api/v1/tutor/student-notes/${studentId}`);
   },
 };
 

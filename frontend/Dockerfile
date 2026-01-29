@@ -4,17 +4,22 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Stage 1: Dependencies - Install npm packages (cached layer)
+# Stage 1: Dependencies - Install packages using pnpm (more reliable in Docker)
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS deps
 
 WORKDIR /app
 
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Copy package files for dependency caching
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --prefer-offline
+# Install dependencies using pnpm (reads package-lock.json)
+RUN pnpm import && \
+    pnpm install --frozen-lockfile && \
+    test -f node_modules/.bin/next || (echo "ERROR: next not installed" && exit 1)
 
 # -----------------------------------------------------------------------------
 # Stage 2: Development - Hot-reload for local development
@@ -23,7 +28,7 @@ FROM node:20-alpine AS development
 
 WORKDIR /app
 
-# Copy package files first (for npm install check)
+# Copy package files first
 COPY package.json package-lock.json ./
 
 # Copy dependencies from deps stage
@@ -37,8 +42,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3000
 
-# Install dependencies if node_modules is empty (volume mount case), then start dev server
-CMD ["sh", "-c", "if [ ! -d 'node_modules/next' ]; then echo 'Installing dependencies...' && npm ci; fi && npm run dev"]
+# Development server with hot-reload
+CMD ["npx", "next", "dev"]
 
 # -----------------------------------------------------------------------------
 # Stage 3: Builder - Build production assets
@@ -61,7 +66,7 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_LOG_LEVEL=${NEXT_PUBLIC_LOG_LEVEL}
 
 # Build Next.js (standalone output configured in next.config.js)
-RUN npm run build
+RUN npx next build
 
 # -----------------------------------------------------------------------------
 # Stage 4: Production - Minimal standalone image

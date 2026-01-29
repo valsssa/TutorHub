@@ -46,7 +46,7 @@ export default function FilterBar({
   activeFiltersCount = 0,
 }: FilterBarProps) {
   const [activeDropdown, setActiveDropdown] = useState<FilterDropdown>(null);
-  const [tempPriceRangeRange, setTempPriceRange] = useState<[number, number]>(priceRange);
+  const [tempPriceRange, setTempPriceRange] = useState<[number, number]>(priceRange);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -236,7 +236,7 @@ export default function FilterBar({
                         type="number"
                         value={tempPriceRange[0]}
                         onChange={(e) =>
-                          setTempPrice([
+                          setTempPriceRange([
                             Math.min(
                               Number(e.target.value),
                               tempPriceRange[1] - PRICE_LIMITS.step
@@ -253,7 +253,7 @@ export default function FilterBar({
                         type="number"
                         value={tempPriceRange[1]}
                         onChange={(e) =>
-                          setTempPrice([
+                          setTempPriceRange([
                             tempPriceRange[0],
                             Math.max(
                               Number(e.target.value),
@@ -275,7 +275,7 @@ export default function FilterBar({
                         step={PRICE_LIMITS.step}
                         value={tempPriceRange[1]}
                         onChange={(e) =>
-                          setTempPrice([
+                          setTempPriceRange([
                             tempPriceRange[0],
                             Math.max(
                               Number(e.target.value),
