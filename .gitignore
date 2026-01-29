@@ -53,7 +53,14 @@ htmlcov/
 .coverage.*
 frontend/test-results/*
 frontend/playwright-report/*
+.playwright-mcp/
 
+# Playwright
+playwright/.cache/
+frontend/screenshots/
+# Test files
+test-results/
+playwright-report/
 
 # IDEs
 .vscode/

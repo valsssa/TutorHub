@@ -139,10 +139,11 @@ export class WebSocketClient {
     this.reconnectDelay = this.config.initialReconnectDelayMs;
 
     // Build WebSocket URL
+    // Note: WebSocket endpoint is registered under /api/v1 prefix in backend
     const wsBaseUrl = getWebSocketBaseUrl(
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
     );
-    this.url = `${wsBaseUrl}/ws/messages`;
+    this.url = `${wsBaseUrl}/api/v1/ws/messages`;
 
     // Set up browser event listeners
     this.setupBrowserListeners();
@@ -295,9 +296,8 @@ export class WebSocketClient {
         this.ws.onopen = () => {
           clearTimeout(connectionTimeout);
           console.log("[WebSocket] Connection opened");
-
-          // Send auth message for backward compatibility
-          this.sendAuthMessage();
+          // Authentication is handled via token in query parameter
+          // Server will send 'connection' message on successful auth
         };
 
         // Handle auth success
@@ -449,18 +449,6 @@ export class WebSocketClient {
     // Schedule reconnection
     this.setState("reconnecting");
     this.scheduleReconnect();
-  }
-
-  private sendAuthMessage(): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(
-        JSON.stringify({
-          type: "authenticate",
-          token: this.token,
-        })
-      );
-      console.log("[WebSocket] Auth message sent");
-    }
   }
 
   private scheduleReconnect(): void {

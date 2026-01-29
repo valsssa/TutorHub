@@ -518,8 +518,8 @@ async def websocket_endpoint(
 
     **Connection URL:**
     ```
-    ws://localhost:8000/ws/messages?token=<jwt_token>
-    wss://api.example.com/ws/messages?token=<jwt_token>
+    ws://localhost:8000/api/v1/ws/messages?token=<jwt_token>
+    wss://api.example.com/api/v1/ws/messages?token=<jwt_token>
     ```
 
     **Client -> Server Events:**

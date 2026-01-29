@@ -32,6 +32,64 @@ export interface MessageThread {
   unreadCount: number;
 }
 
+// WebSocket message payload types (matching backend)
+interface NewMessagePayload extends WebSocketMessage {
+  type: "new_message";
+  message_id: number;
+  sender_id: number;
+  sender_email: string;
+  recipient_id: number;
+  booking_id: number | null;
+  message: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+interface MessageSentPayload extends WebSocketMessage {
+  type: "message_sent";
+  message_id: number;
+  recipient_id: number;
+}
+
+interface DeliveryReceiptPayload extends WebSocketMessage {
+  type: "delivery_receipt";
+  message_id: number;
+  recipient_id: number;
+  state: "delivered" | "read";
+}
+
+interface MessageReadPayload extends WebSocketMessage {
+  type: "message_read";
+  message_id: number;
+  reader_id: number;
+  read_at?: string;
+}
+
+interface MessageEditedPayload extends WebSocketMessage {
+  type: "message_edited";
+  message_id: number;
+  new_content: string;
+  edited_at: string;
+}
+
+interface MessageDeletedPayload extends WebSocketMessage {
+  type: "message_deleted";
+  message_id: number;
+  deleted_by: number;
+}
+
+interface TypingPayload extends WebSocketMessage {
+  type: "typing";
+  user_id: number;
+  user_email: string;
+}
+
+interface ThreadReadPayload extends WebSocketMessage {
+  type: "thread_read";
+  reader_id: number;
+  message_count: number;
+}
+
 interface UseMessagingProps {
   currentUserId: number | null;
   selectedThreadId?: number;
@@ -41,7 +99,6 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
   const {
     isConnected,
     lastMessage,
-    sendMessage: wsSendMessage,
     sendTyping: wsSendTyping,
     sendMessageDelivered,
     sendMessageRead,
@@ -58,28 +115,28 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
     const handleMessage = () => {
       switch (lastMessage.type) {
         case "new_message":
-          handleNewMessage(lastMessage);
+          handleNewMessage(lastMessage as NewMessagePayload);
           break;
         case "message_sent":
-          handleMessageSent(lastMessage);
+          handleMessageSent(lastMessage as MessageSentPayload);
           break;
         case "delivery_receipt":
-          handleDeliveryReceipt(lastMessage);
+          handleDeliveryReceipt(lastMessage as DeliveryReceiptPayload);
           break;
         case "message_read":
-          handleMessageRead(lastMessage);
+          handleMessageRead(lastMessage as MessageReadPayload);
           break;
         case "message_edited":
-          handleMessageEdited(lastMessage);
+          handleMessageEdited(lastMessage as MessageEditedPayload);
           break;
         case "message_deleted":
-          handleMessageDeleted(lastMessage);
+          handleMessageDeleted(lastMessage as MessageDeletedPayload);
           break;
         case "typing":
-          handleTyping(lastMessage);
+          handleTyping(lastMessage as TypingPayload);
           break;
         case "thread_read":
-          handleThreadRead(lastMessage);
+          handleThreadRead(lastMessage as ThreadReadPayload);
           break;
       }
     };
@@ -88,7 +145,7 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
   }, [lastMessage, currentUserId, selectedThreadId]);
 
   // Handler functions
-  const handleNewMessage = (msg: WebSocketMessage) => {
+  const handleNewMessage = (msg: NewMessagePayload) => {
     // Only add message if it's for the current thread
     if (
       selectedThreadId &&
@@ -99,7 +156,7 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
         id: msg.message_id,
         sender_id: msg.sender_id,
         recipient_id: msg.recipient_id,
-        booking_id: msg.booking_id,
+        booking_id: msg.booking_id ?? undefined,
         message: msg.message,
         created_at: msg.created_at,
         is_read: msg.is_read || false,
@@ -121,37 +178,37 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
     }
   };
 
-  const handleMessageSent = (msg: WebSocketMessage) => {
+  const handleMessageSent = (msg: MessageSentPayload) => {
     if (msg.message_id && selectedThreadId) {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === msg.message_id ? { ...m, delivery_state: "sent" } : m
+          m.id === msg.message_id ? { ...m, delivery_state: "sent" as const } : m
         )
       );
     }
   };
 
-  const handleDeliveryReceipt = (msg: WebSocketMessage) => {
+  const handleDeliveryReceipt = (msg: DeliveryReceiptPayload) => {
     setMessages((prev) =>
       prev.map((m) =>
-        m.id === msg.message_id ? { ...m, delivery_state: "delivered" } : m
+        m.id === msg.message_id ? { ...m, delivery_state: "delivered" as const } : m
       )
     );
   };
 
-  const handleMessageRead = (msg: WebSocketMessage) => {
+  const handleMessageRead = (msg: MessageReadPayload) => {
     // Update message read status in real-time
     // This updates check marks from 1 to 2 when recipient reads the message
     setMessages((prev) =>
       prev.map((m) =>
         m.id === msg.message_id && !m.is_read
-          ? { ...m, is_read: true, read_at: msg.read_at, delivery_state: "read" }
+          ? { ...m, is_read: true, read_at: msg.read_at, delivery_state: "read" as const }
           : m
       )
     );
   };
 
-  const handleMessageEdited = (msg: WebSocketMessage) => {
+  const handleMessageEdited = (msg: MessageEditedPayload) => {
     setMessages((prev) =>
       prev.map((m) =>
         m.id === msg.message_id
@@ -166,11 +223,11 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
     );
   };
 
-  const handleMessageDeleted = (msg: WebSocketMessage) => {
+  const handleMessageDeleted = (msg: MessageDeletedPayload) => {
     setMessages((prev) => prev.filter((m) => m.id !== msg.message_id));
   };
 
-  const handleTyping = (msg: WebSocketMessage) => {
+  const handleTyping = (msg: TypingPayload) => {
     if (selectedThreadId && msg.user_id === selectedThreadId) {
       setTypingUsers((prev) => new Set(prev).add(msg.user_id));
 
@@ -194,7 +251,7 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
     }
   };
 
-  const handleThreadRead = (msg: WebSocketMessage) => {
+  const handleThreadRead = (msg: ThreadReadPayload) => {
     // Could update UI to show messages were read
     console.log(`Thread read by user ${msg.reader_id}: ${msg.message_count} messages`);
   };
@@ -210,9 +267,9 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
   // Send read receipts when viewing messages
   const setMessageList = useCallback(
     (newMessagesOrUpdater: Message[] | ((prev: Message[]) => Message[])) => {
-      const processSendReadReceipts = (messages: Message[]) => {
+      const processSendReadReceipts = (messageList: Message[]) => {
         if (currentUserId && selectedThreadId && sendMessageRead) {
-          messages.forEach((msg) => {
+          messageList.forEach((msg) => {
             if (
               msg.sender_id === selectedThreadId &&
               msg.recipient_id === currentUserId &&
