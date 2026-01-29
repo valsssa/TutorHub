@@ -393,6 +393,34 @@ class TestDisputes:
         assert result.success is False
         assert "terminal" in result.error_message.lower() or "completed" in result.error_message.lower()
 
+    def test_cannot_open_dispute_on_refunded_booking(self, mock_booking):
+        """Cannot open dispute when payment already refunded."""
+        mock_booking.session_state = SessionState.CANCELLED.value
+        mock_booking.payment_state = PaymentState.REFUNDED.value
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Unfair cancellation",
+            disputed_by_user_id=123,
+        )
+
+        assert result.success is False
+        assert "refunded" in result.error_message.lower()
+
+    def test_cannot_open_dispute_on_voided_booking(self, mock_booking):
+        """Cannot open dispute when payment already voided."""
+        mock_booking.session_state = SessionState.EXPIRED.value
+        mock_booking.payment_state = PaymentState.VOIDED.value
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Should have been accepted",
+            disputed_by_user_id=123,
+        )
+
+        assert result.success is False
+        assert "voided" in result.error_message.lower()
+
     def test_open_dispute_is_idempotent(self, mock_booking):
         """Opening dispute when one is already open is idempotent."""
         mock_booking.session_state = SessionState.ENDED.value
@@ -768,6 +796,64 @@ class TestResolveDisputeAdvanced:
 
         assert result.success is True
         assert result.already_in_target_state is True
+
+    def test_resolve_dispute_refunded_skips_refund_if_already_refunded(self, mock_booking):
+        """Resolving dispute with refund when payment already refunded just updates dispute state."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.REFUNDED.value
+        mock_booking.rate_cents = 5000
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+            notes="Refund already issued",
+        )
+
+        assert result.success is True
+        assert mock_booking.dispute_state == DisputeState.RESOLVED_REFUNDED.value
+        # Payment state should remain REFUNDED (not change)
+        assert mock_booking.payment_state == PaymentState.REFUNDED.value
+
+    def test_resolve_dispute_refunded_skips_refund_if_voided(self, mock_booking):
+        """Resolving dispute with refund when payment voided just updates dispute state."""
+        mock_booking.session_state = SessionState.CANCELLED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.VOIDED.value
+        mock_booking.rate_cents = 5000
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+            notes="Payment was already voided",
+        )
+
+        assert result.success is True
+        assert mock_booking.dispute_state == DisputeState.RESOLVED_REFUNDED.value
+        # Payment state should remain VOIDED (not attempt refund)
+        assert mock_booking.payment_state == PaymentState.VOIDED.value
+
+    def test_resolve_dispute_refunded_voids_authorized_payment(self, mock_booking):
+        """Resolving dispute with refund when payment authorized should void."""
+        mock_booking.session_state = SessionState.SCHEDULED.value
+        mock_booking.session_state = SessionState.CANCELLED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+        mock_booking.rate_cents = 5000
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+            notes="Release authorization to student",
+        )
+
+        assert result.success is True
+        assert mock_booking.dispute_state == DisputeState.RESOLVED_REFUNDED.value
+        # Payment should be voided (authorization released) not captured then refunded
+        assert mock_booking.payment_state == PaymentState.VOIDED.value
 
 
 # ============================================================================

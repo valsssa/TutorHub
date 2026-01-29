@@ -355,8 +355,34 @@ class BookingService:
     # Mark No-Show
     # ========================================================================
 
-    def mark_no_show(self, booking: Booking, reporter_role: str, notes: str | None = None) -> Booking:
-        """Mark a booking as no-show."""
+    def mark_no_show(
+        self,
+        booking: Booking,
+        reporter_role: str,
+        notes: str | None = None,
+        *,
+        use_lock: bool = False,
+    ) -> tuple[Booking, bool]:
+        """
+        Mark a booking as no-show with race condition protection.
+
+        This method handles the case where both parties may report no-show
+        simultaneously. If conflicting reports exist, it auto-escalates to dispute.
+
+        Args:
+            booking: The booking to mark as no-show
+            reporter_role: "TUTOR" or "STUDENT" - who is making the report
+            notes: Optional notes about the no-show
+            use_lock: If True, re-acquire the booking with row-level lock
+
+        Returns:
+            Tuple of (booking, escalated_to_dispute)
+            - booking: The updated booking
+            - escalated_to_dispute: True if conflicting reports caused auto-escalation
+
+        Raises:
+            HTTPException: If validation fails or state transition is invalid
+        """
         now = datetime.now(UTC)
 
         # Validate with policy
@@ -372,11 +398,21 @@ class BookingService:
                 detail=decision.message,
             )
 
+        # Re-acquire booking with lock if requested to prevent race conditions
+        if use_lock:
+            locked_booking = BookingStateMachine.get_booking_with_lock(self.db, booking.id)
+            if not locked_booking:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Booking not found",
+                )
+            booking = locked_booking
+
         # Determine who was absent (opposite of reporter)
         who_was_absent = "STUDENT" if reporter_role == "TUTOR" else "TUTOR"
 
-        # Use state machine to mark no-show
-        result = BookingStateMachine.mark_no_show(booking, who_was_absent)
+        # Use state machine to mark no-show with reporter info for conflict detection
+        result = BookingStateMachine.mark_no_show(booking, who_was_absent, reporter_role)
 
         if not result.success:
             raise HTTPException(
@@ -384,17 +420,28 @@ class BookingService:
                 detail=result.error_message or f"Cannot mark no-show for booking with state {booking.session_state}",
             )
 
-        if notes:
-            booking.notes = (booking.notes or "") + f"\n[No-show: {notes}]"
+        # Add notes based on outcome
+        if result.escalated_to_dispute:
+            booking.notes = (booking.notes or "") + f"\n[Conflicting no-show reports - escalated to dispute]"
+            if notes:
+                booking.notes += f" Reporter ({reporter_role}) notes: {notes}"
+        elif notes:
+            booking.notes = (booking.notes or "") + f"\n[No-show reported by {reporter_role}: {notes}]"
 
         booking.updated_at = datetime.now(UTC)
 
-        # Apply penalties
-        if decision.apply_strike_to_tutor and booking.tutor_profile:
-            tutor_profile = booking.tutor_profile
-            tutor_profile.cancellation_strikes = (tutor_profile.cancellation_strikes or 0) + 1
+        # Apply penalties only if not escalated (let admin decide if escalated)
+        if not result.escalated_to_dispute:
+            if decision.apply_strike_to_tutor and booking.tutor_profile:
+                tutor_profile = booking.tutor_profile
+                tutor_profile.cancellation_strikes = (tutor_profile.cancellation_strikes or 0) + 1
 
-        return booking
+            # Restore package credit for tutor no-show (student gets refund)
+            # When tutor is no-show, the student deserves their package credit back
+            if who_was_absent == "TUTOR" and booking.package_id:
+                self._restore_package_credit(booking.package_id)
+
+        return booking, result.escalated_to_dispute
 
     # ========================================================================
     # Helper Methods
@@ -499,18 +546,31 @@ class BookingService:
             )
         )
 
-    def _restore_package_credit(self, package_id: int) -> None:
+    def _restore_package_credit(self, package_id: int) -> bool:
         """
-        Atomically restore package credit on cancellation.
+        Atomically restore one credit to a package.
 
-        Uses atomic SQL UPDATE to prevent race conditions.
+        Uses atomic SQL UPDATE with guards to prevent race conditions and over-restoration.
+        Idempotent: safe to call multiple times for the same booking/package.
+
+        Args:
+            package_id: The ID of the package to restore credit to
+
+        Returns:
+            True if credit was restored, False if already at max or invalid state
+
+        Guards:
+            - sessions_used > 0 (must have used sessions to restore)
+            - sessions_remaining < sessions_purchased (prevent over-restoration)
+            - status in (active, exhausted) (not expired/refunded)
         """
-        # Atomic increment - also reactivate exhausted packages
+        # Atomic increment with safety guards
         result = self.db.execute(
             update(StudentPackage)
             .where(
                 StudentPackage.id == package_id,
                 StudentPackage.sessions_used > 0,
+                StudentPackage.sessions_remaining < StudentPackage.sessions_purchased,  # Guard against over-restore
                 StudentPackage.status.in_(["active", "exhausted"]),
             )
             .values(
@@ -520,20 +580,25 @@ class BookingService:
             )
         )
 
-        # If package was exhausted, reactivate it
-        if result.rowcount > 0:
-            self.db.execute(
-                update(StudentPackage)
-                .where(
-                    StudentPackage.id == package_id,
-                    StudentPackage.status == "exhausted",
-                    StudentPackage.sessions_remaining > 0,
-                )
-                .values(
-                    status="active",
-                    updated_at=datetime.now(UTC),
-                )
+        if result.rowcount == 0:
+            # Either package not found, already at max credits, or in invalid state
+            return False
+
+        # Reactivate exhausted packages after restoring credit
+        self.db.execute(
+            update(StudentPackage)
+            .where(
+                StudentPackage.id == package_id,
+                StudentPackage.status == "exhausted",
+                StudentPackage.sessions_remaining > 0,
             )
+            .values(
+                status="active",
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+        return True
 
 
 # ============================================================================

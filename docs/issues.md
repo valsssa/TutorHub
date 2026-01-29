@@ -1,7 +1,8 @@
 # EduStream Edge Case Analysis & Failure Mode Report
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 2026-01-29
+**Last Updated:** 2026-01-29
 **Scope:** Production-grade analysis treating system as live with real users and money
 
 ---
@@ -10,12 +11,37 @@
 
 This document identifies **68 borderline cases** across the EduStream platform, categorized by severity:
 
-| Severity | Count | Description |
-|----------|-------|-------------|
-| **CRITICAL** | 12 | Data loss, financial loss, security breach |
-| **HIGH** | 24 | Significant user impact, race conditions |
-| **MEDIUM** | 22 | Poor UX, inconsistent state, operational issues |
-| **LOW** | 10 | Minor inconsistencies, edge cases unlikely to occur |
+| Severity | Count | Fixed | Remaining | Description |
+|----------|-------|-------|-----------|-------------|
+| **CRITICAL** | 12 | 6 | 6 | Data loss, financial loss, security breach |
+| **HIGH** | 24 | 4 | 20 | Significant user impact, race conditions |
+| **MEDIUM** | 22 | 0 | 22 | Poor UX, inconsistent state, operational issues |
+| **LOW** | 10 | 0 | 10 | Minor inconsistencies, edge cases unlikely to occur |
+
+---
+
+## Fixed Issues Log
+
+### 2026-01-29 - Initial Fixes (10 issues resolved)
+
+| Issue | Severity | Fix Summary | Files Changed |
+|-------|----------|-------------|---------------|
+| **2.1 Wallet Credit Race** | CRITICAL | Atomic SQL UPDATE instead of read-modify-write | `payments/router.py` |
+| **4.1 Double Package Credit** | CRITICAL | SELECT FOR UPDATE + atomic decrement | `bookings/service.py`, `packages/api.py` |
+| **5.1 Double-Booking** | CRITICAL | Row locking + DB exclusion constraint | `bookings/service.py`, migration 035 |
+| **3.1 Token After Role Demotion** | CRITICAL | Role validation on each request | `core/dependencies.py` |
+| **3.2 Token After Password Change** | CRITICAL | `password_changed_at` tracking + validation | `models/auth.py`, `core/dependencies.py`, `auth/password_router.py`, migration 036 |
+| **1.1 Double-Acceptance Race** | HIGH | SELECT FOR UPDATE + idempotent transitions | `bookings/state_machine.py`, `bookings/api.py` |
+| **1.2 Expiry vs Confirmation Race** | HIGH | NOWAIT locking in jobs + idempotent handling | `bookings/jobs.py`, `bookings/state_machine.py` |
+| **2.2 Double Webhook Processing** | HIGH | WebhookEvent table for idempotency | `models/payments.py`, `payments/router.py`, migration 035 |
+| **7.1 No Optimistic Locking** | HIGH | Version column + increment on state changes | `models/bookings.py`, `bookings/state_machine.py`, migration 035 |
+| **State Machine Races** | HIGH | Idempotent transitions for all state methods | `bookings/state_machine.py` |
+
+### New Migrations Created
+- `035_add_booking_overlap_constraint.sql` - Exclusion constraint for double-booking prevention
+- `035_add_booking_version_column.sql` - Version column for optimistic locking
+- `035_create_webhook_events.sql` - Webhook idempotency tracking
+- `036_add_password_changed_at.sql` - Token invalidation support
 
 ---
 
@@ -36,7 +62,9 @@ This document identifies **68 borderline cases** across the EduStream platform, 
 
 ## 1. Booking State Machine
 
-### 1.1 Double-Acceptance Race Condition
+### 1.1 Double-Acceptance Race Condition ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via SELECT FOR UPDATE + idempotent transitions
 
 **Trigger conditions:**
 - Multiple HTTP requests to `/tutor/bookings/{id}/confirm` arrive within milliseconds
@@ -75,7 +103,9 @@ if booking.session_state == SessionState.SCHEDULED:
 
 ---
 
-### 1.2 Expiry vs Confirmation Race
+### 1.2 Expiry vs Confirmation Race ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via NOWAIT locking + idempotent job handling
 
 **Trigger conditions:**
 - `expire_requests()` job runs every 5 minutes
@@ -318,7 +348,9 @@ with db.begin():
 
 ## 2. Payment & Financial Operations
 
-### 2.1 Wallet Credit Race Condition (CRITICAL)
+### 2.1 Wallet Credit Race Condition (CRITICAL) ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via atomic SQL UPDATE in webhook handler
 
 **Trigger conditions:**
 - Two simultaneous wallet top-up webhooks for same user
@@ -363,7 +395,9 @@ profile = db.query(StudentProfile).filter(...).with_for_update().first()
 
 ---
 
-### 2.2 Double Webhook Processing
+### 2.2 Double Webhook Processing ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via WebhookEvent table for idempotency tracking
 
 **Trigger conditions:**
 - Stripe retries webhook due to slow response
@@ -653,7 +687,9 @@ elif booking.payment_state == PaymentState.PENDING:
 
 ## 3. Authentication & Authorization
 
-### 3.1 Token Valid After Role Demotion
+### 3.1 Token Valid After Role Demotion ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via role validation in get_current_user()
 
 **Trigger conditions:**
 - Admin demotes user from admin to student
@@ -695,7 +731,9 @@ def blacklist_user_tokens(user_id: int):
 
 ---
 
-### 3.2 No Token Revocation on Password Change
+### 3.2 No Token Revocation on Password Change ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via password_changed_at tracking + token validation
 
 **Trigger conditions:**
 - User changes password (or admin resets it)
@@ -963,7 +1001,9 @@ if not user.is_active:
 
 ## 4. Packages & Credits
 
-### 4.1 Double Package Credit Deduction (CRITICAL)
+### 4.1 Double Package Credit Deduction (CRITICAL) ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via SELECT FOR UPDATE + atomic SQL decrement
 
 **Trigger conditions:**
 - User clicks "Book Now" rapidly twice
@@ -1153,7 +1193,9 @@ if booking.package_id:
 
 ## 5. Scheduling & Availability
 
-### 5.1 Double-Booking Same Slot (CRITICAL)
+### 5.1 Double-Booking Same Slot (CRITICAL) ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via row locking + database exclusion constraint
 
 **Trigger conditions:**
 - Two students view same available slot
@@ -1466,7 +1508,9 @@ if abs(response.offset) > 5:  # More than 5 seconds drift
 
 ## 7. Concurrency & Race Conditions
 
-### 7.1 Optimistic Locking Not Implemented
+### 7.1 Optimistic Locking Not Implemented ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via version column on Booking model
 
 **Trigger conditions:**
 - Any concurrent modification to same record

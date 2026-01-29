@@ -48,6 +48,8 @@ class TransitionResult:
     success: bool
     error_message: str | None = None
     already_in_target_state: bool = False  # Indicates idempotent success
+    escalated_to_dispute: bool = False  # Indicates conflicting no-show reports
+    restore_package_credit: bool = False  # Indicates package credit should be restored
 
 
 class BookingStateMachine:
@@ -497,23 +499,69 @@ class BookingStateMachine:
         cls,
         booking: "Booking",
         who_was_absent: str,  # "STUDENT" or "TUTOR"
+        reporter_role: str | None = None,  # "TUTOR" or "STUDENT" - who is reporting
     ) -> TransitionResult:
         """
-        Mark a no-show for a session.
+        Mark a no-show for a session with race condition protection.
 
-        This can be called on ACTIVE or SCHEDULED sessions.
+        This method handles the case where both parties may report no-show
+        simultaneously. If conflicting reports exist, it escalates to dispute.
 
-        Idempotent: Returns success if already ENDED with no-show outcome.
+        Args:
+            booking: The booking to mark as no-show (should be locked with FOR UPDATE)
+            who_was_absent: "STUDENT" or "TUTOR" - who didn't show up
+            reporter_role: "TUTOR" or "STUDENT" - who is making the report
+
+        Returns:
+            TransitionResult with escalated_to_dispute=True if conflicting reports
+
+        Note:
+            The booking should be acquired with get_booking_with_lock() before
+            calling this method to prevent race conditions.
         """
-        # Idempotent check: already ended with a no-show outcome
+        # Determine reporter role if not provided (for backwards compatibility)
+        if reporter_role is None:
+            reporter_role = "TUTOR" if who_was_absent == "STUDENT" else "STUDENT"
+
+        # Check if already ended with a no-show outcome
         if booking.session_state == SessionState.ENDED.value:
             if booking.session_outcome in {
                 SessionOutcome.NO_SHOW_STUDENT.value,
                 SessionOutcome.NO_SHOW_TUTOR.value,
             }:
+                # Determine who reported first based on outcome
+                existing_reporter = (
+                    "TUTOR" if booking.session_outcome == SessionOutcome.NO_SHOW_STUDENT.value
+                    else "STUDENT"
+                )
+
+                # Same reporter - idempotent success
+                if existing_reporter == reporter_role:
+                    return TransitionResult(
+                        success=True,
+                        already_in_target_state=True,
+                    )
+
+                # Conflicting reports! Auto-escalate to dispute
+                # Store both reports for admin review
+                existing_claim = (
+                    "student was absent" if booking.session_outcome == SessionOutcome.NO_SHOW_STUDENT.value
+                    else "tutor was absent"
+                )
+                new_claim = "tutor was absent" if who_was_absent == "TUTOR" else "student was absent"
+
+                booking.dispute_state = DisputeState.OPEN.value
+                booking.dispute_reason = (
+                    f"Conflicting no-show reports: {existing_reporter} reported {existing_claim}, "
+                    f"{reporter_role} reported {new_claim}. Requires admin review."
+                )
+                booking.disputed_at = datetime.utcnow()
+                # Don't set disputed_by as this is a system-generated dispute
+                cls.increment_version(booking)
+
                 return TransitionResult(
                     success=True,
-                    already_in_target_state=True,
+                    escalated_to_dispute=True,
                 )
 
         current_state = SessionState(booking.session_state)
@@ -539,6 +587,42 @@ class BookingStateMachine:
         return TransitionResult(success=True)
 
     @classmethod
+    def mark_no_show_with_lock(
+        cls,
+        db: "Session",
+        booking_id: int,
+        who_was_absent: str,
+        reporter_role: str,
+    ) -> tuple["Booking | None", TransitionResult]:
+        """
+        Mark no-show with row-level locking for race condition safety.
+
+        This is the preferred method for marking no-shows from API endpoints.
+        It acquires a row lock, checks for conflicts, and handles the transition
+        atomically.
+
+        Args:
+            db: SQLAlchemy session
+            booking_id: ID of the booking
+            who_was_absent: "STUDENT" or "TUTOR"
+            reporter_role: "TUTOR" or "STUDENT"
+
+        Returns:
+            Tuple of (locked_booking, TransitionResult)
+        """
+        # Acquire row lock to prevent race conditions
+        booking = cls.get_booking_with_lock(db, booking_id)
+
+        if not booking:
+            return None, TransitionResult(
+                success=False,
+                error_message="Booking not found",
+            )
+
+        result = cls.mark_no_show(booking, who_was_absent, reporter_role)
+        return booking, result
+
+    @classmethod
     def open_dispute(
         cls,
         booking: "Booking",
@@ -549,6 +633,7 @@ class BookingStateMachine:
         Open a dispute on a booking.
 
         Can only open disputes on terminal session states.
+        Cannot open disputes on bookings where payment has already been refunded or voided.
 
         Idempotent: Returns success if already has OPEN dispute.
         """
@@ -563,6 +648,14 @@ class BookingStateMachine:
             return TransitionResult(
                 success=False,
                 error_message="Can only dispute completed or cancelled bookings",
+            )
+
+        # Check payment state - cannot dispute if already refunded or voided
+        current_payment = PaymentState(booking.payment_state)
+        if current_payment in {PaymentState.REFUNDED, PaymentState.VOIDED}:
+            return TransitionResult(
+                success=False,
+                error_message="Cannot open dispute: payment has already been refunded or voided",
             )
 
         if not cls.can_transition_dispute_state(booking.dispute_state, DisputeState.OPEN):
@@ -630,11 +723,22 @@ class BookingStateMachine:
         # Update payment state if refunding
         if resolution == DisputeState.RESOLVED_REFUNDED:
             current_payment = PaymentState(booking.payment_state)
-            if current_payment == PaymentState.CAPTURED:
+            # Skip refund if payment already refunded or voided - just update dispute state
+            if current_payment in {PaymentState.REFUNDED, PaymentState.VOIDED}:
+                # Payment already returned to student, just resolve the dispute
+                cls.increment_version(booking)
+                return TransitionResult(
+                    success=True,
+                    already_in_target_state=False,
+                )
+            elif current_payment == PaymentState.CAPTURED:
                 if refund_amount_cents and refund_amount_cents < (booking.rate_cents or 0):
                     booking.payment_state = PaymentState.PARTIALLY_REFUNDED.value
                 else:
                     booking.payment_state = PaymentState.REFUNDED.value
+            elif current_payment == PaymentState.AUTHORIZED:
+                # Release the authorization instead of capturing and refunding
+                booking.payment_state = PaymentState.VOIDED.value
 
         cls.increment_version(booking)
 

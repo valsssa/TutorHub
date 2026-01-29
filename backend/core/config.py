@@ -78,6 +78,18 @@ class Settings(BaseSettings):
     RATE_LIMIT_LOGIN: str = "10/minute"
     RATE_LIMIT_DEFAULT: str = "20/minute"
 
+    # Redis Configuration
+    REDIS_URL: str = "redis://redis:6379/0"
+
+    # Account Lockout Configuration (brute-force protection)
+    ACCOUNT_LOCKOUT_MAX_ATTEMPTS: int = 5
+    ACCOUNT_LOCKOUT_DURATION_SECONDS: int = 900  # 15 minutes
+
+    @property
+    def redis_url(self) -> str:
+        """Redis connection URL (lowercase property for backwards compatibility)."""
+        return self.REDIS_URL
+
     # Default Users - SECURITY: Passwords must be set via environment variables
     # If not set, secure random passwords will be generated and logged ONCE on first startup
     DEFAULT_ADMIN_EMAIL: str = "admin@example.com"

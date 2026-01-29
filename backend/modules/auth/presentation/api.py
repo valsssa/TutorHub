@@ -10,6 +10,7 @@ from core.rate_limiting import limiter
 
 from sqlalchemy.orm import Session
 
+from core.account_lockout import account_lockout
 from core.config import settings
 from core.dependencies import get_current_user
 from database import get_db
@@ -144,13 +145,15 @@ Authenticates user credentials and returns JWT access token for API authorizatio
 
 **Authentication Flow**:
 1. Client submits email (as username) and password via OAuth2 form
-2. Server validates credentials (constant-time comparison)
-3. JWT token generated with 30-minute expiry
-4. Token includes user ID and role in claims
+2. Server checks for account lockout (brute-force protection)
+3. Server validates credentials (constant-time comparison)
+4. JWT token generated with 30-minute expiry
+5. Token includes user ID and role in claims
 
 **Security Features**:
 - Bcrypt password verification (constant-time)
 - Rate limiting: 10 attempts/minute per IP
+- Account lockout: 5 failed attempts locks account for 15 minutes
 - Failed attempts logged for security monitoring
 - Email lookup uses case-insensitive indexed search
 
@@ -162,7 +165,7 @@ Authenticates user credentials and returns JWT access token for API authorizatio
 **Common Errors**:
 - 401: Invalid credentials (email not found or wrong password)
 - 403: Account inactive or not verified
-- 429: Too many login attempts
+- 429: Too many login attempts (IP rate limit or account locked)
 
 **OAuth2 Form Fields**:
 - `username`: User's email address
@@ -189,28 +192,69 @@ Authenticates user credentials and returns JWT access token for API authorizatio
             "content": {"application/json": {"example": {"detail": "Account is inactive"}}},
         },
         429: {
-            "description": "Rate limit exceeded - max 10 login attempts per minute",
-            "content": {"application/json": {"example": {"detail": "Rate limit exceeded"}}},
+            "description": "Rate limit exceeded or account locked",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "rate_limit": {"value": {"detail": "Rate limit exceeded"}},
+                        "account_locked": {
+                            "value": {
+                                "detail": "Account temporarily locked due to too many "
+                                "failed login attempts. Please try again in 15 minutes."
+                            }
+                        },
+                    }
+                }
+            },
         },
     },
 )
 @limiter.limit("10/minute")
-def login(
+async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service),
 ):
     """Login and get JWT token."""
     client_host = request.client.host if request.client else "unknown"
-    logger.info(f"Login attempt from {client_host} for email: {form_data.username}")
+    email = form_data.username
+    logger.info(f"Login attempt from {client_host} for email: {email}")
 
-    token_data = service.authenticate_user(
-        email=form_data.username,
-        password=form_data.password,
-    )
+    # Check if account is locked due to too many failed attempts
+    if await account_lockout.is_locked(email):
+        ttl = await account_lockout.get_lockout_ttl(email)
+        minutes_remaining = max(1, (ttl + 59) // 60)  # Round up to nearest minute
+        logger.warning(
+            f"Login rejected - account locked for {email} from {client_host}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Account temporarily locked due to too many failed login attempts. "
+            f"Please try again in {minutes_remaining} minute{'s' if minutes_remaining > 1 else ''}.",
+        )
 
-    logger.info(f"User logged in successfully: {form_data.username}")
-    return token_data
+    try:
+        token_data = service.authenticate_user(
+            email=email,
+            password=form_data.password,
+        )
+
+        # Clear failed attempts on successful login
+        await account_lockout.clear_failed_attempts(email)
+
+        logger.info(f"User logged in successfully: {email}")
+        return token_data
+
+    except HTTPException as e:
+        # Record failed attempt for 401 (invalid credentials) errors
+        if e.status_code == status.HTTP_401_UNAUTHORIZED:
+            attempts = await account_lockout.record_failed_attempt(email)
+            remaining = settings.ACCOUNT_LOCKOUT_MAX_ATTEMPTS - attempts
+            if remaining > 0:
+                logger.info(
+                    f"Failed login for {email}: {remaining} attempts remaining"
+                )
+        raise
 
 
 @router.get(
