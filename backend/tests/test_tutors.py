@@ -11,7 +11,7 @@ class TestListTutors:
 
     def test_list_tutors_success(self, client, student_token, tutor_user):
         """Test successful listing of tutors."""
-        response = client.get("/api/tutors", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/tutors", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) >= 1
@@ -20,7 +20,7 @@ class TestListTutors:
     def test_list_tutors_with_rate_filter(self, client, student_token, tutor_user):
         """Test filtering tutors by rate."""
         response = client.get(
-            "/api/tutors?min_rate=40&max_rate=60",
+            "/api/v1/tutors?min_rate=40&max_rate=60",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -29,7 +29,7 @@ class TestListTutors:
 
     def test_list_tutors_requires_auth(self, client):
         """Test listing tutors requires authentication."""
-        response = client.get("/api/tutors")
+        response = client.get("/api/v1/tutors")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -39,7 +39,7 @@ class TestGetTutorProfile:
     def test_get_tutor_profile_success(self, client, student_token, tutor_user):
         """Test successful retrieval of tutor profile."""
         response = client.get(
-            f"/api/tutors/{tutor_user.tutor_profile.id}",
+            f"/api/v1/tutors/{tutor_user.tutor_profile.id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -49,7 +49,7 @@ class TestGetTutorProfile:
 
     def test_get_nonexistent_tutor(self, client, student_token):
         """Test getting nonexistent tutor."""
-        response = client.get("/api/tutors/99999", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/tutors/99999", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -58,7 +58,7 @@ class TestGetMyTutorProfile:
 
     def test_tutor_get_own_profile(self, client, tutor_token, tutor_user):
         """Test tutor can get their own profile."""
-        response = client.get("/api/tutors/me/profile", headers={"Authorization": f"Bearer {tutor_token}"})
+        response = client.get("/api/v1/tutors/me/profile", headers={"Authorization": f"Bearer {tutor_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["title"] == "Expert Math Tutor"
@@ -66,7 +66,7 @@ class TestGetMyTutorProfile:
     def test_student_cannot_get_tutor_profile(self, client, student_token):
         """Test student cannot access tutor-only endpoint."""
         response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -97,14 +97,14 @@ class TestCreateUpdateTutorProfile:
 
         client = TestClient(app)
         response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": "newtutor@test.com", "password": "tutor123"},
         )
         token = response.json()["access_token"]
 
         # Create profile
         response = client.post(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {token}"},
             json={
                 "title": "New Tutor Profile",
@@ -131,7 +131,7 @@ class TestCreateUpdateTutorProfile:
     def test_tutor_update_profile(self, client, tutor_token, tutor_user, test_subject):
         """Test tutor can update their profile."""
         response = client.post(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "title": "Updated Title",
@@ -176,7 +176,7 @@ class TestTutorPhoto:
         buffer.seek(0)
 
         response = client.patch(
-            "/api/tutors/me/photo",
+            "/api/v1/tutors/me/photo",
             headers={"Authorization": f"Bearer {tutor_token}"},
             files={"profile_photo": ("photo.png", buffer.getvalue(), "image/png")},
         )
@@ -205,7 +205,7 @@ class TestTutorSubmission:
         profile = self._prepare_profile(db_session, tutor_user)
 
         response = client.patch(
-            "/api/tutors/me/description",
+            "/api/v1/tutors/me/description",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={"description": f"   {'B' * 410}   "},
         )
@@ -223,7 +223,7 @@ class TestTutorSubmission:
         profile = self._prepare_profile(db_session, tutor_user)
 
         first = client.post(
-            "/api/tutors/me/submit",
+            "/api/v1/tutors/me/submit",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert first.status_code == status.HTTP_200_OK
@@ -235,7 +235,7 @@ class TestTutorSubmission:
         assert profile.rejection_reason is None
 
         second = client.post(
-            "/api/tutors/me/submit",
+            "/api/v1/tutors/me/submit",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert second.status_code == status.HTTP_200_OK
@@ -254,14 +254,14 @@ class TestTutorAvailability:
         """Test tutor can add availability via bulk update."""
         # First clear any existing availability
         client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={"availability": [], "version": 1},
         )
 
         # Now add new availability
         response = client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "availability": [
@@ -303,7 +303,7 @@ class TestTutorAvailability:
 
         # Delete it
         response = client.delete(
-            f"/api/tutors/availability/{availability_id}",
+            f"/api/v1/tutors/availability/{availability_id}",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -349,7 +349,7 @@ class TestTutorAvailability:
 
         # Try to delete with first tutor's token
         response = client.delete(
-            f"/api/tutors/availability/{availability.id}",
+            f"/api/v1/tutors/availability/{availability.id}",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND

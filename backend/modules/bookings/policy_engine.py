@@ -31,10 +31,24 @@ class PolicyDecision:
 
 
 class CancellationPolicy:
-    """Implements cancellation rules and refund logic."""
+    """
+    Implements cancellation rules and refund logic.
+
+    Grace Period Policy:
+        To avoid edge cases at the cancellation window boundary, a 5-minute
+        grace period is applied. This means users cancelling at 23h55m before
+        the session start will be treated as if they cancelled at >= 24h,
+        qualifying for a full refund.
+
+        Example: If FREE_CANCEL_WINDOW_HOURS = 24, then:
+        - Cancel at 24h00m before: full refund (OK)
+        - Cancel at 23h55m before: full refund (within grace period)
+        - Cancel at 23h54m before: no refund (LATE_CANCEL)
+    """
 
     # Policy constants (configurable)
     FREE_CANCEL_WINDOW_HOURS = 24  # 24-hour free cancellation window
+    FREE_CANCEL_GRACE_MINUTES = 5  # Grace period to handle boundary cases
     TUTOR_CANCEL_PENALTY_CENTS = 500  # $5 compensation
     MINIMUM_GRACE_MINUTES = 10
 
@@ -52,11 +66,13 @@ class CancellationPolicy:
         Evaluate student cancellation request.
 
         Rules:
-        - >= 12h before: full refund
-        - < 12h before: no refund (or partial if configured)
+        - >= FREE_CANCEL_WINDOW_HOURS before: full refund
+        - A 5-minute grace period is applied at the boundary (e.g., 23h55m
+          is treated as >= 24h)
+        - < FREE_CANCEL_WINDOW_HOURS before (minus grace): no refund
         - Already started: no refund
         - Trial lessons: same rules
-        - Package: restore credit if >= 12h
+        - Package: restore credit if within free cancel window
         """
         time_until_start = booking_start_at - now
 
@@ -70,8 +86,11 @@ class CancellationPolicy:
 
         hours_until_start = time_until_start.total_seconds() / 3600
 
-        # Free cancellation window (>= 12 hours)
-        if hours_until_start >= cls.FREE_CANCEL_WINDOW_HOURS:
+        # Apply grace period: e.g., 23h55m is treated as >= 24h
+        effective_hours = hours_until_start + (cls.FREE_CANCEL_GRACE_MINUTES / 60)
+
+        # Free cancellation window (>= FREE_CANCEL_WINDOW_HOURS with grace)
+        if effective_hours >= cls.FREE_CANCEL_WINDOW_HOURS:
             return PolicyDecision(
                 allow=True,
                 reason_code="OK",
@@ -102,8 +121,10 @@ class CancellationPolicy:
         Evaluate tutor cancellation request.
 
         Rules:
-        - >= 12h before: full refund to student, no penalty to tutor
-        - < 12h before: full refund + compensation, penalty strike to tutor
+        - >= FREE_CANCEL_WINDOW_HOURS before: full refund to student, no penalty
+        - A 5-minute grace period is applied at the boundary
+        - < FREE_CANCEL_WINDOW_HOURS before (minus grace): refund + compensation,
+          penalty strike to tutor
         - Already started: not allowed
         """
         time_until_start = booking_start_at - now
@@ -118,8 +139,11 @@ class CancellationPolicy:
 
         hours_until_start = time_until_start.total_seconds() / 3600
 
-        # Early cancellation (>= 12 hours)
-        if hours_until_start >= cls.FREE_CANCEL_WINDOW_HOURS:
+        # Apply grace period: e.g., 23h55m is treated as >= 24h
+        effective_hours = hours_until_start + (cls.FREE_CANCEL_GRACE_MINUTES / 60)
+
+        # Early cancellation (>= FREE_CANCEL_WINDOW_HOURS with grace)
+        if effective_hours >= cls.FREE_CANCEL_WINDOW_HOURS:
             return PolicyDecision(
                 allow=True,
                 reason_code="OK",

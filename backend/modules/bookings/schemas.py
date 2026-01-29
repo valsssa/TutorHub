@@ -1,4 +1,54 @@
-"""Enhanced booking schemas per booking_detail.md spec."""
+"""
+Enhanced booking schemas per booking_detail.md spec.
+
+Cache Invalidation Pattern for Frontend:
+========================================
+When booking state changes, both WebSocket broadcasts and API responses may arrive
+to the frontend. To handle race conditions where they arrive out of order:
+
+1. All booking responses include:
+   - `version`: Integer that increments on each state change
+   - `updated_at`: ISO timestamp of last modification
+
+2. HTTP headers also provide:
+   - `X-Booking-Version`: Same as the version field
+   - `X-Booking-Updated-At`: Same as updated_at field
+   - `Cache-Control: no-store`: Prevents intermediate caching
+
+3. Frontend pattern for handling updates:
+   ```typescript
+   interface BookingCache {
+     [bookingId: number]: {
+       data: BookingDTO;
+       version: number;
+     };
+   }
+
+   function updateBookingCache(cache: BookingCache, newBooking: BookingDTO): void {
+     const existing = cache[newBooking.id];
+     // Only update if new version is >= cached version
+     if (!existing || newBooking.version >= existing.version) {
+       cache[newBooking.id] = {
+         data: newBooking,
+         version: newBooking.version,
+       };
+     }
+   }
+
+   // Use the same pattern for WebSocket messages
+   websocket.onmessage = (event) => {
+     const message = JSON.parse(event.data);
+     if (message.type === 'booking_updated') {
+       updateBookingCache(bookingCache, message.booking);
+     }
+   };
+   ```
+
+4. When refetching after WebSocket notification:
+   - Compare version from WebSocket with cached version
+   - Only refetch if WebSocket version > cached version
+   - After refetch, compare again before applying update
+"""
 
 from datetime import datetime
 from decimal import Decimal
@@ -148,9 +198,44 @@ class MarkNoShowRequest(BaseModel):
 
 
 class BookingDTO(BaseModel):
-    """Complete booking data transfer object per spec."""
+    """
+    Complete booking data transfer object per spec.
+
+    Rate Locking Behavior:
+    ----------------------
+    The `rate_cents` field represents the rate that was locked at the time of booking
+    creation, NOT the tutor's current rate. This is intentional for the following reasons:
+
+    1. Price Certainty: Students are charged the rate they agreed to when booking.
+    2. Fair Expectations: Tutors honor the rate that was advertised when the booking was made.
+    3. Pending Bookings: If a tutor changes their rate, pending bookings are NOT affected.
+
+    To distinguish between the locked rate and the tutor's current rate, use:
+    - `rate_cents`: The rate locked at booking creation time
+    - `rate_locked_at`: The timestamp when the rate was locked (same as booking creation)
+
+    If you need the tutor's current rate, query the tutor profile separately.
+
+    Cache Invalidation:
+    -------------------
+    The `version` and `updated_at` fields support frontend cache invalidation when
+    WebSocket broadcasts and API responses may arrive out of order:
+
+    - `version`: Incremented on each booking state change (optimistic locking)
+    - `updated_at`: Timestamp of last modification
+
+    Frontend should compare incoming data versions and only apply updates if the
+    version is greater than or equal to the currently cached version.
+    """
 
     id: int
+    # Version for optimistic locking and cache invalidation
+    version: int = Field(
+        default=1,
+        description="Booking version for optimistic locking and cache invalidation. "
+        "Higher version = more recent state. Use this to resolve race conditions "
+        "between WebSocket broadcasts and API responses.",
+    )
     lesson_type: LessonType
 
     # New four-field status system
@@ -171,7 +256,11 @@ class BookingDTO(BaseModel):
     end_at: datetime  # ISO UTC
     student_tz: str
     tutor_tz: str
+
+    # Pricing fields - IMPORTANT: rate_cents is the LOCKED rate at booking creation,
+    # not the tutor's current rate. Rate changes do NOT affect pending bookings.
     rate_cents: int
+    rate_locked_at: datetime | None = None  # When the rate was locked (booking creation time)
     currency: str
     platform_fee_pct: Decimal
     platform_fee_cents: int
@@ -192,6 +281,15 @@ class BookingDTO(BaseModel):
 
     class Config:
         from_attributes = True
+        json_schema_extra = {
+            "description": (
+                "Booking response with locked pricing information. "
+                "IMPORTANT: rate_cents reflects the rate at the time of booking creation, "
+                "not the tutor's current rate. If a tutor changes their hourly rate after "
+                "a booking is created, that change does NOT affect pending bookings. "
+                "Use rate_locked_at to see when the rate was locked."
+            ),
+        }
 
 
 class BookingListResponse(BaseModel):

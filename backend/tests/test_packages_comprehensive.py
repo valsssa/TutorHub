@@ -46,7 +46,7 @@ class TestPackagePurchase:
         )
 
         response = client.post(
-            "/api/packages",
+            "/api/v1/packages",
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "pricing_option_id": pricing_option.id,
@@ -72,7 +72,7 @@ class TestPackagePurchase:
         )
 
         response = client.post(
-            "/api/packages",
+            "/api/v1/packages",
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "pricing_option_id": pricing_option.id,
@@ -87,7 +87,7 @@ class TestPackagePurchase:
     def test_purchase_package_tutor_not_found(self, client, student_token, db_session):
         """Test purchase fails when tutor doesn't exist."""
         response = client.post(
-            "/api/packages",
+            "/api/v1/packages",
             json={
                 "tutor_profile_id": 99999,
                 "pricing_option_id": 1,
@@ -134,7 +134,7 @@ class TestPackagePurchase:
         db_session.commit()
 
         response = client.post(
-            "/api/packages",
+            "/api/v1/packages",
             json={
                 "tutor_profile_id": profile.id,
                 "pricing_option_id": pricing_option.id,
@@ -150,7 +150,7 @@ class TestPackagePurchase:
     ):
         """Test purchase fails when pricing option doesn't exist."""
         response = client.post(
-            "/api/packages",
+            "/api/v1/packages",
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "pricing_option_id": 99999,
@@ -197,7 +197,7 @@ class TestPackagePurchase:
         db_session.commit()
 
         response = client.post(
-            "/api/packages",
+            "/api/v1/packages",
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "pricing_option_id": other_pricing.id,
@@ -217,7 +217,7 @@ class TestPackagePurchase:
         )
 
         response = client.post(
-            "/api/packages",
+            "/api/v1/packages",
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "pricing_option_id": pricing_option.id,
@@ -271,7 +271,7 @@ class TestPackageCreditUsage:
         )
 
         response = client.patch(
-            f"/api/packages/{package.id}/use-credit",
+            f"/api/v1/packages/{package.id}/use-credit",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -290,7 +290,7 @@ class TestPackageCreditUsage:
 
         for i in range(3):
             response = client.patch(
-                f"/api/packages/{package.id}/use-credit",
+                f"/api/v1/packages/{package.id}/use-credit",
                 headers={"Authorization": f"Bearer {student_token}"},
             )
             assert response.status_code == status.HTTP_200_OK
@@ -308,7 +308,7 @@ class TestPackageCreditUsage:
         )
 
         response = client.patch(
-            f"/api/packages/{package.id}/use-credit",
+            f"/api/v1/packages/{package.id}/use-credit",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -328,7 +328,7 @@ class TestPackageCreditUsage:
         db_session.commit()
 
         response = client.patch(
-            f"/api/packages/{package.id}/use-credit",
+            f"/api/v1/packages/{package.id}/use-credit",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -337,7 +337,7 @@ class TestPackageCreditUsage:
     def test_use_credit_package_not_found(self, client, student_token):
         """Test error when package doesn't exist."""
         response = client.patch(
-            "/api/packages/99999/use-credit",
+            "/api/v1/packages/99999/use-credit",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -395,7 +395,7 @@ class TestPackageCreditUsage:
         token = TokenManager.create_access_token({"sub": yet_another.email})
 
         response = client.patch(
-            f"/api/packages/{package.id}/use-credit",
+            f"/api/v1/packages/{package.id}/use-credit",
             headers={"Authorization": f"Bearer {token}"},
         )
 
@@ -450,7 +450,7 @@ class TestPackageExpiration:
         )
 
         response = client.patch(
-            f"/api/packages/{package.id}/use-credit",
+            f"/api/v1/packages/{package.id}/use-credit",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -673,7 +673,7 @@ class TestPackageListing:
         self._create_packages(db_session, student_user.id, tutor_user.tutor_profile.id)
 
         response = client.get(
-            "/api/packages",
+            "/api/v1/packages",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -688,7 +688,7 @@ class TestPackageListing:
         self._create_packages(db_session, student_user.id, tutor_user.tutor_profile.id)
 
         response = client.get(
-            "/api/packages?status_filter=active",
+            "/api/v1/packages?status_filter=active",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -703,7 +703,7 @@ class TestPackageListing:
         self._create_packages(db_session, student_user.id, tutor_user.tutor_profile.id)
 
         response = client.get(
-            "/api/packages?status_filter=exhausted",
+            "/api/v1/packages?status_filter=exhausted",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -770,7 +770,7 @@ class TestPackageListing:
 
         token1 = TokenManager.create_access_token({"sub": student1.email})
         response = client.get(
-            "/api/packages",
+            "/api/v1/packages",
             headers={"Authorization": f"Bearer {token1}"},
         )
 
@@ -914,14 +914,14 @@ class TestConcurrentCreditUsage:
         db_session.commit()
 
         response1 = client.patch(
-            f"/api/packages/{package.id}/use-credit",
+            f"/api/v1/packages/{package.id}/use-credit",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
         assert response1.status_code == status.HTTP_200_OK
 
         response2 = client.patch(
-            f"/api/packages/{package.id}/use-credit",
+            f"/api/v1/packages/{package.id}/use-credit",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 

@@ -14,11 +14,11 @@ This document identifies **68 borderline cases** across the EduStream platform, 
 | Severity | Count | Fixed | Remaining | Description |
 |----------|-------|-------|-----------|-------------|
 | **CRITICAL** | 12 | 6 | 6 | Data loss, financial loss, security breach |
-| **HIGH** | 24 | 11 | 13 | Significant user impact, race conditions |
-| **MEDIUM** | 22 | 4 | 18 | Poor UX, inconsistent state, operational issues |
-| **LOW** | 10 | 0 | 10 | Minor inconsistencies, edge cases unlikely to occur |
+| **HIGH** | 24 | 12 | 12 | Significant user impact, race conditions |
+| **MEDIUM** | 22 | 14 | 8 | Poor UX, inconsistent state, operational issues |
+| **LOW** | 10 | 7 | 3 | Minor inconsistencies, edge cases unlikely to occur |
 
-**Total Progress: 21/68 issues fixed (31%)**
+**Total Progress: 39/68 issues fixed (57%)**
 
 ---
 
@@ -60,9 +60,52 @@ This document identifies **68 borderline cases** across the EduStream platform, 
 - `036_add_password_changed_at.sql` - Token invalidation support
 - `037_add_availability_timezone.sql` - Timezone support for tutor availability
 
+| **2.6 Stale Checkout Session** | MEDIUM | Check session status + auto-recreate | `payments/router.py` |
+| **3.5 Message Enumeration** | LOW | Generic error messages | `messages/service.py` |
+| **5.3 Overlapping Availability** | LOW | Overlap validation | `availability_api.py` |
+| **5.4 Blackout Conflict Warning** | MEDIUM | Booking conflict detection | `availability_api.py`, `schemas.py` |
+| **7.2 Job Overlap** | MEDIUM | Redis distributed locking | `core/distributed_lock.py`, `bookings/jobs.py` |
+| **10.1 Dispute Time Limit** | LOW | 30-day window enforcement | `bookings/state_machine.py` |
+
+| **5.2 Stale Availability Slots** | MEDIUM | Cache headers + 409 error responses | `availability_api.py`, `bookings/api.py` |
+| **8.1 Soft Delete Cascade** | MEDIUM | Query filter helpers | `core/soft_delete.py`, `bookings/service.py` |
+| **9.2 Zoom Meeting Retry** | MEDIUM | Retry logic + background job | `zoom_router.py`, `bookings/jobs.py`, migration 038 |
+| **9.4 Email Delivery Tracking** | MEDIUM | EmailDeliveryResult + retry logic | `core/email_service.py`, `notifications/service.py` |
+| **10.2 Cancellation Grace Period** | LOW | 5-minute grace period | `bookings/policy_engine.py` |
+| **10.5 Rate Locking Clarity** | LOW | rate_locked_at field + docs | `bookings/schemas.py`, `bookings/service.py` |
+
+### New Migrations Created
+- `035_add_booking_overlap_constraint.sql` - Exclusion constraint for double-booking prevention
+- `035_add_booking_version_column.sql` - Version column for optimistic locking
+- `035_create_webhook_events.sql` - Webhook idempotency tracking
+- `036_add_password_changed_at.sql` - Token invalidation support
+- `037_add_availability_timezone.sql` - Timezone support for tutor availability
+- `038_add_zoom_meeting_pending.sql` - Zoom meeting retry tracking
+
+| **4.4 Package Rolling Expiry** | LOW | extend_on_use + expiry warnings | `packages/api.py`, `expiration_service.py`, migration 039 |
+| **7.3 Cache Invalidation** | LOW | version field + X-Booking headers | `bookings/schemas.py`, `bookings/api.py` |
+| **8.2 Orphaned Records** | MEDIUM | atomic_operation + atomic decorator | `core/transactions.py`, auth/admin/reviews |
+| **8.3 Audit Log Gaps** | MEDIUM | Deferred post-commit logging | `core/audit.py` |
+| **9.3 Calendar Sync Conflict** | MEDIUM | Real-time calendar check | `core/calendar_conflict.py`, `bookings/service.py` |
+| **10.4 Trial Abuse Detection** | MEDIUM | Fraud detection service | `auth/services/fraud_detection.py`, migration 039 |
+
+### New Migrations Created
+- `035_add_booking_overlap_constraint.sql` - Exclusion constraint for double-booking prevention
+- `035_add_booking_version_column.sql` - Version column for optimistic locking
+- `035_create_webhook_events.sql` - Webhook idempotency tracking
+- `036_add_password_changed_at.sql` - Token invalidation support
+- `037_add_availability_timezone.sql` - Timezone support for tutor availability
+- `038_add_zoom_meeting_pending.sql` - Zoom meeting retry tracking
+- `039_add_fraud_detection.sql` - Fraud detection signals tracking
+- `039_add_extend_on_use_to_pricing_options.sql` - Rolling expiry for packages
+
 ### New Core Modules Created
 - `core/oauth_state.py` - Redis-backed OAuth state storage
 - `core/account_lockout.py` - Redis-backed account lockout service
+- `core/distributed_lock.py` - Redis-backed distributed locking for jobs
+- `core/soft_delete.py` - Query filter helpers for soft-deleted records
+- `core/calendar_conflict.py` - External calendar conflict detection
+- `auth/services/fraud_detection.py` - Registration fraud detection service
 
 ---
 
@@ -595,7 +638,9 @@ if decision.restore_package_unit and booking.package_id:
 
 ---
 
-### 2.6 Payment Intent Stale After Checkout Expiry
+### 2.6 Payment Intent Stale After Checkout Expiry ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via checkout session status check + auto-recreation
 
 **Trigger conditions:**
 - Student creates checkout session, doesn't complete
@@ -907,7 +952,9 @@ if user.role == "admin" and user_update.role != "admin":
 
 ---
 
-### 3.5 Message Recipient Enumeration
+### 3.5 Message Recipient Enumeration ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via generic error messages preventing user enumeration
 
 **Trigger conditions:**
 - Attacker sends messages to sequential user IDs
@@ -1187,7 +1234,9 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-### 4.4 Package Validity Days Backdated Purchase
+### 4.4 Package Validity Days Backdated Purchase ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via rolling expiry option + 7-day expiry warning notifications
 
 **Trigger conditions:**
 - Package offers "30 days validity"
@@ -1281,7 +1330,9 @@ WHERE session_state NOT IN ('CANCELLED', 'EXPIRED');
 
 ---
 
-### 5.2 Availability Slot Generated But Stale
+### 5.2 Availability Slot Generated But Stale ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via cache headers + structured 409 error responses
 
 **Trigger conditions:**
 - Frontend requests available slots
@@ -1323,7 +1374,9 @@ ws_manager.broadcast(f"tutor:{tutor_id}", {
 
 ---
 
-### 5.3 Tutor Sets Overlapping Availability Windows
+### 5.3 Tutor Sets Overlapping Availability Windows ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via overlap validation in availability endpoints
 
 **Trigger conditions:**
 - Tutor adds availability: Mon 9am-12pm
@@ -1365,7 +1418,9 @@ if existing:
 
 ---
 
-### 5.4 Blackout Period Created After Booking
+### 5.4 Blackout Period Created After Booking ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via booking conflict warning when creating blackouts
 
 **Trigger conditions:**
 - Tutor has booking at 3pm tomorrow
@@ -1598,7 +1653,9 @@ def update_booking(booking_id, version, **updates):
 
 ---
 
-### 7.2 Job Instances Can Overlap
+### 7.2 Job Instances Can Overlap ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via Redis-backed distributed locking for jobs
 
 **Trigger conditions:**
 - Job takes longer than interval (>1 min for start_sessions)
@@ -1642,7 +1699,9 @@ def start_sessions():
 
 ---
 
-### 7.3 Frontend Cache Invalidation Race
+### 7.3 Frontend Cache Invalidation Race ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via version field in responses + X-Booking-Version headers
 
 **Trigger conditions:**
 - User action updates backend state
@@ -1687,7 +1746,9 @@ if (localBooking.version !== serverBooking.version) {
 
 ## 8. Data Consistency
 
-### 8.1 Soft Delete Without Cascade
+### 8.1 Soft Delete Without Cascade ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via reusable query filter helpers in core/soft_delete.py
 
 **Trigger conditions:**
 - User soft-deleted (`deleted_at` set)
@@ -1730,7 +1791,9 @@ def filter_deleted(query):
 
 ---
 
-### 8.2 Orphaned Records After Partial Insert
+### 8.2 Orphaned Records After Partial Insert ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via atomic_operation context manager + atomic decorator
 
 **Trigger conditions:**
 - Multi-table insert (user + profile)
@@ -1782,7 +1845,9 @@ with atomic(db):
 
 ---
 
-### 8.3 Audit Log Gaps on Failure
+### 8.3 Audit Log Gaps on Failure ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via deferred post-commit audit logging
 
 **Trigger conditions:**
 - Audit logging in same transaction as action
@@ -1881,7 +1946,9 @@ except stripe.error.APIConnectionError:
 
 ---
 
-### 9.2 Zoom Meeting Link Generation Failure
+### 9.2 Zoom Meeting Link Generation Failure ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via retry logic + background job + manual regenerate endpoint
 
 **Trigger conditions:**
 - Booking confirmed, Zoom API called
@@ -1928,7 +1995,9 @@ create_zoom_meeting.delay(booking.id)
 
 ---
 
-### 9.3 Google Calendar Sync Conflict
+### 9.3 Google Calendar Sync Conflict ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via real-time calendar conflict check at booking time
 
 **Trigger conditions:**
 - Tutor syncs Google Calendar
@@ -1973,7 +2042,9 @@ def create_booking(self, ...):
 
 ---
 
-### 9.4 Email Delivery Failure Silent
+### 9.4 Email Delivery Failure Silent ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via EmailDeliveryResult tracking + retry logic + monitoring
 
 **Trigger conditions:**
 - Booking confirmed, email sent
@@ -2023,7 +2094,9 @@ class EmailLog(Base):
 
 ## 10. Business Logic Limits
 
-### 10.1 No Maximum Dispute Time Limit
+### 10.1 No Maximum Dispute Time Limit ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via 30-day dispute window enforcement
 
 **Trigger conditions:**
 - Session completed 6 months ago
@@ -2062,7 +2135,9 @@ if booking.ended_at and booking.ended_at < datetime.now(UTC) - timedelta(days=30
 
 ---
 
-### 10.2 Cancellation Policy Edge at Exact Boundary
+### 10.2 Cancellation Policy Edge at Exact Boundary ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via 5-minute grace period in cancellation policy
 
 **Trigger conditions:**
 - Session at 2:00 PM
@@ -2141,7 +2216,9 @@ if not booking.package_id:
 
 ---
 
-### 10.4 Free Trial Abuse via Multiple Accounts
+### 10.4 Free Trial Abuse via Multiple Accounts ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via fraud detection service tracking IP/device/email patterns
 
 **Trigger conditions:**
 - System offers free trial session
@@ -2190,7 +2267,9 @@ if similar_accounts > 0:
 
 ---
 
-### 10.5 Tutor Rate Change After Booking Created
+### 10.5 Tutor Rate Change After Booking Created ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via rate_locked_at field + comprehensive documentation
 
 **Trigger conditions:**
 - Booking created with tutor's current rate ($50/hr)

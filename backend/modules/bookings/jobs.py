@@ -49,11 +49,14 @@ logger = logging.getLogger(__name__)
 # Configuration
 REQUEST_EXPIRY_HOURS = 24  # Requests expire after 24 hours
 SESSION_END_GRACE_MINUTES = 5  # Grace period after end_time before auto-ending
+ZOOM_RETRY_BATCH_SIZE = 10  # Maximum bookings to process per retry run
+ZOOM_RETRY_MAX_ATTEMPTS = 5  # Stop retrying after this many job runs
 
 # Distributed lock timeouts (should be longer than expected job duration)
 EXPIRE_REQUESTS_LOCK_TIMEOUT = 300  # 5 minutes
 START_SESSIONS_LOCK_TIMEOUT = 120  # 2 minutes
 END_SESSIONS_LOCK_TIMEOUT = 120  # 2 minutes
+RETRY_ZOOM_MEETINGS_LOCK_TIMEOUT = 180  # 3 minutes
 
 
 async def expire_requests() -> None:
@@ -323,6 +326,167 @@ async def end_sessions() -> None:
 
             except Exception as e:
                 logger.error("Error in end_sessions job: %s", e)
+                db.rollback()
+            finally:
+                db.close()
+
+
+async def retry_zoom_meetings() -> None:
+    """
+    Retry creating Zoom meetings for bookings that failed during confirmation.
+
+    Runs every 5 minutes.
+    Processes bookings with zoom_meeting_pending=True that are still in SCHEDULED or ACTIVE state.
+
+    Uses row-level locking to prevent race conditions.
+    Uses distributed locking to prevent overlap across server instances.
+    """
+    async with distributed_lock.acquire(
+        "job:retry_zoom_meetings", timeout=RETRY_ZOOM_MEETINGS_LOCK_TIMEOUT
+    ) as acquired:
+        if not acquired:
+            logger.info(
+                "retry_zoom_meetings job already running on another instance, skipping"
+            )
+            return
+
+        with trace_background_job("retry_zoom_meetings", interval="5min"):
+            logger.debug("Running retry_zoom_meetings job")
+
+            db = SessionLocal()
+            try:
+                from modules.integrations.zoom_router import ZoomError, zoom_client
+
+                now = datetime.now(UTC)
+
+                # Find bookings needing Zoom meeting retry
+                # Only process SCHEDULED or ACTIVE bookings (not past sessions)
+                booking_ids = (
+                    db.query(Booking.id)
+                    .filter(
+                        and_(
+                            Booking.zoom_meeting_pending == True,  # noqa: E712
+                            Booking.session_state.in_([
+                                SessionState.SCHEDULED.value,
+                                SessionState.ACTIVE.value,
+                            ]),
+                            Booking.start_time > now - timedelta(hours=2),  # Skip old sessions
+                        )
+                    )
+                    .limit(ZOOM_RETRY_BATCH_SIZE)
+                    .all()
+                )
+
+                if not booking_ids:
+                    return
+
+                success_count = 0
+                failure_count = 0
+
+                for (booking_id,) in booking_ids:
+                    try:
+                        # Lock and fetch the booking
+                        booking = BookingStateMachine.get_booking_with_lock(
+                            db, booking_id, nowait=True
+                        )
+
+                        if not booking:
+                            continue
+
+                        # Skip if no longer pending (processed by another instance or API)
+                        if not booking.zoom_meeting_pending:
+                            continue
+
+                        # Skip if session already ended or cancelled
+                        if booking.session_state not in [
+                            SessionState.SCHEDULED.value,
+                            SessionState.ACTIVE.value,
+                        ]:
+                            booking.zoom_meeting_pending = False
+                            db.commit()
+                            continue
+
+                        # Build meeting topic
+                        topic = f"EduStream: {booking.subject_name or 'Tutoring Session'}"
+                        if booking.student_name:
+                            topic += f" with {booking.student_name}"
+
+                        duration_minutes = int(
+                            (booking.end_time - booking.start_time).total_seconds() / 60
+                        )
+
+                        # Get tutor email for logging
+                        tutor_email = None
+                        if booking.tutor_profile and booking.tutor_profile.user:
+                            tutor_email = booking.tutor_profile.user.email
+
+                        # Get student email for logging
+                        student_email = None
+                        if booking.student:
+                            student_email = booking.student.email
+
+                        try:
+                            meeting = await zoom_client.create_meeting(
+                                topic=topic,
+                                start_time=booking.start_time,
+                                duration_minutes=duration_minutes,
+                                tutor_email=tutor_email,
+                                student_email=student_email,
+                                max_retries=1,  # Fewer retries in batch job
+                            )
+
+                            # Update booking with Zoom meeting details
+                            booking.join_url = meeting["join_url"]
+                            booking.meeting_url = meeting.get("start_url")
+                            booking.zoom_meeting_id = str(meeting["id"])
+                            booking.zoom_meeting_pending = False
+                            booking.updated_at = datetime.now(UTC)
+
+                            db.commit()
+                            success_count += 1
+                            logger.info(
+                                "Retry succeeded: Created Zoom meeting %s for booking %d",
+                                meeting["id"],
+                                booking_id,
+                            )
+
+                        except ZoomError as e:
+                            # Zoom still failing - leave pending for next retry
+                            logger.warning(
+                                "Retry failed for booking %d: %s",
+                                booking_id,
+                                e.message,
+                            )
+                            failure_count += 1
+                            db.rollback()
+
+                    except OperationalError:
+                        # Lock could not be acquired
+                        logger.debug(
+                            "Skipping Zoom retry for booking %d - locked",
+                            booking_id,
+                        )
+                        db.rollback()
+                        continue
+
+                    except Exception as e:
+                        logger.error(
+                            "Unexpected error retrying Zoom for booking %d: %s",
+                            booking_id,
+                            e,
+                        )
+                        db.rollback()
+                        continue
+
+                if success_count > 0 or failure_count > 0:
+                    logger.info(
+                        "Zoom retry job: succeeded %d, failed %d",
+                        success_count,
+                        failure_count,
+                    )
+
+            except Exception as e:
+                logger.error("Error in retry_zoom_meetings job: %s", e)
                 db.rollback()
             finally:
                 db.close()

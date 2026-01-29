@@ -185,6 +185,7 @@ class TutorPricingOption(Base):
     duration_minutes = Column(Integer, nullable=False)
     price = Column(DECIMAL(10, 2), nullable=False)
     validity_days = Column(Integer, nullable=True)  # Number of days package is valid (NULL = no expiration)
+    extend_on_use = Column(Boolean, default=False, nullable=False)  # Rolling expiry: extend validity on each use
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
         TIMESTAMP(timezone=True),

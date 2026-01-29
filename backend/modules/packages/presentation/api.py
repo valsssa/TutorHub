@@ -1,18 +1,19 @@
 """Student Packages API - Decision tracking for package purchases."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from core.rate_limiting import limiter
 
 from core.audit import AuditLogger
 from core.dependencies import get_current_student_user, get_current_user
+from core.transactions import atomic_operation
 from database import get_db
 from models import StudentPackage, TutorPricingOption, TutorProfile, User
 from modules.packages.services.expiration_service import PackageExpirationService
@@ -100,57 +101,60 @@ async def purchase_package(
         expires_at = datetime.utcnow() + timedelta(days=pricing_option.validity_days)
 
     try:
-        # Create package purchase record
-        package = StudentPackage(
-            student_id=current_user.id,
-            tutor_profile_id=purchase_data.tutor_profile_id,
-            pricing_option_id=purchase_data.pricing_option_id,
-            sessions_purchased=1,  # Default to 1 session per purchase
-            sessions_remaining=1,
-            sessions_used=0,
-            purchase_price=pricing_option.price,
-            purchased_at=datetime.utcnow(),
-            expires_at=expires_at,
-            status="active",
-            payment_intent_id=purchase_data.payment_intent_id,
-        )
+        # Use atomic transaction to ensure package + audit logs are created together
+        # Prevents orphaned packages without proper audit trail
+        with atomic_operation(db):
+            # Create package purchase record
+            package = StudentPackage(
+                student_id=current_user.id,
+                tutor_profile_id=purchase_data.tutor_profile_id,
+                pricing_option_id=purchase_data.pricing_option_id,
+                sessions_purchased=1,  # Default to 1 session per purchase
+                sessions_remaining=1,
+                sessions_used=0,
+                purchase_price=pricing_option.price,
+                purchased_at=datetime.utcnow(),
+                expires_at=expires_at,
+                status="active",
+                payment_intent_id=purchase_data.payment_intent_id,
+            )
 
-        db.add(package)
-        db.flush()
+            db.add(package)
+            db.flush()  # Get package.id for audit logs
 
-        # Track the purchase decision in audit log
-        AuditLogger.log_payment_decision(
-            db=db,
-            package_id=package.id,
-            user_id=current_user.id,
-            amount=float(pricing_option.price),
-            currency=tutor.currency or "USD",
-            payment_intent_id=purchase_data.payment_intent_id,
-            status="completed",
-            ip_address=request.client.host if request.client else None,
-        )
+            # Track the purchase decision in audit log (atomically with package)
+            AuditLogger.log_payment_decision(
+                db=db,
+                package_id=package.id,
+                user_id=current_user.id,
+                amount=float(pricing_option.price),
+                currency=tutor.currency or "USD",
+                payment_intent_id=purchase_data.payment_intent_id,
+                status="completed",
+                ip_address=request.client.host if request.client else None,
+            )
 
-        # Also log general audit entry
-        AuditLogger.log_action(
-            db=db,
-            table_name="student_packages",
-            record_id=package.id,
-            action="INSERT",
-            new_data={
-                "student_id": current_user.id,
-                "tutor_profile_id": purchase_data.tutor_profile_id,
-                "pricing_option_id": purchase_data.pricing_option_id,
-                "purchase_price": float(pricing_option.price),
-                "agreed_terms": purchase_data.agreed_terms,
-                "purchased_at": datetime.utcnow().isoformat(),
-                "decision": "student_purchased_package",
-            },
-            changed_by=current_user.id,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-        )
+            # Also log general audit entry (atomically with package)
+            AuditLogger.log_action(
+                db=db,
+                table_name="student_packages",
+                record_id=package.id,
+                action="INSERT",
+                new_data={
+                    "student_id": current_user.id,
+                    "tutor_profile_id": purchase_data.tutor_profile_id,
+                    "pricing_option_id": purchase_data.pricing_option_id,
+                    "purchase_price": float(pricing_option.price),
+                    "agreed_terms": purchase_data.agreed_terms,
+                    "purchased_at": datetime.utcnow().isoformat(),
+                    "decision": "student_purchased_package",
+                },
+                changed_by=current_user.id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+            # atomic_operation commits all records together
 
-        db.commit()
         db.refresh(package)
 
         logger.info(
@@ -158,8 +162,9 @@ async def purchase_package(
             f"for tutor {tutor.id} - Financial decision tracked"
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        db.rollback()
         logger.error(f"Error purchasing package: {e}")
         raise HTTPException(status_code=500, detail="Failed to purchase package")
 
@@ -206,10 +211,15 @@ async def use_package_credit(
 
     Uses atomic SQL operations to prevent race conditions where two
     concurrent requests could consume the same credit.
+
+    Rolling Expiry: If the pricing option has extend_on_use=True, the package
+    expiration date is extended by validity_days from the current time on each use.
     """
     # First, acquire a lock on the package row to prevent race conditions
+    # Also eagerly load the pricing_option to check extend_on_use
     package = (
         db.query(StudentPackage)
+        .options(joinedload(StudentPackage.pricing_option))
         .filter(
             StudentPackage.id == package_id,
             StudentPackage.student_id == current_user.id,
@@ -234,7 +244,7 @@ async def use_package_credit(
                 )
                 .values(
                     status="expired",
-                    updated_at=datetime.utcnow(),
+                    updated_at=datetime.now(UTC),
                 )
             )
             db.commit()
@@ -242,6 +252,33 @@ async def use_package_credit(
 
     try:
         old_remaining = package.sessions_remaining
+        old_expires_at = package.expires_at
+
+        # Prepare update values
+        update_values = {
+            "sessions_remaining": StudentPackage.sessions_remaining - 1,
+            "sessions_used": StudentPackage.sessions_used + 1,
+            "updated_at": datetime.now(UTC),
+        }
+
+        # Rolling expiry: extend validity on each use if enabled
+        pricing_option = package.pricing_option
+        new_expires_at = None
+        if (
+            pricing_option
+            and pricing_option.extend_on_use
+            and pricing_option.validity_days
+        ):
+            new_expires_at = datetime.now(UTC) + timedelta(days=pricing_option.validity_days)
+            # Only extend if the new date is later than current expiration
+            if package.expires_at is None or new_expires_at > package.expires_at:
+                update_values["expires_at"] = new_expires_at
+                # Reset expiry warning flag since validity was extended
+                update_values["expiry_warning_sent"] = False
+                logger.info(
+                    f"Rolling expiry: extending package {package_id} from "
+                    f"{package.expires_at} to {new_expires_at}"
+                )
 
         # Atomic credit deduction with validation guard
         # This prevents race conditions where two requests could consume the same credit
@@ -253,11 +290,7 @@ async def use_package_credit(
                 StudentPackage.sessions_remaining > 0,
                 StudentPackage.status == "active",
             )
-            .values(
-                sessions_remaining=StudentPackage.sessions_remaining - 1,
-                sessions_used=StudentPackage.sessions_used + 1,
-                updated_at=datetime.utcnow(),
-            )
+            .values(**update_values)
         )
 
         if result.rowcount == 0:
@@ -276,7 +309,7 @@ async def use_package_credit(
             )
             .values(
                 status="exhausted",
-                updated_at=datetime.utcnow(),
+                updated_at=datetime.now(UTC),
             )
         )
 
@@ -284,19 +317,27 @@ async def use_package_credit(
         db.refresh(package)
 
         # Track credit usage decision
+        audit_new_data = {
+            "sessions_remaining": package.sessions_remaining,
+            "sessions_used": package.sessions_used,
+            "status": package.status,
+            "decision": "used_credit_for_booking",
+            "used_at": datetime.now(UTC).isoformat(),
+        }
+        if new_expires_at and "expires_at" in update_values:
+            audit_new_data["expires_at_extended_to"] = new_expires_at.isoformat()
+            audit_new_data["rolling_expiry_applied"] = True
+
         AuditLogger.log_action(
             db=db,
             table_name="student_packages",
             record_id=package_id,
             action="UPDATE",
-            old_data={"sessions_remaining": old_remaining},
-            new_data={
-                "sessions_remaining": package.sessions_remaining,
-                "sessions_used": package.sessions_used,
-                "status": package.status,
-                "decision": "used_credit_for_booking",
-                "used_at": datetime.utcnow().isoformat(),
+            old_data={
+                "sessions_remaining": old_remaining,
+                "expires_at": old_expires_at.isoformat() if old_expires_at else None,
             },
+            new_data=audit_new_data,
             changed_by=current_user.id,
             ip_address=request.client.host if request.client else None,
         )

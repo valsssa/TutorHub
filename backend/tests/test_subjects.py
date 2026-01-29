@@ -8,7 +8,7 @@ class TestSubjectsAPI:
 
     def test_list_subjects_success(self, client, db_session, student_token, test_subject):
         """Test listing all active subjects."""
-        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/subjects", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert isinstance(data, list)
@@ -34,7 +34,7 @@ class TestSubjectsAPI:
         db_session.add(inactive_subject)
         db_session.commit()
 
-        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/subjects", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
 
         subjects = response.json()
@@ -44,7 +44,7 @@ class TestSubjectsAPI:
 
     def test_subjects_sorted_by_name(self, client, db_session, student_token):
         """Test that subjects are returned in a consistent order."""
-        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/subjects", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
 
         subjects = response.json()
@@ -52,13 +52,13 @@ class TestSubjectsAPI:
             names = [s["name"] for s in subjects]
             # Verify it's a consistent order (not necessarily alphabetical,
             # but same order on repeated calls)
-            response2 = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
+            response2 = client.get("/api/v1/subjects", headers={"Authorization": f"Bearer {student_token}"})
             names2 = [s["name"] for s in response2.json()]
             assert names == names2
 
     def test_list_subjects_unauthorized(self, client):
         """Test listing subjects without auth fails."""
-        response = client.get("/api/subjects")
+        response = client.get("/api/v1/subjects")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_admin_can_see_inactive_subjects(self, client, admin_token, db_session):
@@ -72,7 +72,7 @@ class TestSubjectsAPI:
         db_session.commit()
 
         # Regular list (only active)
-        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {admin_token}"})
+        response = client.get("/api/v1/subjects", headers={"Authorization": f"Bearer {admin_token}"})
         subjects = response.json()
         names = [s["name"] for s in subjects]
         assert "Active Subject" in names
@@ -80,7 +80,7 @@ class TestSubjectsAPI:
 
         # With include_inactive (admin only)
         response = client.get(
-            "/api/subjects?include_inactive=true",
+            "/api/v1/subjects?include_inactive=true",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         subjects = response.json()
@@ -95,7 +95,7 @@ class TestAdminSubjectManagement:
     def test_admin_create_subject(self, client, admin_token):
         """Test admin can create subject."""
         response = client.post(
-            "/api/admin/subjects",
+            "/api/v1/admin/subjects",
             headers={"Authorization": f"Bearer {admin_token}"},
             params={"name": "New Subject", "description": "Test description"},
         )
@@ -108,7 +108,7 @@ class TestAdminSubjectManagement:
     def test_admin_create_duplicate_subject(self, client, admin_token, test_subject):
         """Test admin cannot create duplicate subject."""
         response = client.post(
-            "/api/admin/subjects",
+            "/api/v1/admin/subjects",
             headers={"Authorization": f"Bearer {admin_token}"},
             params={"name": test_subject.name},
         )
@@ -118,7 +118,7 @@ class TestAdminSubjectManagement:
     def test_student_cannot_create_subject(self, client, student_token):
         """Test student cannot create subject."""
         response = client.post(
-            "/api/admin/subjects",
+            "/api/v1/admin/subjects",
             headers={"Authorization": f"Bearer {student_token}"},
             params={"name": "New Subject"},
         )
@@ -127,7 +127,7 @@ class TestAdminSubjectManagement:
     def test_admin_update_subject(self, client, admin_token, test_subject):
         """Test admin can update subject."""
         response = client.put(
-            f"/api/admin/subjects/{test_subject.id}",
+            f"/api/v1/admin/subjects/{test_subject.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
             params={
                 "name": "Updated Subject",
@@ -144,7 +144,7 @@ class TestAdminSubjectManagement:
     def test_admin_update_nonexistent_subject(self, client, admin_token):
         """Test updating nonexistent subject."""
         response = client.put(
-            "/api/admin/subjects/99999",
+            "/api/v1/admin/subjects/99999",
             headers={"Authorization": f"Bearer {admin_token}"},
             params={"name": "Test"},
         )
@@ -153,7 +153,7 @@ class TestAdminSubjectManagement:
     def test_student_cannot_update_subject(self, client, student_token, test_subject):
         """Test student cannot update subject."""
         response = client.put(
-            f"/api/admin/subjects/{test_subject.id}",
+            f"/api/v1/admin/subjects/{test_subject.id}",
             headers={"Authorization": f"Bearer {student_token}"},
             params={"name": "Hacked"},
         )
@@ -162,13 +162,13 @@ class TestAdminSubjectManagement:
     def test_admin_delete_subject(self, client, admin_token, test_subject):
         """Test admin can delete subject."""
         response = client.delete(
-            f"/api/admin/subjects/{test_subject.id}",
+            f"/api/v1/admin/subjects/{test_subject.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
 
         # Verify it's deleted
-        response = client.get("/api/subjects", headers={"Authorization": f"Bearer {admin_token}"})
+        response = client.get("/api/v1/subjects", headers={"Authorization": f"Bearer {admin_token}"})
         subjects = response.json()
         subject_ids = [s["id"] for s in subjects]
         assert test_subject.id not in subject_ids
@@ -176,7 +176,7 @@ class TestAdminSubjectManagement:
     def test_admin_delete_nonexistent_subject(self, client, admin_token):
         """Test deleting nonexistent subject."""
         response = client.delete(
-            "/api/admin/subjects/99999",
+            "/api/v1/admin/subjects/99999",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -184,7 +184,7 @@ class TestAdminSubjectManagement:
     def test_student_cannot_delete_subject(self, client, student_token, test_subject):
         """Test student cannot delete subject."""
         response = client.delete(
-            f"/api/admin/subjects/{test_subject.id}",
+            f"/api/v1/admin/subjects/{test_subject.id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN

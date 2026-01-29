@@ -12,14 +12,14 @@ class TestAPIIntegration:
         """Test complete student workflow: register, login, browse, book, review."""
         # 1. Register
         register_response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={"email": "newstudent@test.com", "password": "student123"},
         )
         assert register_response.status_code == status.HTTP_201_CREATED
 
         # 2. Login
         login_response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": "newstudent@test.com", "password": "student123"},
         )
         assert login_response.status_code == status.HTTP_200_OK
@@ -27,19 +27,19 @@ class TestAPIIntegration:
         headers = {"Authorization": f"Bearer {token}"}
 
         # 3. Get own info
-        me_response = client.get("/api/auth/me", headers=headers)
+        me_response = client.get("/api/v1/auth/me", headers=headers)
         assert me_response.status_code == status.HTTP_200_OK
         assert me_response.json()["role"] == "student"
 
         # 4. Browse tutors
-        tutors_response = client.get("/api/tutors", headers=headers)
+        tutors_response = client.get("/api/v1/tutors", headers=headers)
         assert tutors_response.status_code == status.HTTP_200_OK
         tutors = tutors_response.json()
         assert len(tutors) > 0
 
         # 5. View tutor details
         tutor_id = tutor_user.tutor_profile.id
-        tutor_response = client.get(f"/api/tutors/{tutor_id}", headers=headers)
+        tutor_response = client.get(f"/api/v1/tutors/{tutor_id}", headers=headers)
         assert tutor_response.status_code == status.HTTP_200_OK
 
         # 6. Create booking
@@ -47,7 +47,7 @@ class TestAPIIntegration:
         end_time = (datetime.utcnow() + timedelta(days=2, hours=1)).isoformat()
 
         booking_response = client.post(
-            "/api/bookings",
+            "/api/v1/bookings",
             headers=headers,
             json={
                 "tutor_profile_id": tutor_id,
@@ -61,7 +61,7 @@ class TestAPIIntegration:
         assert booking_response.status_code == status.HTTP_201_CREATED
 
         # 7. View bookings
-        bookings_response = client.get("/api/bookings", headers=headers)
+        bookings_response = client.get("/api/v1/bookings", headers=headers)
         assert bookings_response.status_code == status.HTTP_200_OK
         assert len(bookings_response.json()) > 0
 
@@ -69,7 +69,7 @@ class TestAPIIntegration:
         """Test complete tutor workflow: register, create profile, accept booking."""
         # 1. Register as tutor
         register_response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "newtutor@test.com",
                 "password": "tutor123",
@@ -80,7 +80,7 @@ class TestAPIIntegration:
 
         # 2. Login
         login_response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": "newtutor@test.com", "password": "tutor123"},
         )
         assert login_response.status_code == status.HTTP_200_OK
@@ -88,12 +88,12 @@ class TestAPIIntegration:
         headers = {"Authorization": f"Bearer {token}"}
 
         # 3. Get tutor profile (should be auto-created)
-        profile_response = client.get("/api/tutors/me/profile", headers=headers)
+        profile_response = client.get("/api/v1/tutors/me/profile", headers=headers)
         assert profile_response.status_code == status.HTTP_200_OK
 
         # 4. Update about section
         about_response = client.patch(
-            "/api/tutors/me/about",
+            "/api/v1/tutors/me/about",
             headers=headers,
             json={
                 "title": "Expert Math Tutor",
@@ -107,7 +107,7 @@ class TestAPIIntegration:
 
         # 5. Update pricing
         pricing_response = client.patch(
-            "/api/tutors/me/pricing",
+            "/api/v1/tutors/me/pricing",
             headers=headers,
             json={
                 "hourly_rate": 60.0,
@@ -129,18 +129,18 @@ class TestAPIIntegration:
         headers = {"Authorization": f"Bearer {admin_token}"}
 
         # 1. List all users
-        users_response = client.get("/api/admin/users", headers=headers)
+        users_response = client.get("/api/v1/admin/users", headers=headers)
         assert users_response.status_code == status.HTTP_200_OK
         users_data = users_response.json()
         assert "items" in users_data
         assert len(users_data["items"]) > 0
 
         # 2. List pending tutors
-        pending_response = client.get("/api/admin/tutors/pending", headers=headers)
+        pending_response = client.get("/api/v1/admin/tutors/pending", headers=headers)
         assert pending_response.status_code == status.HTTP_200_OK
 
         # 3. List approved tutors
-        approved_response = client.get("/api/admin/tutors/approved", headers=headers)
+        approved_response = client.get("/api/v1/admin/tutors/approved", headers=headers)
         assert approved_response.status_code == status.HTTP_200_OK
         assert len(approved_response.json()["items"]) > 0
 
@@ -151,19 +151,19 @@ class TestAPIErrorHandling:
     def test_404_for_nonexistent_endpoints(self, client, student_token):
         """Test 404 response for non-existent endpoints."""
         headers = {"Authorization": f"Bearer {student_token}"}
-        response = client.get("/api/nonexistent", headers=headers)
+        response = client.get("/api/v1/nonexistent", headers=headers)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_405_for_wrong_method(self, client, student_token):
         """Test 405 response for wrong HTTP method."""
         headers = {"Authorization": f"Bearer {student_token}"}
-        response = client.delete("/api/auth/me", headers=headers)
+        response = client.delete("/api/v1/auth/me", headers=headers)
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
     def test_422_for_invalid_data(self, client, student_token):
         """Test 422 response for invalid request data."""
         headers = {"Authorization": f"Bearer {student_token}"}
-        response = client.post("/api/bookings", headers=headers, json={"invalid": "data"})
+        response = client.post("/api/v1/bookings", headers=headers, json={"invalid": "data"})
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_500_error_handling(self, client, student_token, monkeypatch):
@@ -183,7 +183,7 @@ class TestAPICaching:
         headers = {"Authorization": f"Bearer {student_token}"}
 
         # First request
-        response1 = client.get("/api/subjects", headers=headers)
+        response1 = client.get("/api/v1/subjects", headers=headers)
         assert response1.status_code == status.HTTP_200_OK
         count1 = len(response1.json())
 
@@ -193,7 +193,7 @@ class TestAPICaching:
         db_session.commit()
 
         # Second request (should still return cached result)
-        response2 = client.get("/api/subjects", headers=headers)
+        response2 = client.get("/api/v1/subjects", headers=headers)
         assert response2.status_code == status.HTTP_200_OK
         count2 = len(response2.json())
 
@@ -211,7 +211,7 @@ class TestAPIPerformance:
         headers = {"Authorization": f"Bearer {admin_token}"}
 
         # Try to request more than max page size
-        response = client.get("/api/admin/users?page=1&page_size=1000", headers=headers)
+        response = client.get("/api/v1/admin/users?page=1&page_size=1000", headers=headers)
         # Should either limit to max or return 422
         assert response.status_code in [
             status.HTTP_200_OK,
@@ -223,7 +223,7 @@ class TestAPIPerformance:
         headers = {"Authorization": f"Bearer {student_token}"}
 
         # List tutors should use optimized queries
-        response = client.get("/api/tutors", headers=headers)
+        response = client.get("/api/v1/tutors", headers=headers)
         assert response.status_code == status.HTTP_200_OK
 
         # Response should be fast (under 1 second)
@@ -241,7 +241,7 @@ class TestAPIDataConsistency:
         end_time = (datetime.utcnow() + timedelta(days=2, hours=2)).isoformat()
 
         response = client.post(
-            "/api/bookings",
+            "/api/v1/bookings",
             headers=headers,
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
@@ -267,12 +267,12 @@ class TestAPIDataConsistency:
         headers = {"Authorization": f"Bearer {student_token}"}
 
         # Get current stats
-        tutor_response = client.get(f"/api/tutors/{tutor_user.tutor_profile.id}", headers=headers)
+        tutor_response = client.get(f"/api/v1/tutors/{tutor_user.tutor_profile.id}", headers=headers)
         initial_reviews = tutor_response.json()["total_reviews"]
 
         # Create review
         review_response = client.post(
-            "/api/reviews",
+            "/api/v1/reviews",
             headers=headers,
             json={
                 "booking_id": test_booking.id,
@@ -283,7 +283,7 @@ class TestAPIDataConsistency:
         assert review_response.status_code == status.HTTP_201_CREATED
 
         # Verify review count updated
-        tutor_response2 = client.get(f"/api/tutors/{tutor_user.tutor_profile.id}", headers=headers)
+        tutor_response2 = client.get(f"/api/v1/tutors/{tutor_user.tutor_profile.id}", headers=headers)
         new_reviews = tutor_response2.json()["total_reviews"]
 
         assert new_reviews == initial_reviews + 1

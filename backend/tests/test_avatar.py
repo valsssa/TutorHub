@@ -62,7 +62,7 @@ def test_upload_avatar_success(client, student_token, db_session, fake_avatar_st
     image_bytes = _create_png_bytes()
 
     response = client.post(
-        "/api/users/me/avatar",
+        "/api/v1/users/me/avatar",
         headers={"Authorization": f"Bearer {student_token}"},
         files={"file": ("avatar.png", image_bytes, "image/png")},
     )
@@ -83,7 +83,7 @@ def test_upload_avatar_rejects_large_file(client, student_token, fake_avatar_sto
     oversized_bytes = b"x" * (2_000_001)
 
     response = client.post(
-        "/api/users/me/avatar",
+        "/api/v1/users/me/avatar",
         headers={"Authorization": f"Bearer {student_token}"},
         files={"file": ("huge.png", oversized_bytes, "image/png")},
     )
@@ -96,7 +96,7 @@ def test_upload_avatar_rejects_corrupt_image(client, student_token, fake_avatar_
     corrupt_bytes = b"not-an-image"
 
     response = client.post(
-        "/api/users/me/avatar",
+        "/api/v1/users/me/avatar",
         headers={"Authorization": f"Bearer {student_token}"},
         files={"file": ("broken.png", corrupt_bytes, "image/png")},
     )
@@ -114,7 +114,7 @@ def test_delete_avatar_clears_metadata_and_storage(
     # Upload first
     image_bytes = _create_png_bytes()
     upload_response = client.post(
-        "/api/users/me/avatar",
+        "/api/v1/users/me/avatar",
         headers={"Authorization": f"Bearer {student_token}"},
         files={"file": ("avatar.png", image_bytes, "image/png")},
     )
@@ -122,7 +122,7 @@ def test_delete_avatar_clears_metadata_and_storage(
 
     # Delete avatar
     delete_response = client.delete(
-        "/api/users/me/avatar",
+        "/api/v1/users/me/avatar",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert delete_response.status_code == 200
@@ -148,7 +148,7 @@ def test_admin_can_update_avatar_with_audit_log(
 
     image_bytes = _create_png_bytes(color=(200, 50, 90))
     response = client.patch(
-        f"/api/admin/users/{student_user.id}/avatar",
+        f"/api/v1/admin/users/{student_user.id}/avatar",
         headers={"Authorization": f"Bearer {admin_token}"},
         files={"file": ("avatar.png", image_bytes, "image/png")},
     )

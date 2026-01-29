@@ -1,12 +1,12 @@
 """Package expiration service - Mark expired packages automatically."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from models import StudentPackage
+from models import StudentPackage, TutorSubject
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class PackageExpirationService:
             int: Number of packages marked as expired
         """
         try:
+            now = datetime.now(UTC)
             # Find active packages that have passed their expiration date
             expired_packages = (
                 db.query(StudentPackage)
@@ -30,7 +31,7 @@ class PackageExpirationService:
                     and_(
                         StudentPackage.status == "active",
                         StudentPackage.expires_at.isnot(None),
-                        StudentPackage.expires_at < datetime.utcnow(),
+                        StudentPackage.expires_at < now,
                     )
                 )
                 .all()
@@ -41,7 +42,7 @@ class PackageExpirationService:
             if count > 0:
                 for package in expired_packages:
                     package.status = "expired"
-                    package.updated_at = datetime.utcnow()
+                    package.updated_at = datetime.now(UTC)
 
                 db.commit()
 
@@ -76,7 +77,7 @@ class PackageExpirationService:
             return False, "No credits remaining in package"
 
         # Check expiration
-        if package.expires_at and package.expires_at < datetime.utcnow():
+        if package.expires_at and package.expires_at < datetime.now(UTC):
             return False, "Package has expired"
 
         return True, None
@@ -102,10 +103,133 @@ class PackageExpirationService:
                     StudentPackage.sessions_remaining > 0,
                     (
                         StudentPackage.expires_at.is_(None)
-                        | (StudentPackage.expires_at > datetime.utcnow())
+                        | (StudentPackage.expires_at > datetime.now(UTC))
                     ),
                 )
             )
             .order_by(StudentPackage.expires_at.asc().nullslast())  # Expiring first
             .all()
         )
+
+    @staticmethod
+    def get_expiring_packages(db: Session, days_until_expiry: int = 7) -> list[StudentPackage]:
+        """
+        Get packages that will expire within the specified number of days.
+
+        This is used to send warning notifications to students about their
+        expiring packages so they can use remaining credits before expiration.
+
+        Args:
+            db: Database session
+            days_until_expiry: Number of days to look ahead (default 7)
+
+        Returns:
+            list: StudentPackage instances expiring soon that haven't had
+                  a warning notification sent yet
+        """
+        now = datetime.now(UTC)
+        cutoff = now + timedelta(days=days_until_expiry)
+
+        return (
+            db.query(StudentPackage)
+            .options(joinedload(StudentPackage.tutor_profile))
+            .filter(
+                and_(
+                    StudentPackage.status == "active",
+                    StudentPackage.sessions_remaining > 0,
+                    StudentPackage.expires_at.isnot(None),
+                    StudentPackage.expires_at <= cutoff,
+                    StudentPackage.expires_at > now,
+                    StudentPackage.expiry_warning_sent.is_(False),
+                )
+            )
+            .all()
+        )
+
+    @staticmethod
+    def send_expiry_warnings(db: Session, days_until_expiry: int = 7) -> int:
+        """
+        Send expiration warning notifications for packages expiring soon.
+
+        This method finds packages expiring within the specified number of days
+        that haven't had a warning sent yet, sends notifications, and marks
+        them as warned to avoid duplicate notifications.
+
+        Args:
+            db: Database session
+            days_until_expiry: Number of days to look ahead (default 7)
+
+        Returns:
+            int: Number of warnings sent
+        """
+        from modules.notifications.service import notification_service
+
+        try:
+            expiring_packages = PackageExpirationService.get_expiring_packages(
+                db, days_until_expiry
+            )
+
+            if not expiring_packages:
+                logger.debug("No expiring packages found to warn about")
+                return 0
+
+            warnings_sent = 0
+            now = datetime.now(UTC)
+
+            for package in expiring_packages:
+                try:
+                    # Calculate days until expiry
+                    if package.expires_at:
+                        days_left = (package.expires_at - now).days
+                        if days_left < 0:
+                            days_left = 0
+                    else:
+                        continue
+
+                    # Get subject name from tutor profile if available
+                    subject_name = "tutoring"
+                    if package.tutor_profile:
+                        # Try to get a subject name from tutor's subjects
+                        tutor_subject = (
+                            db.query(TutorSubject)
+                            .filter(TutorSubject.tutor_profile_id == package.tutor_profile_id)
+                            .first()
+                        )
+                        if tutor_subject and tutor_subject.subject:
+                            subject_name = tutor_subject.subject.name
+
+                    # Send notification
+                    notification_service.notify_package_expiring(
+                        db=db,
+                        user_id=package.student_id,
+                        package_id=package.id,
+                        subject_name=subject_name,
+                        remaining_sessions=package.sessions_remaining,
+                        expires_in_days=days_left,
+                    )
+
+                    # Mark warning as sent
+                    package.expiry_warning_sent = True
+                    package.updated_at = datetime.now(UTC)
+                    warnings_sent += 1
+
+                    logger.info(
+                        f"Sent expiry warning for package {package.id} to student "
+                        f"{package.student_id} - expires in {days_left} days, "
+                        f"{package.sessions_remaining} sessions remaining"
+                    )
+
+                except Exception as e:
+                    logger.error(
+                        f"Error sending expiry warning for package {package.id}: {e}"
+                    )
+                    continue
+
+            db.commit()
+            logger.info(f"Sent {warnings_sent} package expiry warnings")
+            return warnings_sent
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error in send_expiry_warnings: {e}")
+            raise

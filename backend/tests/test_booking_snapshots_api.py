@@ -17,7 +17,7 @@ def test_booking_snapshot_captured_on_creation(client, tutor_token, test_subject
     end_time = (datetime.now() + timedelta(days=1, hours=1)).isoformat()
 
     response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,  # Assuming test_tutor has ID 1
             "subject_id": test_subject.id,
@@ -58,7 +58,7 @@ def test_booking_snapshot_immutable_after_tutor_changes(client, admin_token, tut
     end_time = (datetime.now() + timedelta(days=1, hours=1)).isoformat()
 
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -73,7 +73,7 @@ def test_booking_snapshot_immutable_after_tutor_changes(client, admin_token, tut
 
     # Tutor updates their profile (change rate and title)
     _tutor_update_response = client.patch(  # noqa: F841
-        "/api/tutors/me/about",
+        "/api/v1/tutors/me/about",
         json={
             "title": "New Title - Expert Teacher",
             "experience_years": 20,
@@ -86,7 +86,7 @@ def test_booking_snapshot_immutable_after_tutor_changes(client, admin_token, tut
 
     # Retrieve booking again
     booking_check_response = client.get(
-        "/api/bookings",
+        "/api/v1/bookings",
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
     assert booking_check_response.status_code == 200
@@ -109,7 +109,7 @@ def test_review_captures_booking_snapshot(client, student_token, tutor_token, te
     end_time = (datetime.now() + timedelta(days=1, hours=1)).isoformat()
 
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -124,7 +124,7 @@ def test_review_captures_booking_snapshot(client, student_token, tutor_token, te
 
     # Mark booking as completed (assuming tutor can do this)
     _complete_response = client.patch(  # noqa: F841
-        f"/api/bookings/{booking_id}",
+        f"/api/v1/bookings/{booking_id}",
         json={"status": "completed"},
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
@@ -132,7 +132,7 @@ def test_review_captures_booking_snapshot(client, student_token, tutor_token, te
 
     # Create review
     review_response = client.post(
-        "/api/reviews",
+        "/api/v1/reviews",
         json={
             "booking_id": booking_id,
             "rating": 5,
@@ -152,7 +152,7 @@ def test_review_captures_booking_snapshot(client, student_token, tutor_token, te
 def test_booking_list_includes_snapshot_data(client, student_token):
     """Test that listing bookings includes snapshot data for display."""
     response = client.get(
-        "/api/bookings",
+        "/api/v1/bookings",
         headers={"Authorization": f"Bearer {student_token}"},
     )
 
@@ -180,7 +180,7 @@ def test_booking_pricing_snapshot_preserves_package_details(client, student_toke
     end_time = (datetime.now() + timedelta(days=1, hours=2)).isoformat()
 
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -210,7 +210,7 @@ def test_booking_conflict_prevention(client, student_token, test_subject):
 
     # Create first booking
     booking1_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -223,7 +223,7 @@ def test_booking_conflict_prevention(client, student_token, test_subject):
 
     # Attempt overlapping booking (should fail with 409 or similar)
     booking2_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -247,7 +247,7 @@ def test_booking_subject_deleted_snapshot_preserved(client, admin_token, student
 
     # Create booking
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -261,13 +261,13 @@ def test_booking_subject_deleted_snapshot_preserved(client, admin_token, student
 
     # Soft-delete the subject (if admin API supports it)
     # delete_response = client.delete(
-    #     f"/api/admin/subjects/{test_subject.id}",
+    #     f"/api/v1/admin/subjects/{test_subject.id}",
     #     headers={"Authorization": f"Bearer {admin_token}"},
     # )
 
     # Retrieve booking - should still have subject_name
     booking_check_response = client.get(
-        "/api/bookings",
+        "/api/v1/bookings",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert booking_check_response.status_code == 200
@@ -292,7 +292,7 @@ def test_multiple_bookings_maintain_individual_snapshots(client, student_token, 
         end_time = (datetime.now() + timedelta(days=i + 1, hours=1)).isoformat()
 
         response = client.post(
-            "/api/bookings",
+            "/api/v1/bookings",
             json={
                 "tutor_profile_id": 1,
                 "subject_id": test_subject.id,

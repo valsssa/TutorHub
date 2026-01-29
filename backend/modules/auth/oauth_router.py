@@ -26,6 +26,7 @@ from core.config import settings
 from core.dependencies import DatabaseSession, get_current_user_optional
 from core.oauth_state import oauth_state_store
 from core.security import TokenManager
+from core.transactions import atomic_operation
 from core.utils import StringUtils
 from models import User, UserProfile
 
@@ -200,30 +201,34 @@ async def google_callback(
                 user.last_name = last_name
 
         else:
-            # Create new user
+            # Create new user with atomic transaction to prevent orphaned records
+            # Both User and UserProfile are created together or not at all
             is_new_user = True
-            user = User(
-                email=email,
-                hashed_password="",  # OAuth users don't have password
-                first_name=first_name,
-                last_name=last_name,
-                role="student",  # Default role for new OAuth users
-                is_active=True,
-                is_verified=True,  # Email verified by Google
-                google_id=google_id,
-            )
-            db.add(user)
-            db.flush()
+            with atomic_operation(db):
+                user = User(
+                    email=email,
+                    hashed_password="",  # OAuth users don't have password
+                    first_name=first_name,
+                    last_name=last_name,
+                    role="student",  # Default role for new OAuth users
+                    is_active=True,
+                    is_verified=True,  # Email verified by Google
+                    google_id=google_id,
+                )
+                db.add(user)
+                db.flush()  # Get user.id for foreign key
 
-            # Create user profile
-            profile = UserProfile(
-                user_id=user.id,
-            )
-            db.add(profile)
+                # Create user profile - committed atomically with user
+                profile = UserProfile(
+                    user_id=user.id,
+                )
+                db.add(profile)
+                # atomic_operation commits both on context exit
 
             logger.info(f"Created new user via Google OAuth: {email}")
 
-        db.commit()
+        if not is_new_user:
+            db.commit()  # Commit updates for existing users
 
         # Generate JWT token
         access_token = TokenManager.create_access_token(

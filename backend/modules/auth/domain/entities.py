@@ -21,6 +21,9 @@ class UserEntity:
     created_at: datetime | None = None
     updated_at: datetime | None = None
     password_changed_at: datetime | None = None
+    # Fraud detection fields
+    registration_ip: str | None = None
+    trial_restricted: bool = False
 
     def is_admin(self) -> bool:
         """Check if user is admin."""

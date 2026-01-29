@@ -16,7 +16,7 @@ from core.feature_flags import (
     FeatureState,
     feature_flags,
 )
-from models.user import User
+from models import User
 
 router = APIRouter(prefix="/admin/features", tags=["admin-features"])
 

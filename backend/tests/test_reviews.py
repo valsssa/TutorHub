@@ -13,7 +13,7 @@ class TestCreateReview:
         db_session.commit()
 
         response = client.post(
-            "/api/reviews",
+            "/api/v1/reviews",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
                 "booking_id": test_booking.id,
@@ -29,7 +29,7 @@ class TestCreateReview:
     def test_cannot_review_non_completed_booking(self, client, student_token, test_booking):
         """Test cannot review pending booking."""
         response = client.post(
-            "/api/reviews",
+            "/api/v1/reviews",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"booking_id": test_booking.id, "rating": 5, "comment": "Great!"},
         )
@@ -57,7 +57,7 @@ class TestCreateReview:
 
         client = TestClient(app)
         response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": "student2@test.com", "password": "student123"},
         )
         token = response.json()["access_token"]
@@ -68,7 +68,7 @@ class TestCreateReview:
 
         # Try to review
         response = client.post(
-            "/api/reviews",
+            "/api/v1/reviews",
             headers={"Authorization": f"Bearer {token}"},
             json={"booking_id": test_booking.id, "rating": 5, "comment": "Great!"},
         )
@@ -84,7 +84,7 @@ class TestCreateReview:
 
         # Create first review
         response = client.post(
-            "/api/reviews",
+            "/api/v1/reviews",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"booking_id": test_booking.id, "rating": 5, "comment": "Great!"},
         )
@@ -92,7 +92,7 @@ class TestCreateReview:
 
         # Try to create second review
         response = client.post(
-            "/api/reviews",
+            "/api/v1/reviews",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
                 "booking_id": test_booking.id,
@@ -109,7 +109,7 @@ class TestCreateReview:
         db_session.commit()
 
         response = client.post(
-            "/api/reviews",
+            "/api/v1/reviews",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "booking_id": test_booking.id,
@@ -143,7 +143,7 @@ class TestGetTutorReviews:
         db_session.commit()
 
         response = client.get(
-            f"/api/tutors/{tutor_user.tutor_profile.id}/reviews",
+            f"/api/v1/tutors/{tutor_user.tutor_profile.id}/reviews",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -180,7 +180,7 @@ class TestGetTutorReviews:
         db_session.commit()
 
         response = client.get(
-            f"/api/tutors/{tutor_user.tutor_profile.id}/reviews",
+            f"/api/v1/tutors/{tutor_user.tutor_profile.id}/reviews",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK

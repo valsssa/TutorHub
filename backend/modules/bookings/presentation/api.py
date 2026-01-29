@@ -6,7 +6,7 @@ Consolidates all booking routes with shared error handling and authorization.
 import logging
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -33,6 +33,29 @@ from modules.bookings.service import BookingService, booking_to_dto
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="", tags=["bookings"])
+
+
+def _add_booking_cache_headers(response: Response, booking: Booking) -> None:
+    """
+    Add cache invalidation headers to booking responses.
+
+    These headers help the frontend handle race conditions between WebSocket
+    broadcasts and API responses by providing version and timestamp information.
+
+    Headers added:
+    - X-Booking-Version: The optimistic locking version of the booking
+    - X-Booking-Updated-At: ISO timestamp of last modification
+    - Cache-Control: no-store to prevent caching of booking state
+
+    Frontend should compare X-Booking-Version with cached data and only apply
+    updates if the version is >= the cached version.
+    """
+    response.headers["X-Booking-Version"] = str(booking.version or 1)
+    response.headers["X-Booking-Updated-At"] = (
+        booking.updated_at.isoformat() if booking.updated_at else datetime.now(UTC).isoformat()
+    )
+    # Prevent intermediate caching of booking state
+    response.headers["Cache-Control"] = "no-store"
 
 
 async def _broadcast_availability_update(tutor_profile_id: int, tutor_user_id: int) -> None:
@@ -125,6 +148,7 @@ def _require_role(current_user: User, role: str) -> None:
 )
 async def create_booking(
     request: BookingCreateRequest,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -132,6 +156,7 @@ async def create_booking(
     Create tutoring session booking with automatic conflict checking and pricing.
 
     - Validates tutor availability and checks for conflicts
+    - Checks external calendar (Google Calendar) for conflicts if tutor has it connected
     - Calculates pricing with platform fee
     - Auto-confirms if tutor has auto_confirm enabled
     - Deducts package credit if package_id provided
@@ -139,9 +164,26 @@ async def create_booking(
     _require_role(current_user, "student")
 
     try:
+        from core.soft_delete import filter_active
         from modules.bookings.services.response_tracking import ResponseTrackingService
 
         service = BookingService(db)
+
+        # Pre-flight check: Get tutor profile and user for external calendar check
+        # This catches events added to Google Calendar since last sync
+        tutor_profile = (
+            filter_active(db.query(TutorProfile), TutorProfile)
+            .filter(TutorProfile.id == request.tutor_profile_id)
+            .first()
+        )
+        if tutor_profile and tutor_profile.user:
+            end_at = request.start_at + timedelta(minutes=request.duration_minutes)
+            await service.check_external_calendar_conflict(
+                tutor_user=tutor_profile.user,
+                start_at=request.start_at,
+                end_at=end_at,
+            )
+
         booking = service.create_booking(
             student_id=current_user.id,
             tutor_profile_id=request.tutor_profile_id,
@@ -169,9 +211,26 @@ async def create_booking(
             tutor_user_id=booking.tutor_profile.user_id if booking.tutor_profile else 0,
         )
 
+        _add_booking_cache_headers(response, booking)
         return booking_to_dto(booking, db)
 
-    except HTTPException:
+    except HTTPException as e:
+        # Handle 409 Conflict errors - preserve external calendar conflict details
+        if e.status_code == status.HTTP_409_CONFLICT:
+            # If the error already has structured detail (e.g., external_calendar_conflict),
+            # preserve it rather than wrapping it
+            if isinstance(e.detail, dict) and e.detail.get("error") == "external_calendar_conflict":
+                raise  # Re-raise the external calendar conflict as-is
+            # Otherwise, enhance with standard slot unavailable message
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "slot_no_longer_available",
+                    "message": "This time slot is no longer available. Please refresh and select a different time.",
+                    "suggested_action": "refresh_slots",
+                    "original_error": str(e.detail) if isinstance(e.detail, str) else e.detail,
+                },
+            )
         raise
     except IntegrityError as e:
         # Handle database-level constraint violation (exclusion constraint for overlapping bookings)
@@ -181,11 +240,19 @@ async def create_booking(
         if "bookings_no_time_overlap" in error_str or "overlap" in error_str:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Tutor is not available at this time: time slot already booked",
+                detail={
+                    "error": "slot_no_longer_available",
+                    "message": "This time slot is no longer available. Please refresh and select a different time.",
+                    "suggested_action": "refresh_slots",
+                },
             )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Booking conflicts with existing data",
+            detail={
+                "error": "booking_conflict",
+                "message": "Booking conflicts with existing data. Please refresh and try again.",
+                "suggested_action": "refresh_slots",
+            },
         )
     except Exception as e:
         db.rollback()
@@ -273,11 +340,13 @@ async def list_bookings(
 @router.get("/bookings/{booking_id}", response_model=BookingDTO)
 async def get_booking(
     booking_id: int,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get detailed booking information with authorization check."""
     booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
+    _add_booking_cache_headers(response, booking)
     return booking_to_dto(booking, db)
 
 
@@ -285,6 +354,7 @@ async def get_booking(
 async def cancel_booking(
     booking_id: int,
     request: BookingCancelRequest,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -313,6 +383,7 @@ async def cancel_booking(
             tutor_user_id=cancelled_booking.tutor_profile.user_id if cancelled_booking.tutor_profile else 0,
         )
 
+        _add_booking_cache_headers(response, cancelled_booking)
         return booking_to_dto(cancelled_booking, db)
 
     except HTTPException:
@@ -329,6 +400,7 @@ async def cancel_booking(
 async def reschedule_booking(
     booking_id: int,
     request: BookingRescheduleRequest,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -375,7 +447,7 @@ async def reschedule_booking(
         duration = (booking.end_time - booking.start_time).total_seconds() / 60
         new_end_at = request.new_start_at + timedelta(minutes=duration)
 
-        # Check conflicts at new time
+        # Check conflicts at new time (internal bookings and availability)
         if booking.tutor_profile:
             conflicts = service.check_conflicts(
                 tutor_profile_id=booking.tutor_profile.id,
@@ -386,7 +458,20 @@ async def reschedule_booking(
             if conflicts:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Tutor not available at new time: {conflicts}",
+                    detail={
+                        "error": "slot_no_longer_available",
+                        "message": "This time slot is no longer available. Please refresh and select a different time.",
+                        "suggested_action": "refresh_slots",
+                        "conflict_reason": conflicts,
+                    },
+                )
+
+            # Check external calendar for conflicts at new time
+            if booking.tutor_profile.user:
+                await service.check_external_calendar_conflict(
+                    tutor_user=booking.tutor_profile.user,
+                    start_at=request.new_start_at,
+                    end_at=new_end_at,
                 )
 
         # Update booking
@@ -402,6 +487,7 @@ async def reschedule_booking(
             tutor_user_id=booking.tutor_profile.user_id if booking.tutor_profile else 0,
         )
 
+        _add_booking_cache_headers(response, booking)
         return booking_to_dto(booking, db)
 
     except HTTPException:
@@ -423,6 +509,7 @@ async def reschedule_booking(
 async def confirm_booking(
     booking_id: int,
     request: BookingConfirmRequest,
+    response: Response,
     tutor_profile: TutorProfile = Depends(get_current_tutor_profile),
     db: Session = Depends(get_db),
 ):
@@ -430,11 +517,13 @@ async def confirm_booking(
     Confirm pending booking (tutor only).
 
     - Changes status from PENDING to CONFIRMED
-    - Generates meeting join URL
+    - Creates Zoom meeting and generates join URL
     - Uses row-level locking to prevent race conditions
+    - If Zoom fails, booking is still confirmed but flagged for retry
     """
     try:
         from modules.bookings.services.response_tracking import ResponseTrackingService
+        from modules.integrations.zoom_router import ZoomError, zoom_client
 
         # Acquire row-level lock to prevent race conditions
         # (e.g., concurrent expiry job or duplicate confirm requests)
@@ -463,9 +552,58 @@ async def confirm_booking(
 
         # Only update additional fields if this wasn't an idempotent no-op
         if not result.already_in_target_state:
-            # Generate join URL
-            service = BookingService(db)
-            booking.join_url = service._generate_join_url(booking.id)
+            # Try to create Zoom meeting with retry logic
+            zoom_meeting_created = False
+            try:
+                # Build meeting topic
+                topic = f"EduStream: {booking.subject_name or 'Tutoring Session'}"
+                if booking.student_name:
+                    topic += f" with {booking.student_name}"
+
+                duration_minutes = int((booking.end_time - booking.start_time).total_seconds() / 60)
+
+                meeting = await zoom_client.create_meeting(
+                    topic=topic,
+                    start_time=booking.start_time,
+                    duration_minutes=duration_minutes,
+                    tutor_email=tutor_profile.user.email if tutor_profile.user else None,
+                    student_email=booking.student.email if booking.student else None,
+                )
+
+                # Update booking with Zoom meeting details
+                booking.join_url = meeting["join_url"]
+                booking.meeting_url = meeting.get("start_url")  # Host URL
+                booking.zoom_meeting_id = str(meeting["id"])
+                booking.zoom_meeting_pending = False
+                zoom_meeting_created = True
+                logger.info("Created Zoom meeting %s for booking %d", meeting["id"], booking.id)
+
+            except ZoomError as e:
+                # Zoom failed but don't fail the booking confirmation
+                # Flag for background retry
+                logger.error(
+                    "Failed to create Zoom meeting for booking %d (will retry): %s",
+                    booking.id,
+                    e.message,
+                )
+                booking.zoom_meeting_pending = True
+                booking.join_url = None
+                # Note: We still proceed with confirmation
+
+            except Exception as e:
+                # Unexpected error - log and flag for retry
+                logger.error(
+                    "Unexpected error creating Zoom meeting for booking %d (will retry): %s",
+                    booking.id,
+                    str(e),
+                )
+                booking.zoom_meeting_pending = True
+                booking.join_url = None
+
+            # If no Zoom meeting was created, generate a fallback URL
+            if not zoom_meeting_created and not booking.join_url:
+                service = BookingService(db)
+                booking.join_url = service._generate_join_url(booking.id)
 
             # Add tutor notes
             if request.notes_tutor:
@@ -483,6 +621,7 @@ async def confirm_booking(
             tutor_user_id=tutor_profile.user_id,
         )
 
+        _add_booking_cache_headers(response, booking)
         return booking_to_dto(booking, db)
 
     except HTTPException:
@@ -499,6 +638,7 @@ async def confirm_booking(
 async def decline_booking(
     booking_id: int,
     request: BookingDeclineRequest,
+    response: Response,
     tutor_profile: TutorProfile = Depends(get_current_tutor_profile),
     db: Session = Depends(get_db),
 ):
@@ -546,6 +686,7 @@ async def decline_booking(
             tutor_user_id=tutor_profile.user_id,
         )
 
+        _add_booking_cache_headers(response, declined_booking)
         return booking_to_dto(declined_booking, db)
 
     except HTTPException:
@@ -562,6 +703,7 @@ async def decline_booking(
 async def mark_student_no_show(
     booking_id: int,
     request: MarkNoShowRequest,
+    response: Response,
     tutor_profile: TutorProfile = Depends(get_current_tutor_profile),
     db: Session = Depends(get_db),
 ):
@@ -602,6 +744,7 @@ async def mark_student_no_show(
         db.commit()
         db.refresh(no_show_booking)
 
+        _add_booking_cache_headers(response, no_show_booking)
         result = booking_to_dto(no_show_booking, db)
 
         # Log if escalated to dispute due to conflicting reports
@@ -627,6 +770,7 @@ async def mark_student_no_show(
 async def mark_tutor_no_show(
     booking_id: int,
     request: MarkNoShowRequest,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -669,6 +813,7 @@ async def mark_tutor_no_show(
         db.commit()
         db.refresh(no_show_booking)
 
+        _add_booking_cache_headers(response, no_show_booking)
         result = booking_to_dto(no_show_booking, db)
 
         # Log if escalated to dispute due to conflicting reports
@@ -699,6 +844,7 @@ async def mark_tutor_no_show(
 async def open_dispute(
     booking_id: int,
     request: DisputeCreateRequest,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -727,6 +873,7 @@ async def open_dispute(
         db.commit()
         db.refresh(booking)
 
+        _add_booking_cache_headers(response, booking)
         return booking_to_dto(booking, db)
 
     except HTTPException:
@@ -743,6 +890,7 @@ async def open_dispute(
 async def resolve_dispute(
     booking_id: int,
     request: DisputeResolveRequest,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -786,6 +934,7 @@ async def resolve_dispute(
         db.commit()
         db.refresh(booking)
 
+        _add_booking_cache_headers(response, booking)
         return booking_to_dto(booking, db)
 
     except HTTPException:
@@ -795,4 +944,106 @@ async def resolve_dispute(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to resolve dispute: {str(e)}",
+        )
+
+
+# ============================================================================
+# Meeting Management Endpoints
+# ============================================================================
+
+
+@router.post("/bookings/{booking_id}/regenerate-meeting", response_model=BookingDTO)
+async def regenerate_meeting(
+    booking_id: int,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Regenerate Zoom meeting link for a booking.
+
+    - Can be used when initial Zoom meeting creation failed
+    - Only works for bookings in SCHEDULED or ACTIVE state
+    - Both tutors and students can regenerate the meeting link
+    """
+    booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
+
+    # Validate booking state
+    if booking.session_state not in [SessionState.SCHEDULED.value, SessionState.ACTIVE.value]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot regenerate meeting for booking with state {booking.session_state}. "
+            "Meeting can only be regenerated for scheduled or active sessions.",
+        )
+
+    try:
+        from modules.integrations.zoom_router import ZoomError, zoom_client
+
+        # Build meeting topic
+        topic = f"EduStream: {booking.subject_name or 'Tutoring Session'}"
+        if booking.student_name:
+            topic += f" with {booking.student_name}"
+
+        duration_minutes = int((booking.end_time - booking.start_time).total_seconds() / 60)
+
+        # Get emails for logging
+        tutor_email = None
+        student_email = None
+        if booking.tutor_profile and booking.tutor_profile.user:
+            tutor_email = booking.tutor_profile.user.email
+        if booking.student:
+            student_email = booking.student.email
+
+        try:
+            meeting = await zoom_client.create_meeting(
+                topic=topic,
+                start_time=booking.start_time,
+                duration_minutes=duration_minutes,
+                tutor_email=tutor_email,
+                student_email=student_email,
+            )
+
+            # Update booking with new Zoom meeting details
+            booking.join_url = meeting["join_url"]
+            booking.meeting_url = meeting.get("start_url")  # Host URL
+            booking.zoom_meeting_id = str(meeting["id"])
+            booking.zoom_meeting_pending = False
+            booking.updated_at = datetime.now(UTC)
+
+            db.commit()
+            db.refresh(booking)
+
+            logger.info(
+                "Regenerated Zoom meeting %s for booking %d (requested by user %d)",
+                meeting["id"],
+                booking_id,
+                current_user.id,
+            )
+
+            _add_booking_cache_headers(response, booking)
+            return booking_to_dto(booking, db)
+
+        except ZoomError as e:
+            logger.error(
+                "Failed to regenerate Zoom meeting for booking %d: %s",
+                booking_id,
+                e.message,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Failed to create Zoom meeting: {e.message}. Please try again later.",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(
+            "Unexpected error regenerating meeting for booking %d: %s",
+            booking_id,
+            str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to regenerate meeting: {str(e)}",
         )

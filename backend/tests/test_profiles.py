@@ -16,7 +16,7 @@ class TestGetProfile:
             db_session.delete(profile)
             db_session.commit()
 
-        response = client.get("/api/profile/me", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/profile/me", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["user_id"] == student_user.id
@@ -43,7 +43,7 @@ class TestGetProfile:
         db_session.add(profile)
         db_session.commit()
 
-        response = client.get("/api/profile/me", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/profile/me", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["full_name"] == "John Doe"
@@ -52,7 +52,7 @@ class TestGetProfile:
 
     def test_get_profile_unauthorized(self, client):
         """Test getting profile without auth fails."""
-        response = client.get("/api/profile/me")
+        response = client.get("/api/v1/profile/me")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -70,7 +70,7 @@ class TestUpdateProfile:
             db_session.commit()
 
         response = client.put(
-            "/api/profile/me",
+            "/api/v1/profile/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"full_name": "Jane Smith", "phone_number": "+9876543210"},
         )
@@ -94,7 +94,7 @@ class TestUpdateProfile:
         db_session.commit()
 
         response = client.put(
-            "/api/profile/me",
+            "/api/v1/profile/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
                 "full_name": "Updated Name",
@@ -130,7 +130,7 @@ class TestUpdateProfile:
 
         # Update only one field
         response = client.put(
-            "/api/profile/me",
+            "/api/v1/profile/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"city": "New City"},
         )
@@ -144,7 +144,7 @@ class TestUpdateProfile:
 
     def test_update_profile_unauthorized(self, client):
         """Test updating profile without auth fails."""
-        response = client.put("/api/profile/me", json={"full_name": "Test"})
+        response = client.put("/api/v1/profile/me", json={"full_name": "Test"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_update_profile_with_all_fields(self, client, student_token, student_user, db_session):
@@ -172,7 +172,7 @@ class TestUpdateProfile:
         }
 
         response = client.put(
-            "/api/profile/me",
+            "/api/v1/profile/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json=full_data,
         )
@@ -186,7 +186,7 @@ class TestUpdateProfile:
         """Test updating profile with invalid data fails gracefully."""
         # Test with excessively long name
         response = client.put(
-            "/api/profile/me",
+            "/api/v1/profile/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"full_name": "x" * 500},  # Too long
         )

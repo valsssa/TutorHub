@@ -13,7 +13,7 @@ class TestAvailabilityTimezoneInAPI:
         """Test setting availability with specific timezone."""
         # Get current profile version
         profile_response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert profile_response.status_code == status.HTTP_200_OK
@@ -21,7 +21,7 @@ class TestAvailabilityTimezoneInAPI:
 
         # Set availability with Eastern timezone
         response = client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "availability": [
@@ -42,13 +42,13 @@ class TestAvailabilityTimezoneInAPI:
     def test_set_availability_with_pacific_timezone(self, client, tutor_token):
         """Test setting availability with Pacific timezone."""
         profile_response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         version = profile_response.json()["version"]
 
         response = client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "availability": [
@@ -69,13 +69,13 @@ class TestAvailabilityTimezoneInAPI:
     def test_set_availability_with_european_timezone(self, client, tutor_token):
         """Test setting availability with European timezone."""
         profile_response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         version = profile_response.json()["version"]
 
         response = client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "availability": [
@@ -96,13 +96,13 @@ class TestAvailabilityTimezoneInAPI:
     def test_set_availability_with_asian_timezone(self, client, tutor_token):
         """Test setting availability with Asian timezone."""
         profile_response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         version = profile_response.json()["version"]
 
         response = client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "availability": [
@@ -123,13 +123,13 @@ class TestAvailabilityTimezoneInAPI:
     def test_set_availability_with_utc(self, client, tutor_token):
         """Test setting availability with UTC timezone."""
         profile_response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         version = profile_response.json()["version"]
 
         response = client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "availability": [
@@ -180,7 +180,7 @@ class TestAvailableSlotsTimezoneHandling:
         end_date = start_date + timedelta(days=14)
 
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
@@ -209,7 +209,7 @@ class TestAvailableSlotsTimezoneHandling:
         end_date = today + timedelta(days=31)  # More than 30 days
 
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
@@ -225,7 +225,7 @@ class TestAvailableSlotsTimezoneHandling:
         tutor_profile = tutor_user.tutor_profile
 
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": "not-a-date",
                 "end_date": "also-not-a-date",
@@ -242,7 +242,7 @@ class TestTutorProfileTimezone:
     def test_tutor_profile_has_timezone(self, client, tutor_token):
         """Test tutor profile includes timezone field."""
         response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
 
@@ -291,7 +291,7 @@ class TestCrossTimezoneBookingScenarios:
         end_date = start_date + timedelta(days=7)
 
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
@@ -345,7 +345,7 @@ class TestCrossTimezoneBookingScenarios:
         end_date = start_date + timedelta(days=7)
 
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
@@ -446,7 +446,7 @@ class TestSingleAvailabilityTimezone:
 
         # Create single availability via POST endpoint
         response = client.post(
-            "/api/tutors/availability",
+            "/api/v1/tutors/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "day_of_week": 3,  # Wednesday
@@ -474,7 +474,7 @@ class TestSingleAvailabilityTimezone:
 
         # Create bulk availability via POST endpoint
         response = client.post(
-            "/api/tutors/availability/bulk",
+            "/api/v1/tutors/availability/bulk",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json=[
                 {

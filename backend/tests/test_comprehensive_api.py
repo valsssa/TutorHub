@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 def test_auth_registration_flow(client):
     """Test complete user registration flow."""
     response = client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "newuser@test.com",
             "password": "securePass123",
@@ -34,7 +34,7 @@ def test_auth_login_and_token_flow(client):
     """Test login and token usage."""
     # Register user
     client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "logintest@test.com",
             "password": "password123",
@@ -44,7 +44,7 @@ def test_auth_login_and_token_flow(client):
 
     # Login
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         data={"username": "logintest@test.com", "password": "password123"},
     )
 
@@ -56,14 +56,14 @@ def test_auth_login_and_token_flow(client):
     token = data["access_token"]
 
     # Use token to access protected endpoint
-    me_response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    me_response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert me_response.status_code == 200
     user_data = me_response.json()
     assert user_data["email"] == "logintest@test.com"
 
     currency_update = client.patch(
-        "/api/users/currency",
+        "/api/v1/users/currency",
         json={"currency": "EUR"},
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -74,7 +74,7 @@ def test_auth_login_and_token_flow(client):
 
 def test_currency_options_endpoint(client, student_token):
     """Ensure currency options endpoint returns entries."""
-    response = client.get("/api/users/currency/options")
+    response = client.get("/api/v1/users/currency/options")
     assert response.status_code == 200
     options = response.json()
     assert isinstance(options, list)
@@ -84,12 +84,12 @@ def test_currency_options_endpoint(client, student_token):
 def test_subjects_list_cached(client, student_token):
     """Test subjects listing with caching."""
     # First request
-    response1 = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
+    response1 = client.get("/api/v1/subjects", headers={"Authorization": f"Bearer {student_token}"})
     assert response1.status_code == 200
     subjects1 = response1.json()
 
     # Second request (should be cached)
-    response2 = client.get("/api/subjects", headers={"Authorization": f"Bearer {student_token}"})
+    response2 = client.get("/api/v1/subjects", headers={"Authorization": f"Bearer {student_token}"})
     assert response2.status_code == 200
     subjects2 = response2.json()
 
@@ -101,13 +101,13 @@ def test_tutor_profile_crud(client, tutor_token):
     """Test tutor profile create, read, update operations."""
     # Get current profile (might not exist yet)
     _get_response = client.get(  # noqa: F841
-        "/api/tutors/me/profile",
+        "/api/v1/tutors/me/profile",
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
 
     # Update about section
     update_response = client.patch(
-        "/api/tutors/me/about",
+        "/api/v1/tutors/me/about",
         json={
             "title": "Expert Math Tutor",
             "headline": "10+ years experience",
@@ -127,7 +127,7 @@ def test_tutor_profile_crud(client, tutor_token):
 def test_student_profile_update(client, student_token):
     """Test student profile updates."""
     response = client.patch(
-        "/api/profile/student/me",
+        "/api/v1/profile/student/me",
         json={
             "grade_level": "10th Grade",
             "school_name": "Test High School",
@@ -146,7 +146,7 @@ def test_booking_creation_validation(client, student_token, test_subject):
     """Test booking creation with validation."""
     # Invalid: end time before start time
     response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -166,7 +166,7 @@ def test_booking_status_transitions(client, tutor_token, student_token, test_sub
     end_time = (datetime.now() + timedelta(days=1, hours=1)).isoformat()
 
     create_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -181,7 +181,7 @@ def test_booking_status_transitions(client, tutor_token, student_token, test_sub
 
     # Tutor confirms booking
     confirm_response = client.patch(
-        f"/api/bookings/{booking_id}",
+        f"/api/v1/bookings/{booking_id}",
         json={"status": "confirmed"},
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
@@ -191,7 +191,7 @@ def test_booking_status_transitions(client, tutor_token, student_token, test_sub
 
     # Tutor marks as completed
     complete_response = client.patch(
-        f"/api/bookings/{booking_id}",
+        f"/api/v1/bookings/{booking_id}",
         json={"status": "completed"},
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
@@ -207,7 +207,7 @@ def test_review_creation_requires_completed_booking(client, student_token, test_
     end_time = (datetime.now() + timedelta(days=1, hours=1)).isoformat()
 
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -221,7 +221,7 @@ def test_review_creation_requires_completed_booking(client, student_token, test_
 
     # Try to create review for pending booking
     review_response = client.post(
-        "/api/reviews",
+        "/api/v1/reviews",
         json={"booking_id": booking_id, "rating": 5, "comment": "Great session!"},
         headers={"Authorization": f"Bearer {student_token}"},
     )
@@ -234,7 +234,7 @@ def test_messages_thread_flow(client, student_token, tutor_token):
     """Test messaging between student and tutor."""
     # Student sends message
     send_response = client.post(
-        "/api/messages",
+        "/api/v1/messages",
         json={
             "recipient_id": 2,  # Assuming tutor user ID is 2
             "message": "Hello, I'd like to book a session",
@@ -245,7 +245,7 @@ def test_messages_thread_flow(client, student_token, tutor_token):
     if send_response.status_code == 201:
         # List threads
         threads_response = client.get(
-            "/api/messages/threads",
+            "/api/v1/messages/threads",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -258,7 +258,7 @@ def test_tutor_availability_management(client, tutor_token):
     """Test tutor availability CRUD operations."""
     # Replace availability
     response = client.put(
-        "/api/tutors/me/availability",
+        "/api/v1/tutors/me/availability",
         json={
             "availability": [
                 {
@@ -288,7 +288,7 @@ def test_tutor_availability_management(client, tutor_token):
 def test_tutor_pricing_options(client, tutor_token):
     """Test tutor pricing options management."""
     response = client.patch(
-        "/api/tutors/me/pricing",
+        "/api/v1/tutors/me/pricing",
         json={
             "hourly_rate": 50.00,
             "pricing_options": [
@@ -312,7 +312,7 @@ def test_tutor_pricing_options(client, tutor_token):
 def test_admin_user_management(client, admin_token):
     """Test admin user management operations."""
     # List all users
-    response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
+    response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
 
     assert response.status_code == 200
     data = response.json()
@@ -323,7 +323,7 @@ def test_admin_user_management(client, admin_token):
 def test_pagination_on_listings(client, student_token):
     """Test pagination on list endpoints."""
     response = client.get(
-        "/api/tutors?page=1&page_size=10",
+        "/api/v1/tutors?page=1&page_size=10",
         headers={"Authorization": f"Bearer {student_token}"},
     )
 
@@ -344,7 +344,7 @@ def test_input_sanitization(client, student_token, test_subject):
     end_time = (datetime.now() + timedelta(days=1, hours=1)).isoformat()
 
     response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,
@@ -365,7 +365,7 @@ def test_rate_limiting_headers(client):
     """Test that rate limiting is enforced (if configured)."""
     # Make multiple rapid requests
     for _ in range(15):
-        response = client.get("/api/subjects")
+        response = client.get("/api/v1/subjects")
         # After limit, should get 429
         if response.status_code == 429:
             break
@@ -379,7 +379,7 @@ def test_soft_delete_preserves_relationships(client, admin_token, student_token,
     end_time = (datetime.now() + timedelta(days=1, hours=1)).isoformat()
 
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": 1,
             "subject_id": test_subject.id,

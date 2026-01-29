@@ -31,6 +31,10 @@ Handles auto-transition jobs for booking state management:
 - start_sessions: SCHEDULED -> ACTIVE (every 1 min, at start_time)
 - end_sessions: ACTIVE -> ENDED (every 1 min, at end_time + grace)
 
+Handles package management jobs:
+- send_package_expiry_warnings: Send warning notifications (daily)
+- mark_expired_packages: Mark expired packages (hourly)
+
 Multi-Instance Safety:
     The `max_instances=1` setting only prevents overlap within a single process.
     When running multiple backend pods/instances, jobs can still overlap.
@@ -75,9 +79,18 @@ def init_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler()
 
     # Import job functions here to avoid circular imports
-    from modules.bookings.jobs import end_sessions, expire_requests, start_sessions
+    from modules.bookings.jobs import (
+        end_sessions,
+        expire_requests,
+        retry_zoom_meetings,
+        start_sessions,
+    )
+    from modules.packages.jobs import (
+        mark_expired_packages,
+        send_package_expiry_warnings,
+    )
 
-    # Add jobs with appropriate intervals
+    # Add booking jobs with appropriate intervals
     scheduler.add_job(
         expire_requests,
         trigger=IntervalTrigger(minutes=5),
@@ -105,7 +118,35 @@ def init_scheduler() -> AsyncIOScheduler:
         max_instances=1,
     )
 
-    logger.info("Scheduler configured with booking auto-transition jobs")
+    scheduler.add_job(
+        retry_zoom_meetings,
+        trigger=IntervalTrigger(minutes=5),
+        id="retry_zoom_meetings",
+        name="Retry failed Zoom meeting creation",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Add package management jobs
+    scheduler.add_job(
+        send_package_expiry_warnings,
+        trigger=IntervalTrigger(hours=24),
+        id="send_package_expiry_warnings",
+        name="Send warning notifications for expiring packages",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    scheduler.add_job(
+        mark_expired_packages,
+        trigger=IntervalTrigger(hours=1),
+        id="mark_expired_packages",
+        name="Mark expired packages as expired status",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    logger.info("Scheduler configured with booking and package management jobs")
     return scheduler
 
 

@@ -19,7 +19,7 @@ from . import admin, auth, bookings, messages, notifications, payments, reviews,
 
 # Re-export all models for backward compatibility
 from .admin import AuditLog, Report
-from .auth import User, UserProfile
+from .auth import RegistrationFraudSignal, User, UserProfile
 from .base import Base, JSONEncodedArray
 from .bookings import Booking, SessionMaterial
 from .messages import Message, MessageAttachment
@@ -47,6 +47,7 @@ __all__ = [
     # Auth
     "User",
     "UserProfile",
+    "RegistrationFraudSignal",
     # Tutors
     "TutorProfile",
     "TutorSubject",

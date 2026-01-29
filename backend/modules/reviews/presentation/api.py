@@ -15,6 +15,7 @@ from core.audit import AuditLogger
 from core.cache import cache_with_ttl, invalidate_cache
 from core.dependencies import get_current_student_user
 from core.sanitization import sanitize_text_input
+from core.transactions import atomic_operation
 from database import get_db
 from models import Booking, Review, TutorProfile, User
 from schemas import ReviewCreate, ReviewResponse
@@ -85,60 +86,63 @@ async def create_review(
             }
         )
 
-        # Create review with decision tracking
-        review = Review(
-            booking_id=review_data.booking_id,
-            tutor_profile_id=booking.tutor_profile_id,
-            student_id=current_user.id,
-            rating=review_data.rating,
-            comment=sanitized_comment,
-            booking_snapshot=booking_snapshot,  # Immutable context
-        )
-
-        db.add(review)
-        db.flush()  # Get review ID without committing
-
-        # Log the review decision in audit trail
-        AuditLogger.log_action(
-            db=db,
-            table_name="reviews",
-            record_id=review.id,
-            action="INSERT",
-            new_data={
-                "booking_id": review_data.booking_id,
-                "tutor_profile_id": booking.tutor_profile_id,
-                "rating": review_data.rating,
-                "has_comment": bool(sanitized_comment),
-                "decision": "student_reviewed_session",
-                "snapshot_captured": True,
-            },
-            changed_by=current_user.id,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("user-agent"),
-        )
-
-        # Update tutor average rating and total reviews
-        tutor_profile = db.query(TutorProfile).filter(TutorProfile.id == booking.tutor_profile_id).first()
-
-        if tutor_profile:
-            # Calculate new average rating
-            avg_rating = (
-                db.query(func.avg(Review.rating)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
+        # Use atomic transaction to ensure review + tutor stats update
+        # happen together (prevents orphaned review without updated stats)
+        with atomic_operation(db):
+            # Create review with decision tracking
+            review = Review(
+                booking_id=review_data.booking_id,
+                tutor_profile_id=booking.tutor_profile_id,
+                student_id=current_user.id,
+                rating=review_data.rating,
+                comment=sanitized_comment,
+                booking_snapshot=booking_snapshot,  # Immutable context
             )
 
-            total_reviews = (
-                db.query(func.count(Review.id)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
+            db.add(review)
+            db.flush()  # Get review ID for audit log
+
+            # Log the review decision in audit trail
+            AuditLogger.log_action(
+                db=db,
+                table_name="reviews",
+                record_id=review.id,
+                action="INSERT",
+                new_data={
+                    "booking_id": review_data.booking_id,
+                    "tutor_profile_id": booking.tutor_profile_id,
+                    "rating": review_data.rating,
+                    "has_comment": bool(sanitized_comment),
+                    "decision": "student_reviewed_session",
+                    "snapshot_captured": True,
+                },
+                changed_by=current_user.id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
             )
 
-            tutor_profile.average_rating = Decimal(str(round(float(avg_rating), 2))) if avg_rating else Decimal("0.00")
-            tutor_profile.total_reviews = total_reviews or 0
+            # Update tutor average rating and total reviews atomically
+            tutor_profile = db.query(TutorProfile).filter(TutorProfile.id == booking.tutor_profile_id).first()
 
-            # Update timestamp in application code (no DB triggers)
-            from datetime import datetime
+            if tutor_profile:
+                # Calculate new average rating (includes the new review after flush)
+                avg_rating = (
+                    db.query(func.avg(Review.rating)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
+                )
 
-            tutor_profile.updated_at = datetime.now(UTC)
+                total_reviews = (
+                    db.query(func.count(Review.id)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
+                )
 
-        db.commit()
+                tutor_profile.average_rating = Decimal(str(round(float(avg_rating), 2))) if avg_rating else Decimal("0.00")
+                tutor_profile.total_reviews = total_reviews or 0
+
+                # Update timestamp in application code (no DB triggers)
+                from datetime import datetime
+
+                tutor_profile.updated_at = datetime.now(UTC)
+            # atomic_operation commits all changes together
+
         db.refresh(review)
 
         logger.info(

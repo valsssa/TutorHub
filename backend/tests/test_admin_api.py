@@ -35,7 +35,7 @@ class TestAdminUserManagement:
         test_db_session.add_all([profile_approved, profile_pending])
         test_db_session.commit()
 
-        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
+        response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -50,7 +50,7 @@ class TestAdminUserManagement:
 
     def test_list_users_requires_admin(self, client, student_token):
         """Test that non-admins cannot list users."""
-        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_user(self, client, admin_token, test_db_session):
@@ -62,7 +62,7 @@ class TestAdminUserManagement:
         test_db_session.commit()
 
         response = client.put(
-            f"/api/admin/users/{user.id}",
+            f"/api/v1/admin/users/{user.id}",
             json={"role": "tutor"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -74,7 +74,7 @@ class TestAdminUserManagement:
     def test_admin_cannot_change_own_role(self, client, admin_token, admin_user):
         """Test that admin cannot change their own role."""
         response = client.put(
-            f"/api/admin/users/{admin_user.id}",
+            f"/api/v1/admin/users/{admin_user.id}",
             json={"role": "student"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -85,7 +85,7 @@ class TestAdminUserManagement:
     def test_admin_cannot_deactivate_own_account(self, client, admin_token, admin_user):
         """Test that admin cannot deactivate their own account."""
         response = client.put(
-            f"/api/admin/users/{admin_user.id}",
+            f"/api/v1/admin/users/{admin_user.id}",
             json={"is_active": False},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -108,7 +108,7 @@ class TestAdminUserManagement:
         test_db_session.commit()
 
         response = client.put(
-            f"/api/admin/users/{admin_user.id}",
+            f"/api/v1/admin/users/{admin_user.id}",
             json={"role": "student"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -141,7 +141,7 @@ class TestAdminUserManagement:
 
         # Now try to deactivate the last admin
         response = client.put(
-            f"/api/admin/users/{second_admin.id}",
+            f"/api/v1/admin/users/{second_admin.id}",
             json={"is_active": False},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -175,7 +175,7 @@ class TestAdminUserManagement:
 
         # Now try to delete the last admin
         response = client.delete(
-            f"/api/admin/users/{second_admin.id}",
+            f"/api/v1/admin/users/{second_admin.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -204,7 +204,7 @@ class TestAdminUserManagement:
 
         # Demote the second admin (should succeed since third_admin exists)
         response = client.put(
-            f"/api/admin/users/{second_admin.id}",
+            f"/api/v1/admin/users/{second_admin.id}",
             json={"role": "student"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -221,7 +221,7 @@ class TestAdminUserManagement:
         test_db_session.commit()
 
         response = client.delete(
-            f"/api/admin/users/{user.id}",
+            f"/api/v1/admin/users/{user.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -234,7 +234,7 @@ class TestAdminUserManagement:
     def test_admin_cannot_delete_themselves(self, client, admin_token, admin_user):
         """Test that admin cannot delete themselves."""
         response = client.delete(
-            f"/api/admin/users/{admin_user.id}",
+            f"/api/v1/admin/users/{admin_user.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -263,7 +263,7 @@ class TestAdminTutorApprovals:
         test_db_session.commit()
 
         response = client.get(
-            "/api/admin/tutors/pending",
+            "/api/v1/admin/tutors/pending",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -291,7 +291,7 @@ class TestAdminTutorApprovals:
         test_db_session.commit()
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -327,7 +327,7 @@ class TestAdminTutorApprovals:
         test_db_session.commit()
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "Insufficient qualifications provided"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -364,7 +364,7 @@ class TestAdminTutorApprovals:
         test_db_session.commit()
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "Short"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -374,7 +374,7 @@ class TestAdminTutorApprovals:
     def test_tutor_approval_requires_admin(self, client, student_token):
         """Test that non-admins cannot approve tutors."""
         response = client.post(
-            "/api/admin/tutors/1/approve",
+            "/api/v1/admin/tutors/1/approve",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN

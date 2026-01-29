@@ -602,7 +602,21 @@ class BookingStatusUpdate(BaseModel):
 
 
 class BookingResponse(BaseModel):
-    """Booking response with immutable snapshot context and decision tracking."""
+    """
+    Booking response with immutable snapshot context and decision tracking.
+
+    Rate Locking Behavior:
+    ----------------------
+    The `hourly_rate` and `total_amount` fields represent the rate that was LOCKED
+    at the time of booking creation, NOT the tutor's current rate. This is intentional:
+
+    1. Price Certainty: Students are charged the rate they agreed to when booking.
+    2. Fair Expectations: Tutors honor the rate that was advertised at booking time.
+    3. Pending Bookings: If a tutor changes their rate, pending bookings are NOT affected.
+
+    The `created_at` timestamp indicates when the rate was locked.
+    To get the tutor's current rate, query the tutor profile separately.
+    """
 
     id: int
     tutor_profile_id: int
@@ -614,6 +628,8 @@ class BookingResponse(BaseModel):
     topic: str | None
     notes: str | None
     join_url: str | None  # Meeting URL for virtual sessions
+    # Pricing fields - IMPORTANT: These are LOCKED rates from booking creation,
+    # not the tutor's current rate. Rate changes do NOT affect pending bookings.
     hourly_rate: Decimal
     total_amount: Decimal
     pricing_type: str | None = "hourly"

@@ -35,7 +35,7 @@ def test_tutor_profile_setup_and_booking_lifecycle(client, tutor_token, student_
     }
 
     profile_response = client.put(
-        "/api/tutor-profile/me",
+        "/api/v1/tutor-profile/me",
         json=profile_payload,
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
@@ -45,7 +45,7 @@ def test_tutor_profile_setup_and_booking_lifecycle(client, tutor_token, student_
 
     # Step 2: Student searches for tutors
     tutors_listing = client.get(
-        "/api/tutors",
+        "/api/v1/tutors",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert tutors_listing.status_code == 200
@@ -66,7 +66,7 @@ def test_tutor_profile_setup_and_booking_lifecycle(client, tutor_token, student_
     end_time = start_time + timedelta(hours=1)
 
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": profile_id,
             "subject_id": 1,  # Assuming math subject exists
@@ -87,7 +87,7 @@ def test_tutor_profile_setup_and_booking_lifecycle(client, tutor_token, student_
 
     # Step 4: Tutor views their bookings
     tutor_bookings = client.get(
-        "/api/bookings/tutor/me",
+        "/api/v1/bookings/tutor/me",
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
     assert tutor_bookings.status_code == 200
@@ -104,7 +104,7 @@ def test_tutor_profile_setup_and_booking_lifecycle(client, tutor_token, student_
 
     # Step 5: Tutor confirms booking
     confirm_response = client.patch(
-        f"/api/bookings/{booking_id}/confirm",
+        f"/api/v1/bookings/{booking_id}/confirm",
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
     assert confirm_response.status_code == 200, f"Booking confirmation failed: {confirm_response.text}"
@@ -113,7 +113,7 @@ def test_tutor_profile_setup_and_booking_lifecycle(client, tutor_token, student_
 
     # Step 6: Student views updated booking
     student_bookings = client.get(
-        "/api/bookings/student/me",
+        "/api/v1/bookings/student/me",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert student_bookings.status_code == 200
@@ -136,7 +136,7 @@ def test_booking_validation_subject_not_offered(client, tutor_token, student_tok
     """
     # Step 1: Tutor creates profile with English only
     profile_response = client.put(
-        "/api/tutor-profile/me",
+        "/api/v1/tutor-profile/me",
         json={
             "title": "Language Coach",
             "headline": "ESL Tutor",
@@ -158,7 +158,7 @@ def test_booking_validation_subject_not_offered(client, tutor_token, student_tok
     # Note: This test assumes subject validation is enforced
     # If subjects are flexible, this test may need adjustment
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": profile_id,
             "subject_id": 99999,  # Non-existent subject
@@ -180,7 +180,7 @@ def test_booking_cancellation_workflow(client, tutor_user, student_user, tutor_t
     """
     # Step 1: Create profile
     profile_response = client.put(
-        "/api/tutor-profile/me",
+        "/api/v1/tutor-profile/me",
         json={
             "title": "Test Tutor",
             "headline": "Expert",
@@ -200,7 +200,7 @@ def test_booking_cancellation_workflow(client, tutor_user, student_user, tutor_t
     end_time = start_time + timedelta(hours=1)
 
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": profile_id,
             "subject_id": 1,
@@ -216,14 +216,14 @@ def test_booking_cancellation_workflow(client, tutor_user, student_user, tutor_t
 
     # Step 3: Student cancels booking
     cancel_response = client.patch(
-        f"/api/bookings/{booking_id}/cancel",
+        f"/api/v1/bookings/{booking_id}/cancel",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert cancel_response.status_code == 200, f"Cancellation failed: {cancel_response.text}"
 
     # Step 4: Verify booking is cancelled
     booking_check = client.get(
-        f"/api/bookings/{booking_id}",
+        f"/api/v1/bookings/{booking_id}",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert booking_check.status_code == 200
@@ -237,7 +237,7 @@ def test_booking_time_conflict_prevention(client, tutor_token, student_token, db
     """
     # Step 1: Create tutor profile
     profile_response = client.put(
-        "/api/tutor-profile/me",
+        "/api/v1/tutor-profile/me",
         json={
             "title": "Busy Tutor",
             "headline": "Popular tutor",
@@ -257,7 +257,7 @@ def test_booking_time_conflict_prevention(client, tutor_token, student_token, db
     end_time = start_time + timedelta(hours=1)
 
     first_booking = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": profile_id,
             "subject_id": 1,
@@ -273,13 +273,13 @@ def test_booking_time_conflict_prevention(client, tutor_token, student_token, db
     # Step 3: Tutor confirms first booking
     booking_id = first_booking.json()["id"]
     client.patch(
-        f"/api/bookings/{booking_id}/confirm",
+        f"/api/v1/bookings/{booking_id}/confirm",
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
 
     # Step 4: Attempt to create overlapping booking (should fail or be pending)
     overlapping_booking = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": profile_id,
             "subject_id": 1,
@@ -324,7 +324,7 @@ def test_booking_timezone_handling(client, tutor_token, student_token, db_sessio
     """
     # Create profile with specific timezone
     profile_response = client.put(
-        "/api/tutor-profile/me",
+        "/api/v1/tutor-profile/me",
         json={
             "title": "Timezone Test Tutor",
             "headline": "Expert",
@@ -344,7 +344,7 @@ def test_booking_timezone_handling(client, tutor_token, student_token, db_sessio
     end_time = start_time + timedelta(hours=1)
 
     booking_response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": profile_id,
             "subject_id": 1,

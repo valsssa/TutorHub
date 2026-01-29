@@ -105,7 +105,7 @@ def test_subject(test_db):
 def admin_token(client, admin_user):
     """Get admin auth token."""
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         data={"username": admin_user.email, "password": "test123"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
@@ -116,7 +116,7 @@ def admin_token(client, admin_user):
 def student_token(client, student_user):
     """Get student auth token."""
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         data={"username": student_user.email, "password": "test123"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
@@ -127,7 +127,7 @@ def student_token(client, student_user):
 def tutor_token(client, tutor_user):
     """Get tutor auth token."""
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         data={"username": tutor_user.email, "password": "test123"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
@@ -142,7 +142,7 @@ def tutor_token(client, tutor_user):
 def test_register_student(client):
     """Test student registration."""
     response = client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": "newstudent@test.com",
             "password": "password123",
@@ -159,7 +159,7 @@ def test_register_student(client):
 def test_register_duplicate_email(client, student_user):
     """Test registration with duplicate email fails."""
     response = client.post(
-        "/api/auth/register",
+        "/api/v1/auth/register",
         json={
             "email": student_user.email,
             "password": "password123",
@@ -173,7 +173,7 @@ def test_register_duplicate_email(client, student_user):
 def test_login_success(client, student_user):
     """Test successful login."""
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         data={"username": student_user.email, "password": "test123"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
@@ -186,7 +186,7 @@ def test_login_success(client, student_user):
 def test_login_invalid_credentials(client, student_user):
     """Test login with invalid credentials."""
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         data={"username": student_user.email, "password": "wrongpassword"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
@@ -196,7 +196,7 @@ def test_login_invalid_credentials(client, student_user):
 def test_get_current_user(client, student_token, student_user):
     """Test getting current user info."""
     response = client.get(
-        "/api/auth/me",
+        "/api/v1/auth/me",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -207,7 +207,7 @@ def test_get_current_user(client, student_token, student_user):
 
 def test_get_current_user_unauthorized(client):
     """Test getting current user without auth."""
-    response = client.get("/api/auth/me")
+    response = client.get("/api/v1/auth/me")
     assert response.status_code == 401
 
 
@@ -218,7 +218,7 @@ def test_get_current_user_unauthorized(client):
 
 def test_list_subjects(client, test_subject):
     """Test listing subjects."""
-    response = client.get("/api/subjects")
+    response = client.get("/api/v1/subjects")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -229,7 +229,7 @@ def test_list_subjects(client, test_subject):
 def test_create_subject_admin(client, admin_token):
     """Test creating subject as admin."""
     response = client.post(
-        "/api/admin/subjects",
+        "/api/v1/admin/subjects",
         json={"name": "New Subject", "description": "New subject description"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -244,7 +244,7 @@ def test_create_subject_admin(client, admin_token):
 
 def test_list_tutors(client, tutor_user):
     """Test listing tutors."""
-    response = client.get("/api/tutors")
+    response = client.get("/api/v1/tutors")
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
@@ -253,7 +253,7 @@ def test_list_tutors(client, tutor_user):
 
 def test_get_tutor_by_id(client, tutor_user):
     """Test getting specific tutor."""
-    response = client.get(f"/api/tutors/{tutor_user.tutor_profile.id}")
+    response = client.get(f"/api/v1/tutors/{tutor_user.tutor_profile.id}")
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Test Tutor"
@@ -263,7 +263,7 @@ def test_get_tutor_by_id(client, tutor_user):
 def test_get_my_tutor_profile(client, tutor_token):
     """Test getting own tutor profile."""
     response = client.get(
-        "/api/tutors/me/profile",
+        "/api/v1/tutors/me/profile",
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
     assert response.status_code == 200
@@ -274,7 +274,7 @@ def test_get_my_tutor_profile(client, tutor_token):
 def test_update_tutor_about(client, tutor_token):
     """Test updating tutor about section."""
     response = client.patch(
-        "/api/tutors/me/about",
+        "/api/v1/tutors/me/about",
         json={
             "title": "Updated Tutor Title",
             "headline": "Updated headline",
@@ -300,7 +300,7 @@ def test_create_booking(client, student_token, tutor_user, test_subject):
     end_time = start_time + timedelta(hours=1)
 
     response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": tutor_user.tutor_profile.id,
             "subject_id": test_subject.id,
@@ -323,7 +323,7 @@ def test_create_booking_past_time(client, student_token, tutor_user, test_subjec
     end_time = start_time + timedelta(hours=1)
 
     response = client.post(
-        "/api/bookings",
+        "/api/v1/bookings",
         json={
             "tutor_profile_id": tutor_user.tutor_profile.id,
             "subject_id": test_subject.id,
@@ -339,7 +339,7 @@ def test_create_booking_past_time(client, student_token, tutor_user, test_subjec
 def test_list_bookings(client, student_token):
     """Test listing bookings."""
     response = client.get(
-        "/api/bookings",
+        "/api/v1/bookings",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -370,7 +370,7 @@ def test_update_booking_status_tutor(client, tutor_token, test_db, tutor_user, s
 
     # Tutor confirms booking
     response = client.patch(
-        f"/api/bookings/{booking.id}",
+        f"/api/v1/bookings/{booking.id}",
         json={"status": "confirmed", "join_url": "https://zoom.us/test"},
         headers={"Authorization": f"Bearer {tutor_token}"},
     )
@@ -388,7 +388,7 @@ def test_update_booking_status_tutor(client, tutor_token, test_db, tutor_user, s
 def test_list_users_admin(client, admin_token):
     """Test admin listing all users."""
     response = client.get(
-        "/api/admin/users",
+        "/api/v1/admin/users",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 200
@@ -400,7 +400,7 @@ def test_list_users_admin(client, admin_token):
 def test_list_users_student_forbidden(client, student_token):
     """Test student cannot list users."""
     response = client.get(
-        "/api/admin/users",
+        "/api/v1/admin/users",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 403
@@ -409,7 +409,7 @@ def test_list_users_student_forbidden(client, student_token):
 def test_update_user_admin(client, admin_token, student_user):
     """Test admin updating user."""
     response = client.put(
-        f"/api/admin/users/{student_user.id}",
+        f"/api/v1/admin/users/{student_user.id}",
         json={"role": "student", "is_active": True},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -439,7 +439,7 @@ def test_approve_tutor_admin(client, admin_token, test_db):
     test_db.refresh(profile)
 
     response = client.post(
-        f"/api/admin/tutors/{profile.id}/approve",
+        f"/api/v1/admin/tutors/{profile.id}/approve",
         json={},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -472,7 +472,7 @@ def test_create_review(client, student_token, test_db, tutor_user, student_user,
     test_db.refresh(booking)
 
     response = client.post(
-        "/api/reviews",
+        "/api/v1/reviews",
         json={
             "booking_id": booking.id,
             "rating": 5,
@@ -485,7 +485,7 @@ def test_create_review(client, student_token, test_db, tutor_user, student_user,
 
 def test_get_tutor_reviews(client, tutor_user):
     """Test getting reviews for a tutor."""
-    response = client.get(f"/api/reviews/tutors/{tutor_user.tutor_profile.id}")
+    response = client.get(f"/api/v1/reviews/tutors/{tutor_user.tutor_profile.id}")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -499,7 +499,7 @@ def test_get_tutor_reviews(client, tutor_user):
 def test_send_message(client, student_token, tutor_user):
     """Test sending a message."""
     response = client.post(
-        "/api/messages",
+        "/api/v1/messages",
         json={
             "recipient_id": tutor_user.id,
             "message": "Hello, I have a question about your tutoring services.",
@@ -512,7 +512,7 @@ def test_send_message(client, student_token, tutor_user):
 def test_list_messages(client, student_token):
     """Test listing messages."""
     response = client.get(
-        "/api/messages",
+        "/api/v1/messages",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -528,7 +528,7 @@ def test_list_messages(client, student_token):
 def test_list_notifications(client, student_token):
     """Test listing notifications."""
     response = client.get(
-        "/api/notifications",
+        "/api/v1/notifications",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code == 200
@@ -553,7 +553,7 @@ def test_mark_notification_read(client, student_token, test_db, student_user):
     test_db.refresh(notification)
 
     response = client.patch(
-        f"/api/notifications/{notification.id}/read",
+        f"/api/v1/notifications/{notification.id}/read",
         headers={"Authorization": f"Bearer {student_token}"},
     )
     assert response.status_code in [200, 204]

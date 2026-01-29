@@ -2,8 +2,9 @@
 
 import logging
 from datetime import UTC, datetime
+from typing import Any, TypeVar
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,10 @@ class SoftDeleteMixin:
         return self.deleted_at is not None
 
 
-def apply_soft_delete_filter(query, include_deleted: bool = False):
+T = TypeVar("T")
+
+
+def apply_soft_delete_filter(query: Query[T], include_deleted: bool = False) -> Query[T]:
     """
     Apply soft delete filter to query.
 
@@ -44,6 +48,91 @@ def apply_soft_delete_filter(query, include_deleted: bool = False):
     if not include_deleted:
         # Assume the model has deleted_at column
         query = query.filter_by(deleted_at=None)
+    return query
+
+
+def filter_active(query: Query[T], model: Any) -> Query[T]:
+    """
+    Filter out soft-deleted records if model has deleted_at column.
+
+    This is a more flexible helper that checks if the model supports soft delete
+    before applying the filter.
+
+    Args:
+        query: SQLAlchemy query
+        model: The SQLAlchemy model class to check for deleted_at column
+
+    Returns:
+        Filtered query excluding soft-deleted records
+
+    Example:
+        query = filter_active(db.query(User), User)
+        query = filter_active(query.join(TutorProfile), TutorProfile)
+    """
+    if hasattr(model, "deleted_at"):
+        return query.filter(model.deleted_at.is_(None))
+    return query
+
+
+def filter_active_users(query: Query[T]) -> Query[T]:
+    """
+    Filter out soft-deleted users from a query that involves the User model.
+
+    Convenience function specifically for User model filtering.
+    Imports User model internally to avoid circular imports.
+
+    Args:
+        query: SQLAlchemy query that joins with users table
+
+    Returns:
+        Filtered query excluding soft-deleted users
+    """
+    from models import User
+
+    return query.filter(User.deleted_at.is_(None))
+
+
+def filter_active_tutors(query: Query[T]) -> Query[T]:
+    """
+    Filter out soft-deleted tutor profiles from a query.
+
+    Convenience function specifically for TutorProfile model filtering.
+    Imports TutorProfile model internally to avoid circular imports.
+
+    Args:
+        query: SQLAlchemy query that joins with tutor_profiles table
+
+    Returns:
+        Filtered query excluding soft-deleted tutor profiles
+    """
+    from models import TutorProfile
+
+    return query.filter(TutorProfile.deleted_at.is_(None))
+
+
+def exclude_deleted_related(
+    query: Query[T],
+    *models: Any,
+) -> Query[T]:
+    """
+    Filter out soft-deleted records from multiple related models in a query.
+
+    Useful for queries that join multiple tables with soft-delete support.
+
+    Args:
+        query: SQLAlchemy query with joins
+        *models: Variable number of model classes to check for soft-deleted records
+
+    Returns:
+        Filtered query excluding soft-deleted records from all specified models
+
+    Example:
+        query = db.query(Booking).join(TutorProfile).join(User)
+        query = exclude_deleted_related(query, TutorProfile, User)
+    """
+    for model in models:
+        if hasattr(model, "deleted_at"):
+            query = query.filter(model.deleted_at.is_(None))
     return query
 
 

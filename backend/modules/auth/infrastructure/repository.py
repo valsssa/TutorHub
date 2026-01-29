@@ -29,6 +29,8 @@ class UserRepository:
             created_at=user.created_at,
             updated_at=user.updated_at,
             password_changed_at=getattr(user, "password_changed_at", None),
+            registration_ip=str(user.registration_ip) if getattr(user, "registration_ip", None) else None,
+            trial_restricted=getattr(user, "trial_restricted", False),
         )
 
     def find_by_email(self, email: str) -> UserEntity | None:
@@ -58,8 +60,13 @@ class UserRepository:
             User.deleted_at.is_(None),
         ).first() is not None
 
-    def create(self, entity: UserEntity) -> UserEntity:
-        """Create new user."""
+    def create(
+        self,
+        entity: UserEntity,
+        registration_ip: str | None = None,
+        trial_restricted: bool = False,
+    ) -> UserEntity:
+        """Create new user with optional fraud detection fields."""
         user = User(
             email=entity.email.lower(),
             hashed_password=entity.hashed_password,
@@ -70,6 +77,8 @@ class UserRepository:
             is_verified=entity.is_verified,
             timezone=entity.timezone,
             currency=entity.currency,
+            registration_ip=registration_ip,
+            trial_restricted=trial_restricted,
         )
         self.db.add(user)
         self.db.commit()

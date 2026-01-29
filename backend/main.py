@@ -72,6 +72,7 @@ from modules.users.avatar.router import router as avatar_router
 from modules.users.currency.router import router as currency_router
 from modules.users.preferences.router import router as preferences_router
 from modules.utils.presentation.api import router as utils_router
+from core.transactions import atomic_operation
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -224,54 +225,57 @@ async def create_default_users():
             if was_generated:
                 generated_credentials.append(("TUTOR", tutor_email, tutor_password))
 
-            # Create user first with student role (will be changed to tutor)
-            tutor = User(
-                email=tutor_email,
-                hashed_password=get_password_hash(tutor_password),
-                role="student",  # Start as student, then change to tutor
-                is_verified=True,
-                first_name="Demo",
-                last_name="Tutor",
-            )
-            db.add(tutor)
-            db.flush()  # Get user ID
+            # Use atomic transaction to ensure User + TutorProfile are created together
+            # Prevents orphaned user without profile if profile creation fails
+            with atomic_operation(db):
+                # Create user first with student role (will be changed to tutor)
+                tutor = User(
+                    email=tutor_email,
+                    hashed_password=get_password_hash(tutor_password),
+                    role="student",  # Start as student, then change to tutor
+                    is_verified=True,
+                    first_name="Demo",
+                    last_name="Tutor",
+                )
+                db.add(tutor)
+                db.flush()  # Get user ID
 
-            # Now change role to tutor using DDD event handler (creates profile) and update with demo data
-            from modules.users.domain.events import UserRoleChanged
-            from modules.users.domain.handlers import RoleChangeEventHandler
+                # Now change role to tutor using DDD event handler (creates profile)
+                from modules.users.domain.events import UserRoleChanged
+                from modules.users.domain.handlers import RoleChangeEventHandler
 
-            event = UserRoleChanged(
-                user_id=tutor.id,
-                old_role="student",
-                new_role="tutor",
-                changed_by=tutor.id,  # Self-registration
-            )
+                event = UserRoleChanged(
+                    user_id=tutor.id,
+                    old_role="student",
+                    new_role="tutor",
+                    changed_by=tutor.id,  # Self-registration
+                )
 
-            handler = RoleChangeEventHandler()
-            handler.handle(db, event)
+                handler = RoleChangeEventHandler()
+                handler.handle(db, event)
 
-            # Update user role
-            tutor.role = "tutor"
-            tutor.updated_at = datetime.now(UTC)
+                # Update user role
+                tutor.role = "tutor"
+                tutor.updated_at = datetime.now(UTC)
 
-            db.flush()
+                db.flush()
 
-            # Now update the created profile with demo data
-            tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == tutor.id).first()
-            if tutor_profile:
-                tutor_profile.title = "Experienced Math and Science Tutor"
-                tutor_profile.headline = "10+ years teaching experience"
-                tutor_profile.bio = "Passionate about helping students excel in STEM subjects."
-                tutor_profile.hourly_rate = 45.00
-                tutor_profile.experience_years = 10
-                tutor_profile.education = "Master's in Education"
-                tutor_profile.languages = ["English", "Spanish"]
-                tutor_profile.video_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Demo intro video
-                tutor_profile.is_approved = True
-                tutor_profile.profile_status = "approved"
-                tutor_profile.updated_at = datetime.now(UTC)
+                # Now update the created profile with demo data
+                tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == tutor.id).first()
+                if tutor_profile:
+                    tutor_profile.title = "Experienced Math and Science Tutor"
+                    tutor_profile.headline = "10+ years teaching experience"
+                    tutor_profile.bio = "Passionate about helping students excel in STEM subjects."
+                    tutor_profile.hourly_rate = 45.00
+                    tutor_profile.experience_years = 10
+                    tutor_profile.education = "Master's in Education"
+                    tutor_profile.languages = ["English", "Spanish"]
+                    tutor_profile.video_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Demo intro video
+                    tutor_profile.is_approved = True
+                    tutor_profile.profile_status = "approved"
+                    tutor_profile.updated_at = datetime.now(UTC)
+                # atomic_operation commits all changes together
 
-            db.commit()
             logger.info(f"Created default tutor with approved profile: {tutor_email}")
         else:
             logger.debug(f"Tutor user already exists: {tutor_email}")
@@ -323,14 +327,18 @@ async def lifespan(app: FastAPI):
         logger.info("Distributed tracing disabled (TRACING_ENABLED=false)")
 
     # 1. Run database migrations (auto-apply schema changes)
-    from core.migrations import run_startup_migrations
-    from database import engine
+    # Skip during tests when SKIP_STARTUP_MIGRATIONS is set
+    if not os.environ.get("SKIP_STARTUP_MIGRATIONS"):
+        from core.migrations import run_startup_migrations
+        from database import engine
 
-    db = Session(bind=engine)
-    try:
-        run_startup_migrations(db)
-    finally:
-        db.close()
+        db = Session(bind=engine)
+        try:
+            run_startup_migrations(db)
+        finally:
+            db.close()
+    else:
+        logger.info("Skipping startup migrations (SKIP_STARTUP_MIGRATIONS=true)")
 
     # 2. Create default users
     await create_default_users()

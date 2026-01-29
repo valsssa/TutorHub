@@ -8,7 +8,7 @@ class TestNotifications:
 
     def test_list_notifications_empty(self, client, student_token):
         """Test listing notifications when there are none."""
-        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["items"] == []
@@ -37,7 +37,7 @@ class TestNotifications:
         db_session.add_all([notif1, notif2])
         db_session.commit()
 
-        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["items"]) == 2
@@ -63,14 +63,14 @@ class TestNotifications:
         db_session.add(other_notif)
         db_session.commit()
 
-        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["items"]) == 0  # Should not see other user's notifications
 
     def test_list_notifications_unauthorized(self, client):
         """Test listing notifications without auth fails."""
-        response = client.get("/api/notifications")
+        response = client.get("/api/v1/notifications")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_mark_notification_read(self, client, student_token, student_user, db_session):
@@ -89,7 +89,7 @@ class TestNotifications:
         db_session.refresh(notif)
 
         response = client.patch(
-            f"/api/notifications/{notif.id}/read",
+            f"/api/v1/notifications/{notif.id}/read",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -114,7 +114,7 @@ class TestNotifications:
         db_session.commit()
 
         response = client.patch(
-            f"/api/notifications/{notif.id}/read",
+            f"/api/v1/notifications/{notif.id}/read",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -122,7 +122,7 @@ class TestNotifications:
     def test_mark_nonexistent_notification_read(self, client, student_token):
         """Test marking nonexistent notification fails."""
         response = client.patch(
-            "/api/notifications/99999/read",
+            "/api/v1/notifications/99999/read",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -146,7 +146,7 @@ class TestNotifications:
         db_session.commit()
 
         response = client.patch(
-            "/api/notifications/mark-all-read",
+            "/api/v1/notifications/mark-all-read",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -183,7 +183,7 @@ class TestNotifications:
 
         # Student marks all as read
         response = client.patch(
-            "/api/notifications/mark-all-read",
+            "/api/v1/notifications/mark-all-read",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -212,7 +212,7 @@ class TestNotifications:
         db_session.add_all(notifs)
         db_session.commit()
 
-        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["items"]) == 50  # Limited to 50 per page
@@ -237,14 +237,14 @@ class TestNotifications:
         db_session.add_all(notifs)
         db_session.commit()
 
-        response = client.get("/api/notifications/unread-count", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/notifications/unread-count", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["count"] == 5  # 5 unread (odd indices)
 
     def test_get_notification_preferences(self, client, student_token):
         """Test getting notification preferences creates defaults."""
-        response = client.get("/api/notifications/preferences", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/notifications/preferences", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         # Check default values
@@ -256,7 +256,7 @@ class TestNotifications:
     def test_update_notification_preferences(self, client, student_token):
         """Test updating notification preferences."""
         # First get defaults
-        response = client.get("/api/notifications/preferences", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/notifications/preferences", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
 
         # Update preferences
@@ -267,7 +267,7 @@ class TestNotifications:
             "quiet_hours_end": "08:00",
         }
         response = client.put(
-            "/api/notifications/preferences",
+            "/api/v1/notifications/preferences",
             json=update_data,
             headers={"Authorization": f"Bearer {student_token}"},
         )
@@ -294,7 +294,7 @@ class TestNotifications:
         db_session.refresh(notif)
 
         response = client.patch(
-            f"/api/notifications/{notif.id}/dismiss",
+            f"/api/v1/notifications/{notif.id}/dismiss",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -305,7 +305,7 @@ class TestNotifications:
         assert notif.dismissed_at is not None
 
         # Verify dismissed notification doesn't appear in list
-        response = client.get("/api/notifications", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/notifications", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data["items"]) == 0  # Dismissed notification not in list
@@ -326,7 +326,7 @@ class TestNotifications:
         notif_id = notif.id
 
         response = client.delete(
-            f"/api/notifications/{notif_id}",
+            f"/api/v1/notifications/{notif_id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK

@@ -9,7 +9,7 @@ class TestGetStudentProfile:
     def test_student_get_profile(self, client, student_token, student_user, db_session):
         """Test student can get their profile."""
         response = client.get(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -27,7 +27,7 @@ class TestGetStudentProfile:
             db_session.commit()
 
         response = client.get(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -41,7 +41,7 @@ class TestGetStudentProfile:
     def test_tutor_cannot_access_student_profile(self, client, tutor_token):
         """Test tutor cannot access student profile endpoint."""
         response = client.get(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -49,14 +49,14 @@ class TestGetStudentProfile:
     def test_admin_cannot_access_student_profile(self, client, admin_token):
         """Test admin cannot access student profile endpoint."""
         response = client.get(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_student_profile_unauthorized(self, client):
         """Test getting student profile without auth fails."""
-        response = client.get("/api/profile/student/me")
+        response = client.get("/api/v1/profile/student/me")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -66,7 +66,7 @@ class TestUpdateStudentProfile:
     def test_update_student_profile(self, client, student_token, student_user, db_session):
         """Test student can update their profile."""
         response = client.patch(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
                 "grade_level": "10th Grade",
@@ -91,7 +91,7 @@ class TestUpdateStudentProfile:
             db_session.commit()
 
         response = client.patch(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"grade_level": "12th Grade"},
         )
@@ -120,7 +120,7 @@ class TestUpdateStudentProfile:
 
         # Update only one field
         response = client.patch(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"school_name": "New University"},
         )
@@ -144,7 +144,7 @@ class TestUpdateStudentProfile:
         }
 
         response = client.patch(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json=full_data,
         )
@@ -157,7 +157,7 @@ class TestUpdateStudentProfile:
     def test_tutor_cannot_update_student_profile(self, client, tutor_token):
         """Test tutor cannot update student profile."""
         response = client.patch(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={"grade_level": "12th Grade"},
         )
@@ -165,7 +165,7 @@ class TestUpdateStudentProfile:
 
     def test_update_student_profile_unauthorized(self, client):
         """Test updating student profile without auth fails."""
-        response = client.patch("/api/profile/student/me", json={"grade_level": "12th Grade"})
+        response = client.patch("/api/v1/profile/student/me", json={"grade_level": "12th Grade"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_update_with_empty_strings(self, client, student_token, student_user, db_session):
@@ -179,7 +179,7 @@ class TestUpdateStudentProfile:
 
         # Clear interests
         response = client.patch(
-            "/api/profile/student/me",
+            "/api/v1/profile/student/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"interests": ""},
         )

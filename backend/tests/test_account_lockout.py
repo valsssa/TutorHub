@@ -216,7 +216,7 @@ class TestLoginAccountLockout:
             return_value=600,
         ):
             response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": student_user.email, "password": "student123"},
             )
             assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
@@ -237,7 +237,7 @@ class TestLoginAccountLockout:
             return_value=1,
         ) as mock_record:
             response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": student_user.email, "password": "wrongpassword"},
             )
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -256,7 +256,7 @@ class TestLoginAccountLockout:
             return_value=True,
         ) as mock_clear:
             response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": student_user.email, "password": "student123"},
             )
             assert response.status_code == status.HTTP_200_OK
@@ -275,7 +275,7 @@ class TestLoginAccountLockout:
             return_value=120,  # 2 minutes
         ):
             response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": student_user.email, "password": "student123"},
             )
             assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
@@ -295,7 +295,7 @@ class TestLoginAccountLockout:
             return_value=30,  # 30 seconds rounds up to 1 minute
         ):
             response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": student_user.email, "password": "student123"},
             )
             assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
@@ -315,7 +315,7 @@ class TestLoginAccountLockout:
             return_value=1,
         ) as mock_record:
             response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": "nobody@test.com", "password": "password123"},
             )
             assert response.status_code == status.HTTP_401_UNAUTHORIZED

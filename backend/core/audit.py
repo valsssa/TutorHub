@@ -1,19 +1,115 @@
-"""Audit logging system for tracking user decisions and data changes."""
+"""Audit logging system for tracking user decisions and data changes.
+
+This module ensures audit logs are only recorded for actions that actually succeed.
+It uses a deferred logging approach where audit data is collected during the request
+and only written to the database after the main transaction commits successfully.
+"""
 
 import json
 import logging
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
+from database import SessionLocal
 from models import AuditLog
 
 logger = logging.getLogger(__name__)
 
 
+class DeferredAuditLog:
+    """
+    Container for audit log data that will be written after commit.
+
+    This class holds the audit data and provides a method to write it
+    to the database in a separate transaction after the main action commits.
+    """
+
+    def __init__(
+        self,
+        table_name: str,
+        record_id: int,
+        action: str,
+        old_data: dict[str, Any] | None = None,
+        new_data: dict[str, Any] | None = None,
+        changed_by: int | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ):
+        self.table_name = table_name
+        self.record_id = record_id
+        self.action = action
+        self.old_data = old_data
+        self.new_data = new_data
+        self.changed_by = changed_by
+        self.ip_address = ip_address
+        self.user_agent = user_agent
+
+    def write_to_db(self) -> None:
+        """Write the audit log to database in a new session/transaction."""
+        try:
+            # Use a fresh session to avoid any transaction issues
+            with SessionLocal() as new_session:
+                old_data_json = json.dumps(self.old_data) if self.old_data else None
+                new_data_json = json.dumps(self.new_data) if self.new_data else None
+
+                audit_entry = AuditLog(
+                    table_name=self.table_name,
+                    record_id=self.record_id,
+                    action=self.action,
+                    old_data=old_data_json,
+                    new_data=new_data_json,
+                    changed_by=self.changed_by,
+                    ip_address=self.ip_address,
+                    user_agent=self.user_agent,
+                )
+
+                new_session.add(audit_entry)
+                new_session.commit()
+
+                logger.info(
+                    f"Audit logged (post-commit): {self.action} on "
+                    f"{self.table_name}#{self.record_id} by user#{self.changed_by}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to write deferred audit log: {e}")
+            # Don't raise - audit failures shouldn't block business operations
+
+
 class AuditLogger:
-    """Central audit logging system for tracking all user decisions."""
+    """
+    Central audit logging system for tracking all user decisions.
+
+    This implementation ensures audit logs are only created for actions that
+    actually succeed by deferring the log write until after commit.
+
+    Two modes are available:
+    1. Deferred logging (default, recommended): Uses post-commit hooks to ensure
+       logs are only written after the main transaction succeeds.
+    2. Immediate logging: Writes to the same transaction (legacy behavior,
+       use only when you need the audit log ID immediately).
+    """
+
+    @staticmethod
+    def _register_post_commit_handler(
+        session: Session, deferred_log: DeferredAuditLog
+    ) -> None:
+        """
+        Register a one-time post-commit handler to write the audit log.
+
+        The handler is removed after execution to prevent memory leaks.
+        """
+
+        def write_after_commit(session: Session) -> None:
+            """Write audit log after successful commit."""
+            deferred_log.write_to_db()
+            # Remove this listener after it fires (one-time use)
+            event.remove(session, "after_commit", write_after_commit)
+
+        # Register the handler - it will only fire once on commit
+        event.listen(session, "after_commit", write_after_commit)
 
     @staticmethod
     def log_action(
@@ -26,12 +122,17 @@ class AuditLogger:
         changed_by: int | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        immediate: bool = False,
     ) -> None:
         """
         Log an audit action.
 
         Following the "Store Decisions" philosophy: every log entry captures
         WHAT was decided, WHEN, and WHO made the decision.
+
+        By default, uses deferred logging to ensure the audit log is only
+        written after the main transaction commits successfully. This prevents
+        recording actions that were rolled back.
 
         Args:
             db: Database session
@@ -43,6 +144,58 @@ class AuditLogger:
             changed_by: User ID who made the change
             ip_address: IP address of the request
             user_agent: User agent string
+            immediate: If True, write to same transaction (legacy behavior).
+                      If False (default), defer until after commit.
+        """
+        if immediate:
+            # Legacy behavior: write in the same transaction
+            AuditLogger._log_immediate(
+                db=db,
+                table_name=table_name,
+                record_id=record_id,
+                action=action,
+                old_data=old_data,
+                new_data=new_data,
+                changed_by=changed_by,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        else:
+            # Deferred behavior: register post-commit handler
+            deferred_log = DeferredAuditLog(
+                table_name=table_name,
+                record_id=record_id,
+                action=action,
+                old_data=old_data,
+                new_data=new_data,
+                changed_by=changed_by,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            AuditLogger._register_post_commit_handler(db, deferred_log)
+            logger.debug(
+                f"Audit log deferred: {action} on {table_name}#{record_id} "
+                f"(will write after commit)"
+            )
+
+    @staticmethod
+    def _log_immediate(
+        db: Session,
+        table_name: str,
+        record_id: int,
+        action: str,
+        old_data: dict[str, Any] | None = None,
+        new_data: dict[str, Any] | None = None,
+        changed_by: int | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> None:
+        """
+        Write audit log immediately in the current transaction.
+
+        WARNING: This can record actions that are later rolled back.
+        Use deferred logging (default) unless you specifically need
+        the audit log to be part of the same transaction.
         """
         try:
             # Serialize data to JSON strings
@@ -63,7 +216,10 @@ class AuditLogger:
             db.add(audit_entry)
             db.flush()  # Don't commit here - let the caller handle transaction
 
-            logger.info(f"Audit logged: {action} on {table_name}#{record_id} by user#{changed_by}")
+            logger.info(
+                f"Audit logged (immediate): {action} on "
+                f"{table_name}#{record_id} by user#{changed_by}"
+            )
         except Exception as e:
             logger.error(f"Failed to log audit action: {e}")
             # Don't raise - audit failures shouldn't block business operations

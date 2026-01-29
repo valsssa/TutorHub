@@ -3,6 +3,7 @@
 from sqlalchemy import (
     DECIMAL,
     TIMESTAMP,
+    Boolean,
     CheckConstraint,
     Column,
     ForeignKey,
@@ -101,6 +102,7 @@ class StudentPackage(Base):
     expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
     status = Column(String(20), default="active", nullable=False)
     payment_intent_id = Column(String(255), nullable=True)
+    expiry_warning_sent = Column(Boolean, default=False, nullable=False)  # Track if warning notification was sent
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         TIMESTAMP(timezone=True),

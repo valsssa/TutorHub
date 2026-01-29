@@ -6,7 +6,7 @@ from core.constants import COUNTRIES, LANGUAGES, PHONE_COUNTRY_CODES, PROFICIENC
 
 
 def test_get_countries(client):
-    response = client.get("/api/utils/countries")
+    response = client.get("/api/v1/utils/countries")
     assert response.status_code == HTTPStatus.OK
     payload = response.json()
     assert isinstance(payload, list)
@@ -14,7 +14,7 @@ def test_get_countries(client):
 
 
 def test_get_languages(client):
-    response = client.get("/api/utils/languages")
+    response = client.get("/api/v1/utils/languages")
     assert response.status_code == HTTPStatus.OK
     payload = response.json()
     assert isinstance(payload, list)
@@ -22,7 +22,7 @@ def test_get_languages(client):
 
 
 def test_get_proficiency_levels(client):
-    response = client.get("/api/utils/proficiency-levels")
+    response = client.get("/api/v1/utils/proficiency-levels")
     assert response.status_code == HTTPStatus.OK
     payload = response.json()
     assert isinstance(payload, list)
@@ -30,7 +30,7 @@ def test_get_proficiency_levels(client):
 
 
 def test_get_phone_codes(client):
-    response = client.get("/api/utils/phone-codes")
+    response = client.get("/api/v1/utils/phone-codes")
     assert response.status_code == HTTPStatus.OK
     payload = response.json()
     assert isinstance(payload, list)

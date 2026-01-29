@@ -14,7 +14,7 @@ class TestTimezoneRegistrationToLoginFlow:
         """Test user can register with timezone and see it after login."""
         # Register with specific timezone
         register_response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "tz_flow_test@test.com",
                 "password": "Password123!",
@@ -26,7 +26,7 @@ class TestTimezoneRegistrationToLoginFlow:
 
         # Login
         login_response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": "tz_flow_test@test.com", "password": "Password123!"},
         )
         assert login_response.status_code == status.HTTP_200_OK
@@ -34,7 +34,7 @@ class TestTimezoneRegistrationToLoginFlow:
 
         # Get current user - verify timezone persists
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert me_response.status_code == status.HTTP_200_OK
@@ -44,7 +44,7 @@ class TestTimezoneRegistrationToLoginFlow:
         """Test user registers without timezone, defaults to UTC, then updates."""
         # Register without timezone
         register_response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "tz_default_test@test.com",
                 "password": "Password123!",
@@ -55,14 +55,14 @@ class TestTimezoneRegistrationToLoginFlow:
 
         # Login
         login_response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": "tz_default_test@test.com", "password": "Password123!"},
         )
         token = login_response.json()["access_token"]
 
         # Update timezone
         update_response = client.patch(
-            "/api/users/preferences",
+            "/api/v1/users/preferences",
             headers={"Authorization": f"Bearer {token}"},
             json={"timezone": "Europe/London"},
         )
@@ -71,7 +71,7 @@ class TestTimezoneRegistrationToLoginFlow:
 
         # Verify persisted
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert me_response.json()["timezone"] == "Europe/London"
@@ -85,7 +85,7 @@ class TestTimezoneSyncWorkflow:
         # User's saved timezone is UTC (from fixture)
         # Simulate browser detecting different timezone
         sync_response = client.post(
-            "/api/users/preferences/sync-timezone",
+            "/api/v1/users/preferences/sync-timezone",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"detected_timezone": "Asia/Tokyo"},
         )
@@ -96,7 +96,7 @@ class TestTimezoneSyncWorkflow:
 
         # User chooses to update
         update_response = client.patch(
-            "/api/users/preferences",
+            "/api/v1/users/preferences",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"timezone": "Asia/Tokyo"},
         )
@@ -105,7 +105,7 @@ class TestTimezoneSyncWorkflow:
 
         # Sync again - should show no update needed
         sync_response2 = client.post(
-            "/api/users/preferences/sync-timezone",
+            "/api/v1/users/preferences/sync-timezone",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"detected_timezone": "Asia/Tokyo"},
         )
@@ -115,7 +115,7 @@ class TestTimezoneSyncWorkflow:
         """Test user can choose to keep saved timezone."""
         # Sync shows different timezone
         sync_response = client.post(
-            "/api/users/preferences/sync-timezone",
+            "/api/v1/users/preferences/sync-timezone",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"detected_timezone": "Australia/Sydney"},
         )
@@ -123,7 +123,7 @@ class TestTimezoneSyncWorkflow:
 
         # User chooses NOT to update - timezone stays as is
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert me_response.json()["timezone"] == "UTC"  # Unchanged
@@ -136,7 +136,7 @@ class TestTimezoneAcrossRoles:
         """Test complete timezone workflow for student."""
         # Update timezone
         response = client.patch(
-            "/api/users/preferences",
+            "/api/v1/users/preferences",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"timezone": "America/Chicago"},
         )
@@ -144,7 +144,7 @@ class TestTimezoneAcrossRoles:
 
         # Verify via /me
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert me_response.json()["timezone"] == "America/Chicago"
@@ -153,7 +153,7 @@ class TestTimezoneAcrossRoles:
         """Test complete timezone workflow for tutor."""
         # Update timezone
         response = client.patch(
-            "/api/users/preferences",
+            "/api/v1/users/preferences",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={"timezone": "Europe/Paris"},
         )
@@ -161,7 +161,7 @@ class TestTimezoneAcrossRoles:
 
         # Verify via /me
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert me_response.json()["timezone"] == "Europe/Paris"
@@ -170,7 +170,7 @@ class TestTimezoneAcrossRoles:
         """Test complete timezone workflow for admin."""
         # Update timezone
         response = client.patch(
-            "/api/users/preferences",
+            "/api/v1/users/preferences",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"timezone": "Asia/Singapore"},
         )
@@ -178,7 +178,7 @@ class TestTimezoneAcrossRoles:
 
         # Verify via /me
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert me_response.json()["timezone"] == "Asia/Singapore"
@@ -201,7 +201,7 @@ class TestTimezoneDataIntegrity:
         for tz in timezones:
             # Update
             update_response = client.patch(
-                "/api/users/preferences",
+                "/api/v1/users/preferences",
                 headers={"Authorization": f"Bearer {student_token}"},
                 json={"timezone": tz},
             )
@@ -209,7 +209,7 @@ class TestTimezoneDataIntegrity:
 
             # Verify
             me_response = client.get(
-                "/api/auth/me",
+                "/api/v1/auth/me",
                 headers={"Authorization": f"Bearer {student_token}"},
             )
             assert me_response.json()["timezone"] == tz
@@ -218,21 +218,21 @@ class TestTimezoneDataIntegrity:
         """Test timezone isn't affected by other profile updates."""
         # Set timezone
         client.patch(
-            "/api/users/preferences",
+            "/api/v1/users/preferences",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"timezone": "Europe/Berlin"},
         )
 
         # Update user info (not timezone)
         client.patch(
-            "/api/users/me",
+            "/api/v1/users/me",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"first_name": "UpdatedName"},
         )
 
         # Verify timezone unchanged
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert me_response.json()["timezone"] == "Europe/Berlin"
@@ -254,7 +254,7 @@ class TestTimezoneEdgeCasesE2E:
 
         for tz in timezones:
             response = client.patch(
-                "/api/users/preferences",
+                "/api/v1/users/preferences",
                 headers={"Authorization": f"Bearer {student_token}"},
                 json={"timezone": tz},
             )
@@ -262,7 +262,7 @@ class TestTimezoneEdgeCasesE2E:
 
         # Final state should be last timezone
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert me_response.json()["timezone"] == "America/New_York"
@@ -282,14 +282,14 @@ class TestTimezoneEdgeCasesE2E:
 
         for tz, continent in continental_timezones:
             response = client.patch(
-                "/api/users/preferences",
+                "/api/v1/users/preferences",
                 headers={"Authorization": f"Bearer {student_token}"},
                 json={"timezone": tz},
             )
             assert response.status_code == status.HTTP_200_OK, f"Failed for {continent}: {tz}"
 
             me_response = client.get(
-                "/api/auth/me",
+                "/api/v1/auth/me",
                 headers={"Authorization": f"Bearer {student_token}"},
             )
             assert me_response.json()["timezone"] == tz, f"Timezone not saved for {continent}"
@@ -305,7 +305,7 @@ class TestTimezoneEdgeCasesE2E:
 
         for tz in uncommon_timezones:
             response = client.patch(
-                "/api/users/preferences",
+                "/api/v1/users/preferences",
                 headers={"Authorization": f"Bearer {student_token}"},
                 json={"timezone": tz},
             )
@@ -340,7 +340,7 @@ class TestTimezoneValidationE2E:
                 continue  # Empty string is handled differently (no-op)
 
             response = client.patch(
-                "/api/users/preferences",
+                "/api/v1/users/preferences",
                 headers={"Authorization": f"Bearer {student_token}"},
                 json={"timezone": invalid_tz},
             )
@@ -352,14 +352,14 @@ class TestTimezoneValidationE2E:
         """Test null timezone in update is a no-op."""
         # Set initial timezone
         client.patch(
-            "/api/users/preferences",
+            "/api/v1/users/preferences",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"timezone": "America/Denver"},
         )
 
         # Send null - should not change
         response = client.patch(
-            "/api/users/preferences",
+            "/api/v1/users/preferences",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"timezone": None},
         )
@@ -367,7 +367,7 @@ class TestTimezoneValidationE2E:
 
         # Verify unchanged
         me_response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert me_response.json()["timezone"] == "America/Denver"

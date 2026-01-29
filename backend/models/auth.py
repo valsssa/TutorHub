@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -52,6 +53,10 @@ class User(Base):
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     # Token security: tracks when password was last changed to invalidate old tokens
     password_changed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    # Fraud detection: tracks registration signals for trial abuse prevention
+    registration_ip = Column(INET, nullable=True, index=True)
+    trial_restricted = Column(Boolean, default=False, nullable=False)
+    fraud_flags = Column(JSONB, default=list, server_default="[]")
 
     # Relationships
     profile = relationship(
@@ -112,3 +117,39 @@ class UserProfile(Base):
 
     # Relationships
     user = relationship("User", back_populates="profile")
+
+
+class RegistrationFraudSignal(Base):
+    """Tracks fraud signals detected during registration for trial abuse prevention."""
+
+    __tablename__ = "registration_fraud_signals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    signal_type = Column(String(50), nullable=False)
+    signal_value = Column(Text, nullable=False)
+    confidence_score = Column(
+        Integer,
+        default=50,
+        nullable=False,
+    )
+    detected_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    review_outcome = Column(String(20), nullable=True)
+    review_notes = Column(Text, nullable=True)
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="fraud_signals")
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+
+    __table_args__ = (
+        CheckConstraint(
+            "signal_type IN ('ip_address', 'device_fingerprint', 'email_pattern', 'browser_fingerprint', 'behavioral')",
+            name="valid_signal_type",
+        ),
+        CheckConstraint(
+            "review_outcome IS NULL OR review_outcome IN ('legitimate', 'fraudulent', 'suspicious')",
+            name="valid_review_outcome",
+        ),
+    )

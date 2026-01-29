@@ -46,7 +46,7 @@ class TestTutorListing:
 
         # List tutors as student
         response = client.get(
-            "/api/tutors",
+            "/api/v1/tutors",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -83,7 +83,7 @@ class TestTutorListing:
 
         # Test page 1
         response = client.get(
-            "/api/tutors?page=1&page_size=10",
+            "/api/v1/tutors?page=1&page_size=10",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -94,7 +94,7 @@ class TestTutorListing:
 
         # Test page 2
         response = client.get(
-            "/api/tutors?page=2&page_size=10",
+            "/api/v1/tutors?page=2&page_size=10",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -153,7 +153,7 @@ class TestTutorListing:
 
         # Filter by math subject
         response = client.get(
-            f"/api/tutors?subject_id={math.id}",
+            f"/api/v1/tutors?subject_id={math.id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -199,7 +199,7 @@ class TestTutorListing:
 
         # Filter by rate range (40-60)
         response = client.get(
-            "/api/tutors?min_rate=40&max_rate=60",
+            "/api/v1/tutors?min_rate=40&max_rate=60",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -240,7 +240,7 @@ class TestTutorListing:
 
         # Filter by min rating 4.0
         response = client.get(
-            "/api/tutors?min_rating=4.0",
+            "/api/v1/tutors?min_rating=4.0",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -280,7 +280,7 @@ class TestTutorListing:
 
         # Search for "mathematics"
         response = client.get(
-            "/api/tutors?search_query=mathematics",
+            "/api/v1/tutors?search_query=mathematics",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -331,7 +331,7 @@ class TestTutorListing:
 
         # Test sort by rating (default - should show B first)
         response = client.get(
-            "/api/tutors?sort_by=rating",
+            "/api/v1/tutors?sort_by=rating",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -341,7 +341,7 @@ class TestTutorListing:
 
         # Test sort by rate ascending
         response = client.get(
-            "/api/tutors?sort_by=rate_asc",
+            "/api/v1/tutors?sort_by=rate_asc",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -351,7 +351,7 @@ class TestTutorListing:
 
     def test_list_tutors_requires_auth(self, client):
         """Test that tutor listing requires authentication."""
-        response = client.get("/api/tutors")
+        response = client.get("/api/v1/tutors")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_get_tutor_by_id(self, client, test_db_session, student_token):
@@ -374,7 +374,7 @@ class TestTutorListing:
         test_db_session.commit()
 
         response = client.get(
-            f"/api/tutors/{profile.id}",
+            f"/api/v1/tutors/{profile.id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -401,7 +401,7 @@ class TestTutorListing:
         test_db_session.commit()
 
         response = client.get(
-            f"/api/tutors/{profile.id}",
+            f"/api/v1/tutors/{profile.id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND

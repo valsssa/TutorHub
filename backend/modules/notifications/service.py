@@ -15,7 +15,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from core.email_service import email_service
+from core.email_service import EmailDeliveryStatus, email_service
 from models import Notification, NotificationAnalytics, NotificationPreferences, User
 
 logger = logging.getLogger(__name__)
@@ -239,9 +239,24 @@ class NotificationService:
         template: str | None = None,
         params: dict[str, Any] | None = None,
     ) -> bool:
-        """Send email for notification."""
+        """
+        Send email for notification with delivery tracking.
+
+        Args:
+            db: Database session
+            user_id: Target user ID
+            notification: The notification object
+            template: Optional email template name
+            params: Optional template parameters
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
         user = db.query(User).filter(User.id == user_id).first()
         if not user or not user.email:
+            logger.warning(
+                f"Cannot send email notification: user {user_id} has no email address"
+            )
             return False
 
         name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "User"
@@ -260,14 +275,79 @@ class NotificationService:
             </body>
             </html>
             """
-            return email_service._send_email(
+            result = email_service._send_email_with_tracking(
                 to_email=user.email,
                 to_name=name,
                 subject=notification.title,
                 html_content=html_content,
             )
 
+            # Log email delivery status for monitoring
+            if result.success:
+                logger.info(
+                    f"Email notification sent for notification {notification.id}",
+                    extra={
+                        "notification_id": notification.id,
+                        "notification_type": notification.type,
+                        "user_id": user_id,
+                        "email_to": user.email,
+                        "message_id": result.message_id,
+                        "status": result.status.value,
+                    },
+                )
+            else:
+                logger.error(
+                    f"Failed to send email notification for notification {notification.id}",
+                    extra={
+                        "notification_id": notification.id,
+                        "notification_type": notification.type,
+                        "user_id": user_id,
+                        "email_to": user.email,
+                        "status": result.status.value,
+                        "error": result.error_message,
+                    },
+                )
+
+            # Track email delivery in analytics
+            self._track_email_delivery(
+                db=db,
+                notification_id=notification.id,
+                user_id=user_id,
+                success=result.success,
+                status=result.status,
+                error_message=result.error_message,
+            )
+
+            return result.success
+
         return True
+
+    def _track_email_delivery(
+        self,
+        db: Session,
+        notification_id: int,
+        user_id: int,
+        success: bool,
+        status: EmailDeliveryStatus,
+        error_message: str | None = None,
+    ) -> None:
+        """
+        Track email delivery attempt in analytics.
+
+        This creates an analytics record that can be queried for
+        monitoring email delivery rates and failures.
+        """
+        # Use template_key to encode the delivery status for easy querying
+        # Format: email_delivery_<status> (e.g., email_delivery_success, email_delivery_failed_transient)
+        analytics = NotificationAnalytics(
+            template_key=f"email_delivery_{status.value}",
+            user_id=user_id,
+            sent_at=datetime.now(UTC),
+            delivery_channel="email",
+            was_actionable=False,
+            action_taken=success,  # Use action_taken to indicate success/failure
+        )
+        db.add(analytics)
 
     def _track_analytics(
         self,

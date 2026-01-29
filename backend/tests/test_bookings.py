@@ -15,7 +15,7 @@ class TestCreateBooking:
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
         response = client.post(
-            "/api/bookings",
+            "/api/v1/bookings",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
@@ -39,7 +39,7 @@ class TestCreateBooking:
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
         response = client.post(
-            "/api/bookings",
+            "/api/v1/bookings",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
@@ -55,7 +55,7 @@ class TestCreateBooking:
         start_time = datetime.utcnow() + timedelta(days=1)
 
         response = client.post(
-            "/api/bookings",
+            "/api/v1/bookings",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
@@ -73,7 +73,7 @@ class TestCreateBooking:
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
         response = client.post(
-            "/api/bookings",
+            "/api/v1/bookings",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
@@ -91,7 +91,7 @@ class TestCreateBooking:
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
         response = client.post(
-            "/api/bookings",
+            "/api/v1/bookings",
             headers={"Authorization": f"Bearer {student_token}"},
             json={
                 "tutor_profile_id": 99999,  # Nonexistent
@@ -108,7 +108,7 @@ class TestListBookings:
 
     def test_student_list_own_bookings(self, client, student_token, test_booking):
         """Test student can list their bookings."""
-        response = client.get("/api/bookings", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/bookings", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) == 1
@@ -116,7 +116,7 @@ class TestListBookings:
 
     def test_tutor_list_own_bookings(self, client, tutor_token, test_booking):
         """Test tutor can list bookings for their profile."""
-        response = client.get("/api/bookings", headers={"Authorization": f"Bearer {tutor_token}"})
+        response = client.get("/api/v1/bookings", headers={"Authorization": f"Bearer {tutor_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) == 1
@@ -124,7 +124,7 @@ class TestListBookings:
 
     def test_admin_list_all_bookings(self, client, admin_token, test_booking):
         """Test admin can list all bookings."""
-        response = client.get("/api/bookings", headers={"Authorization": f"Bearer {admin_token}"})
+        response = client.get("/api/v1/bookings", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert len(data) >= 1
@@ -136,7 +136,7 @@ class TestUpdateBookingStatus:
     def test_tutor_approve_booking(self, client, tutor_token, test_booking):
         """Test tutor can approve booking."""
         response = client.patch(
-            f"/api/bookings/{test_booking.id}",
+            f"/api/v1/bookings/{test_booking.id}",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={"status": "confirmed", "join_url": "https://meet.example.com/123"},
         )
@@ -148,7 +148,7 @@ class TestUpdateBookingStatus:
     def test_tutor_decline_booking(self, client, tutor_token, test_booking):
         """Test tutor can decline booking."""
         response = client.patch(
-            f"/api/bookings/{test_booking.id}",
+            f"/api/v1/bookings/{test_booking.id}",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={"status": "cancelled"},
         )
@@ -159,7 +159,7 @@ class TestUpdateBookingStatus:
     def test_student_cancel_booking(self, client, student_token, test_booking):
         """Test student can cancel their booking."""
         response = client.patch(
-            f"/api/bookings/{test_booking.id}",
+            f"/api/v1/bookings/{test_booking.id}",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"status": "cancelled"},
         )
@@ -170,7 +170,7 @@ class TestUpdateBookingStatus:
     def test_student_cannot_confirm_booking(self, client, student_token, test_booking):
         """Test student cannot confirm booking (only tutor can)."""
         response = client.patch(
-            f"/api/bookings/{test_booking.id}",
+            f"/api/v1/bookings/{test_booking.id}",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"status": "confirmed"},
         )
@@ -236,14 +236,14 @@ class TestUpdateBookingStatus:
 
         client = TestClient(app)
         response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": tutor_user.email, "password": "tutor123"},
         )
         token = response.json()["access_token"]
 
         # Try to update another tutor's booking
         response = client.patch(
-            f"/api/bookings/{booking.id}",
+            f"/api/v1/bookings/{booking.id}",
             headers={"Authorization": f"Bearer {token}"},
             json={"status": "confirmed"},
         )

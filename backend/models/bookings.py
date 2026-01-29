@@ -89,6 +89,7 @@ class Booking(Base):
     stripe_checkout_session_id = Column(String(255), nullable=True, index=True)
     # Zoom integration
     zoom_meeting_id = Column(String(255), nullable=True, index=True)
+    zoom_meeting_pending = Column(Boolean, default=False, nullable=False)  # Flag for retry when Zoom fails
     # Google Calendar integration
     google_calendar_event_id = Column(String(255), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)

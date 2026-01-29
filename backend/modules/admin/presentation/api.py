@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 from core.dependencies import get_current_admin_user
 from core.pagination import PaginatedResponse, PaginationParams
 from core.sanitization import sanitize_text_input
+from core.transactions import atomic_operation
 from core.utils import StringUtils, paginate
 from database import get_db
 from models import Booking, Notification, Review, Subject, TutorProfile, User
@@ -225,36 +226,39 @@ async def update_user(
         if "email" in update_data and update_data["email"]:
             update_data["email"] = StringUtils.normalize_email(update_data["email"])
 
-        for field, value in update_data.items():
-            setattr(user, field, value)
+        # Use atomic transaction to ensure user update + profile creation
+        # happen together (prevents orphaned profiles on partial failure)
+        with atomic_operation(db):
+            for field, value in update_data.items():
+                setattr(user, field, value)
 
-        # Update timestamp in application code (no DB triggers)
-        from datetime import datetime
+            # Update timestamp in application code (no DB triggers)
+            user.updated_at = datetime.now(UTC)
 
-        user.updated_at = datetime.now(UTC)
+            # Handle role change side effects (maintain role-profile consistency)
+            # Profile creation/archival happens atomically with user role update
+            if "role" in update_data and update_data["role"] != old_role:
+                from modules.users.domain.events import UserRoleChanged
+                from modules.users.domain.handlers import RoleChangeEventHandler
 
-        # Handle role change side effects (maintain role-profile consistency)
-        if "role" in update_data and update_data["role"] != old_role:
-            from modules.users.domain.events import UserRoleChanged
-            from modules.users.domain.handlers import RoleChangeEventHandler
+                event = UserRoleChanged(
+                    user_id=user.id,
+                    old_role=old_role,
+                    new_role=update_data["role"],
+                    changed_by=current_user.id,
+                )
 
-            event = UserRoleChanged(
-                user_id=user.id,
-                old_role=old_role,
-                new_role=update_data["role"],
-                changed_by=current_user.id,
-            )
+                handler = RoleChangeEventHandler()
+                handler.handle(db, event)
+            # atomic_operation commits all changes together
 
-            handler = RoleChangeEventHandler()
-            handler.handle(db, event)
-
-        db.commit()
         db.refresh(user)
 
         logger.info(f"Admin {current_user.email} updated user {user_id}: {list(update_data.keys())}")
         return user
+    except HTTPException:
+        raise
     except Exception as e:
-        db.rollback()
         logger.error(f"Error updating user {user_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to update user")
 

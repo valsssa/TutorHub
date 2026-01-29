@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_tutor_profile
@@ -34,13 +34,21 @@ async def get_available_slots(
     tutor_id: int,
     start_date: str,
     end_date: str,
+    response: Response,
     db: Session = Depends(get_db),
 ):
     """
     Get available time slots for a tutor within a date range.
     Returns 30-minute slots that are available based on tutor's recurring availability
     and existing bookings.
+
+    Cache headers are set to suggest short cache times (30 seconds) to reduce stale data.
+    The X-Slots-Generated-At header indicates when slots were computed.
     """
+    # Set cache control headers to reduce stale slot data
+    # Private: only browser cache (not CDN), max-age: 30 seconds
+    response.headers["Cache-Control"] = "private, max-age=30"
+    response.headers["X-Slots-Generated-At"] = datetime.now(UTC).isoformat()
     # Verify tutor exists and is approved
     tutor = db.query(TutorProfile).filter(TutorProfile.id == tutor_id, TutorProfile.is_approved.is_(True)).first()
     if not tutor:

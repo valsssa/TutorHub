@@ -145,12 +145,12 @@ class TestAuthenticationEndpoints:
 
     def test_protected_endpoint_without_token(self, client):
         """Test accessing protected endpoint without token."""
-        response = client.get("/api/auth/me")
+        response = client.get("/api/v1/auth/me")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_protected_endpoint_with_invalid_token(self, client):
         """Test accessing protected endpoint with invalid token."""
-        response = client.get("/api/auth/me", headers={"Authorization": "Bearer invalid_token"})
+        response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_protected_endpoint_with_expired_token(self, client, student_user):
@@ -159,23 +159,23 @@ class TestAuthenticationEndpoints:
         data = {"sub": student_user.email}
         token = create_access_token(data, expires_delta=timedelta(seconds=-1))
 
-        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_protected_endpoint_with_valid_token(self, client, student_token):
         """Test accessing protected endpoint with valid token."""
-        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_200_OK
 
     def test_admin_endpoint_requires_admin_role(self, client, student_token):
         """Test that admin endpoints reject non-admin users."""
-        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_tutor_endpoint_requires_tutor_role(self, client, student_token):
         """Test that tutor endpoints reject non-tutor users."""
         response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -184,7 +184,7 @@ class TestAuthenticationEndpoints:
         """Test that inactive users cannot access protected endpoints."""
         # Get token while active
         response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": student_user.email, "password": "student123"},
         )
         token = response.json()["access_token"]
@@ -194,7 +194,7 @@ class TestAuthenticationEndpoints:
         db_session.commit()
 
         # Try to access protected endpoint
-        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
@@ -206,7 +206,7 @@ class TestRateLimiting:
         # Try to register 6 times rapidly (limit is 5/minute)
         for i in range(6):
             response = client.post(
-                "/api/auth/register",
+                "/api/v1/auth/register",
                 json={"email": f"user{i}@test.com", "password": "password123"},
             )
 
@@ -225,7 +225,7 @@ class TestRateLimiting:
         # Try to login 11 times rapidly (limit is 10/minute)
         for i in range(11):
             response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": student_user.email, "password": "wrong_password"},
             )
 
@@ -246,7 +246,7 @@ class TestInputSanitization:
     def test_email_sanitization(self, client):
         """Test that email is sanitized (lowercase, stripped)."""
         response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={"email": "  Test.User@EXAMPLE.COM  ", "password": "password123"},
         )
         assert response.status_code == status.HTTP_201_CREATED
@@ -256,7 +256,7 @@ class TestInputSanitization:
     def test_sql_injection_prevention(self, client):
         """Test that SQL injection attempts are prevented."""
         response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "test@example.com'; DROP TABLE users; --",
                 "password": "password123",
@@ -272,7 +272,7 @@ class TestInputSanitization:
     def test_xss_prevention_in_password(self, client):
         """Test that XSS attempts in password are safely handled."""
         response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "test@example.com",
                 "password": "<script>alert('xss')</script>",

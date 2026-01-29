@@ -356,6 +356,121 @@ Created by EduStream
             logger.error(f"Failed to get calendars: {e}", exc_info=True)
             return []
 
+    async def check_busy_times(
+        self,
+        access_token: str,
+        refresh_token: str | None,
+        start_time: datetime,
+        end_time: datetime,
+        calendar_id: str = "primary",
+    ) -> list[dict[str, Any]]:
+        """
+        Check for busy times in the user's calendar using the freebusy API.
+
+        This is more efficient than fetching all events as it only returns
+        busy time blocks, not event details.
+
+        Args:
+            access_token: Google access token
+            refresh_token: Google refresh token for renewal
+            start_time: Start of the time range to check
+            end_time: End of the time range to check
+            calendar_id: Calendar ID to check (default: primary)
+
+        Returns:
+            List of busy time blocks: [{"start": datetime_str, "end": datetime_str}, ...]
+            Empty list if no conflicts or on error.
+        """
+        try:
+            credentials = self._get_credentials(access_token, refresh_token)
+            service = self._get_calendar_service(credentials)
+
+            # Build freebusy query
+            body = {
+                "timeMin": start_time.isoformat(),
+                "timeMax": end_time.isoformat(),
+                "items": [{"id": calendar_id}],
+            }
+
+            # Query freebusy API
+            result = service.freebusy().query(body=body).execute()
+
+            # Extract busy times for the requested calendar
+            calendars = result.get("calendars", {})
+            calendar_data = calendars.get(calendar_id, {})
+            busy_times = calendar_data.get("busy", [])
+
+            logger.debug(
+                f"Calendar freebusy check: {len(busy_times)} busy blocks "
+                f"between {start_time} and {end_time}"
+            )
+
+            return busy_times
+
+        except HttpError as e:
+            logger.error(f"Google Calendar freebusy API error: {e}", exc_info=True)
+            return []
+        except Exception as e:
+            logger.error(f"Failed to check calendar busy times: {e}", exc_info=True)
+            return []
+
+    async def get_events_in_range(
+        self,
+        access_token: str,
+        refresh_token: str | None,
+        start_time: datetime,
+        end_time: datetime,
+        calendar_id: str = "primary",
+    ) -> list[dict[str, Any]]:
+        """
+        Get calendar events within a time range.
+
+        Use check_busy_times() for simpler conflict checking.
+        This method returns full event details when needed.
+
+        Args:
+            access_token: Google access token
+            refresh_token: Google refresh token for renewal
+            start_time: Start of the time range
+            end_time: End of the time range
+            calendar_id: Calendar ID to query (default: primary)
+
+        Returns:
+            List of event objects with id, summary, start, end, etc.
+            Empty list if no events or on error.
+        """
+        try:
+            credentials = self._get_credentials(access_token, refresh_token)
+            service = self._get_calendar_service(credentials)
+
+            events_result = (
+                service.events()
+                .list(
+                    calendarId=calendar_id,
+                    timeMin=start_time.isoformat(),
+                    timeMax=end_time.isoformat(),
+                    singleEvents=True,
+                    orderBy="startTime",
+                    maxResults=50,  # Reasonable limit for conflict checking
+                )
+                .execute()
+            )
+
+            events = events_result.get("items", [])
+            logger.debug(
+                f"Calendar events query: {len(events)} events "
+                f"between {start_time} and {end_time}"
+            )
+
+            return events
+
+        except HttpError as e:
+            logger.error(f"Google Calendar events API error: {e}", exc_info=True)
+            return []
+        except Exception as e:
+            logger.error(f"Failed to get calendar events: {e}", exc_info=True)
+            return []
+
 
 # Singleton instance
 google_calendar = GoogleCalendarService()

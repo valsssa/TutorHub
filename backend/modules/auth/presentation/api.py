@@ -4,7 +4,7 @@ import logging
 import os
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from core.rate_limiting import limiter
 
@@ -16,6 +16,7 @@ from core.dependencies import get_current_user
 from database import get_db
 from models import User
 from modules.auth.application.services import AuthService
+from modules.auth.services.fraud_detection import FraudDetectionService
 from modules.users.avatar.service import AvatarService
 from schemas import Token, TokenRefreshRequest, TokenWithRefresh, UserCreate, UserResponse, UserSelfUpdate
 
@@ -29,6 +30,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     """Dependency to get auth service."""
     return AuthService(db)
+
+
+def get_fraud_detection_service(db: Session = Depends(get_db)) -> FraudDetectionService:
+    """Dependency to get fraud detection service."""
+    return FraudDetectionService(db)
 
 
 @router.post(
@@ -101,12 +107,35 @@ Creates a new user account with specified role (student/tutor/admin). By default
 def register(
     request: Request,
     user: UserCreate,
+    x_forwarded_for: str | None = Header(None, alias="X-Forwarded-For"),
+    x_device_fingerprint: str | None = Header(None, alias="X-Device-Fingerprint"),
     service: AuthService = Depends(get_auth_service),
+    fraud_service: FraudDetectionService = Depends(get_fraud_detection_service),
 ):
     """Register new user (creates student or tutor based on role)."""
-    client_host = request.client.host if request.client else "unknown"
+    # Get real client IP (handle proxies)
+    client_host = fraud_service.get_client_ip(
+        request.client.host if request.client else None,
+        x_forwarded_for,
+    )
     logger.info(f"Registration attempt from {client_host} for email: {user.email}")
 
+    # Analyze registration for fraud signals
+    fraud_analysis = fraud_service.analyze_registration(
+        email=user.email,
+        client_ip=client_host,
+        device_fingerprint=x_device_fingerprint,
+    )
+
+    if fraud_analysis["is_suspicious"]:
+        logger.warning(
+            f"Fraud signals detected for {user.email}: "
+            f"{fraud_analysis['signal_count']} signals, "
+            f"risk_score={fraud_analysis['risk_score']:.2f}, "
+            f"restrict_trial={fraud_analysis['restrict_trial']}"
+        )
+
+    # Create user with fraud-related metadata
     user_entity = service.register_user(
         email=user.email,
         password=user.password,
@@ -115,7 +144,26 @@ def register(
         role=user.role or "student",
         timezone=user.timezone or "UTC",
         currency=user.currency or "USD",
+        registration_ip=client_host if client_host != "unknown" else None,
+        trial_restricted=fraud_analysis["restrict_trial"],
     )
+
+    # Record fraud signals if any
+    if fraud_analysis["signals"] or x_device_fingerprint:
+        fraud_service.record_fraud_signals(
+            user_id=user_entity.id,
+            signals=fraud_analysis["signals"],
+            client_ip=client_host,
+            device_fingerprint=x_device_fingerprint,
+        )
+        # Commit fraud signals
+        fraud_service.db.commit()
+
+    if fraud_analysis["restrict_trial"]:
+        logger.warning(
+            f"Trial restricted for user {user_entity.email} (ID: {user_entity.id}) "
+            f"due to fraud signals from IP {client_host}"
+        )
 
     logger.info(f"User registered successfully: {user_entity.email}, role: {user_entity.role}")
     return UserResponse(

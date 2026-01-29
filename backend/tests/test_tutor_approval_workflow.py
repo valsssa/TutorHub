@@ -22,7 +22,7 @@ class TestListPendingTutors:
     def test_list_pending_tutors_empty(self, client, admin_token):
         """Test listing when no pending tutors exist."""
         response = client.get(
-            "/api/admin/tutors/pending",
+            "/api/v1/admin/tutors/pending",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -58,7 +58,7 @@ class TestListPendingTutors:
         db_session.commit()
 
         response = client.get(
-            "/api/admin/tutors/pending",
+            "/api/v1/admin/tutors/pending",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -92,7 +92,7 @@ class TestListPendingTutors:
         db_session.commit()
 
         response = client.get(
-            "/api/admin/tutors/pending",
+            "/api/v1/admin/tutors/pending",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -125,7 +125,7 @@ class TestListPendingTutors:
         db_session.commit()
 
         response = client.get(
-            "/api/admin/tutors/pending",
+            "/api/v1/admin/tutors/pending",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -136,7 +136,7 @@ class TestListPendingTutors:
     def test_list_pending_requires_admin(self, client, student_token):
         """Test that only admins can list pending tutors."""
         response = client.get(
-            "/api/admin/tutors/pending",
+            "/api/v1/admin/tutors/pending",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -168,7 +168,7 @@ class TestListPendingTutors:
         db_session.commit()
 
         response = client.get(
-            "/api/admin/tutors/pending?page=1&page_size=2",
+            "/api/v1/admin/tutors/pending?page=1&page_size=2",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -216,7 +216,7 @@ class TestApproveTutor:
         user, profile = self._create_pending_tutor(db_session)
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -236,7 +236,7 @@ class TestApproveTutor:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -259,7 +259,7 @@ class TestApproveTutor:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -278,7 +278,7 @@ class TestApproveTutor:
         db_session.commit()
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -288,7 +288,7 @@ class TestApproveTutor:
     def test_approve_nonexistent_tutor(self, client, admin_token):
         """Test approving a non-existent tutor fails."""
         response = client.post(
-            "/api/admin/tutors/99999/approve",
+            "/api/v1/admin/tutors/99999/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -301,7 +301,7 @@ class TestApproveTutor:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -317,7 +317,7 @@ class TestApproveTutor:
         db_session.commit()
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -362,7 +362,7 @@ class TestRejectTutor:
         user, profile = self._create_pending_tutor(db_session)
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "Please provide more details about your qualifications and experience."},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -382,7 +382,7 @@ class TestRejectTutor:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "Please provide more documentation about your teaching credentials."},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -405,7 +405,7 @@ class TestRejectTutor:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": ""},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -419,7 +419,7 @@ class TestRejectTutor:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "Short"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -438,7 +438,7 @@ class TestRejectTutor:
         db_session.commit()
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "New rejection reason that is long enough"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -449,7 +449,7 @@ class TestRejectTutor:
     def test_reject_nonexistent_tutor(self, client, admin_token):
         """Test rejecting a non-existent tutor fails."""
         response = client.post(
-            "/api/admin/tutors/99999/reject",
+            "/api/v1/admin/tutors/99999/reject",
             json={"rejection_reason": "This tutor does not exist but reason is valid"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -463,7 +463,7 @@ class TestRejectTutor:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "This should fail because student cannot reject"},
             headers={"Authorization": f"Bearer {student_token}"},
         )
@@ -480,7 +480,7 @@ class TestRejectTutor:
         db_session.commit()
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "Profile needs significant improvements before approval."},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -496,7 +496,7 @@ class TestRejectTutor:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "<script>alert('xss')</script>Please improve your profile."},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -535,7 +535,7 @@ class TestListApprovedTutors:
         db_session.commit()
 
         response = client.get(
-            "/api/admin/tutors/approved",
+            "/api/v1/admin/tutors/approved",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -568,7 +568,7 @@ class TestListApprovedTutors:
         db_session.commit()
 
         response = client.get(
-            "/api/admin/tutors/approved",
+            "/api/v1/admin/tutors/approved",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -613,7 +613,7 @@ class TestTutorApprovalStateTransitions:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -627,7 +627,7 @@ class TestTutorApprovalStateTransitions:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "Please provide verification documents for your credentials."},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -642,7 +642,7 @@ class TestTutorApprovalStateTransitions:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/approve",
+            f"/api/v1/admin/tutors/{profile.id}/approve",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -656,7 +656,7 @@ class TestTutorApprovalStateTransitions:
         )
 
         response = client.post(
-            f"/api/admin/tutors/{profile.id}/reject",
+            f"/api/v1/admin/tutors/{profile.id}/reject",
             json={"rejection_reason": "Background check did not pass our verification process."},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -693,7 +693,7 @@ class TestTutorVisibilityAfterApproval:
         db_session.commit()
 
         response = client.get(
-            "/api/admin/users",
+            "/api/v1/admin/users",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 
@@ -727,7 +727,7 @@ class TestTutorVisibilityAfterApproval:
         db_session.commit()
 
         response = client.get(
-            "/api/admin/users",
+            "/api/v1/admin/users",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 

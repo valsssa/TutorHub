@@ -94,7 +94,7 @@ class TestTutorAvailabilityE2E:
 
         # Query available slots as student
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
@@ -150,7 +150,7 @@ class TestTutorAvailabilityE2E:
         end_date = start_date + timedelta(days=14)
 
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
@@ -190,7 +190,7 @@ class TestTutorAvailabilityE2E:
         end_date = start_date + timedelta(days=7)
 
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
@@ -233,7 +233,7 @@ class TestTutorAvailabilityE2E:
         end_date = start_date + timedelta(days=14)
 
         response = client.get(
-            f"/api/tutors/{tutor_profile.id}/available-slots",
+            f"/api/v1/tutors/{tutor_profile.id}/available-slots",
             params={
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
@@ -267,7 +267,7 @@ class TestAvailabilitySaveAndRetrieve:
         """Test tutor can save availability and it's stored correctly."""
         # First get current profile version
         profile_response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert profile_response.status_code == status.HTTP_200_OK
@@ -275,7 +275,7 @@ class TestAvailabilitySaveAndRetrieve:
 
         # Set availability for Sunday only
         response = client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "availability": [
@@ -304,14 +304,14 @@ class TestAvailabilitySaveAndRetrieve:
         """Test that availability persists and can be retrieved."""
         # Get current version
         profile_response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         version = profile_response.json()["version"]
 
         # Set availability
         client.put(
-            "/api/tutors/me/availability",
+            "/api/v1/tutors/me/availability",
             headers={"Authorization": f"Bearer {tutor_token}"},
             json={
                 "availability": [
@@ -329,7 +329,7 @@ class TestAvailabilitySaveAndRetrieve:
 
         # Reload profile and verify availability is there
         reload_response = client.get(
-            "/api/tutors/me/profile",
+            "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
 

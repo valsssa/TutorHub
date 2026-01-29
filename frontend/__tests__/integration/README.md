@@ -1,8 +1,53 @@
-# Integration Tests - Using Real API
+# Integration Tests
 
-This directory contains integration tests that make real HTTP requests to the backend API instead of using mocks.
+This directory contains two types of integration tests:
 
-## Overview
+1. **Component Integration Tests** (using Jest with mocks)
+2. **API Integration Tests** (using real backend API)
+
+## Component Integration Tests
+
+These tests verify component interaction, state management, and UI flows without making real API calls.
+
+### Test Files
+
+| File | Description |
+|------|-------------|
+| `auth-flow.test.tsx` | Authentication flow from login to protected routes |
+| `booking-flow.test.tsx` | Complete booking workflow integration |
+| `messaging-flow.test.tsx` | Real-time messaging with WebSocket simulation |
+| `search-filter.test.tsx` | Tutor search and filtering integration |
+| `favorites-integration.test.ts` | API integration tests for favorites |
+
+### Running Component Integration Tests
+
+```bash
+# Run all component integration tests
+npm test -- --testPathPattern=__tests__/integration
+
+# Run specific integration test
+npm test -- --testPathPattern=booking-flow
+
+# Run with coverage
+npm test -- --testPathPattern=__tests__/integration --coverage
+```
+
+### What These Tests Cover
+
+- **Component Interaction**: How components communicate and share state
+- **State Management**: Redux/Context state changes across components
+- **API Call Sequences**: Correct order and timing of API calls
+- **Error Boundary Behavior**: Graceful error handling
+- **Loading State Transitions**: Proper loading indicators
+- **Form Validation**: Cross-field validation and submission
+
+---
+
+## API Integration Tests - Using Real API
+
+These tests make real HTTP requests to the backend API instead of using mocks.
+
+### Overview
 
 Unlike unit tests (which use mocked data), these integration tests:
 - ✅ Connect to a real backend API running in Docker

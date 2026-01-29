@@ -38,7 +38,7 @@ class TestCancellationPolicy:
         assert decision.restore_package_unit is False
 
     def test_student_cancel_inside_window_no_refund(self):
-        """Student cancels < 12h before: no refund."""
+        """Student cancels < 24h before: no refund."""
         now = datetime(2025, 10, 21, 6, 0, 0)
         booking_start = datetime(2025, 10, 21, 12, 0, 0)  # 6h away
 
@@ -54,6 +54,64 @@ class TestCancellationPolicy:
         assert decision.allow is True
         assert decision.reason_code == "LATE_CANCEL"
         assert decision.refund_cents == 0
+
+    def test_student_cancel_within_grace_period_full_refund(self):
+        """Student cancels at 23h55m before (within 5-min grace): full refund."""
+        # Booking starts at 12:00 on Oct 21
+        # Cancelling at 12:05 on Oct 20 = 23h55m before start
+        booking_start = datetime(2025, 10, 21, 12, 0, 0)
+        now = datetime(2025, 10, 20, 12, 5, 0)  # 23h55m before
+
+        decision = CancellationPolicy.evaluate_student_cancellation(
+            booking_start_at=booking_start,
+            now=now,
+            rate_cents=5000,
+            lesson_type="REGULAR",
+            is_trial=False,
+            is_package=False,
+        )
+
+        assert decision.allow is True
+        assert decision.reason_code == "OK"
+        assert decision.refund_cents == 5000
+
+    def test_student_cancel_just_outside_grace_no_refund(self):
+        """Student cancels at 23h54m before (outside 5-min grace): no refund."""
+        # Booking starts at 12:00 on Oct 21
+        # Cancelling at 12:06 on Oct 20 = 23h54m before start
+        booking_start = datetime(2025, 10, 21, 12, 0, 0)
+        now = datetime(2025, 10, 20, 12, 6, 0)  # 23h54m before
+
+        decision = CancellationPolicy.evaluate_student_cancellation(
+            booking_start_at=booking_start,
+            now=now,
+            rate_cents=5000,
+            lesson_type="REGULAR",
+            is_trial=False,
+            is_package=False,
+        )
+
+        assert decision.allow is True
+        assert decision.reason_code == "LATE_CANCEL"
+        assert decision.refund_cents == 0
+
+    def test_student_cancel_at_exact_boundary_full_refund(self):
+        """Student cancels at exactly 24h before: full refund."""
+        booking_start = datetime(2025, 10, 21, 12, 0, 0)
+        now = datetime(2025, 10, 20, 12, 0, 0)  # Exactly 24h before
+
+        decision = CancellationPolicy.evaluate_student_cancellation(
+            booking_start_at=booking_start,
+            now=now,
+            rate_cents=5000,
+            lesson_type="REGULAR",
+            is_trial=False,
+            is_package=False,
+        )
+
+        assert decision.allow is True
+        assert decision.reason_code == "OK"
+        assert decision.refund_cents == 5000
 
     def test_student_cancel_already_started(self):
         """Cannot cancel session that already started."""
@@ -109,7 +167,7 @@ class TestCancellationPolicy:
         assert decision.apply_strike_to_tutor is False
 
     def test_tutor_cancel_inside_window_with_penalty(self):
-        """Tutor cancels < 12h before: penalty and compensation."""
+        """Tutor cancels < 24h before: penalty and compensation."""
         now = datetime(2025, 10, 21, 6, 0, 0)
         booking_start = datetime(2025, 10, 21, 12, 0, 0)
 
@@ -124,6 +182,42 @@ class TestCancellationPolicy:
         assert decision.reason_code == "TUTOR_LATE_CANCEL"
         assert decision.refund_cents == 5000
         assert decision.tutor_compensation_cents == 500  # $5 compensation
+        assert decision.apply_strike_to_tutor is True
+
+    def test_tutor_cancel_within_grace_period_no_penalty(self):
+        """Tutor cancels at 23h55m before (within 5-min grace): no penalty."""
+        booking_start = datetime(2025, 10, 21, 12, 0, 0)
+        now = datetime(2025, 10, 20, 12, 5, 0)  # 23h55m before
+
+        decision = CancellationPolicy.evaluate_tutor_cancellation(
+            booking_start_at=booking_start,
+            now=now,
+            rate_cents=5000,
+            is_package=False,
+        )
+
+        assert decision.allow is True
+        assert decision.reason_code == "OK"
+        assert decision.refund_cents == 5000
+        assert decision.tutor_compensation_cents == 0
+        assert decision.apply_strike_to_tutor is False
+
+    def test_tutor_cancel_just_outside_grace_with_penalty(self):
+        """Tutor cancels at 23h54m before (outside 5-min grace): penalty."""
+        booking_start = datetime(2025, 10, 21, 12, 0, 0)
+        now = datetime(2025, 10, 20, 12, 6, 0)  # 23h54m before
+
+        decision = CancellationPolicy.evaluate_tutor_cancellation(
+            booking_start_at=booking_start,
+            now=now,
+            rate_cents=5000,
+            is_package=False,
+        )
+
+        assert decision.allow is True
+        assert decision.reason_code == "TUTOR_LATE_CANCEL"
+        assert decision.refund_cents == 5000
+        assert decision.tutor_compensation_cents == 500
         assert decision.apply_strike_to_tutor is True
 
 

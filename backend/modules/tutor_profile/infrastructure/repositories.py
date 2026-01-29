@@ -42,9 +42,11 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         # CRITICAL: Validate user has tutor role before creating profile
         from fastapi import HTTPException, status
 
+        from core.soft_delete import filter_active
         from models import User
 
-        user = db.query(User).filter(User.id == user_id).first()
+        # Filter out soft-deleted users
+        user = filter_active(db.query(User), User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -58,7 +60,8 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
                 "Contact an administrator to change your role before accessing tutor features.",
             )
 
-        profile = self._query_base(db).filter(TutorProfile.user_id == user_id).first()
+        # For own profile access, exclude soft-deleted profiles
+        profile = self._query_base(db, exclude_soft_deleted=True).filter(TutorProfile.user_id == user_id).first()
         if not profile:
             profile = TutorProfile(
                 user_id=user_id,
@@ -78,7 +81,13 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         return self._to_aggregate(profile)
 
     def get_by_id(self, db: Session, tutor_id: int) -> TutorProfileAggregate | None:
-        profile = self._query_base(db).filter(TutorProfile.id == tutor_id).first()
+        """
+        Get a tutor profile by ID (public access).
+
+        Excludes soft-deleted tutors and their associated soft-deleted users.
+        Only returns approved profiles.
+        """
+        profile = self._query_base(db, exclude_soft_deleted=True).filter(TutorProfile.id == tutor_id).first()
         if not profile or not profile.is_approved:
             return None
         return self._to_aggregate(profile)
@@ -86,9 +95,15 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
     def list_public(
         self, db: Session, filters: TutorListingFilter, pagination
     ) -> tuple[list[TutorProfileAggregate], int]:
+        """
+        List public tutor profiles with filtering and pagination.
+
+        Excludes soft-deleted tutors and their associated soft-deleted users.
+        Only shows approved tutors to students.
+        """
         # Use eager loading base query for optimal performance
-        # Only show approved tutors to students
-        query = self._query_base(db).filter(
+        # exclude_soft_deleted=True ensures soft-deleted tutors and users are filtered out
+        query = self._query_base(db, exclude_soft_deleted=True).filter(
             TutorProfile.is_approved.is_(True),
             TutorProfile.profile_status == "approved",
         )
@@ -407,8 +422,20 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
     # ------------------------------------------------------------------ #
     # Helpers
     # ------------------------------------------------------------------ #
-    def _query_base(self, db: Session):
-        return db.query(TutorProfile).options(
+    def _query_base(self, db: Session, *, exclude_soft_deleted: bool = True):
+        """
+        Base query for tutor profiles with eager loading.
+
+        Args:
+            db: Database session
+            exclude_soft_deleted: If True, filter out soft-deleted tutor profiles and users
+
+        Returns:
+            SQLAlchemy query with eager loading configured
+        """
+        from core.soft_delete import exclude_deleted_related
+
+        query = db.query(TutorProfile).options(
             joinedload(TutorProfile.subjects).joinedload(TutorSubject.subject),
             joinedload(TutorProfile.availabilities),
             joinedload(TutorProfile.certifications),
@@ -417,8 +444,30 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             joinedload(TutorProfile.user).joinedload(User.profile),
         )
 
+        if exclude_soft_deleted:
+            # Filter out soft-deleted tutor profiles
+            query = query.filter(TutorProfile.deleted_at.is_(None))
+            # Also filter out profiles whose user is soft-deleted
+            query = query.join(TutorProfile.user).filter(User.deleted_at.is_(None))
+
+        return query
+
     def _ensure_profile(self, db: Session, user_id: int) -> TutorProfile:
-        profile = db.query(TutorProfile).filter(TutorProfile.user_id == user_id).first()
+        """
+        Get existing profile or create new one for a user.
+
+        Note: This method does NOT filter soft-deleted profiles since it's used
+        for authenticated tutor's own profile access. Soft-deleted tutors would
+        fail authentication before reaching this point.
+        """
+        from core.soft_delete import filter_active
+
+        # Filter soft-deleted profiles for safety
+        profile = (
+            filter_active(db.query(TutorProfile), TutorProfile)
+            .filter(TutorProfile.user_id == user_id)
+            .first()
+        )
         if not profile:
             profile = TutorProfile(
                 user_id=user_id,

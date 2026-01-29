@@ -22,7 +22,7 @@ class TestTokenExpiration:
     def test_token_valid_within_expiry(self, client, student_token, student_user):
         """Test valid token within expiry period."""
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -38,7 +38,7 @@ class TestTokenExpiration:
         )
 
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {expired_token}"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -48,7 +48,7 @@ class TestTokenExpiration:
         invalid_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QuY29tIn0.invalid_signature"
 
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {invalid_token}"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -56,7 +56,7 @@ class TestTokenExpiration:
     def test_token_malformed(self, client):
         """Test malformed token is rejected."""
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": "Bearer not.a.valid.jwt"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -73,7 +73,7 @@ class TestTokenExpiration:
         )
 
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token_without_sub}"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -91,7 +91,7 @@ class TestTokenInvalidationOnPasswordChange:
         old_token = TokenManager.create_access_token({"sub": student_user.email})
 
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {old_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -102,7 +102,7 @@ class TestTokenInvalidationOnPasswordChange:
 
         new_token = TokenManager.create_access_token({"sub": student_user.email})
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {new_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -117,7 +117,7 @@ class TestPasswordResetFlow:
             mock_email.send_password_reset = MagicMock()
 
             response = client.post(
-                "/api/auth/password/reset-request",
+                "/api/v1/auth/password/reset-request",
                 json={"email": student_user.email},
             )
 
@@ -131,7 +131,7 @@ class TestPasswordResetFlow:
             mock_email.send_password_reset = MagicMock()
 
             response = client.post(
-                "/api/auth/password/reset-request",
+                "/api/v1/auth/password/reset-request",
                 json={"email": "nonexistent@test.com"},
             )
 
@@ -148,7 +148,7 @@ class TestPasswordResetFlow:
             mock_email.send_password_reset = MagicMock()
 
             response = client.post(
-                "/api/auth/password/reset-request",
+                "/api/v1/auth/password/reset-request",
                 json={"email": student_user.email},
             )
 
@@ -168,7 +168,7 @@ class TestPasswordResetFlow:
 
         try:
             response = client.post(
-                "/api/auth/password/verify-token",
+                "/api/v1/auth/password/verify-token",
                 json={"token": test_token},
             )
 
@@ -181,7 +181,7 @@ class TestPasswordResetFlow:
     def test_verify_reset_token_invalid(self, client):
         """Test verifying an invalid reset token."""
         response = client.post(
-            "/api/auth/password/verify-token",
+            "/api/v1/auth/password/verify-token",
             json={"token": "invalid_token"},
         )
 
@@ -201,7 +201,7 @@ class TestPasswordResetFlow:
 
         try:
             response = client.post(
-                "/api/auth/password/verify-token",
+                "/api/v1/auth/password/verify-token",
                 json={"token": test_token},
             )
 
@@ -224,7 +224,7 @@ class TestPasswordResetFlow:
 
         try:
             response = client.post(
-                "/api/auth/password/reset-confirm",
+                "/api/v1/auth/password/reset-confirm",
                 json={"token": test_token, "new_password": "NewSecurePassword123"},
             )
 
@@ -233,7 +233,7 @@ class TestPasswordResetFlow:
             assert test_token not in _reset_tokens
 
             login_response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": student_user.email, "password": "NewSecurePassword123"},
             )
             assert login_response.status_code == status.HTTP_200_OK
@@ -254,7 +254,7 @@ class TestPasswordResetFlow:
 
         try:
             response = client.post(
-                "/api/auth/password/reset-confirm",
+                "/api/v1/auth/password/reset-confirm",
                 json={"token": test_token, "new_password": "short"},
             )
 
@@ -275,13 +275,13 @@ class TestPasswordResetFlow:
         }
 
         response1 = client.post(
-            "/api/auth/password/reset-confirm",
+            "/api/v1/auth/password/reset-confirm",
             json={"token": test_token, "new_password": "FirstNewPassword123"},
         )
         assert response1.status_code == status.HTTP_200_OK
 
         response2 = client.post(
-            "/api/auth/password/reset-confirm",
+            "/api/v1/auth/password/reset-confirm",
             json={"token": test_token, "new_password": "SecondNewPassword123"},
         )
         assert response2.status_code == status.HTTP_400_BAD_REQUEST
@@ -307,7 +307,7 @@ class TestGoogleOAuthFlow:
                 with patch("modules.auth.oauth_router.oauth_state_store") as mock_state:
                     mock_state.generate_state = AsyncMock(return_value="test_state_token")
 
-                    response = client.get("/api/auth/google/login")
+                    response = client.get("/api/v1/auth/google/login")
 
                     if response.status_code == status.HTTP_200_OK:
                         data = response.json()
@@ -319,7 +319,7 @@ class TestGoogleOAuthFlow:
         with patch("modules.auth.oauth_router.settings") as mock_settings:
             mock_settings.GOOGLE_CLIENT_ID = None
 
-            response = client.get("/api/auth/google/login")
+            response = client.get("/api/v1/auth/google/login")
             assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
     def test_google_callback_invalid_state(self, client):
@@ -332,7 +332,7 @@ class TestGoogleOAuthFlow:
                 mock_state.validate_state = AsyncMock(return_value=None)
 
                 response = client.get(
-                    "/api/auth/google/callback",
+                    "/api/v1/auth/google/callback",
                     params={"code": "test_code", "state": "invalid_state"},
                     follow_redirects=False,
                 )
@@ -346,7 +346,7 @@ class TestGoogleOAuthFlow:
         db_session.commit()
 
         response = client.delete(
-            "/api/auth/google/unlink",
+            "/api/v1/auth/google/unlink",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -356,7 +356,7 @@ class TestGoogleOAuthFlow:
     def test_google_unlink_no_google_account(self, client, student_token, student_user):
         """Test unlinking when no Google account linked."""
         response = client.delete(
-            "/api/auth/google/unlink",
+            "/api/v1/auth/google/unlink",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -377,14 +377,14 @@ class TestLoginSecurity:
 
         start = time.time()
         client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": student_user.email, "password": "wrongpassword"},
         )
         valid_user_time = time.time() - start
 
         start = time.time()
         client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": "nonexistent@test.com", "password": "wrongpassword"},
         )
         invalid_user_time = time.time() - start
@@ -403,7 +403,7 @@ class TestLoginSecurity:
 
         for malicious in malicious_inputs:
             response = client.post(
-                "/api/auth/login",
+                "/api/v1/auth/login",
                 data={"username": malicious, "password": "password"},
             )
             assert response.status_code in [
@@ -431,7 +431,7 @@ class TestUserVerification:
         db_session.commit()
 
         response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             data={"username": "unverified@test.com", "password": "password123"},
         )
 
@@ -447,7 +447,7 @@ class TestAuthorizationHeader:
     def test_bearer_prefix_required(self, client, student_token):
         """Test that Bearer prefix is required."""
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": student_token},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -455,7 +455,7 @@ class TestAuthorizationHeader:
     def test_case_insensitive_bearer(self, client, student_token):
         """Test Bearer prefix is case-sensitive."""
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"BEARER {student_token}"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -463,7 +463,7 @@ class TestAuthorizationHeader:
     def test_extra_whitespace_handled(self, client, student_token, student_user):
         """Test extra whitespace in Authorization header."""
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer  {student_token}"},
         )
         assert response.status_code in [
@@ -483,11 +483,11 @@ class TestSessionManagement:
         token2 = TokenManager.create_access_token({"sub": student_user.email})
 
         response1 = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token1}"},
         )
         response2 = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token2}"},
         )
 
@@ -503,7 +503,7 @@ class TestSessionManagement:
         db_session.commit()
 
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

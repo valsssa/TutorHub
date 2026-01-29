@@ -29,7 +29,7 @@ def owner_user(db: Session) -> User:
 def owner_token(client, owner_user) -> str:
     """Get JWT token for owner user."""
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"email": "test_owner@example.com", "password": "ownerpass123"},
     )
     assert response.status_code == status.HTTP_200_OK
@@ -57,7 +57,7 @@ def admin_user(db: Session) -> User:
 def admin_token(client, admin_user) -> str:
     """Get JWT token for admin user."""
     response = client.post(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         json={"email": "test_admin@example.com", "password": "adminpass123"},
     )
     assert response.status_code == status.HTTP_200_OK
@@ -78,7 +78,7 @@ class TestOwnerUserCreation:
     def test_owner_can_login(self, client, owner_user):
         """Test that owner user can authenticate."""
         response = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"email": "test_owner@example.com", "password": "ownerpass123"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -106,7 +106,7 @@ class TestOwnerDashboardAccess:
     def test_owner_can_access_dashboard(self, client, owner_token):
         """Test that owner user can access owner dashboard."""
         response = client.get(
-            "/api/owner/dashboard",
+            "/api/v1/owner/dashboard",
             headers={"Authorization": f"Bearer {owner_token}"},
         )
         # Should succeed (200) or return data structure
@@ -119,7 +119,7 @@ class TestOwnerDashboardAccess:
     def test_admin_cannot_access_owner_dashboard(self, client, admin_token):
         """Test that admin user CANNOT access owner-only endpoints."""
         response = client.get(
-            "/api/owner/dashboard",
+            "/api/v1/owner/dashboard",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         # Admin should be forbidden from owner endpoints
@@ -128,14 +128,14 @@ class TestOwnerDashboardAccess:
     def test_student_cannot_access_owner_dashboard(self, client, student_token):
         """Test that student user cannot access owner dashboard."""
         response = client.get(
-            "/api/owner/dashboard",
+            "/api/v1/owner/dashboard",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_unauthenticated_cannot_access_owner_dashboard(self, client):
         """Test that unauthenticated requests are rejected."""
-        response = client.get("/api/owner/dashboard")
+        response = client.get("/api/v1/owner/dashboard")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -146,7 +146,7 @@ class TestOwnerAdminAccess:
         """Test that owner user can access admin endpoints (inherits admin access)."""
         # Owner should have admin permissions via has_admin_access
         response = client.get(
-            "/api/admin/users",
+            "/api/v1/admin/users",
             headers={"Authorization": f"Bearer {owner_token}"},
         )
         # Should succeed or return data
@@ -167,7 +167,7 @@ class TestOwnerAdminAccess:
 
         # Owner should be able to update user role
         response = client.put(
-            f"/api/admin/users/{test_user.id}",
+            f"/api/v1/admin/users/{test_user.id}",
             headers={"Authorization": f"Bearer {owner_token}"},
             json={"role": "tutor"},
         )
@@ -185,7 +185,7 @@ class TestOwnerRoleAssignment:
     def test_cannot_register_as_owner(self, client):
         """Test that public registration cannot create owner users."""
         response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "hacker@example.com",
                 "password": "password123",
@@ -219,7 +219,7 @@ class TestOwnerRoleAssignment:
 
         # Admin should be able to upgrade user to owner
         response = client.put(
-            f"/api/admin/users/{student.id}",
+            f"/api/v1/admin/users/{student.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"role": "owner"},
         )
@@ -260,9 +260,9 @@ class TestOwnerRoleHierarchy:
         """Test that owner can access all protected endpoints."""
         # Test various protected endpoints
         endpoints = [
-            "/api/users/me",  # User endpoint
-            "/api/admin/users",  # Admin endpoint
-            "/api/owner/dashboard",  # Owner endpoint
+            "/api/v1/users/me",  # User endpoint
+            "/api/v1/admin/users",  # Admin endpoint
+            "/api/v1/owner/dashboard",  # Owner endpoint
         ]
 
         for endpoint in endpoints:
@@ -284,7 +284,7 @@ class TestOwnerDataAccess:
         """Test that owner can access financial data and analytics."""
         # Owner dashboard should return financial metrics
         response = client.get(
-            "/api/owner/dashboard",
+            "/api/v1/owner/dashboard",
             headers={"Authorization": f"Bearer {owner_token}"},
         )
 
@@ -303,7 +303,7 @@ class TestOwnerDataAccess:
     def test_admin_cannot_view_owner_financial_data(self, client, admin_token):
         """Test that admin users cannot access owner-level financial data."""
         response = client.get(
-            "/api/owner/dashboard",
+            "/api/v1/owner/dashboard",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
 

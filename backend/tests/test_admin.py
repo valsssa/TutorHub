@@ -8,7 +8,7 @@ class TestListUsers:
 
     def test_admin_list_users(self, client, admin_token, student_user, tutor_user):
         """Test admin can list all users."""
-        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
+        response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == status.HTTP_200_OK
         payload = response.json()
         assert "items" in payload
@@ -21,13 +21,13 @@ class TestListUsers:
     def test_admin_list_users_includes_inactive(self, client, admin_token, student_user):
         """Deactivated users remain visible in admin dashboard."""
         deactivate_response = client.put(
-            f"/api/admin/users/{student_user.id}",
+            f"/api/v1/admin/users/{student_user.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"is_active": False},
         )
         assert deactivate_response.status_code == status.HTTP_200_OK
 
-        default_response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
+        default_response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
         assert default_response.status_code == status.HTTP_200_OK
         default_payload = default_response.json()
         inactive_user = next(
@@ -38,7 +38,7 @@ class TestListUsers:
         assert inactive_user["is_active"] is False
 
         inactive_response = client.get(
-            "/api/admin/users",
+            "/api/v1/admin/users",
             headers={"Authorization": f"Bearer {admin_token}"},
             params={"status": "inactive"},
         )
@@ -50,12 +50,12 @@ class TestListUsers:
 
     def test_student_cannot_list_users(self, client, student_token):
         """Test student cannot access admin endpoint."""
-        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {student_token}"})
+        response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {student_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_tutor_cannot_list_users(self, client, tutor_token):
         """Test tutor cannot access admin endpoint."""
-        response = client.get("/api/admin/users", headers={"Authorization": f"Bearer {tutor_token}"})
+        response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {tutor_token}"})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
@@ -65,7 +65,7 @@ class TestUpdateUser:
     def test_admin_update_user_role(self, client, admin_token, student_user):
         """Test admin can update user role."""
         response = client.put(
-            f"/api/admin/users/{student_user.id}",
+            f"/api/v1/admin/users/{student_user.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"role": "tutor"},
         )
@@ -76,7 +76,7 @@ class TestUpdateUser:
     def test_admin_deactivate_user(self, client, admin_token, student_user):
         """Test admin can deactivate user."""
         response = client.put(
-            f"/api/admin/users/{student_user.id}",
+            f"/api/v1/admin/users/{student_user.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"is_active": False},
         )
@@ -87,7 +87,7 @@ class TestUpdateUser:
     def test_admin_cannot_change_own_role(self, client, admin_token, admin_user):
         """Test admin cannot demote themselves."""
         response = client.put(
-            f"/api/admin/users/{admin_user.id}",
+            f"/api/v1/admin/users/{admin_user.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"role": "student"},
         )
@@ -97,7 +97,7 @@ class TestUpdateUser:
     def test_admin_update_nonexistent_user(self, client, admin_token):
         """Test updating nonexistent user."""
         response = client.put(
-            "/api/admin/users/99999",
+            "/api/v1/admin/users/99999",
             headers={"Authorization": f"Bearer {admin_token}"},
             json={"role": "tutor"},
         )
@@ -106,7 +106,7 @@ class TestUpdateUser:
     def test_student_cannot_update_user(self, client, student_token, tutor_user):
         """Test student cannot update users."""
         response = client.put(
-            f"/api/admin/users/{tutor_user.id}",
+            f"/api/v1/admin/users/{tutor_user.id}",
             headers={"Authorization": f"Bearer {student_token}"},
             json={"role": "admin"},
         )
@@ -132,7 +132,7 @@ class TestDeleteUser:
         user_id = user_to_delete.id
 
         response = client.delete(
-            f"/api/admin/users/{user_id}",
+            f"/api/v1/admin/users/{user_id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -144,7 +144,7 @@ class TestDeleteUser:
     def test_admin_cannot_delete_self(self, client, admin_token, admin_user):
         """Test admin cannot delete themselves."""
         response = client.delete(
-            f"/api/admin/users/{admin_user.id}",
+            f"/api/v1/admin/users/{admin_user.id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -152,13 +152,13 @@ class TestDeleteUser:
 
     def test_admin_delete_nonexistent_user(self, client, admin_token):
         """Test deleting nonexistent user."""
-        response = client.delete("/api/admin/users/99999", headers={"Authorization": f"Bearer {admin_token}"})
+        response = client.delete("/api/v1/admin/users/99999", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_student_cannot_delete_user(self, client, student_token, tutor_user):
         """Test student cannot delete users."""
         response = client.delete(
-            f"/api/admin/users/{tutor_user.id}",
+            f"/api/v1/admin/users/{tutor_user.id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN

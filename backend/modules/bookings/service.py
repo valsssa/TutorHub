@@ -3,6 +3,7 @@ Booking service with state machine logic and conflict checking.
 Implements core booking business logic per booking_detail.md spec.
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -24,6 +25,8 @@ from modules.bookings.domain.status import (
 )
 from modules.bookings.policy_engine import CancellationPolicy, NoShowPolicy
 from modules.bookings.schemas import BookingDTO, StudentInfoDTO, TutorInfoDTO
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -58,6 +61,21 @@ class BookingService:
         """
         Create a new booking with conflict checking and price calculation.
 
+        Rate Locking Behavior:
+        ----------------------
+        The rate is LOCKED at booking creation time. This means:
+
+        1. The tutor's current hourly_rate is captured and stored in the booking
+        2. If the tutor changes their rate after booking creation, the pending
+           booking is NOT affected - it uses the original rate
+        3. The rate_cents field in the booking represents the locked rate
+        4. The created_at timestamp serves as the "rate_locked_at" time
+
+        This design ensures:
+        - Students pay the rate they agreed to when booking
+        - Tutors honor the rate that was advertised at booking time
+        - Rate changes only affect NEW bookings, not pending ones
+
         Raises:
             HTTPException: If validation fails or conflicts exist
         """
@@ -75,16 +93,38 @@ class BookingService:
                 detail="Booking start time must be in the future",
             )
 
-        # 2. Get tutor profile
-        tutor_profile = self.db.query(TutorProfile).filter(TutorProfile.id == tutor_profile_id).first()
+        # 2. Get tutor profile (excluding soft-deleted)
+        from core.soft_delete import filter_active
+
+        tutor_profile = (
+            filter_active(self.db.query(TutorProfile), TutorProfile)
+            .filter(TutorProfile.id == tutor_profile_id)
+            .first()
+        )
         if not tutor_profile:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Tutor not found",
             )
 
-        # 3. Get student profile
-        student = self.db.query(User).filter(User.id == student_id).first()
+        # Also verify the tutor's user account is not soft-deleted
+        tutor_user = (
+            filter_active(self.db.query(User), User)
+            .filter(User.id == tutor_profile.user_id)
+            .first()
+        )
+        if not tutor_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tutor account not found",
+            )
+
+        # 3. Get student profile (excluding soft-deleted)
+        student = (
+            filter_active(self.db.query(User), User)
+            .filter(User.id == student_id)
+            .first()
+        )
         if not student:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -195,8 +235,14 @@ class BookingService:
             race conditions but should only be used within a transaction
             that will be committed shortly after.
         """
-        # Check for overlapping bookings
-        tutor_profile = self.db.query(TutorProfile).filter(TutorProfile.id == tutor_profile_id).first()
+        # Check for overlapping bookings (exclude soft-deleted tutor profiles)
+        from core.soft_delete import filter_active
+
+        tutor_profile = (
+            filter_active(self.db.query(TutorProfile), TutorProfile)
+            .filter(TutorProfile.id == tutor_profile_id)
+            .first()
+        )
         if not tutor_profile:
             return ""  # No tutor profile means no conflicts
 
@@ -349,6 +395,77 @@ class BookingService:
                 return f"Tutor not available on {local_day_name} at {local_time_str} (tutor's local time)"
 
         return ""
+
+    # ========================================================================
+    # External Calendar Conflict Check
+    # ========================================================================
+
+    async def check_external_calendar_conflict(
+        self,
+        tutor_user: User,
+        start_at: datetime,
+        end_at: datetime,
+    ) -> None:
+        """
+        Check if tutor has external calendar conflicts for the requested time.
+
+        This method queries the tutor's connected Google Calendar to detect
+        conflicts with external events (meetings, appointments, etc.) that
+        were added after the last sync.
+
+        Args:
+            tutor_user: The tutor's User model
+            start_at: Proposed booking start time (UTC)
+            end_at: Proposed booking end time (UTC)
+
+        Raises:
+            HTTPException: 409 if there's a calendar conflict
+
+        Note:
+            - Only checks if tutor has Google Calendar connected
+            - Calendar check failures are logged but don't block booking (graceful degradation)
+            - Results are cached briefly (2 min) to reduce API load
+        """
+        # Skip if tutor has no calendar connected
+        if not tutor_user.google_calendar_refresh_token:
+            logger.debug(f"Tutor {tutor_user.id} has no calendar connected, skipping external check")
+            return
+
+        try:
+            from core.calendar_conflict import CalendarAPIError, CalendarConflictService
+
+            calendar_service = CalendarConflictService(self.db)
+            has_conflict, error_message = await calendar_service.check_calendar_conflict(
+                tutor_user=tutor_user,
+                start_time=start_at,
+                end_time=end_at,
+            )
+
+            if has_conflict:
+                logger.info(
+                    f"External calendar conflict detected for tutor {tutor_user.id} "
+                    f"at {start_at} - {end_at}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "error": "external_calendar_conflict",
+                        "message": error_message or "Tutor has a conflict on their external calendar during this time",
+                        "suggested_action": "select_different_time",
+                    },
+                )
+
+        except HTTPException:
+            # Re-raise HTTP exceptions (calendar conflict)
+            raise
+        except CalendarAPIError as e:
+            # Calendar API failed - log but don't block booking
+            logger.warning(f"Calendar check failed for tutor {tutor_user.id}: {e}")
+        except Exception as e:
+            # Unexpected error - log but don't block booking (graceful degradation)
+            logger.warning(
+                f"Unexpected error during calendar check for tutor {tutor_user.id}: {e}"
+            )
 
     # ========================================================================
     # Cancel Booking
@@ -727,6 +844,18 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
 
     Centralized utility to prevent duplication across router files.
     Used by: router.py, presentation/api.py, presentation/api_enhanced.py
+
+    Rate Locking Note:
+    ------------------
+    The rate_cents in the returned DTO is the rate that was LOCKED at booking creation
+    time, NOT the tutor's current rate. This means:
+
+    1. If a tutor changes their hourly rate AFTER a booking is created, the pending
+       booking will still use the original rate that was agreed upon.
+    2. The rate_locked_at field indicates when the rate was locked (booking creation time).
+    3. To compare with tutor's current rate, query the tutor profile separately.
+
+    This design ensures price certainty for both students and tutors.
     """
     # Get tutor info
     tutor_profile = booking.tutor_profile
@@ -788,8 +917,10 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     legacy_status = _compute_legacy_status(booking)
 
     # Use booking fields directly (they are already denormalized/calculated)
+    # NOTE: rate_cents is the LOCKED rate from booking creation, not the tutor's current rate
     return BookingDTO(
         id=booking.id,
+        version=booking.version or 1,  # For optimistic locking and cache invalidation
         lesson_type=booking.lesson_type or "REGULAR",
         # New four-field status system
         session_state=booking.session_state or "REQUESTED",
@@ -806,7 +937,10 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
         end_at=booking.end_time,
         student_tz=student_tz,
         tutor_tz=tutor_tz,
+        # Pricing fields - rate_cents is the LOCKED rate at booking creation time
+        # Rate changes by the tutor do NOT affect pending bookings
         rate_cents=rate_cents,
+        rate_locked_at=booking.created_at,  # Rate was locked when booking was created
         currency=currency,
         platform_fee_pct=platform_fee_pct,
         platform_fee_cents=platform_fee_cents,

@@ -36,6 +36,8 @@ class AuthService:
         role: str = "student",
         timezone: str = "UTC",
         currency: str = "USD",
+        registration_ip: str | None = None,
+        trial_restricted: bool = False,
     ) -> UserEntity:
         """
         Register a new user.
@@ -44,6 +46,10 @@ class AuthService:
             email: User email (will be sanitized and normalized)
             password: Plain password (will be hashed)
             role: User role (defaults to student)
+            timezone: User timezone (defaults to UTC)
+            currency: User currency (defaults to USD)
+            registration_ip: IP address at registration (for fraud detection)
+            trial_restricted: Whether to restrict free trial (fraud prevention)
 
         Returns:
             Created user entity
@@ -99,9 +105,16 @@ class AuthService:
             currency=currency,
         )
 
-        # Save to database
-        created_user = self.repository.create(user_entity)
+        # Save to database with fraud detection fields
+        created_user = self.repository.create(
+            user_entity,
+            registration_ip=registration_ip,
+            trial_restricted=trial_restricted,
+        )
         logger.info(f"User registered successfully: {created_user.email}, role: {created_user.role}")
+
+        if trial_restricted:
+            logger.warning(f"User {created_user.email} registered with trial_restricted=True")
 
         return created_user
 

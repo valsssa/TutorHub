@@ -33,7 +33,7 @@ class TestPaymentCheckout:
             mock_create.return_value = mock_session
 
             response = client.post(
-                "/api/payments/checkout",
+                "/api/v1/payments/checkout",
                 json={"booking_id": test_booking.id},
                 headers={"Authorization": f"Bearer {student_token}"},
             )
@@ -46,7 +46,7 @@ class TestPaymentCheckout:
     def test_create_checkout_booking_not_found(self, client, student_token):
         """Test checkout with non-existent booking."""
         response = client.post(
-            "/api/payments/checkout",
+            "/api/v1/payments/checkout",
             json={"booking_id": 99999},
             headers={"Authorization": f"Bearer {student_token}"},
         )
@@ -59,7 +59,7 @@ class TestPaymentCheckout:
     ):
         """Test checkout fails when user doesn't own booking."""
         response = client.post(
-            "/api/payments/checkout",
+            "/api/v1/payments/checkout",
             json={"booking_id": test_booking.id},
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
@@ -75,7 +75,7 @@ class TestPaymentCheckout:
         db_session.commit()
 
         response = client.post(
-            "/api/payments/checkout",
+            "/api/v1/payments/checkout",
             json={"booking_id": test_booking.id},
             headers={"Authorization": f"Bearer {student_token}"},
         )
@@ -100,7 +100,7 @@ class TestPaymentCheckout:
         db_session.commit()
 
         response = client.post(
-            "/api/payments/checkout",
+            "/api/v1/payments/checkout",
             json={"booking_id": test_booking.id},
             headers={"Authorization": f"Bearer {student_token}"},
         )
@@ -111,7 +111,7 @@ class TestPaymentCheckout:
     def test_create_checkout_requires_auth(self, client, test_booking):
         """Test checkout requires authentication."""
         response = client.post(
-            "/api/payments/checkout",
+            "/api/v1/payments/checkout",
             json={"booking_id": test_booking.id},
         )
 
@@ -126,7 +126,7 @@ class TestPaymentStatus:
     ):
         """Test getting status for pending payment."""
         response = client.get(
-            f"/api/payments/status/{test_booking.id}",
+            f"/api/v1/payments/status/{test_booking.id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -154,7 +154,7 @@ class TestPaymentStatus:
         db_session.commit()
 
         response = client.get(
-            f"/api/payments/status/{test_booking.id}",
+            f"/api/v1/payments/status/{test_booking.id}",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -167,7 +167,7 @@ class TestPaymentStatus:
     def test_get_payment_status_booking_not_found(self, client, student_token):
         """Test getting status for non-existent booking."""
         response = client.get(
-            "/api/payments/status/99999",
+            "/api/v1/payments/status/99999",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -193,7 +193,7 @@ class TestPaymentStatus:
         token = TokenManager.create_access_token({"sub": other_user.email})
 
         response = client.get(
-            f"/api/payments/status/{test_booking.id}",
+            f"/api/v1/payments/status/{test_booking.id}",
             headers={"Authorization": f"Bearer {token}"},
         )
 
@@ -204,7 +204,7 @@ class TestPaymentStatus:
     ):
         """Test tutor can view payment status for their booking."""
         response = client.get(
-            f"/api/payments/status/{test_booking.id}",
+            f"/api/v1/payments/status/{test_booking.id}",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
 
@@ -240,7 +240,7 @@ class TestWebhookHandling:
             mock_verify.return_value = mock_event
 
             response = client.post(
-                "/api/payments/webhook",
+                "/api/v1/payments/webhook",
                 content=b"{}",
                 headers={"Stripe-Signature": "test_sig"},
             )
@@ -283,7 +283,7 @@ class TestWebhookHandling:
             mock_verify.return_value = mock_event
 
             response = client.post(
-                "/api/payments/webhook",
+                "/api/v1/payments/webhook",
                 content=b"{}",
                 headers={"Stripe-Signature": "test_sig"},
             )
@@ -320,7 +320,7 @@ class TestWebhookHandling:
             mock_verify.return_value = mock_event
 
             response = client.post(
-                "/api/payments/webhook",
+                "/api/v1/payments/webhook",
                 content=b"{}",
                 headers={"Stripe-Signature": "test_sig"},
             )
@@ -357,7 +357,7 @@ class TestWebhookHandling:
             mock_verify.return_value = mock_event
 
             response = client.post(
-                "/api/payments/webhook",
+                "/api/v1/payments/webhook",
                 content=b"{}",
                 headers={"Stripe-Signature": "test_sig"},
             )
@@ -394,7 +394,7 @@ class TestWebhookHandling:
             mock_verify.return_value = mock_event
 
             response = client.post(
-                "/api/payments/webhook",
+                "/api/v1/payments/webhook",
                 content=b"{}",
                 headers={"Stripe-Signature": "test_sig"},
             )
@@ -424,7 +424,7 @@ class TestWebhookHandling:
             mock_verify.return_value = mock_event
 
             response = client.post(
-                "/api/payments/webhook",
+                "/api/v1/payments/webhook",
                 content=b"{}",
                 headers={"Stripe-Signature": "test_sig"},
             )
@@ -442,7 +442,7 @@ class TestWebhookHandling:
             mock_verify.return_value = mock_event
 
             response = client.post(
-                "/api/payments/webhook",
+                "/api/v1/payments/webhook",
                 content=b"{}",
                 headers={"Stripe-Signature": "test_sig"},
             )
@@ -476,7 +476,7 @@ class TestRefunds:
             mock_refund.return_value = mock_refund_obj
 
             response = client.post(
-                "/api/payments/refund",
+                "/api/v1/payments/refund",
                 json={"booking_id": test_booking.id, "reason": "Customer request"},
                 headers={"Authorization": f"Bearer {admin_token}"},
             )
@@ -502,7 +502,7 @@ class TestRefunds:
         db_session.commit()
 
         response = client.post(
-            "/api/payments/refund",
+            "/api/v1/payments/refund",
             json={"booking_id": test_booking.id},
             headers={"Authorization": f"Bearer {student_token}"},
         )
@@ -513,7 +513,7 @@ class TestRefunds:
     def test_refund_booking_not_found(self, client, admin_token):
         """Test refund for non-existent booking."""
         response = client.post(
-            "/api/payments/refund",
+            "/api/v1/payments/refund",
             json={"booking_id": 99999},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -523,7 +523,7 @@ class TestRefunds:
     def test_refund_no_completed_payment(self, client, admin_token, db_session, test_booking):
         """Test refund fails when no completed payment exists."""
         response = client.post(
-            "/api/payments/refund",
+            "/api/v1/payments/refund",
             json={"booking_id": test_booking.id},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -546,7 +546,7 @@ class TestRefunds:
         db_session.commit()
 
         response = client.post(
-            "/api/payments/refund",
+            "/api/v1/payments/refund",
             json={"booking_id": test_booking.id},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -561,7 +561,7 @@ class TestWalletTopup:
     def test_wallet_balance_initial(self, client, student_token):
         """Test getting initial wallet balance."""
         response = client.get(
-            "/api/wallet/balance",
+            "/api/v1/wallet/balance",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
@@ -579,7 +579,7 @@ class TestWalletTopup:
             mock_create.return_value = mock_session
 
             response = client.post(
-                "/api/wallet/checkout",
+                "/api/v1/wallet/checkout",
                 json={"amount_cents": 5000, "currency": "USD"},
                 headers={"Authorization": f"Bearer {student_token}"},
             )
@@ -592,7 +592,7 @@ class TestWalletTopup:
     def test_wallet_checkout_invalid_amount(self, client, student_token):
         """Test wallet checkout fails with invalid amount."""
         response = client.post(
-            "/api/wallet/checkout",
+            "/api/v1/wallet/checkout",
             json={"amount_cents": 0, "currency": "USD"},
             headers={"Authorization": f"Bearer {student_token}"},
         )
@@ -602,7 +602,7 @@ class TestWalletTopup:
     def test_wallet_checkout_max_amount(self, client, student_token):
         """Test wallet checkout fails when exceeding max amount."""
         response = client.post(
-            "/api/wallet/checkout",
+            "/api/v1/wallet/checkout",
             json={"amount_cents": 10000001, "currency": "USD"},
             headers={"Authorization": f"Bearer {student_token}"},
         )
@@ -612,7 +612,7 @@ class TestWalletTopup:
     def test_wallet_requires_student(self, client, tutor_token):
         """Test wallet endpoints require student role."""
         response = client.get(
-            "/api/wallet/balance",
+            "/api/v1/wallet/balance",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
 
@@ -625,7 +625,7 @@ class TestStripeConnect:
     def test_connect_status_no_account(self, client, tutor_token, db_session, tutor_user):
         """Test Connect status when tutor has no account."""
         response = client.get(
-            "/api/tutor/connect/status",
+            "/api/v1/tutor/connect/status",
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
 
@@ -647,7 +647,7 @@ class TestStripeConnect:
                 mock_link.return_value = mock_link_obj
 
                 response = client.post(
-                    "/api/tutor/connect/create?country=US",
+                    "/api/v1/tutor/connect/create?country=US",
                     headers={"Authorization": f"Bearer {tutor_token}"},
                 )
 
@@ -658,7 +658,7 @@ class TestStripeConnect:
     def test_connect_requires_tutor(self, client, student_token):
         """Test Connect endpoints require tutor role."""
         response = client.get(
-            "/api/tutor/connect/status",
+            "/api/v1/tutor/connect/status",
             headers={"Authorization": f"Bearer {student_token}"},
         )
 

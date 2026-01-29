@@ -5,8 +5,10 @@ Handles:
 - Zoom OAuth for tutor account connection
 - Meeting creation for bookings
 - Meeting management
+- Resilient meeting creation with retries
 """
 
+import asyncio
 import base64
 import logging
 from datetime import UTC, datetime, timedelta
@@ -22,6 +24,11 @@ from core.rate_limiting import limiter
 from models import Booking
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration for Zoom API calls
+ZOOM_MAX_RETRIES = 3
+ZOOM_RETRY_BASE_DELAY = 1.0  # Base delay in seconds
+ZOOM_RETRY_MAX_DELAY = 10.0  # Maximum delay between retries
 
 router = APIRouter(
     prefix="/integrations/zoom",
@@ -58,6 +65,42 @@ class ZoomMeetingResponse(BaseModel):
     start_url: str
     password: str | None = None
     topic: str
+
+
+# ============================================================================
+# Zoom Exceptions
+# ============================================================================
+
+
+class ZoomError(Exception):
+    """Base exception for Zoom API errors."""
+
+    def __init__(self, message: str, status_code: int | None = None, retryable: bool = False):
+        self.message = message
+        self.status_code = status_code
+        self.retryable = retryable
+        super().__init__(message)
+
+
+class ZoomRateLimitError(ZoomError):
+    """Zoom rate limit exceeded."""
+
+    def __init__(self, message: str = "Zoom rate limit exceeded"):
+        super().__init__(message, status_code=429, retryable=True)
+
+
+class ZoomServiceError(ZoomError):
+    """Zoom service unavailable or server error."""
+
+    def __init__(self, message: str = "Zoom service unavailable"):
+        super().__init__(message, status_code=503, retryable=True)
+
+
+class ZoomAuthError(ZoomError):
+    """Zoom authentication error."""
+
+    def __init__(self, message: str = "Zoom authentication failed"):
+        super().__init__(message, status_code=401, retryable=False)
 
 
 # ============================================================================
@@ -127,9 +170,74 @@ class ZoomClient:
         duration_minutes: int,
         tutor_email: str | None = None,
         student_email: str | None = None,
+        max_retries: int = ZOOM_MAX_RETRIES,
     ) -> dict:
-        """Create a Zoom meeting."""
+        """
+        Create a Zoom meeting with retry logic.
 
+        Args:
+            topic: Meeting topic/title
+            start_time: Scheduled start time
+            duration_minutes: Meeting duration
+            tutor_email: Tutor's email (for logging)
+            student_email: Student's email (for logging)
+            max_retries: Maximum number of retry attempts
+
+        Returns:
+            Zoom API response with meeting details
+
+        Raises:
+            ZoomError: If meeting creation fails after all retries
+        """
+        last_error: Exception | None = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                return await self._create_meeting_attempt(
+                    topic=topic,
+                    start_time=start_time,
+                    duration_minutes=duration_minutes,
+                )
+            except ZoomError as e:
+                last_error = e
+                if not e.retryable or attempt >= max_retries:
+                    logger.error(
+                        "Zoom meeting creation failed (attempt %d/%d): %s",
+                        attempt + 1,
+                        max_retries + 1,
+                        e.message,
+                    )
+                    raise
+
+                # Calculate delay with exponential backoff and jitter
+                delay = min(
+                    ZOOM_RETRY_BASE_DELAY * (2 ** attempt) + (asyncio.get_event_loop().time() % 1),
+                    ZOOM_RETRY_MAX_DELAY,
+                )
+                logger.warning(
+                    "Zoom meeting creation failed (attempt %d/%d), retrying in %.1fs: %s",
+                    attempt + 1,
+                    max_retries + 1,
+                    delay,
+                    e.message,
+                )
+                await asyncio.sleep(delay)
+
+            except Exception as e:
+                last_error = e
+                logger.error("Unexpected error creating Zoom meeting: %s", e)
+                raise ZoomError(str(e), retryable=False)
+
+        # Should not reach here, but just in case
+        raise last_error or ZoomError("Failed to create Zoom meeting after retries")
+
+    async def _create_meeting_attempt(
+        self,
+        topic: str,
+        start_time: datetime,
+        duration_minutes: int,
+    ) -> dict:
+        """Single attempt to create a Zoom meeting."""
         token = await self._get_access_token()
 
         # Format start time for Zoom (ISO 8601)
@@ -155,24 +263,41 @@ class ZoomClient:
         # Use "me" for the authenticated user (Server-to-Server)
         user_id = "me"
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{ZOOM_API_BASE}/users/{user_id}/meetings",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
-                json=meeting_payload,
-            )
-
-            if response.status_code not in (200, 201):
-                logger.error(f"Zoom meeting creation error: {response.text}")
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Failed to create Zoom meeting",
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                response = await client.post(
+                    f"{ZOOM_API_BASE}/users/{user_id}/meetings",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json",
+                    },
+                    json=meeting_payload,
                 )
+            except httpx.TimeoutException:
+                raise ZoomServiceError("Zoom API request timed out")
+            except httpx.ConnectError:
+                raise ZoomServiceError("Failed to connect to Zoom API")
 
-            return response.json()
+            if response.status_code in (200, 201):
+                return response.json()
+
+            # Handle specific error codes
+            if response.status_code == 429:
+                raise ZoomRateLimitError()
+            elif response.status_code == 401:
+                # Clear cached token and retry
+                self._access_token = None
+                self._token_expires = None
+                raise ZoomAuthError()
+            elif response.status_code >= 500:
+                raise ZoomServiceError(f"Zoom server error: {response.status_code}")
+            else:
+                logger.error("Zoom meeting creation error: %s", response.text)
+                raise ZoomError(
+                    f"Failed to create Zoom meeting: {response.text}",
+                    status_code=response.status_code,
+                    retryable=False,
+                )
 
     async def get_meeting(self, meeting_id: int) -> dict:
         """Get meeting details."""
