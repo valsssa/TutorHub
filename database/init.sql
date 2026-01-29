@@ -187,12 +187,16 @@ CREATE TABLE IF NOT EXISTS tutor_availabilities (
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     is_recurring BOOLEAN NOT NULL DEFAULT TRUE,
+    -- IANA timezone (e.g., "America/New_York") in which start_time/end_time are expressed
+    -- Enables proper DST handling when converting to UTC for slot generation
+    timezone VARCHAR(64) NOT NULL DEFAULT 'UTC',
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT chk_availability_time_order CHECK (start_time < end_time),
     CONSTRAINT uq_tutor_availability_slot UNIQUE (tutor_profile_id, day_of_week, start_time, end_time)
 );
 
 CREATE INDEX IF NOT EXISTS idx_tutor_availability_profile_day ON tutor_availabilities(tutor_profile_id, day_of_week);
+CREATE INDEX IF NOT EXISTS idx_tutor_availability_timezone ON tutor_availabilities(timezone);
 
 -- Tutor blackouts (vacation/temporary blocks)
 CREATE TABLE IF NOT EXISTS tutor_blackouts (

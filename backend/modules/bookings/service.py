@@ -248,31 +248,55 @@ class BookingService:
         if blackout:
             return f"Tutor unavailable (blackout): {blackout.reason or 'vacation'}"
 
-        # Check availability windows
+        # Check availability windows with proper DST handling
+        from zoneinfo import ZoneInfo
+
+        from core.timezone import is_valid_timezone
         from models import TutorAvailability
 
         # Convert Python weekday (Mon=0, Sun=6) to JS convention (Sun=0, Sat=6)
         # This matches the convention used in availability_api.py
         python_weekday = start_at.weekday()  # Monday=0, Sunday=6
         day_of_week = (python_weekday + 1) % 7  # Convert to Sunday=0, Saturday=6
-        start_time = start_at.time()
-        end_time = end_at.time()
 
         if tutor_profile:
-            # Check if there's an availability slot covering this time
-            availability = (
+            # Get all availability slots for this day
+            availabilities = (
                 self.db.query(TutorAvailability)
                 .filter(
                     TutorAvailability.tutor_profile_id == tutor_profile.id,
                     TutorAvailability.day_of_week == day_of_week,
-                    TutorAvailability.start_time <= start_time,
-                    TutorAvailability.end_time >= end_time,
                 )
-                .first()
+                .all()
             )
 
-            if not availability:
-                return f"Tutor not available on {start_at.strftime('%A')} at {start_time.strftime('%H:%M')}"
+            # Check if booking falls within any availability window using DST-aware conversion
+            is_within_availability = False
+            for availability in availabilities:
+                # Get the timezone for this availability slot
+                avail_tz_str = getattr(availability, 'timezone', None) or "UTC"
+                if not is_valid_timezone(avail_tz_str):
+                    avail_tz_str = "UTC"
+                avail_tz = ZoneInfo(avail_tz_str)
+
+                # Convert availability times to UTC for the booking date
+                # This properly handles DST - e.g., 9am EST becomes different UTC
+                # depending on whether DST is in effect on the booking date
+                booking_date = start_at.date()
+                local_avail_start = datetime.combine(booking_date, availability.start_time)
+                local_avail_end = datetime.combine(booking_date, availability.end_time)
+
+                # Localize to availability timezone and convert to UTC
+                avail_start_utc = local_avail_start.replace(tzinfo=avail_tz).astimezone(ZoneInfo("UTC"))
+                avail_end_utc = local_avail_end.replace(tzinfo=avail_tz).astimezone(ZoneInfo("UTC"))
+
+                # Compare UTC times
+                if avail_start_utc <= start_at and avail_end_utc >= end_at:
+                    is_within_availability = True
+                    break
+
+            if not is_within_availability:
+                return f"Tutor not available on {start_at.strftime('%A')} at {start_at.strftime('%H:%M')} UTC"
 
         return ""
 

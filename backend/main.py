@@ -14,6 +14,10 @@ from fastapi import Depends, FastAPI, HTTPException
 # Initialize Sentry early (before other imports that might error)
 from core.sentry import init_sentry
 sentry_initialized = init_sentry()
+
+# Initialize tracing early
+from core.tracing import init_tracing, is_tracing_enabled, shutdown_tracing
+tracing_initialized = init_tracing()
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -29,6 +33,7 @@ from core.config import settings
 from core.dependencies import get_current_admin_user
 from core.middleware import SecurityHeadersMiddleware
 from core.response_cache import ResponseCacheMiddleware
+from core.tracing_middleware import TracingMiddleware
 from database import get_db
 from models import TutorProfile, User
 from modules.admin.audit.router import router as audit_router
@@ -306,11 +311,16 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("=== Application Startup ===")
 
-    # 0. Log Sentry status
+    # 0. Log Sentry and tracing status
     if sentry_initialized:
-        logger.info("✓ Sentry error monitoring enabled")
+        logger.info("Sentry error monitoring enabled")
     else:
-        logger.info("○ Sentry error monitoring disabled (no DSN configured)")
+        logger.info("Sentry error monitoring disabled (no DSN configured)")
+
+    if tracing_initialized:
+        logger.info("Distributed tracing enabled")
+    else:
+        logger.info("Distributed tracing disabled (TRACING_ENABLED=false)")
 
     # 1. Run database migrations (auto-apply schema changes)
     from core.migrations import run_startup_migrations
@@ -329,14 +339,43 @@ async def lifespan(app: FastAPI):
     try:
         from core.feature_flags import init_default_flags
         await init_default_flags()
-        logger.info("✓ Feature flags initialized")
+        logger.info("Feature flags initialized")
     except Exception as e:
         logger.warning(f"Feature flags initialization failed (Redis may be unavailable): {e}")
 
-    logger.info("✓ Application started successfully")
+    # 4. Set up OpenTelemetry instrumentation
+    if tracing_initialized:
+        try:
+            from core.tracing import (
+                configure_logging_with_trace_id,
+                instrument_fastapi,
+                instrument_httpx,
+                instrument_requests,
+                instrument_sqlalchemy,
+            )
+            from database import engine
+
+            # Instrument components
+            instrument_fastapi(app)
+            instrument_sqlalchemy(engine)
+            instrument_httpx()
+            instrument_requests()
+            configure_logging_with_trace_id()
+            logger.info("OpenTelemetry instrumentation configured")
+        except Exception as e:
+            logger.warning(f"OpenTelemetry instrumentation failed: {e}")
+
+    logger.info("Application started successfully")
     yield
     # Shutdown
     logger.info("Application shutting down")
+
+    # Shutdown tracing (flush pending spans)
+    if tracing_initialized:
+        try:
+            shutdown_tracing()
+        except Exception:
+            pass
 
     # Close feature flags Redis connection
     try:
@@ -546,6 +585,9 @@ app.add_middleware(
     allow_headers=ALLOWED_HEADERS,
     max_age=600,  # Cache preflight for 10 minutes
 )
+
+# Add tracing middleware (must be early to capture full request lifecycle)
+app.add_middleware(TracingMiddleware)
 
 # Add security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)

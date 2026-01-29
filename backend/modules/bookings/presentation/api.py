@@ -570,7 +570,10 @@ async def mark_student_no_show(
 
     - Must be 10+ minutes after start time and within 24h
     - Tutor earns full payment
+    - Uses row-level locking to prevent race conditions with concurrent reports
+    - If both parties report no-show, auto-escalates to dispute for admin review
     """
+    # First verify the booking exists and belongs to this tutor (without lock)
     booking = (
         db.query(Booking)
         .filter(
@@ -588,16 +591,27 @@ async def mark_student_no_show(
 
     try:
         service = BookingService(db)
-        no_show_booking = service.mark_no_show(
+        # Use row-level locking to prevent race conditions
+        no_show_booking, escalated = service.mark_no_show(
             booking=booking,
             reporter_role="TUTOR",
             notes=request.notes,
+            use_lock=True,  # Acquire row lock for race condition safety
         )
 
         db.commit()
         db.refresh(no_show_booking)
 
-        return booking_to_dto(no_show_booking, db)
+        result = booking_to_dto(no_show_booking, db)
+
+        # Log if escalated to dispute due to conflicting reports
+        if escalated:
+            logger.warning(
+                "Conflicting no-show reports for booking %d - auto-escalated to dispute",
+                booking_id,
+            )
+
+        return result
 
     except HTTPException:
         raise
@@ -621,9 +635,12 @@ async def mark_tutor_no_show(
 
     - Must be 10+ minutes after start time and within 24h
     - Student receives full refund
+    - Uses row-level locking to prevent race conditions with concurrent reports
+    - If both parties report no-show, auto-escalates to dispute for admin review
     """
     _require_role(current_user, "student")
 
+    # First verify the booking exists and belongs to this student (without lock)
     booking = (
         db.query(Booking)
         .filter(
@@ -641,16 +658,27 @@ async def mark_tutor_no_show(
 
     try:
         service = BookingService(db)
-        no_show_booking = service.mark_no_show(
+        # Use row-level locking to prevent race conditions
+        no_show_booking, escalated = service.mark_no_show(
             booking=booking,
             reporter_role="STUDENT",
             notes=request.notes,
+            use_lock=True,  # Acquire row lock for race condition safety
         )
 
         db.commit()
         db.refresh(no_show_booking)
 
-        return booking_to_dto(no_show_booking, db)
+        result = booking_to_dto(no_show_booking, db)
+
+        # Log if escalated to dispute due to conflicting reports
+        if escalated:
+            logger.warning(
+                "Conflicting no-show reports for booking %d - auto-escalated to dispute",
+                booking_id,
+            )
+
+        return result
 
     except HTTPException:
         raise
@@ -748,6 +776,11 @@ async def resolve_dispute(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=result.error_message or "Cannot resolve dispute",
             )
+
+        # Restore package credit if dispute resolution includes refund
+        if result.restore_package_credit and booking.package_id:
+            service = BookingService(db)
+            service._restore_package_credit(booking.package_id)
 
         booking.updated_at = datetime.now(UTC)
         db.commit()

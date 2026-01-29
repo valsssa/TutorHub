@@ -28,3 +28,12 @@ google-auth==2.27.0
 google-auth-oauthlib==1.2.0
 sentry-sdk[fastapi]==1.40.0
 apscheduler==3.10.4
+# OpenTelemetry Distributed Tracing (optional - tracing works without these)
+opentelemetry-api==1.22.0
+opentelemetry-sdk==1.22.0
+opentelemetry-instrumentation-fastapi==0.43b0
+opentelemetry-instrumentation-sqlalchemy==0.43b0
+opentelemetry-instrumentation-httpx==0.43b0
+opentelemetry-instrumentation-requests==0.43b0
+opentelemetry-exporter-otlp==1.22.0
+opentelemetry-exporter-jaeger==1.21.0

@@ -5,11 +5,15 @@ Implements:
 - Google OAuth2 login flow
 - Account linking (connect Google to existing account)
 - New user registration via Google
+
+Security:
+- OAuth state tokens stored in Redis for multi-instance support
+- 10-minute TTL with automatic expiration
+- One-time use tokens (deleted after validation)
 """
 
 import logging
-import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Annotated
 from urllib.parse import urlencode
 
@@ -20,6 +24,7 @@ from pydantic import BaseModel
 
 from core.config import settings
 from core.dependencies import DatabaseSession, get_current_user_optional
+from core.oauth_state import oauth_state_store
 from core.security import TokenManager
 from core.utils import StringUtils
 from models import User, UserProfile
@@ -71,41 +76,6 @@ class OAuthTokenResponse(BaseModel):
 
 
 # ============================================================================
-# State Management (CSRF Protection)
-# ============================================================================
-
-# In production, use Redis for state storage
-_oauth_states: dict[str, dict] = {}
-
-
-def _generate_state(action: str = "login", user_id: int | None = None) -> str:
-    """Generate OAuth state token for CSRF protection."""
-    state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {
-        "action": action,
-        "user_id": user_id,
-        "created_at": datetime.now(UTC),
-    }
-    # Clean up old states (older than 10 minutes)
-    cutoff = datetime.now(UTC) - timedelta(minutes=10)
-    for s, data in list(_oauth_states.items()):
-        if data["created_at"] < cutoff:
-            del _oauth_states[s]
-    return state
-
-
-def _validate_state(state: str) -> dict | None:
-    """Validate and consume OAuth state token."""
-    if state not in _oauth_states:
-        return None
-    data = _oauth_states.pop(state)
-    # Check if expired (10 minutes)
-    if datetime.now(UTC) - data["created_at"] > timedelta(minutes=10):
-        return None
-    return data
-
-
-# ============================================================================
 # Google OAuth Endpoints
 # ============================================================================
 
@@ -139,7 +109,8 @@ async def google_login_url(
             detail="Google login not configured",
         )
 
-    state = _generate_state(action="login")
+    # Generate state token with Redis storage (10 min TTL, one-time use)
+    state = await oauth_state_store.generate_state(action="login")
 
     # Use configured redirect URI or custom one
     callback_uri = redirect_uri or settings.GOOGLE_REDIRECT_URI
@@ -176,8 +147,8 @@ async def google_callback(
             detail="Google login not configured",
         )
 
-    # Validate state
-    state_data = _validate_state(state)
+    # Validate and consume state token (one-time use, stored in Redis)
+    state_data = await oauth_state_store.validate_state(state)
     if not state_data:
         logger.warning("Invalid or expired OAuth state")
         return RedirectResponse(
@@ -300,8 +271,8 @@ async def link_google_account(
             detail="Google login not configured",
         )
 
-    # Validate state
-    state_data = _validate_state(state)
+    # Validate and consume state token (one-time use, stored in Redis)
+    state_data = await oauth_state_store.validate_state(state)
     if not state_data or state_data.get("user_id") != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

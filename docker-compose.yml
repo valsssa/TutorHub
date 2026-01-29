@@ -114,6 +114,14 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-https://edustream.valsa.solutions}
       FRONTEND_LOGIN_SUCCESS_URL: ${FRONTEND_LOGIN_SUCCESS_URL:-https://edustream.valsa.solutions/dashboard}
       FRONTEND_LOGIN_ERROR_URL: ${FRONTEND_LOGIN_ERROR_URL:-https://edustream.valsa.solutions/login?error=oauth_failed}
+      # Distributed Tracing (OpenTelemetry)
+      TRACING_ENABLED: ${TRACING_ENABLED:-false}
+      TRACING_EXPORTER: ${TRACING_EXPORTER:-console}
+      TRACING_SERVICE_NAME: ${TRACING_SERVICE_NAME:-edustream-api}
+      TRACING_SAMPLE_RATE: ${TRACING_SAMPLE_RATE:-1.0}
+      JAEGER_AGENT_HOST: ${JAEGER_AGENT_HOST:-jaeger}
+      JAEGER_AGENT_PORT: ${JAEGER_AGENT_PORT:-6831}
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-http://jaeger:4317}
     depends_on:
       db:
         condition: service_healthy
@@ -141,6 +149,32 @@ services:
       resources:
         limits:
           memory: 4G
+
+  # ==========================================================================
+  # Jaeger - Distributed Tracing (Optional)
+  # Uncomment to enable distributed tracing visualization
+  # ==========================================================================
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.54
+  #   environment:
+  #     COLLECTOR_OTLP_ENABLED: "true"
+  #   ports:
+  #     - "16686:16686"  # Jaeger UI
+  #     - "4317:4317"    # OTLP gRPC
+  #     - "4318:4318"    # OTLP HTTP
+  #     - "6831:6831/udp"  # Jaeger Thrift compact
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "wget --spider --quiet http://localhost:16686/ || exit 1"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #
+  # To enable Jaeger tracing:
+  # 1. Uncomment the jaeger service above
+  # 2. Set environment variables:
+  #    TRACING_ENABLED=true
+  #    TRACING_EXPORTER=otlp  (or jaeger)
+  # 3. Access Jaeger UI at http://localhost:16686
 
 volumes:
   postgres_data:

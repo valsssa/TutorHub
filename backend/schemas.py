@@ -96,6 +96,25 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class TokenWithRefresh(BaseModel):
+    """JWT token response with refresh token.
+
+    Used for login response to provide both access and refresh tokens.
+    The refresh token should be stored securely (httpOnly cookie recommended).
+    """
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int  # Access token expiry in seconds
+
+
+class TokenRefreshRequest(BaseModel):
+    """Request to refresh an access token using a refresh token."""
+
+    refresh_token: str
+
+
 class UserResponse(BaseModel):
     """User response schema."""
 
@@ -249,6 +268,7 @@ class TutorAvailabilityResponse(BaseModel):
     start_time: time
     end_time: time
     is_recurring: bool
+    timezone: str | None = "UTC"  # IANA timezone in which times are expressed
 
     model_config = {"from_attributes": True}
 

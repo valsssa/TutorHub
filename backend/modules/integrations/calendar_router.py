@@ -5,10 +5,14 @@ Handles:
 - OAuth flow for calendar access
 - Calendar connection status
 - Manual event creation/sync
+
+Security:
+- OAuth state tokens stored in Redis for multi-instance support
+- 10-minute TTL with automatic expiration
+- One-time use tokens (deleted after validation)
 """
 
 import logging
-import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -19,6 +23,7 @@ from pydantic import BaseModel
 from core.config import settings
 from core.dependencies import CurrentUser, DatabaseSession
 from core.google_calendar import google_calendar
+from core.oauth_state import oauth_state_store
 from core.rate_limiting import limiter
 from models import Booking, User
 
@@ -57,39 +62,6 @@ class CalendarEventResponse(BaseModel):
     event_id: str
     html_link: str | None = None
     message: str
-
-
-# ============================================================================
-# State Management (CSRF Protection)
-# ============================================================================
-
-# In production, use Redis
-_calendar_states: dict[str, dict] = {}
-
-
-def _generate_state(user_id: int) -> str:
-    """Generate OAuth state token for CSRF protection."""
-    state = secrets.token_urlsafe(32)
-    _calendar_states[state] = {
-        "user_id": user_id,
-        "created_at": datetime.now(UTC),
-    }
-    # Clean up old states
-    cutoff = datetime.now(UTC) - timedelta(minutes=10)
-    for s, data in list(_calendar_states.items()):
-        if data["created_at"] < cutoff:
-            del _calendar_states[s]
-    return state
-
-
-def _validate_state(state: str) -> dict | None:
-    """Validate and consume OAuth state token."""
-    if state not in _calendar_states:
-        return None
-    calendar_state_data = _calendar_states.pop(state)
-    if datetime.now(UTC) - calendar_state_data["created_at"] > timedelta(minutes=10):
-        return None
-    return calendar_state_data
 
 
 # ============================================================================
@@ -146,7 +118,11 @@ async def get_calendar_auth_url(
             detail="Google Calendar integration not configured",
         )
 
-    state = _generate_state(current_user.id)
+    # Generate state token with Redis storage (10 min TTL, one-time use)
+    state = await oauth_state_store.generate_state(
+        action="calendar_connect",
+        user_id=current_user.id,
+    )
 
     authorization_url = google_calendar.get_authorization_url(
         state=state,
@@ -179,8 +155,8 @@ async def calendar_callback(
             detail="Google Calendar integration not configured",
         )
 
-    # Validate state
-    state_data = _validate_state(state)
+    # Validate and consume state token (one-time use, stored in Redis)
+    state_data = await oauth_state_store.validate_state(state)
     if not state_data:
         logger.warning("Invalid or expired calendar OAuth state")
         return RedirectResponse(

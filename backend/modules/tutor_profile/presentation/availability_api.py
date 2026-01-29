@@ -2,6 +2,7 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import and_, or_
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_tutor_profile
 from core.rate_limiting import limiter
+from core.timezone import is_valid_timezone
 from database import get_db
 from models import Booking, TutorAvailability, TutorProfile
 from schemas import AvailableSlot, TutorAvailabilityCreate, TutorAvailabilityResponse
@@ -96,9 +98,26 @@ async def get_available_slots(
             slot_start_time = availability.start_time
             slot_end_time = availability.end_time
 
-            # Convert time to datetime for the specific date (UTC-aware)
-            current_slot = datetime.combine(current_date, slot_start_time).replace(tzinfo=UTC)
-            end_boundary = datetime.combine(current_date, slot_end_time).replace(tzinfo=UTC)
+            # Get the timezone for this availability slot (DST-safe)
+            # This ensures proper UTC conversion even during DST transitions
+            avail_tz_str = getattr(availability, 'timezone', None) or "UTC"
+            if not is_valid_timezone(avail_tz_str):
+                avail_tz_str = "UTC"
+            avail_tz = ZoneInfo(avail_tz_str)
+
+            # Convert time to datetime in the tutor's timezone first, then to UTC
+            # This handles DST correctly - e.g., 9am EST becomes different UTC times
+            # depending on whether DST is in effect on that specific date
+            local_start = datetime.combine(current_date, slot_start_time)
+            local_end = datetime.combine(current_date, slot_end_time)
+
+            # Localize to tutor's timezone (this applies correct DST offset for the date)
+            local_start_aware = local_start.replace(tzinfo=avail_tz)
+            local_end_aware = local_end.replace(tzinfo=avail_tz)
+
+            # Convert to UTC for consistent comparison with bookings
+            current_slot = local_start_aware.astimezone(ZoneInfo("UTC"))
+            end_boundary = local_end_aware.astimezone(ZoneInfo("UTC"))
 
             while current_slot + timedelta(minutes=30) <= end_boundary:
                 slot_end = current_slot + timedelta(minutes=30)

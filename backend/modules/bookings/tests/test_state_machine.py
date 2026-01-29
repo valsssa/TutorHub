@@ -342,6 +342,65 @@ class TestNoShow:
 
         assert result.success is True
 
+    def test_conflicting_no_show_reports_escalate_to_dispute(self, mock_booking):
+        """Conflicting no-show reports auto-escalate to dispute."""
+        # First: tutor reports student as no-show
+        mock_booking.session_state = SessionState.ACTIVE.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+        mock_booking.dispute_state = DisputeState.NONE.value
+
+        result1 = BookingStateMachine.mark_no_show(mock_booking, "STUDENT", reporter_role="TUTOR")
+        assert result1.success is True
+        assert mock_booking.session_outcome == SessionOutcome.NO_SHOW_STUDENT.value
+
+        # Second: student reports tutor as no-show (conflicting report)
+        result2 = BookingStateMachine.mark_no_show(mock_booking, "TUTOR", reporter_role="STUDENT")
+
+        assert result2.success is True
+        assert result2.escalated_to_dispute is True
+        assert mock_booking.dispute_state == DisputeState.OPEN.value
+        assert "Conflicting no-show reports" in mock_booking.dispute_reason
+        assert mock_booking.disputed_at is not None
+
+    def test_same_reporter_no_show_is_idempotent(self, mock_booking):
+        """Same reporter reporting no-show again is idempotent."""
+        # First: tutor reports student as no-show
+        mock_booking.session_state = SessionState.ACTIVE.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+
+        result1 = BookingStateMachine.mark_no_show(mock_booking, "STUDENT", reporter_role="TUTOR")
+        assert result1.success is True
+        assert not result1.already_in_target_state
+
+        # Same reporter reports again (idempotent)
+        result2 = BookingStateMachine.mark_no_show(mock_booking, "STUDENT", reporter_role="TUTOR")
+        assert result2.success is True
+        assert result2.already_in_target_state is True
+        assert result2.escalated_to_dispute is False
+
+    def test_no_show_with_reporter_role_explicit(self, mock_booking):
+        """No-show with explicit reporter_role parameter."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+
+        result = BookingStateMachine.mark_no_show(
+            mock_booking, "STUDENT", reporter_role="TUTOR"
+        )
+
+        assert result.success is True
+        assert mock_booking.session_outcome == SessionOutcome.NO_SHOW_STUDENT.value
+
+    def test_no_show_backwards_compatibility_without_reporter(self, mock_booking):
+        """No-show without reporter_role infers it from who_was_absent."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+
+        # Without reporter_role, it infers TUTOR from STUDENT absence
+        result = BookingStateMachine.mark_no_show(mock_booking, "STUDENT")
+
+        assert result.success is True
+        assert mock_booking.session_outcome == SessionOutcome.NO_SHOW_STUDENT.value
+
 
 # ============================================================================
 # Dispute Tests
@@ -1038,14 +1097,16 @@ class TestIdempotentTransitions:
         assert result.already_in_target_state is True
 
     def test_mark_no_show_is_idempotent(self, mock_booking):
-        """Marking no-show on already ended session is idempotent."""
+        """Marking no-show on already ended session is idempotent (same reporter)."""
         mock_booking.session_state = SessionState.ENDED.value
         mock_booking.session_outcome = SessionOutcome.NO_SHOW_STUDENT.value
 
-        result = BookingStateMachine.mark_no_show(mock_booking, "STUDENT")
+        # Same reporter (TUTOR) reports same thing again
+        result = BookingStateMachine.mark_no_show(mock_booking, "STUDENT", reporter_role="TUTOR")
 
         assert result.success is True
         assert result.already_in_target_state is True
+        assert result.escalated_to_dispute is False
 
 
 # ============================================================================
@@ -1156,6 +1217,133 @@ class TestVersionIncrement:
 
         assert result.success is True
         assert mock_booking.version == initial_version + 1
+
+
+# ============================================================================
+# Package Credit Restoration Flag Tests
+# ============================================================================
+
+
+class TestPackageCreditRestorationFlag:
+    """Test that resolve_dispute correctly sets restore_package_credit flag."""
+
+    def test_resolve_dispute_refunded_captured_payment_sets_flag(self, mock_booking):
+        """Dispute resolution with refund on captured payment should set restore flag."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        mock_booking.rate_cents = 5000
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+            notes="Refund granted",
+        )
+
+        assert result.success is True
+        assert result.restore_package_credit is True
+        assert mock_booking.payment_state == PaymentState.REFUNDED.value
+
+    def test_resolve_dispute_refunded_authorized_payment_sets_flag(self, mock_booking):
+        """Dispute resolution with voided authorization should set restore flag."""
+        mock_booking.session_state = SessionState.CANCELLED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+        mock_booking.rate_cents = 5000
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+            notes="Release authorization",
+        )
+
+        assert result.success is True
+        assert result.restore_package_credit is True
+        assert mock_booking.payment_state == PaymentState.VOIDED.value
+
+    def test_resolve_dispute_upheld_does_not_set_flag(self, mock_booking):
+        """Dispute resolution upheld should NOT set restore flag."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_UPHELD,
+            resolved_by_user_id=999,
+            notes="Original decision correct",
+        )
+
+        assert result.success is True
+        assert result.restore_package_credit is False
+        assert mock_booking.payment_state == PaymentState.CAPTURED.value
+
+    def test_resolve_dispute_already_refunded_does_not_set_flag(self, mock_booking):
+        """Dispute resolution when payment already refunded should NOT set restore flag."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.REFUNDED.value  # Already refunded
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+            notes="Payment already returned",
+        )
+
+        assert result.success is True
+        assert result.restore_package_credit is False  # Credit should have been restored when originally refunded
+
+    def test_resolve_dispute_already_voided_does_not_set_flag(self, mock_booking):
+        """Dispute resolution when payment already voided should NOT set restore flag."""
+        mock_booking.session_state = SessionState.CANCELLED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.VOIDED.value  # Already voided
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+        )
+
+        assert result.success is True
+        assert result.restore_package_credit is False  # Credit should have been restored when originally voided
+
+    def test_partial_refund_sets_restore_flag(self, mock_booking):
+        """Partial refund dispute resolution should still set restore flag."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        mock_booking.rate_cents = 5000
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+            notes="Partial refund",
+            refund_amount_cents=2500,  # Half refund
+        )
+
+        assert result.success is True
+        assert result.restore_package_credit is True
+        assert mock_booking.payment_state == PaymentState.PARTIALLY_REFUNDED.value
+
+    def test_idempotent_resolve_does_not_set_flag(self, mock_booking):
+        """Idempotent resolve (already resolved) should NOT set restore flag."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.RESOLVED_REFUNDED.value  # Already resolved
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+        )
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+        assert result.restore_package_credit is False  # Already handled
 
 
 if __name__ == "__main__":

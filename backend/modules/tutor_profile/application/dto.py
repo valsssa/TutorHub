@@ -31,6 +31,7 @@ def _availability_to_response(
         "start_time": entity.start_time,
         "end_time": entity.end_time,
         "is_recurring": entity.is_recurring,
+        "timezone": entity.timezone or "UTC",  # Include timezone for DST awareness
     }
     return TutorAvailabilityResponse.model_validate(data)
 

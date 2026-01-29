@@ -1,7 +1,9 @@
 """Security utilities for authentication and authorization."""
 
 import logging
+import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 import bcrypt
 from jose import JWTError, jwt
@@ -10,6 +12,9 @@ from core.config import settings
 from core.exceptions import AuthenticationError
 
 logger = logging.getLogger(__name__)
+
+# Token types for differentiation
+TokenType = Literal["access", "refresh"]
 
 
 class PasswordHasher:
@@ -46,6 +51,9 @@ class PasswordHasher:
 class TokenManager:
     """Handle JWT token creation and validation."""
 
+    # Refresh token expiry: 7 days (configurable via settings if needed)
+    REFRESH_TOKEN_EXPIRE_DAYS = 7
+
     @staticmethod
     def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
         """Create a new JWT access token."""
@@ -57,18 +65,86 @@ class TokenManager:
         else:
             expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-        to_encode.update({"exp": expire})
+        to_encode.update({
+            "exp": expire,
+            "iat": datetime.now(UTC),
+            "type": "access",
+        })
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
 
     @staticmethod
-    def decode_token(token: str) -> dict:
-        """Decode and validate a JWT token."""
+    def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> str:
+        """Create a new JWT refresh token.
+
+        Refresh tokens have:
+        - Longer expiry (7 days default)
+        - Unique jti (JWT ID) for revocation tracking
+        - Type marker for validation
+        """
+        to_encode = data.copy()
+
+        if expires_delta:
+            expire = datetime.now(UTC) + expires_delta
+        else:
+            expire = datetime.now(UTC) + timedelta(days=TokenManager.REFRESH_TOKEN_EXPIRE_DAYS)
+
+        # Add unique token ID for potential revocation tracking
+        jti = secrets.token_urlsafe(32)
+
+        to_encode.update({
+            "exp": expire,
+            "iat": datetime.now(UTC),
+            "type": "refresh",
+            "jti": jti,
+        })
+        encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        return encoded_jwt
+
+    @staticmethod
+    def decode_token(token: str, expected_type: TokenType | None = None) -> dict:
+        """Decode and validate a JWT token.
+
+        Args:
+            token: The JWT token string to decode
+            expected_type: If provided, validate token type matches ("access" or "refresh")
+
+        Raises:
+            AuthenticationError: If token is invalid or type doesn't match
+        """
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+            # Validate token type if specified
+            if expected_type:
+                token_type = payload.get("type")
+                if token_type != expected_type:
+                    raise AuthenticationError(
+                        f"Invalid token type: expected {expected_type}, got {token_type}"
+                    )
+
             return payload
         except JWTError as e:
             raise AuthenticationError(f"Invalid token: {str(e)}")
+
+    @staticmethod
+    def get_token_expiry_timestamp(token: str) -> int | None:
+        """Get the expiry timestamp from a token without full validation.
+
+        Returns the exp claim as Unix timestamp, or None if token is invalid.
+        Useful for frontend to know when to refresh.
+        """
+        try:
+            # Decode without verification to get expiry
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM],
+                options={"verify_exp": False}
+            )
+            return payload.get("exp")
+        except JWTError:
+            return None
 
 
 # NOTE: Convenience functions removed from here to eliminate duplication.

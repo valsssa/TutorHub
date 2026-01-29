@@ -589,6 +589,15 @@ async def request_refund(
     booking.status = "REFUNDED"
     booking.updated_at = datetime.now(UTC)
 
+    # Restore package credit if this was a package booking
+    if booking.package_id:
+        from modules.bookings.service import BookingService
+
+        service = BookingService(db)
+        restored = service._restore_package_credit(booking.package_id)
+        if restored:
+            logger.info(f"Restored package credit for booking {booking.id}, package {booking.package_id}")
+
     db.commit()
 
     logger.info(

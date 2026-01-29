@@ -343,6 +343,9 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         # Atomic update: delete old and insert new
         db.query(TutorAvailability).filter(TutorAvailability.tutor_profile_id == profile.id).delete()
         for slot in availability:
+            # Store timezone with each availability slot for DST-safe conversion
+            # Fall back to provided timezone or UTC if not specified on slot
+            slot_timezone = slot.timezone or timezone or "UTC"
             db.add(
                 TutorAvailability(
                     tutor_profile_id=profile.id,
@@ -350,6 +353,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
                     start_time=slot.start_time,
                     end_time=slot.end_time,
                     is_recurring=slot.is_recurring,
+                    timezone=slot_timezone,
                 )
             )
 
@@ -454,7 +458,8 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
                 start_time=slot.start_time,
                 end_time=slot.end_time,
                 is_recurring=slot.is_recurring,
-                timezone=timezone,
+                # Use slot-specific timezone for DST-safe handling, fallback to user timezone
+                timezone=getattr(slot, 'timezone', None) or timezone,
             )
             for slot in profile.availabilities
         ]

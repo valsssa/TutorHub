@@ -720,6 +720,9 @@ class BookingStateMachine:
         booking.resolved_by = resolved_by_user_id
         booking.resolution_notes = notes
 
+        # Track whether package credit should be restored
+        should_restore_package_credit = False
+
         # Update payment state if refunding
         if resolution == DisputeState.RESOLVED_REFUNDED:
             current_payment = PaymentState(booking.payment_state)
@@ -736,10 +739,17 @@ class BookingStateMachine:
                     booking.payment_state = PaymentState.PARTIALLY_REFUNDED.value
                 else:
                     booking.payment_state = PaymentState.REFUNDED.value
+                # Full refund on package booking should restore credit
+                should_restore_package_credit = True
             elif current_payment == PaymentState.AUTHORIZED:
                 # Release the authorization instead of capturing and refunding
                 booking.payment_state = PaymentState.VOIDED.value
+                # Voided authorization on package booking should restore credit
+                should_restore_package_credit = True
 
         cls.increment_version(booking)
 
-        return TransitionResult(success=True)
+        return TransitionResult(
+            success=True,
+            restore_package_credit=should_restore_package_credit,
+        )

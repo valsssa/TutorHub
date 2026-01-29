@@ -9,7 +9,9 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from auth import create_access_token, get_password_hash, verify_password
+from core.config import settings
 from core.sanitization import sanitize_email
+from core.security import TokenManager
 from modules.auth.domain.entities import UserEntity
 from modules.auth.infrastructure.repository import UserRepository
 

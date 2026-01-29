@@ -212,6 +212,9 @@ class TutorAvailability(Base):
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
     is_recurring = Column(Boolean, nullable=False, default=True)
+    # Timezone in which start_time/end_time are expressed (IANA timezone, e.g., "America/New_York")
+    # This enables proper DST handling when converting to UTC for slot generation
+    timezone = Column(String(64), nullable=False, default="UTC", server_default="UTC")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
