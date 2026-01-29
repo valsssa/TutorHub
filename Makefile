@@ -2,7 +2,7 @@
 # Makefile - Quick Commands for EduStream
 # =============================================================================
 
-.PHONY: help dev minimal full prod build rebuild stop clean logs test lint
+.PHONY: help dev minimal full build rebuild stop clean logs test lint
 
 # Default target
 help:
@@ -12,7 +12,7 @@ help:
 	@echo "Development:"
 	@echo "  make dev        - Start dev environment (backend + frontend + db)"
 	@echo "  make minimal    - Start minimal (backend + db + redis only)"
-	@echo "  make full       - Start all services including Celery"
+	@echo "  make full       - Start all services including Celery + MinIO"
 	@echo "  make backend    - Start backend only"
 	@echo "  make frontend   - Start frontend only"
 	@echo ""
@@ -38,79 +38,81 @@ help:
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
-# Compose files
-COMPOSE_FAST=docker-compose.fast.yml
-COMPOSE_PROD=docker-compose.prod.yml
-
 # =============================================================================
 # Development
 # =============================================================================
 
 dev:
-	docker compose -f $(COMPOSE_FAST) up db redis minio backend frontend -d
+	docker compose up -d
 	@echo ""
 	@echo "Services started!"
 	@echo "  Backend:  http://localhost:8000"
 	@echo "  Frontend: http://localhost:3000"
+	@echo "  API Docs: http://localhost:8000/docs"
 
 minimal:
-	docker compose -f $(COMPOSE_FAST) up db redis backend -d
+	docker compose up db redis backend -d
 	@echo ""
 	@echo "Minimal services started!"
 	@echo "  Backend: http://localhost:8000"
 
 full:
-	docker compose -f $(COMPOSE_FAST) --profile workers up -d
+	docker compose --profile full up -d
 	@echo ""
 	@echo "All services started!"
+	@echo "  Backend:  http://localhost:8000"
+	@echo "  Frontend: http://localhost:3000"
+	@echo "  MinIO:    http://localhost:9001"
 
 backend:
-	docker compose -f $(COMPOSE_FAST) up db redis backend -d
+	docker compose up db redis backend -d
 
 frontend:
-	docker compose -f $(COMPOSE_FAST) up frontend -d
+	docker compose up frontend -d
+
+storage:
+	docker compose --profile storage up -d
+
+workers:
+	docker compose --profile workers up -d
 
 # =============================================================================
 # Build
 # =============================================================================
 
 build:
-	docker compose -f $(COMPOSE_FAST) build --parallel
+	docker compose build --parallel
 
 rebuild:
-	docker compose -f $(COMPOSE_FAST) up -d --build
+	docker compose up -d --build
 
 prod:
-	docker compose -f $(COMPOSE_PROD) build --parallel
-
-prod-deploy:
-	docker compose -f $(COMPOSE_PROD) up -d --build
+	docker compose build backend --build-arg TARGET=production
+	docker compose build frontend --build-arg TARGET=production
 
 # =============================================================================
 # Management
 # =============================================================================
 
 stop:
-	docker compose -f $(COMPOSE_FAST) down
-	docker compose -f $(COMPOSE_PROD) down 2>/dev/null || true
+	docker compose down
 
 clean:
-	docker compose -f $(COMPOSE_FAST) down -v
-	docker compose -f $(COMPOSE_PROD) down -v 2>/dev/null || true
+	docker compose down -v
 	docker system prune -f
 
 logs:
-	docker compose -f $(COMPOSE_FAST) logs -f
+	docker compose logs -f
 
 logs-b:
-	docker compose -f $(COMPOSE_FAST) logs -f backend
+	docker compose logs -f backend
 
 logs-f:
-	docker compose -f $(COMPOSE_FAST) logs -f frontend
+	docker compose logs -f frontend
 
 status:
 	@echo "Running containers:"
-	docker compose -f $(COMPOSE_FAST) ps
+	docker compose ps
 	@echo ""
 	@echo "Images:"
 	docker images | grep edustream || true
@@ -133,11 +135,11 @@ lint-fix:
 # =============================================================================
 
 db-shell:
-	docker compose -f $(COMPOSE_FAST) exec db psql -U postgres -d authapp
+	docker compose exec db psql -U postgres -d authapp
 
 db-reset:
-	docker compose -f $(COMPOSE_FAST) down -v
-	docker compose -f $(COMPOSE_FAST) up db -d
+	docker compose down -v
+	docker compose up db -d
 
 # =============================================================================
 # Quick shortcuts
