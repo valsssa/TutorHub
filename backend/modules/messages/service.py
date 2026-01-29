@@ -78,16 +78,25 @@ class MessageService:
         - PII masked in pre-booking conversations
         - All content sanitized for safety
         """
-        # 1. Validate sender != recipient
+        # 1. Validate recipient is messageable (combined check to prevent user enumeration)
+        # Use generic error message for both "user not found" and "cannot message self"
+        generic_error = "Cannot send message to this recipient"
+
         if sender_id == recipient_id:
             logger.warning(f"User {sender_id} attempted to message themselves")
-            raise ValidationError("Cannot send message to yourself")
+            raise ValidationError(generic_error)
 
-        # 2. Validate recipient exists and is active
-        recipient = self.db.query(User).filter(User.id == recipient_id, User.is_active.is_(True)).first()
+        # 2. Validate recipient exists, is active, and not soft-deleted
+        recipient = self.db.query(User).filter(
+            User.id == recipient_id,
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        ).first()
+
         if not recipient:
+            # Same error message as self-message to prevent enumeration
             logger.warning(f"Invalid recipient {recipient_id} for sender {sender_id}")
-            raise ValidationError("Recipient not found or inactive")
+            raise ValidationError(generic_error)
 
         # 3. Sanitize and validate content
         content = self._sanitize_content(content)

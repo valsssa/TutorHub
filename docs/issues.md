@@ -13,10 +13,12 @@ This document identifies **68 borderline cases** across the EduStream platform, 
 
 | Severity | Count | Fixed | Remaining | Description |
 |----------|-------|-------|-----------|-------------|
-| **CRITICAL** | 12 | 7 | 5 | Data loss, financial loss, security breach |
-| **HIGH** | 24 | 9 | 15 | Significant user impact, race conditions |
-| **MEDIUM** | 22 | 0 | 22 | Poor UX, inconsistent state, operational issues |
+| **CRITICAL** | 12 | 6 | 6 | Data loss, financial loss, security breach |
+| **HIGH** | 24 | 11 | 13 | Significant user impact, race conditions |
+| **MEDIUM** | 22 | 4 | 18 | Poor UX, inconsistent state, operational issues |
 | **LOW** | 10 | 0 | 10 | Minor inconsistencies, edge cases unlikely to occur |
+
+**Total Progress: 21/68 issues fixed (31%)**
 
 ---
 
@@ -44,12 +46,23 @@ This document identifies **68 borderline cases** across the EduStream platform, 
 | **3.6 Account Lockout** | HIGH | Redis-backed lockout tracking | `core/account_lockout.py`, `auth/api.py` |
 | **6.1 DST Availability Bug** | CRITICAL | Timezone column + ZoneInfo conversion | `models/tutors.py`, `availability_api.py`, migration 037 |
 
+| **6.2 Booking Wrong Day TZ** | HIGH | Tutor-timezone-aware day_of_week | `bookings/service.py` |
+| **3.7 Deleted User Auth** | MEDIUM | deleted_at check in all auth flows | `core/dependencies.py`, `auth/*.py` |
+| **9.1 Stripe Refund Timeout** | HIGH | Idempotency keys + timeout recovery | `core/stripe_client.py`, `payments/router.py` |
+| **2.3 Refund Amount Validation** | MEDIUM | Cumulative refund tracking | `payments/router.py` |
+| **3.4 Admin Self-Deactivation** | MEDIUM | Self-deactivation + last-admin protection | `admin/api.py` |
+| **2.7 Connect Account Verify** | MEDIUM | payouts_enabled check before charge | `payments/router.py` |
+
 ### New Migrations Created
 - `035_add_booking_overlap_constraint.sql` - Exclusion constraint for double-booking prevention
 - `035_add_booking_version_column.sql` - Version column for optimistic locking
 - `035_create_webhook_events.sql` - Webhook idempotency tracking
 - `036_add_password_changed_at.sql` - Token invalidation support
 - `037_add_availability_timezone.sql` - Timezone support for tutor availability
+
+### New Core Modules Created
+- `core/oauth_state.py` - Redis-backed OAuth state storage
+- `core/account_lockout.py` - Redis-backed account lockout service
 
 ---
 
@@ -453,7 +466,9 @@ db.add(WebhookEvent(stripe_event_id=event.id, ...))
 
 ---
 
-### 2.3 Refund Exceeds Original Amount
+### 2.3 Refund Exceeds Original Amount ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via cumulative refund tracking and validation
 
 **Trigger conditions:**
 - Admin issues partial refund of $50 on $100 booking
@@ -619,7 +634,9 @@ if session.status == "expired":
 
 ---
 
-### 2.7 Connect Account Not Verified Before Charge
+### 2.7 Connect Account Not Verified Before Charge ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via payouts_enabled/charges_enabled check before destination charge
 
 **Trigger conditions:**
 - Tutor starts onboarding but doesn't complete KYC
@@ -842,7 +859,9 @@ def validate_oauth_state(state: str) -> dict | None:
 
 ---
 
-### 3.4 Admin Can Deactivate Themselves
+### 3.4 Admin Can Deactivate Themselves ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via self-deactivation prevention + last-admin protection
 
 **Trigger conditions:**
 - Admin updates their own account
@@ -975,7 +994,9 @@ if recent_failures >= 5:
 
 ---
 
-### 3.7 Deleted User Still Authenticates
+### 3.7 Deleted User Still Authenticates ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via deleted_at check in all auth flows
 
 **Trigger conditions:**
 - User soft-deleted (`deleted_at` set)
@@ -1442,7 +1463,9 @@ tutor_tz = pytz.timezone(availability.timezone)
 
 ---
 
-### 6.2 Booking Created in Wrong Day Due to Timezone
+### 6.2 Booking Created in Wrong Day Due to Timezone ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via tutor-timezone-aware day_of_week calculation
 
 **Trigger conditions:**
 - Student in UTC+12 (New Zealand)
@@ -1809,7 +1832,9 @@ EXECUTE FUNCTION log_role_change();
 
 ## 9. Integration Points
 
-### 9.1 Stripe API Timeout During Refund
+### 9.1 Stripe API Timeout During Refund ✅ FIXED
+
+**Status:** Fixed on 2026-01-29 via idempotency keys + timeout error recovery
 
 **Trigger conditions:**
 - Admin initiates refund

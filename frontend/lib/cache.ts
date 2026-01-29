@@ -540,6 +540,80 @@ export function invalidateOnMutation(url: string, method: string): void {
 }
 
 // ============================================================================
+// SWR Fetch Helper
+// ============================================================================
+
+interface SWRFetchOptions<T> {
+  /** Resource type for cache configuration */
+  resourceType: ResourceType;
+  /** Fetcher function to get fresh data */
+  fetcher: () => Promise<T>;
+  /** Custom logger for debugging */
+  logger?: { debug: (msg: string, ...args: unknown[]) => void };
+  /** Label for logging (e.g., "Dashboard stats") */
+  label?: string;
+}
+
+/**
+ * SWR-style fetch helper for API functions
+ *
+ * Implements stale-while-revalidate:
+ * 1. Return cached data immediately if available and not expired
+ * 2. If data is stale, trigger background revalidation
+ * 3. If no valid cache, fetch fresh data
+ *
+ * @example
+ * ```ts
+ * async getDashboardStats(): Promise<DashboardStats> {
+ *   return swrFetch(getCacheKey("/api/v1/admin/dashboard/stats"), {
+ *     resourceType: "admin",
+ *     fetcher: async () => (await api.get("/api/v1/admin/dashboard/stats")).data,
+ *     label: "Dashboard stats",
+ *   });
+ * }
+ * ```
+ */
+export async function swrFetch<T>(
+  cacheKey: string,
+  options: SWRFetchOptions<T>
+): Promise<T> {
+  const { resourceType, fetcher, logger: customLogger, label } = options;
+  const logLabel = label || cacheKey;
+
+  const { data: cached, isStale, isExpired } = cacheStore.get<T>(cacheKey);
+
+  // Return cached data if available and not expired
+  if (cached && !isExpired) {
+    if (customLogger) {
+      customLogger.debug(`${logLabel} loaded from cache (stale: ${isStale})`);
+    }
+
+    // Trigger background revalidation if stale
+    if (isStale && !cacheStore.isRevalidating(cacheKey)) {
+      cacheStore.markRevalidating(cacheKey);
+      fetcher()
+        .then((data) => {
+          cacheStore.set(cacheKey, data, resourceType);
+        })
+        .catch(() => {
+          // Silently fail background revalidation
+        });
+    }
+
+    return cached;
+  }
+
+  // Fetch fresh data
+  if (customLogger) {
+    customLogger.debug(`Fetching ${logLabel} from API`);
+  }
+
+  const data = await fetcher();
+  cacheStore.set(cacheKey, data, resourceType);
+  return data;
+}
+
+// ============================================================================
 // Export Types
 // ============================================================================
 

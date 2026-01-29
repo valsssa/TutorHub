@@ -267,81 +267,26 @@ api.interceptors.response.use(
   }
 );
 
-// Optimized in-memory cache with LRU eviction
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-  accessCount: number;
-  lastAccessed: number;
-}
+// ============================================================================
+// Cache Integration
+// Uses centralized cache module for improved caching with SWR pattern
+// ============================================================================
 
-const cache = new Map<string, CacheEntry<unknown>>();
-const DEFAULT_CACHE_TTL = 2 * 60 * 1000; // 2 minutes (reduced for fresher data)
-const MAX_CACHE_SIZE = 100; // Reduced to prevent memory bloat
+import {
+  cacheStore,
+  getCacheKey,
+  getFromCache,
+  setCache,
+  clearCache,
+  invalidateOnMutation,
+  swrFetch,
+} from "./cache";
 
-function getCacheKey(url: string, params?: unknown): string {
-  return `${url}:${JSON.stringify(params || {})}`;
-}
+// Re-export cache utilities for backward compatibility
+export { getCacheKey, getFromCache, setCache, clearCache };
 
-function getFromCache<T>(key: string, ttl: number = DEFAULT_CACHE_TTL): T | null {
-  const cached = cache.get(key);
-  if (!cached) return null;
-  
-  const age = Date.now() - cached.timestamp;
-  if (age > ttl) {
-    cache.delete(key);
-    return null;
-  }
-  
-  // Update access stats for LRU
-  cached.accessCount++;
-  cached.lastAccessed = Date.now();
-  return cached.data as T;
-}
-
-function setCache(key: string, data: unknown): void {
-  // LRU eviction before adding new entry
-  if (cache.size >= MAX_CACHE_SIZE) {
-    const now = Date.now();
-    const entries = Array.from(cache.entries());
-
-    // Remove stale entries first (older than 10 minutes)
-    const staleEntries = entries.filter(([, v]) => now - v.timestamp > 10 * 60 * 1000);
-    staleEntries.forEach(([k]) => cache.delete(k));
-
-    // If still at limit, remove least recently used
-    if (cache.size >= MAX_CACHE_SIZE) {
-      // Clone array before sorting to avoid mutating the original
-      const sortedByLRU = [...entries].sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
-      // Remove oldest 30%
-      const toRemove = Math.ceil(MAX_CACHE_SIZE * 0.3);
-      sortedByLRU.slice(0, toRemove).forEach(([k]) => cache.delete(k));
-    }
-  }
-
-  cache.set(key, {
-    data,
-    timestamp: Date.now(),
-    accessCount: 1,
-    lastAccessed: Date.now(),
-  });
-}
-
-export function clearCache(pattern?: string): void {
-  if (pattern) {
-    // Clear specific pattern
-    const keys = Array.from(cache.keys());
-    keys.forEach(key => {
-      if (key.includes(pattern)) {
-        cache.delete(key);
-      }
-    });
-    logger.info(`Cache cleared for pattern: ${pattern}`);
-  } else {
-    cache.clear();
-    logger.info("Cache cleared");
-  }
-}
+// Re-export cache store for advanced usage
+export { cacheStore } from "./cache";
 
 // Token refresh state management
 let isRefreshing = false;
@@ -510,47 +455,16 @@ api.interceptors.request.use(async (config) => {
 });
 
 // Automatic cache invalidation after mutations
-// This replaces 30+ manual clearCache() calls throughout the codebase
+// Uses centralized cache module with related resource invalidation
 api.interceptors.response.use(
   (response) => {
     const method = response.config.method?.toUpperCase();
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method || '');
 
     if (isMutation && response.status >= 200 && response.status < 300) {
-      // Extract resource type from URL for pattern-based invalidation
       const url = response.config.url || '';
-
-      // Pattern-based invalidation for common resources
-      if (url.includes('/users') || url.includes('/profile') || url.includes('/avatar')) {
-        clearCache('users');
-        clearCache('profile');
-      }
-      if (url.includes('/tutors') || url.includes('/tutor-profile')) {
-        clearCache('tutors');
-        clearCache('tutor-profile');
-      }
-      if (url.includes('/bookings')) {
-        clearCache('bookings');
-      }
-      if (url.includes('/reviews')) {
-        clearCache('reviews');
-      }
-      if (url.includes('/messages')) {
-        clearCache('messages');
-      }
-      if (url.includes('/notifications')) {
-        clearCache('notifications');
-      }
-      if (url.includes('/packages')) {
-        clearCache('packages');
-      }
-      if (url.includes('/favorites')) {
-        clearCache('favorites');
-      }
-      if (url.includes('/admin')) {
-        // Admin operations may affect many resources
-      }
-
+      // Use centralized invalidation which handles related resources automatically
+      invalidateOnMutation(url, method || 'POST');
       logger.debug(`Auto-invalidated cache after ${method} ${url}`);
     }
 
@@ -805,18 +719,43 @@ export const auth = {
 // ============================================================================
 
 export const subjects = {
+  /**
+   * List all subjects with SWR caching pattern
+   * Returns cached data immediately while revalidating in background if stale
+   */
   async list(): Promise<Subject[]> {
     const cacheKey = getCacheKey("/api/v1/subjects");
-    const cached = getFromCache<Subject[]>(cacheKey, 10 * 60 * 1000); // Cache subjects for 10 minutes
-    if (cached) {
-      logger.debug("Subjects loaded from cache");
+    const { data: cached, isStale, isExpired } = cacheStore.get<Subject[]>(cacheKey);
+
+    // Return cached data if available and not expired
+    if (cached && !isExpired) {
+      logger.debug(`Subjects loaded from cache (stale: ${isStale})`);
+
+      // Trigger background revalidation if stale (SWR pattern)
+      if (isStale && !cacheStore.isRevalidating(cacheKey)) {
+        this._revalidateSubjects(cacheKey);
+      }
+
       return cached;
     }
 
+    // Fetch fresh data
     logger.debug("Fetching subjects from API");
     const { data } = await api.get<Subject[]>("/api/v1/subjects");
-    setCache(cacheKey, data);
+    cacheStore.set(cacheKey, data, "subjects");
     return data;
+  },
+
+  /** @internal Background revalidation for SWR pattern */
+  async _revalidateSubjects(cacheKey: string): Promise<void> {
+    try {
+      cacheStore.markRevalidating(cacheKey);
+      logger.debug("Background revalidating subjects");
+      const { data } = await api.get<Subject[]>("/api/v1/subjects");
+      cacheStore.set(cacheKey, data, "subjects");
+    } catch (error) {
+      logger.error("Background revalidation failed for subjects", error);
+    }
   },
 };
 
@@ -825,6 +764,10 @@ export const subjects = {
 // ============================================================================
 
 export const tutors = {
+  /**
+   * List tutors with SWR caching pattern
+   * Search queries bypass cache for real-time results
+   */
   async list(filters?: {
     subject_id?: number;
     min_rate?: number;
@@ -836,25 +779,52 @@ export const tutors = {
     page?: number;
     page_size?: number;
   }): Promise<PaginatedResponse<TutorPublicSummary>> {
-    // Cache tutors list for 1 minute (less than subjects since it changes more often)
     const cacheKey = getCacheKey("/api/v1/tutors", filters);
-    const cached = getFromCache<PaginatedResponse<TutorPublicSummary>>(cacheKey, 60 * 1000);
-    if (cached && !filters?.search_query) {
-      logger.debug("Tutors loaded from cache");
-      return cached;
+
+    // Skip cache for search queries (need real-time results)
+    if (!filters?.search_query) {
+      const { data: cached, isStale, isExpired } = cacheStore.get<PaginatedResponse<TutorPublicSummary>>(cacheKey);
+
+      if (cached && !isExpired) {
+        logger.debug(`Tutors loaded from cache (stale: ${isStale})`);
+
+        // Trigger background revalidation if stale (SWR pattern)
+        if (isStale && !cacheStore.isRevalidating(cacheKey)) {
+          this._revalidateTutors(cacheKey, filters);
+        }
+
+        return cached;
+      }
     }
 
+    // Fetch fresh data
     logger.debug("Fetching tutors from API", { filters });
     const { data } = await api.get<PaginatedResponse<TutorPublicSummary>>("/api/v1/tutors", {
       params: { page: filters?.page || 1, page_size: filters?.page_size || 20, ...filters },
     });
 
-    // Only cache non-search results
+    // Only cache non-search results with items
     if (!filters?.search_query && data.items.length > 0) {
-      setCache(cacheKey, data);
+      cacheStore.set(cacheKey, data, "tutors");
     }
 
     return data;
+  },
+
+  /** @internal Background revalidation for SWR pattern */
+  async _revalidateTutors(cacheKey: string, filters?: Record<string, unknown>): Promise<void> {
+    try {
+      cacheStore.markRevalidating(cacheKey);
+      logger.debug("Background revalidating tutors");
+      const { data } = await api.get<PaginatedResponse<TutorPublicSummary>>("/api/v1/tutors", {
+        params: { page: 1, page_size: 20, ...filters },
+      });
+      if (data.items.length > 0) {
+        cacheStore.set(cacheKey, data, "tutors");
+      }
+    } catch (error) {
+      logger.error("Background revalidation failed for tutors", error);
+    }
   },
 
   async get(tutorId: number): Promise<TutorProfile> {
@@ -1565,127 +1535,158 @@ export const admin = {
     return data;
   },
 
+  /**
+   * Get dashboard stats with SWR caching
+   * Returns stale data immediately while revalidating in background
+   */
   async getDashboardStats(): Promise<DashboardStats> {
-    const cacheKey = getCacheKey("/api/v1/admin/dashboard/stats");
-    const cached = getFromCache<DashboardStats>(cacheKey, 30 * 1000); // 30 seconds cache
-    if (cached) {
-      logger.debug("Dashboard stats loaded from cache");
-      return cached;
-    }
-    const { data } = await api.get("/api/v1/admin/dashboard/stats");
-    setCache(cacheKey, data);
-    return data;
+    return swrFetch(getCacheKey("/api/v1/admin/dashboard/stats"), {
+      resourceType: "admin",
+      fetcher: async () => (await api.get("/api/v1/admin/dashboard/stats")).data,
+      logger,
+      label: "Dashboard stats",
+    });
   },
 
-  async getRecentActivities(limit: number = 50): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/v1/admin/dashboard/recent-activities", { limit });
-    const cached = getFromCache<any[]>(cacheKey, 15 * 1000); // 15 seconds cache
-    if (cached) return cached;
-    const { data } = await api.get(`/api/admin/dashboard/recent-activities?limit=${limit}`);
-    setCache(cacheKey, data);
-    return data;
+  /**
+   * Get recent activities with SWR caching
+   */
+  async getRecentActivities(limit: number = 50): Promise<unknown[]> {
+    return swrFetch(getCacheKey("/api/v1/admin/dashboard/recent-activities", { limit }), {
+      resourceType: "admin",
+      fetcher: async () => (await api.get(`/api/admin/dashboard/recent-activities?limit=${limit}`)).data,
+      logger,
+      label: "Recent activities",
+    });
   },
 
-  async getUpcomingSessions(limit: number = 50): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/v1/admin/dashboard/upcoming-sessions", { limit });
-    const cached = getFromCache<any[]>(cacheKey, 30 * 1000);
-    if (cached) return cached;
-    const { data } = await api.get(`/api/admin/dashboard/upcoming-sessions?limit=${limit}`);
-    setCache(cacheKey, data);
-    return data;
+  /**
+   * Get upcoming sessions with SWR caching
+   */
+  async getUpcomingSessions(limit: number = 50): Promise<unknown[]> {
+    return swrFetch(getCacheKey("/api/v1/admin/dashboard/upcoming-sessions", { limit }), {
+      resourceType: "admin",
+      fetcher: async () => (await api.get(`/api/admin/dashboard/upcoming-sessions?limit=${limit}`)).data,
+      logger,
+      label: "Upcoming sessions",
+    });
   },
 
-  async getSessionMetrics(): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/v1/admin/dashboard/session-metrics");
-    const cached = getFromCache<any[]>(cacheKey, 60 * 1000); // 1 minute cache
-    if (cached) return cached;
-    const { data } = await api.get("/api/v1/admin/dashboard/session-metrics");
-    setCache(cacheKey, data);
-    return data;
+  /**
+   * Get session metrics with SWR caching
+   */
+  async getSessionMetrics(): Promise<unknown[]> {
+    return swrFetch(getCacheKey("/api/v1/admin/dashboard/session-metrics"), {
+      resourceType: "admin",
+      fetcher: async () => (await api.get("/api/v1/admin/dashboard/session-metrics")).data,
+      logger,
+      label: "Session metrics",
+    });
   },
 
-  async getMonthlyRevenue(months: number = 6): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/v1/admin/dashboard/monthly-revenue", { months });
-    const cached = getFromCache<any[]>(cacheKey, 5 * 60 * 1000); // 5 minutes cache
-    if (cached) return cached;
-    const { data } = await api.get(`/api/admin/dashboard/monthly-revenue?months=${months}`);
-    setCache(cacheKey, data);
-    return data;
+  /**
+   * Get monthly revenue with SWR caching
+   */
+  async getMonthlyRevenue(months: number = 6): Promise<unknown[]> {
+    return swrFetch(getCacheKey("/api/v1/admin/dashboard/monthly-revenue", { months }), {
+      resourceType: "admin",
+      fetcher: async () => (await api.get(`/api/admin/dashboard/monthly-revenue?months=${months}`)).data,
+      logger,
+      label: "Monthly revenue",
+    });
   },
 
-  async getSubjectDistribution(): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/v1/admin/dashboard/subject-distribution");
-    const cached = getFromCache<any[]>(cacheKey, 5 * 60 * 1000);
-    if (cached) return cached;
-    const { data } = await api.get("/api/v1/admin/dashboard/subject-distribution");
-    setCache(cacheKey, data);
-    return data;
+  /**
+   * Get subject distribution with SWR caching
+   */
+  async getSubjectDistribution(): Promise<unknown[]> {
+    return swrFetch(getCacheKey("/api/v1/admin/dashboard/subject-distribution"), {
+      resourceType: "admin",
+      fetcher: async () => (await api.get("/api/v1/admin/dashboard/subject-distribution")).data,
+      logger,
+      label: "Subject distribution",
+    });
   },
 
-  async getUserGrowth(months: number = 6): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/v1/admin/dashboard/user-growth", { months });
-    const cached = getFromCache<any[]>(cacheKey, 5 * 60 * 1000);
-    if (cached) return cached;
-    const { data } = await api.get(`/api/admin/dashboard/user-growth?months=${months}`);
-    setCache(cacheKey, data);
-    return data;
+  /**
+   * Get user growth with SWR caching
+   */
+  async getUserGrowth(months: number = 6): Promise<unknown[]> {
+    return swrFetch(getCacheKey("/api/v1/admin/dashboard/user-growth", { months }), {
+      resourceType: "admin",
+      fetcher: async () => (await api.get(`/api/admin/dashboard/user-growth?months=${months}`)).data,
+      logger,
+      label: "User growth",
+    });
   },
 };
 
 // Owner API
 export const owner = {
+  /**
+   * Get owner dashboard with SWR caching
+   */
   async getDashboard(periodDays: number = 30): Promise<OwnerDashboard> {
-    const cacheKey = getCacheKey("/api/v1/owner/dashboard", { period_days: periodDays });
-    const cached = getFromCache<OwnerDashboard>(cacheKey, 60 * 1000); // 1 min cache
-    if (cached) {
-      logger.debug("Owner dashboard loaded from cache");
-      return cached;
-    }
-    const { data } = await api.get("/api/v1/owner/dashboard", {
-      params: { period_days: periodDays },
+    return swrFetch(getCacheKey("/api/v1/owner/dashboard", { period_days: periodDays }), {
+      resourceType: "owner",
+      fetcher: async () => (await api.get("/api/v1/owner/dashboard", {
+        params: { period_days: periodDays },
+      })).data,
+      logger,
+      label: "Owner dashboard",
     });
-    setCache(cacheKey, data);
-    return data;
   },
 
+  /**
+   * Get revenue metrics with SWR caching
+   */
   async getRevenue(periodDays: number = 30): Promise<RevenueMetrics> {
-    const cacheKey = getCacheKey("/api/v1/owner/revenue", { period_days: periodDays });
-    const cached = getFromCache<RevenueMetrics>(cacheKey, 60 * 1000);
-    if (cached) return cached;
-    const { data } = await api.get("/api/v1/owner/revenue", {
-      params: { period_days: periodDays },
+    return swrFetch(getCacheKey("/api/v1/owner/revenue", { period_days: periodDays }), {
+      resourceType: "owner",
+      fetcher: async () => (await api.get("/api/v1/owner/revenue", {
+        params: { period_days: periodDays },
+      })).data,
+      logger,
+      label: "Revenue metrics",
     });
-    setCache(cacheKey, data);
-    return data;
   },
 
+  /**
+   * Get growth metrics with SWR caching
+   */
   async getGrowth(periodDays: number = 30): Promise<GrowthMetrics> {
-    const cacheKey = getCacheKey("/api/v1/owner/growth", { period_days: periodDays });
-    const cached = getFromCache<GrowthMetrics>(cacheKey, 60 * 1000);
-    if (cached) return cached;
-    const { data } = await api.get("/api/v1/owner/growth", {
-      params: { period_days: periodDays },
+    return swrFetch(getCacheKey("/api/v1/owner/growth", { period_days: periodDays }), {
+      resourceType: "owner",
+      fetcher: async () => (await api.get("/api/v1/owner/growth", {
+        params: { period_days: periodDays },
+      })).data,
+      logger,
+      label: "Growth metrics",
     });
-    setCache(cacheKey, data);
-    return data;
   },
 
+  /**
+   * Get marketplace health with SWR caching
+   */
   async getHealth(): Promise<MarketplaceHealth> {
-    const cacheKey = getCacheKey("/api/v1/owner/health");
-    const cached = getFromCache<MarketplaceHealth>(cacheKey, 2 * 60 * 1000); // 2 min
-    if (cached) return cached;
-    const { data } = await api.get("/api/v1/owner/health");
-    setCache(cacheKey, data);
-    return data;
+    return swrFetch(getCacheKey("/api/v1/owner/health"), {
+      resourceType: "owner",
+      fetcher: async () => (await api.get("/api/v1/owner/health")).data,
+      logger,
+      label: "Marketplace health",
+    });
   },
 
+  /**
+   * Get commission tier breakdown with SWR caching
+   */
   async getCommissionTiers(): Promise<CommissionTierBreakdown> {
-    const cacheKey = getCacheKey("/api/v1/owner/commission-tiers");
-    const cached = getFromCache<CommissionTierBreakdown>(cacheKey, 5 * 60 * 1000); // 5 min
-    if (cached) return cached;
-    const { data } = await api.get("/api/v1/owner/commission-tiers");
-    setCache(cacheKey, data);
-    return data;
+    return swrFetch(getCacheKey("/api/v1/owner/commission-tiers"), {
+      resourceType: "owner",
+      fetcher: async () => (await api.get("/api/v1/owner/commission-tiers")).data,
+      logger,
+      label: "Commission tiers",
+    });
   },
 };
 

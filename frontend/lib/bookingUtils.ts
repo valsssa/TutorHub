@@ -264,3 +264,95 @@ export function getBookingStatusColor(booking: Booking): string {
   const sessionState = booking.session_state || booking.status;
   return SESSION_STATE_COLORS[sessionState] || BOOKING_STATUS_COLORS[sessionState] || "";
 }
+
+/**
+ * Check if user's timezone differs from tutor/student timezone
+ * Returns warning info if timezones differ significantly
+ */
+export interface TimezoneMismatchInfo {
+  hasMismatch: boolean;
+  userTimezone: string;
+  otherTimezone: string;
+  otherLabel: string;
+  hoursDifference: number;
+}
+
+export function checkTimezoneMismatch(
+  userTimezone: string,
+  tutorTimezone: string,
+  studentTimezone: string,
+  userRole: "student" | "tutor"
+): TimezoneMismatchInfo | null {
+  const otherTimezone = userRole === "student" ? tutorTimezone : studentTimezone;
+  const otherLabel = userRole === "student" ? "tutor" : "student";
+
+  if (!userTimezone || !otherTimezone || userTimezone === otherTimezone) {
+    return null;
+  }
+
+  // Calculate approximate hour difference
+  // This is a simplified calculation - actual difference varies with DST
+  const now = new Date();
+  const userTime = new Date(now.toLocaleString("en-US", { timeZone: userTimezone }));
+  const otherTime = new Date(now.toLocaleString("en-US", { timeZone: otherTimezone }));
+  const hoursDifference = Math.abs((userTime.getTime() - otherTime.getTime()) / (1000 * 60 * 60));
+
+  return {
+    hasMismatch: true,
+    userTimezone,
+    otherTimezone,
+    otherLabel,
+    hoursDifference: Math.round(hoursDifference),
+  };
+}
+
+/**
+ * Format time showing both user's and other party's timezone
+ */
+export function formatDualTimezone(
+  date: Date,
+  userTimezone: string,
+  otherTimezone: string,
+  otherLabel: string
+): string {
+  const userTime = date.toLocaleTimeString("en-US", {
+    timeZone: userTimezone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const otherTime = date.toLocaleTimeString("en-US", {
+    timeZone: otherTimezone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const userAbbr = getTimezoneAbbreviation(userTimezone);
+  const otherAbbr = getTimezoneAbbreviation(otherTimezone);
+
+  if (userTimezone === otherTimezone) {
+    return `${userTime} ${userAbbr}`;
+  }
+
+  return `${userTime} ${userAbbr} (${otherTime} ${otherAbbr} for ${otherLabel})`;
+}
+
+/**
+ * Get timezone abbreviation (e.g., "EST", "PST")
+ */
+function getTimezoneAbbreviation(timezone: string): string {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "short",
+    });
+    const parts = formatter.formatToParts(now);
+    const timeZoneName = parts.find((part) => part.type === "timeZoneName");
+    return timeZoneName?.value || "UTC";
+  } catch {
+    return "UTC";
+  }
+}

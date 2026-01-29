@@ -59,72 +59,106 @@ def get_stripe_client() -> stripe:
 
 
 def create_checkout_session(
-    booking_id: int,
+    booking_id: int | None,
     amount_cents: int,
     currency: str,
-    tutor_name: str,
+    tutor_name: str | None,
     subject_name: str | None,
-    session_date: str,
-    student_email: str,
+    student_email: str | None = None,
+    session_date: str | None = None,
+    success_url: str | None = None,
+    cancel_url: str | None = None,
+    customer_email: str | None = None,
     tutor_connect_account_id: str | None = None,
     platform_fee_cents: int = 0,
     metadata: dict[str, Any] | None = None,
+    user_id: int | None = None,
 ) -> stripe.checkout.Session:
     """
-    Create a Stripe Checkout session for a booking payment.
+    Create a Stripe Checkout session for a booking payment or wallet top-up.
+
+    Uses circuit breaker pattern and idempotency keys to prevent:
+    - Double charges from retries
+    - Cascading failures when Stripe is having issues
 
     Args:
-        booking_id: Internal booking ID
+        booking_id: Internal booking ID (None for wallet top-ups)
         amount_cents: Total amount in cents
         currency: Currency code (e.g., 'usd')
-        tutor_name: Tutor display name for receipt
-        subject_name: Subject being taught
+        tutor_name: Tutor display name for receipt (None for wallet top-ups)
+        subject_name: Subject being taught or description
+        student_email: Student email for receipt (deprecated, use customer_email)
         session_date: Human-readable session date
-        student_email: Student email for receipt
+        success_url: Custom success redirect URL
+        cancel_url: Custom cancel redirect URL
+        customer_email: Customer email for receipt
         tutor_connect_account_id: Tutor's Stripe Connect account ID (optional)
         platform_fee_cents: Platform fee in cents (for Connect)
         metadata: Additional metadata to store
+        user_id: User ID for idempotency key generation
 
     Returns:
         Stripe Checkout Session object
+
+    Raises:
+        HTTPException: If Stripe call fails or circuit breaker is open
     """
     client = get_stripe_client()
 
+    # Support both student_email and customer_email for backwards compatibility
+    email = customer_email or student_email
+
     # Build line item description
-    description = f"Tutoring session with {tutor_name}"
-    if subject_name:
-        description += f" - {subject_name}"
-    description += f" on {session_date}"
+    if tutor_name:
+        description = f"Tutoring session with {tutor_name}"
+        if subject_name:
+            description += f" - {subject_name}"
+        if session_date:
+            description += f" on {session_date}"
+        product_name = f"Tutoring Session - {tutor_name}"
+    else:
+        description = subject_name or "Payment"
+        product_name = subject_name or "Payment"
+
+    # Determine URLs
+    if booking_id is not None:
+        final_success_url = success_url or settings.STRIPE_SUCCESS_URL.format(booking_id=booking_id)
+        final_cancel_url = cancel_url or settings.STRIPE_CANCEL_URL.format(booking_id=booking_id)
+    else:
+        final_success_url = success_url or f"{settings.FRONTEND_URL}/wallet?payment=success"
+        final_cancel_url = cancel_url or f"{settings.FRONTEND_URL}/wallet?payment=cancelled"
 
     # Build session parameters
-    session_params = {
+    session_params: dict[str, Any] = {
         "payment_method_types": ["card"],
         "mode": "payment",
-        "customer_email": student_email,
         "line_items": [
             {
                 "price_data": {
                     "currency": currency.lower(),
                     "unit_amount": amount_cents,
                     "product_data": {
-                        "name": f"Tutoring Session - {tutor_name}",
+                        "name": product_name,
                         "description": description,
                     },
                 },
                 "quantity": 1,
             }
         ],
-        "success_url": settings.STRIPE_SUCCESS_URL.format(booking_id=booking_id),
-        "cancel_url": settings.STRIPE_CANCEL_URL.format(booking_id=booking_id),
+        "success_url": final_success_url,
+        "cancel_url": final_cancel_url,
         "metadata": {
-            "booking_id": str(booking_id),
-            "type": "booking_payment",
+            **({"booking_id": str(booking_id)} if booking_id else {}),
+            "type": "booking_payment" if booking_id else "wallet_topup",
             **(metadata or {}),
         },
     }
 
+    if email:
+        session_params["customer_email"] = email
+
     # If tutor has Connect account, use destination charges
-    if tutor_connect_account_id:
+    if tutor_connect_account_id and booking_id:
         session_params["payment_intent_data"] = {
             "transfer_data": {
                 "destination": tutor_connect_account_id,
@@ -136,33 +170,66 @@ def create_checkout_session(
             },
         }
 
+    # Generate idempotency key to prevent double charges
+    # Key is based on booking/user + amount + date to allow legitimate retries
+    idempotency_key = generate_idempotency_key(
+        "checkout_session",
+        amount_cents,
+        currency,
+        datetime.now(UTC).date().isoformat(),
+        booking_id=booking_id,
+        user_id=user_id,
+    )
+
     try:
-        session = client.checkout.Session.create(**session_params)
+        with stripe_circuit_breaker.call():
+            session = client.checkout.Session.create(
+                **session_params,
+                idempotency_key=idempotency_key,
+            )
+
         logger.info(
-            f"Created checkout session {session.id} for booking {booking_id}, "
+            f"Created checkout session {session.id} "
+            f"{'for booking ' + str(booking_id) if booking_id else 'for wallet top-up'}, "
             f"amount: {amount_cents} cents"
         )
         return session
 
+    except CircuitOpenError:
+        logger.error("Circuit breaker open for Stripe checkout session creation")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable. Please try again later.",
+        )
+
+    except stripe.error.IdempotencyError as e:
+        # This means a checkout session with same key exists - retrieve and return it
+        logger.warning(f"Idempotency key conflict for checkout session: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A checkout session is already being created. Please wait and try again.",
+        )
+
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error creating checkout session: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Payment service error. Please try again.",
-        )
+        raise handle_stripe_error(e)
 
 
 def retrieve_checkout_session(session_id: str) -> stripe.checkout.Session:
-    """Retrieve a checkout session by ID."""
+    """Retrieve a checkout session by ID with circuit breaker protection."""
     client = get_stripe_client()
     try:
-        return client.checkout.Session.retrieve(session_id)
+        with stripe_circuit_breaker.call():
+            return client.checkout.Session.retrieve(session_id)
+    except CircuitOpenError:
+        logger.error(f"Circuit breaker open when retrieving session {session_id}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable.",
+        )
     except stripe.error.StripeError as e:
         logger.error(f"Error retrieving checkout session {session_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Payment session not found",
-        )
+        raise handle_stripe_error(e)
 
 
 # ============================================================================
@@ -178,6 +245,8 @@ def create_connect_account(
     """
     Create a Stripe Connect Express account for a tutor.
 
+    Uses idempotency key based on tutor_user_id to prevent duplicate accounts.
+
     Args:
         tutor_user_id: Internal tutor user ID
         tutor_email: Tutor's email address
@@ -188,38 +257,51 @@ def create_connect_account(
     """
     client = get_stripe_client()
 
+    # Idempotency key ensures we don't create duplicate accounts
+    idempotency_key = generate_idempotency_key(
+        "connect_account",
+        country,
+        user_id=tutor_user_id,
+    )
+
     try:
-        account = client.Account.create(
-            type="express",
-            email=tutor_email,
-            country=country,
-            capabilities={
-                "card_payments": {"requested": True},
-                "transfers": {"requested": True},
-            },
-            metadata={
-                "tutor_user_id": str(tutor_user_id),
-                "platform": "edustream",
-            },
-            settings={
-                "payouts": {
-                    "schedule": {
-                        "interval": "weekly",
-                        "weekly_anchor": "friday",
+        with stripe_circuit_breaker.call():
+            account = client.Account.create(
+                type="express",
+                email=tutor_email,
+                country=country,
+                capabilities={
+                    "card_payments": {"requested": True},
+                    "transfers": {"requested": True},
+                },
+                metadata={
+                    "tutor_user_id": str(tutor_user_id),
+                    "platform": "edustream",
+                },
+                settings={
+                    "payouts": {
+                        "schedule": {
+                            "interval": "weekly",
+                            "weekly_anchor": "friday",
+                        },
                     },
                 },
-            },
-        )
+                idempotency_key=idempotency_key,
+            )
 
         logger.info(f"Created Connect account {account.id} for tutor {tutor_user_id}")
         return account
 
+    except CircuitOpenError:
+        logger.error("Circuit breaker open for Connect account creation")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable. Please try again later.",
+        )
+
     except stripe.error.StripeError as e:
         logger.error(f"Error creating Connect account: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Could not create payout account. Please try again.",
-        )
+        raise handle_stripe_error(e)
 
 
 def create_connect_account_link(
@@ -241,36 +323,45 @@ def create_connect_account_link(
     client = get_stripe_client()
 
     try:
-        account_link = client.AccountLink.create(
-            account=account_id,
-            refresh_url=refresh_url or settings.STRIPE_CONNECT_REFRESH_URL,
-            return_url=return_url or settings.STRIPE_CONNECT_RETURN_URL,
-            type="account_onboarding",
-        )
+        with stripe_circuit_breaker.call():
+            account_link = client.AccountLink.create(
+                account=account_id,
+                refresh_url=refresh_url or settings.STRIPE_CONNECT_REFRESH_URL,
+                return_url=return_url or settings.STRIPE_CONNECT_RETURN_URL,
+                type="account_onboarding",
+            )
 
         logger.info(f"Created account link for {account_id}")
         return account_link
 
+    except CircuitOpenError:
+        logger.error("Circuit breaker open for account link creation")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable. Please try again later.",
+        )
+
     except stripe.error.StripeError as e:
         logger.error(f"Error creating account link: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Could not create onboarding link. Please try again.",
-        )
+        raise handle_stripe_error(e)
 
 
 def get_connect_account(account_id: str) -> stripe.Account:
-    """Retrieve a Connect account."""
+    """Retrieve a Connect account with circuit breaker protection."""
     client = get_stripe_client()
 
     try:
-        return client.Account.retrieve(account_id)
+        with stripe_circuit_breaker.call():
+            return client.Account.retrieve(account_id)
+    except CircuitOpenError:
+        logger.error(f"Circuit breaker open when retrieving account {account_id}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable.",
+        )
     except stripe.error.StripeError as e:
         logger.error(f"Error retrieving Connect account {account_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Payout account not found",
-        )
+        raise handle_stripe_error(e)
 
 
 def is_connect_account_ready(account_id: str) -> tuple[bool, str]:
@@ -322,6 +413,7 @@ def create_transfer_to_tutor(
     Create a transfer to a tutor's Connect account.
 
     Used for manual payouts (not destination charges).
+    Uses idempotency key to prevent duplicate transfers.
 
     Args:
         amount_cents: Amount to transfer in cents
@@ -335,17 +427,27 @@ def create_transfer_to_tutor(
     """
     client = get_stripe_client()
 
+    # Idempotency key prevents duplicate transfers for the same booking
+    idempotency_key = generate_idempotency_key(
+        "transfer",
+        amount_cents,
+        currency,
+        booking_id=booking_id,
+    )
+
     try:
-        transfer = client.Transfer.create(
-            amount=amount_cents,
-            currency=currency.lower(),
-            destination=tutor_connect_account_id,
-            description=description or f"Payout for booking #{booking_id}",
-            metadata={
-                "booking_id": str(booking_id),
-                "type": "tutor_payout",
-            },
-        )
+        with stripe_circuit_breaker.call():
+            transfer = client.Transfer.create(
+                amount=amount_cents,
+                currency=currency.lower(),
+                destination=tutor_connect_account_id,
+                description=description or f"Payout for booking #{booking_id}",
+                metadata={
+                    "booking_id": str(booking_id),
+                    "type": "tutor_payout",
+                },
+                idempotency_key=idempotency_key,
+            )
 
         logger.info(
             f"Created transfer {transfer.id} of {amount_cents} cents "
@@ -353,12 +455,16 @@ def create_transfer_to_tutor(
         )
         return transfer
 
+    except CircuitOpenError:
+        logger.error("Circuit breaker open for transfer creation")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable. Please try again later.",
+        )
+
     except stripe.error.StripeError as e:
         logger.error(f"Error creating transfer: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Payout failed. Please contact support.",
-        )
+        raise handle_stripe_error(e)
 
 
 # ============================================================================
@@ -383,20 +489,20 @@ class RefundResult:
 
 def create_refund(
     payment_intent_id: str,
-    booking_id: int,
+    booking_id: int | None = None,
     amount_cents: int | None = None,
     reason: str = "requested_by_customer",
     metadata: dict[str, Any] | None = None,
 ) -> RefundResult:
     """
-    Create a refund for a payment with idempotency and timeout handling.
+    Create a refund for a payment with idempotency, circuit breaker, and timeout handling.
 
     Uses an idempotency key based on booking_id and date to prevent double-refunds.
     If a timeout occurs, checks for existing refunds before raising an error.
 
     Args:
         payment_intent_id: Stripe PaymentIntent ID
-        booking_id: Internal booking ID (used for idempotency key)
+        booking_id: Internal booking ID (used for idempotency key, optional)
         amount_cents: Amount to refund (None for full refund)
         reason: Refund reason code
         metadata: Additional metadata
@@ -407,15 +513,25 @@ def create_refund(
     Raises:
         HTTPException: If refund fails and no existing refund found
     """
-    from datetime import UTC, datetime
-
     client = get_stripe_client()
 
     # Generate idempotency key to prevent double-refunds
     # Using booking_id + date ensures same-day retries are safe
-    idempotency_key = f"refund_{booking_id}_{datetime.now(UTC).date().isoformat()}"
+    if booking_id:
+        idempotency_key = generate_idempotency_key(
+            "refund",
+            datetime.now(UTC).date().isoformat(),
+            booking_id=booking_id,
+        )
+    else:
+        # Fallback for refunds without booking_id
+        idempotency_key = generate_idempotency_key(
+            "refund",
+            payment_intent_id,
+            datetime.now(UTC).date().isoformat(),
+        )
 
-    refund_params = {
+    refund_params: dict[str, Any] = {
         "payment_intent": payment_intent_id,
         "reason": reason,
         "metadata": metadata or {},
@@ -425,15 +541,24 @@ def create_refund(
         refund_params["amount"] = amount_cents
 
     try:
-        refund = client.Refund.create(
-            **refund_params,
-            idempotency_key=idempotency_key,
-        )
+        with stripe_circuit_breaker.call():
+            refund = client.Refund.create(
+                **refund_params,
+                idempotency_key=idempotency_key,
+            )
+
         logger.info(
             f"Created refund {refund.id} for payment {payment_intent_id}, "
             f"booking {booking_id}, amount: {amount_cents or 'full'}"
         )
         return RefundResult(refund=refund, was_existing=False)
+
+    except CircuitOpenError:
+        logger.error("Circuit breaker open for refund creation")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable. Please try again later.",
+        )
 
     except (stripe.error.APIConnectionError, stripe.error.Timeout) as e:
         # Timeout or connection error - refund may or may not have been created
@@ -449,6 +574,9 @@ def create_refund(
                 f"for booking {booking_id}"
             )
             return RefundResult(refund=existing_refund, was_existing=True)
+
+        # Record failure for circuit breaker
+        stripe_circuit_breaker.record_failure(e)
 
         # No existing refund found - safe to tell user to retry
         logger.error(
@@ -493,15 +621,12 @@ def create_refund(
         logger.error(f"Invalid refund request for booking {booking_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Refund request invalid: {e.user_message or str(e)}",
+            detail=f"Refund request invalid: {getattr(e, 'user_message', str(e))}",
         )
 
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error creating refund for booking {booking_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Refund failed. Please contact support.",
-        )
+        raise handle_stripe_error(e)
 
 
 def _find_existing_refund(

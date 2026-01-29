@@ -15,6 +15,11 @@ An Architecture Decision Record (ADR) is a document that captures an important a
 | [ADR-003](./003-postgresql-database.md) | PostgreSQL as Primary Database | Accepted | 2026-01-29 |
 | [ADR-004](./004-jwt-authentication.md) | JWT Authentication Strategy | Accepted | 2026-01-29 |
 | [ADR-005](./005-stripe-payments.md) | Stripe Connect for Payments | Accepted | 2026-01-29 |
+| [ADR-006](./006-apscheduler-background-jobs.md) | APScheduler for Background Jobs | Accepted | 2026-01-29 |
+| [ADR-007](./007-nextjs-frontend.md) | Next.js for Frontend | Accepted | 2026-01-29 |
+| [ADR-008](./008-minio-object-storage.md) | MinIO for Object Storage | Accepted | 2026-01-29 |
+| [ADR-009](./009-brevo-email.md) | Brevo for Transactional Email | Accepted | 2026-01-29 |
+| [ADR-010](./010-booking-state-machine-design.md) | Booking State Machine Design | Accepted | 2026-01-29 |
 
 ## Creating a New ADR
 

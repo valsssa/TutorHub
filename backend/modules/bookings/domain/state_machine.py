@@ -11,7 +11,7 @@ Race Condition Prevention:
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from modules.bookings.domain.status import (
@@ -60,6 +60,9 @@ class BookingStateMachine:
     Uses pessimistic locking (SELECT FOR UPDATE) and optimistic locking (version)
     to prevent race conditions.
     """
+
+    # Time limit for opening disputes after session end (in days)
+    DISPUTE_WINDOW_DAYS = 30
 
     @staticmethod
     def get_booking_with_lock(
@@ -634,6 +637,7 @@ class BookingStateMachine:
 
         Can only open disputes on terminal session states.
         Cannot open disputes on bookings where payment has already been refunded or voided.
+        Must be filed within DISPUTE_WINDOW_DAYS of session completion.
 
         Idempotent: Returns success if already has OPEN dispute.
         """
@@ -649,6 +653,36 @@ class BookingStateMachine:
                 success=False,
                 error_message="Can only dispute completed or cancelled bookings",
             )
+
+        # Check dispute time window
+        # Use the most relevant timestamp for when the session ended:
+        # - end_time for completed sessions
+        # - cancelled_at for cancelled sessions
+        # - updated_at as fallback
+        session_ended_at = booking.end_time
+        if booking.cancelled_at:
+            session_ended_at = booking.cancelled_at
+        elif session_ended_at is None:
+            session_ended_at = booking.updated_at
+
+        if session_ended_at:
+            # Ensure we're comparing timezone-aware datetimes
+            now = datetime.now(UTC)
+            # Handle both timezone-aware and naive datetimes from the database
+            if session_ended_at.tzinfo is None:
+                # Treat naive datetime as UTC
+                days_since_end = (now.replace(tzinfo=None) - session_ended_at).days
+            else:
+                days_since_end = (now - session_ended_at).days
+
+            if days_since_end > cls.DISPUTE_WINDOW_DAYS:
+                return TransitionResult(
+                    success=False,
+                    error_message=(
+                        f"Disputes must be filed within {cls.DISPUTE_WINDOW_DAYS} days "
+                        f"of session completion. This session ended {days_since_end} days ago."
+                    ),
+                )
 
         # Check payment state - cannot dispute if already refunded or voided
         current_payment = PaymentState(booking.payment_state)

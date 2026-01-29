@@ -871,6 +871,59 @@ class FavoriteTutorCreate(BaseModel):
 
 
 # ============================================================================
+# Tutor Blackout Schemas
+# ============================================================================
+
+
+class TutorBlackoutCreate(BaseModel):
+    """Create blackout period (unavailable time)."""
+
+    start_datetime: datetime
+    end_datetime: datetime
+    reason: str | None = Field(None, max_length=500)
+
+    @field_validator("end_datetime")
+    @classmethod
+    def validate_time_range(cls, end_value: datetime, info) -> datetime:
+        if "start_datetime" in info.data and end_value <= info.data["start_datetime"]:
+            raise ValueError("end_datetime must be after start_datetime")
+        return end_value
+
+
+class TutorBlackoutResponse(BaseModel):
+    """Blackout period response."""
+
+    id: int
+    tutor_id: int
+    start_at: datetime
+    end_at: datetime
+    reason: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ConflictingBookingInfo(BaseModel):
+    """Information about a booking that conflicts with a blackout period."""
+
+    id: int
+    start_time: datetime
+    end_time: datetime
+    session_state: str
+    student_name: str | None
+    subject_name: str | None
+
+
+class TutorBlackoutCreateResponse(BaseModel):
+    """Response for blackout creation with potential warnings."""
+
+    blackout: TutorBlackoutResponse
+    warning: str | None = None
+    conflicting_bookings: list[ConflictingBookingInfo] = []
+    action_required: str | None = None
+
+
+# ============================================================================
 # Generic Response
 # ============================================================================
 

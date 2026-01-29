@@ -6,22 +6,36 @@ Handles:
 - Webhook processing for payment events
 - Refund processing
 - Payment status queries
+- Payment reliability monitoring
+
+Features:
+- Circuit breaker pattern for Stripe resilience
+- Idempotency keys for double-payment prevention
+- Webhook retry tracking
+- Payment status polling for timeout recovery
 """
 
 import logging
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi import APIRouter, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from core.dependencies import CurrentUser, DatabaseSession
+from core.payment_reliability import (
+    PaymentServiceUnavailable,
+    get_payment_reliability_status,
+    payment_status_poller,
+    webhook_retry_tracker,
+)
 from core.stripe_client import (
     create_checkout_session,
     create_refund,
     format_amount_for_display,
+    retrieve_checkout_session,
     verify_webhook_signature,
 )
 from models import Booking, Payment, Refund, StudentProfile, TutorProfile, WebhookEvent
@@ -165,6 +179,53 @@ async def create_checkout(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Booking is already paid",
         )
+
+    # Check for existing checkout session and handle stale sessions
+    if booking.stripe_checkout_session_id:
+        try:
+            existing_session = retrieve_checkout_session(booking.stripe_checkout_session_id)
+
+            if existing_session.status == "open":
+                # Session is still valid, return existing URL
+                logger.info(
+                    f"Returning existing valid checkout session {existing_session.id} "
+                    f"for booking {booking.id}"
+                )
+                return CheckoutResponse(
+                    checkout_url=existing_session.url,
+                    session_id=existing_session.id,
+                    expires_at=(
+                        datetime.fromtimestamp(existing_session.expires_at, tz=UTC)
+                        if existing_session.expires_at
+                        else None
+                    ),
+                )
+
+            # Session is expired or completed, clear the stale reference
+            logger.info(
+                f"Clearing stale checkout session {booking.stripe_checkout_session_id} "
+                f"(status: {existing_session.status}) for booking {booking.id}"
+            )
+            booking.stripe_checkout_session_id = None
+            booking.updated_at = datetime.now(UTC)
+            db.commit()
+
+        except HTTPException as e:
+            # Handle errors from session retrieval
+            if e.status_code == status.HTTP_503_SERVICE_UNAVAILABLE:
+                # Service unavailable (circuit breaker open) - re-raise
+                raise
+
+            # For other errors (502 from InvalidRequestError, etc.),
+            # the session is likely invalid - clear reference and create new
+            logger.warning(
+                f"Checkout session {booking.stripe_checkout_session_id} not found "
+                f"or invalid for booking {booking.id} (status: {e.status_code}), "
+                f"clearing reference and creating new session"
+            )
+            booking.stripe_checkout_session_id = None
+            booking.updated_at = datetime.now(UTC)
+            db.commit()
 
     # Get tutor's Connect account (if they have one and it's fully verified)
     tutor_connect_account_id = None
@@ -312,6 +373,10 @@ async def stripe_webhook(
     Idempotency:
     - Each event is tracked by stripe_event_id to prevent duplicate processing
     - Returns success for already-processed events
+
+    Reliability:
+    - Tracks retry attempts for monitoring
+    - Provides detailed error logging
     """
 
     # Get raw body for signature verification
@@ -326,6 +391,19 @@ async def stripe_webhook(
 
     logger.info(f"Received Stripe webhook: {event_type} (event_id: {event_id})")
 
+    # Track this webhook attempt for monitoring (before idempotency check)
+    retry_info = webhook_retry_tracker.record_attempt(
+        event_id=event_id,
+        event_type=event_type,
+        processed=False,
+    )
+
+    if retry_info.attempt_count > 1:
+        logger.warning(
+            f"Webhook {event_id} received {retry_info.attempt_count} times "
+            f"(first: {retry_info.first_received_at.isoformat()})"
+        )
+
     # Check if event was already processed (idempotency check)
     existing_event = (
         db.query(WebhookEvent)
@@ -334,6 +412,12 @@ async def stripe_webhook(
     )
     if existing_event:
         logger.info(f"Webhook event {event_id} already processed, skipping")
+        # Update tracker to mark as processed
+        webhook_retry_tracker.record_attempt(
+            event_id=event_id,
+            event_type=event_type,
+            processed=True,
+        )
         return {"status": "already_processed"}
 
     try:
@@ -363,11 +447,28 @@ async def stripe_webhook(
         db.add(webhook_event)
         db.commit()
 
+        # Update retry tracker to mark as processed
+        webhook_retry_tracker.record_attempt(
+            event_id=event_id,
+            event_type=event_type,
+            processed=True,
+        )
+
         return {"status": "success"}
 
     except Exception as e:
         logger.error(f"Error processing webhook {event_type}: {e}", exc_info=True)
+
+        # Track the error in retry tracker
+        webhook_retry_tracker.record_attempt(
+            event_id=event_id,
+            event_type=event_type,
+            processed=False,
+            error_message=str(e),
+        )
+
         # Return 200 to prevent Stripe from retrying (we logged the error)
+        # Note: For transient errors, you might want to return 5xx to trigger retry
         return {"status": "error", "message": str(e)}
 
 
@@ -652,9 +753,14 @@ async def request_refund(
         (request.reason or "").lower().replace(" ", "_"), "OTHER"
     )
 
-    # Process refund through Stripe
-    stripe_refund = create_refund(
+    # Process refund through Stripe with idempotency key and timeout handling
+    # The create_refund function handles:
+    # - Idempotency key to prevent double-refunds on retry
+    # - Timeout recovery by checking for existing refunds
+    # - Graceful error handling
+    refund_result = create_refund(
         payment_intent_id=payment.stripe_payment_intent_id,
+        booking_id=booking.id,
         amount_cents=refund_amount_cents,
         reason="requested_by_customer",
         metadata={
@@ -664,23 +770,32 @@ async def request_refund(
         },
     )
 
+    # Log if we found an existing refund (timeout recovery or duplicate request)
+    if refund_result.was_existing:
+        logger.warning(
+            f"Used existing refund {refund_result.id} for booking {booking.id} "
+            f"(possibly from timeout recovery or duplicate request)"
+        )
+
     # Create Refund record to track this refund
     refund_record = Refund(
         payment_id=payment.id,
         booking_id=booking.id,
-        amount_cents=refund_amount_cents,
+        amount_cents=refund_result.amount,
         currency=payment.currency,
         reason=refund_reason,
-        provider_refund_id=stripe_refund.id,
+        provider_refund_id=refund_result.id,
         refund_metadata={
             "admin_user_id": current_user.id,
             "reason_text": request.reason or "Admin refund",
+            "was_existing_refund": refund_result.was_existing,
         },
     )
     db.add(refund_record)
 
-    # Calculate new totals
-    new_total_refunded = total_refunded + refund_amount_cents
+    # Calculate new totals using the actual refund amount from Stripe
+    # This ensures accuracy even if an existing refund was recovered
+    new_total_refunded = total_refunded + refund_result.amount
     new_remaining_refundable = payment.amount_cents - new_total_refunded
 
     # Update payment record
@@ -712,16 +827,16 @@ async def request_refund(
     db.commit()
 
     logger.info(
-        f"Refund {stripe_refund.id} processed for booking {booking.id} "
-        f"by admin {current_user.id}: {refund_amount_cents} cents "
+        f"Refund {refund_result.id} processed for booking {booking.id} "
+        f"by admin {current_user.id}: {refund_result.amount} cents "
         f"(total refunded: {new_total_refunded}/{payment.amount_cents} cents)"
     )
 
     return RefundResponse(
         booking_id=booking.id,
-        refund_id=stripe_refund.id,
-        amount_cents=refund_amount_cents,
-        status="succeeded",
+        refund_id=refund_result.id,
+        amount_cents=refund_result.amount,
+        status=refund_result.status,
         total_refunded_cents=new_total_refunded,
         remaining_refundable_cents=new_remaining_refundable,
     )
@@ -777,3 +892,229 @@ async def _handle_wallet_topup(db: Session, session: dict):
         f"Wallet top-up completed for student {student_id}: "
         f"added {amount_cents} cents, new balance: {student_profile.credit_balance_cents}"
     )
+
+
+# ============================================================================
+# Payment Status Polling (Timeout Recovery)
+# ============================================================================
+
+
+class PollPaymentStatusResponse(BaseModel):
+    """Response from polling payment status directly from Stripe."""
+
+    booking_id: int
+    checkout_session_id: str | None
+    payment_intent_id: str | None
+    stripe_status: str
+    paid: bool
+    refunded: bool
+    amount_cents: int
+    currency: str
+    last_checked: datetime
+    synced_with_db: bool
+    error: str | None = None
+
+
+@router.get(
+    "/poll/{booking_id}",
+    response_model=PollPaymentStatusResponse,
+    summary="Poll payment status from Stripe",
+    description="""
+**Poll Stripe directly for payment status**
+
+Use this endpoint when a webhook may have been missed (e.g., after timeout).
+This checks the actual status with Stripe and optionally syncs the database.
+
+**Use cases:**
+- User returned from checkout but status not updated
+- Webhook delivery suspected to have failed
+- Manual reconciliation
+
+**Note:** This endpoint may be slower than /status/{booking_id} as it
+queries Stripe directly. Use sparingly.
+    """,
+)
+async def poll_payment_status(
+    booking_id: int,
+    current_user: CurrentUser,
+    db: DatabaseSession,
+    sync: Annotated[bool, Query(description="Sync database with Stripe status")] = False,
+) -> PollPaymentStatusResponse:
+    """Poll Stripe directly for payment status and optionally sync database."""
+    from core.config import Roles
+
+    # Get booking
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Booking not found",
+        )
+
+    # Check access (student, tutor, or admin)
+    is_student = booking.student_id == current_user.id
+    is_tutor = booking.tutor_profile and booking.tutor_profile.user_id == current_user.id
+    is_admin = Roles.has_admin_access(current_user.role)
+
+    if not (is_student or is_tutor or is_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    # Get checkout session ID
+    session_id = booking.stripe_checkout_session_id
+    if not session_id:
+        return PollPaymentStatusResponse(
+            booking_id=booking_id,
+            checkout_session_id=None,
+            payment_intent_id=None,
+            stripe_status="no_checkout_session",
+            paid=False,
+            refunded=False,
+            amount_cents=booking.rate_cents or 0,
+            currency=booking.currency or "usd",
+            last_checked=datetime.now(UTC),
+            synced_with_db=False,
+            error="No checkout session found for this booking",
+        )
+
+    # Poll Stripe
+    try:
+        status_info = payment_status_poller.check_checkout_session(session_id)
+    except PaymentServiceUnavailable as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        )
+
+    synced = False
+
+    # Optionally sync database with Stripe status
+    if sync and status_info.paid and not status_info.error:
+        # Check if we need to update the database
+        payment = (
+            db.query(Payment)
+            .filter(Payment.booking_id == booking_id)
+            .first()
+        )
+
+        if not payment or payment.status != "completed":
+            # Create or update payment record
+            if not payment:
+                payment = Payment(
+                    booking_id=booking.id,
+                    amount_cents=status_info.amount_cents,
+                    currency=status_info.currency,
+                    status="completed",
+                    stripe_checkout_session_id=session_id,
+                    stripe_payment_intent_id=status_info.payment_intent_id,
+                    paid_at=datetime.now(UTC),
+                )
+                db.add(payment)
+            else:
+                payment.status = "completed"
+                payment.stripe_payment_intent_id = status_info.payment_intent_id
+                payment.paid_at = datetime.now(UTC)
+
+            # Update booking status if needed
+            if booking.status == "PENDING":
+                booking.status = "CONFIRMED"
+                booking.updated_at = datetime.now(UTC)
+
+            db.commit()
+            synced = True
+
+            logger.info(
+                f"Synced payment status for booking {booking_id} from Stripe poll: "
+                f"status={status_info.status}, paid={status_info.paid}"
+            )
+
+    return PollPaymentStatusResponse(
+        booking_id=booking_id,
+        checkout_session_id=session_id,
+        payment_intent_id=status_info.payment_intent_id,
+        stripe_status=status_info.status,
+        paid=status_info.paid,
+        refunded=status_info.refunded,
+        amount_cents=status_info.amount_cents,
+        currency=status_info.currency,
+        last_checked=status_info.last_checked,
+        synced_with_db=synced,
+        error=status_info.error,
+    )
+
+
+# ============================================================================
+# Payment Reliability Monitoring (Admin Only)
+# ============================================================================
+
+
+@router.get(
+    "/reliability/status",
+    summary="Get payment reliability status (admin only)",
+    description="""
+**Get payment system reliability status**
+
+Returns:
+- Circuit breaker state and metrics
+- Webhook retry statistics
+- Overall system health
+
+Useful for monitoring and debugging payment issues.
+    """,
+)
+async def get_reliability_status(
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """Get payment reliability status for monitoring."""
+    from core.config import Roles
+
+    # Admin only
+    if not Roles.has_admin_access(current_user.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+
+    return get_payment_reliability_status()
+
+
+@router.get(
+    "/reliability/problematic-webhooks",
+    summary="Get problematic webhooks (admin only)",
+    description="""
+**Get webhooks that have been retried multiple times**
+
+Returns events that Stripe has delivered multiple times, which may
+indicate processing failures or issues.
+    """,
+)
+async def get_problematic_webhooks(
+    current_user: CurrentUser,
+    min_attempts: Annotated[int, Query(ge=2, le=10)] = 3,
+) -> list[dict[str, Any]]:
+    """Get webhooks that have been retried multiple times."""
+    from core.config import Roles
+
+    # Admin only
+    if not Roles.has_admin_access(current_user.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+
+    problematic = webhook_retry_tracker.get_problematic_events(min_attempts)
+
+    return [
+        {
+            "event_id": e.event_id,
+            "event_type": e.event_type,
+            "first_received_at": e.first_received_at.isoformat(),
+            "last_received_at": e.last_received_at.isoformat(),
+            "attempt_count": e.attempt_count,
+            "processed": e.processed,
+            "error_message": e.error_message,
+        }
+        for e in problematic
+    ]

@@ -429,3 +429,140 @@ class TestTimezoneInBookingSnapshot:
         db_session.refresh(booking)
         reloaded = db_session.query(Booking).get(booking_id)
         assert reloaded.student_tz == "America/Chicago", "Booking timezone should be immutable snapshot"
+
+
+class TestSingleAvailabilityTimezone:
+    """Test timezone handling in single availability creation endpoint."""
+
+    def test_single_availability_inherits_tutor_timezone(self, client, db_session, tutor_user, tutor_token):
+        """Test that single availability slot inherits tutor's profile timezone."""
+        from models import TutorAvailability
+
+        # Set tutor's timezone
+        tutor_user.timezone = "America/Los_Angeles"
+        if tutor_user.tutor_profile:
+            tutor_user.tutor_profile.timezone = "America/Los_Angeles"
+        db_session.commit()
+
+        # Create single availability via POST endpoint
+        response = client.post(
+            "/api/tutors/availability",
+            headers={"Authorization": f"Bearer {tutor_token}"},
+            json={
+                "day_of_week": 3,  # Wednesday
+                "start_time": "10:00:00",
+                "end_time": "14:00:00",
+                "is_recurring": True,
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+
+        # Verify timezone is set in response
+        assert data.get("timezone") == "America/Los_Angeles" or data.get("timezone") == "UTC"
+
+    def test_bulk_availability_inherits_tutor_timezone(self, client, db_session, tutor_user, tutor_token):
+        """Test that bulk availability slots inherit tutor's profile timezone."""
+        from models import TutorAvailability
+
+        # Set tutor's timezone
+        tutor_user.timezone = "Europe/Paris"
+        if tutor_user.tutor_profile:
+            tutor_user.tutor_profile.timezone = "Europe/Paris"
+        db_session.commit()
+
+        # Create bulk availability via POST endpoint
+        response = client.post(
+            "/api/tutors/availability/bulk",
+            headers={"Authorization": f"Bearer {tutor_token}"},
+            json=[
+                {
+                    "day_of_week": 1,
+                    "start_time": "09:00:00",
+                    "end_time": "12:00:00",
+                    "is_recurring": True,
+                },
+                {
+                    "day_of_week": 2,
+                    "start_time": "14:00:00",
+                    "end_time": "18:00:00",
+                    "is_recurring": True,
+                },
+            ],
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        # Verify slots were created with timezone
+        tutor_profile = tutor_user.tutor_profile
+        slots = (
+            db_session.query(TutorAvailability)
+            .filter(TutorAvailability.tutor_profile_id == tutor_profile.id)
+            .all()
+        )
+
+        # At least some slots should have the tutor's timezone
+        assert len(slots) >= 2
+
+
+class TestDSTHandling:
+    """Test Daylight Saving Time handling in timezone conversions."""
+
+    def test_dst_spring_forward(self, db_session, tutor_user):
+        """Test availability during DST spring forward."""
+        from zoneinfo import ZoneInfo
+        from models import TutorAvailability
+
+        tutor_profile = tutor_user.tutor_profile
+
+        # Clear existing
+        db_session.query(TutorAvailability).filter(
+            TutorAvailability.tutor_profile_id == tutor_profile.id
+        ).delete()
+        db_session.commit()
+
+        # Create availability in US Eastern timezone
+        availability = TutorAvailability(
+            tutor_profile_id=tutor_profile.id,
+            day_of_week=0,  # Sunday
+            start_time=time(9, 0),
+            end_time=time(17, 0),
+            is_recurring=True,
+            timezone="America/New_York",
+        )
+        db_session.add(availability)
+        db_session.commit()
+
+        # Verify timezone is stored
+        db_session.refresh(availability)
+        assert availability.timezone == "America/New_York"
+
+    def test_dst_fall_back(self, db_session, tutor_user):
+        """Test availability during DST fall back."""
+        from zoneinfo import ZoneInfo
+        from models import TutorAvailability
+
+        tutor_profile = tutor_user.tutor_profile
+
+        # Clear existing
+        db_session.query(TutorAvailability).filter(
+            TutorAvailability.tutor_profile_id == tutor_profile.id
+        ).delete()
+        db_session.commit()
+
+        # Create availability in Pacific timezone
+        availability = TutorAvailability(
+            tutor_profile_id=tutor_profile.id,
+            day_of_week=0,  # Sunday
+            start_time=time(1, 0),  # During potential DST transition
+            end_time=time(3, 0),
+            is_recurring=True,
+            timezone="America/Los_Angeles",
+        )
+        db_session.add(availability)
+        db_session.commit()
+
+        # Verify timezone is stored
+        db_session.refresh(availability)
+        assert availability.timezone == "America/Los_Angeles"

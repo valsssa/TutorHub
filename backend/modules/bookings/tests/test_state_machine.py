@@ -39,6 +39,7 @@ def mock_booking():
     booking.tutor_profile = MagicMock()
     booking.version = 1  # Optimistic locking version
     booking.updated_at = None
+    booking.end_time = None  # Added for dispute time window tests
     return booking
 
 
@@ -497,6 +498,112 @@ class TestDisputes:
 
         assert result.success is True
         assert result.already_in_target_state is True
+
+    def test_cannot_open_dispute_after_time_window(self, mock_booking):
+        """Cannot open dispute after 30 day window."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        # Set end_time to 45 days ago
+        mock_booking.end_time = datetime.utcnow() - timedelta(days=45)
+        mock_booking.cancelled_at = None
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Late dispute",
+            disputed_by_user_id=123,
+        )
+
+        assert result.success is False
+        assert "30 days" in result.error_message
+        assert "45 days ago" in result.error_message
+
+    def test_can_open_dispute_within_time_window(self, mock_booking):
+        """Can open dispute within 30 day window."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        # Set end_time to 15 days ago
+        mock_booking.end_time = datetime.utcnow() - timedelta(days=15)
+        mock_booking.cancelled_at = None
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Timely dispute",
+            disputed_by_user_id=123,
+        )
+
+        assert result.success is True
+        assert mock_booking.dispute_state == DisputeState.OPEN.value
+
+    def test_cannot_open_dispute_on_cancelled_booking_after_time_window(self, mock_booking):
+        """Cannot open dispute on cancelled booking after time window."""
+        mock_booking.session_state = SessionState.CANCELLED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        # Set cancelled_at to 60 days ago
+        mock_booking.cancelled_at = datetime.utcnow() - timedelta(days=60)
+        mock_booking.end_time = None
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Very late dispute on cancelled booking",
+            disputed_by_user_id=123,
+        )
+
+        assert result.success is False
+        assert "30 days" in result.error_message
+        assert "60 days ago" in result.error_message
+
+    def test_dispute_time_window_uses_cancelled_at_over_end_time(self, mock_booking):
+        """Dispute window should use cancelled_at when available."""
+        mock_booking.session_state = SessionState.CANCELLED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        # Set cancelled_at to 5 days ago
+        mock_booking.cancelled_at = datetime.utcnow() - timedelta(days=5)
+        # Set end_time far in the past (should be ignored)
+        mock_booking.end_time = datetime.utcnow() - timedelta(days=100)
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Dispute using cancelled_at",
+            disputed_by_user_id=123,
+        )
+
+        # Should succeed because cancelled_at is within window
+        assert result.success is True
+
+    def test_dispute_time_window_uses_updated_at_as_fallback(self, mock_booking):
+        """Dispute window should use updated_at as fallback when no other timestamps."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        mock_booking.end_time = None
+        mock_booking.cancelled_at = None
+        # Set updated_at to 35 days ago
+        mock_booking.updated_at = datetime.utcnow() - timedelta(days=35)
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Dispute using updated_at fallback",
+            disputed_by_user_id=123,
+        )
+
+        assert result.success is False
+        assert "35 days ago" in result.error_message
+
+    def test_dispute_time_window_exact_boundary(self, mock_booking):
+        """Dispute on exactly day 30 should still be allowed."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        # Set end_time to exactly 30 days ago
+        mock_booking.end_time = datetime.utcnow() - timedelta(days=30)
+        mock_booking.cancelled_at = None
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Dispute on day 30",
+            disputed_by_user_id=123,
+        )
+
+        # Should succeed because we check days_since_end > 30 (not >=)
+        assert result.success is True
 
     def test_resolve_dispute_upheld(self, mock_booking):
         """Resolve dispute as UPHELD (original decision stands)."""

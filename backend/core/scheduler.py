@@ -30,6 +30,14 @@ Handles auto-transition jobs for booking state management:
 - expire_requests: REQUESTED -> EXPIRED (every 5 min, 24h timeout)
 - start_sessions: SCHEDULED -> ACTIVE (every 1 min, at start_time)
 - end_sessions: ACTIVE -> ENDED (every 1 min, at end_time + grace)
+
+Multi-Instance Safety:
+    The `max_instances=1` setting only prevents overlap within a single process.
+    When running multiple backend pods/instances, jobs can still overlap.
+
+    This is now handled by Redis distributed locks in the job functions themselves
+    (see modules/bookings/jobs.py and core/distributed_lock.py). Jobs acquire a
+    cluster-wide lock before execution and skip if the lock is already held.
 """
 
 import logging

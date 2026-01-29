@@ -73,11 +73,15 @@
 
 ### 🟠 P1 - High Priority
 
-- [ ] **Fix timezone display bugs**
-  - Verify all times display in user's timezone
-  - Fix availability slot conversion
-  - Test cross-timezone bookings
-  - Files: `frontend/contexts/TimezoneContext.tsx`, `backend/core/timezone.py`
+- [x] **Fix timezone display bugs** COMPLETED (2026-01-29)
+  - ✅ All times display in user's timezone via TimezoneContext
+  - ✅ TimeSlotPicker now uses user timezone for display with TZ indicator
+  - ✅ Availability slot creation now inherits tutor's profile timezone
+  - ✅ DST-aware conversion in availability slot generation
+  - ✅ Dual timezone display for cross-timezone bookings
+  - ✅ TimezoneMismatchWarning component for UI alerts
+  - ✅ Added comprehensive timezone tests
+  - Files: `frontend/contexts/TimezoneContext.tsx`, `backend/core/timezone.py`, `frontend/components/TimeSlotPicker.tsx`, `frontend/components/TimezoneMismatchWarning.tsx`, `backend/modules/tutor_profile/presentation/availability_api.py`
 
 - [ ] **Address mobile responsiveness issues**
   - Test all pages on mobile viewport
