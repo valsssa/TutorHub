@@ -132,11 +132,19 @@ export default function AdminDashboard() {
         admin.getUserGrowth(6)
       ])
 
-      setStats(statsData)
-      setRecentActivities(activitiesData)
+      // Map API response to local Stats type
+      setStats({
+        totalUsers: statsData.total_users,
+        activeTutors: statsData.total_tutors,
+        totalSessions: statsData.active_sessions,
+        revenue: statsData.total_revenue,
+        satisfaction: statsData.conversion_rate * 100, // Convert to percentage
+        completionRate: statsData.conversion_rate * 100
+      })
+      setRecentActivities(activitiesData as Activity[])
 
       // Transform sessions data
-      const transformedSessions = sessionsData.map((s: any) => ({
+      const transformedSessions = (sessionsData as any[]).map((s: any) => ({
         id: s.id,
         student: s.student_name || 'Unknown',
         tutor: s.tutor_name || 'Unknown',

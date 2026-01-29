@@ -12,15 +12,15 @@ WORKDIR /app
 RUN npm config set registry https://registry.npmjs.org && \
     npm config set strict-ssl false
 
-# Copy package files
-COPY package.json ./
+# Copy package files (including lock file for faster, deterministic installs)
+COPY package.json package-lock.json ./
 
-# Install dependencies with smart fallback (use install since no lock file)
-RUN npm install --prefer-offline --no-audit 2>/dev/null || \
-    (echo "Nexus registry failed, falling back to official npm..." && \
+# Install dependencies using npm ci for faster, reproducible builds
+RUN npm ci --prefer-offline 2>/dev/null || \
+    (echo "Registry failed, falling back to official npm..." && \
      npm config set registry https://registry.npmjs.org/ && \
      npm cache clean --force && \
-     npm install --no-audit)
+     npm ci)
 
 # ============================================================================
 # Stage 2: Linting and Type Checking (validation layer)

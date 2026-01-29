@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, Save, CreditCard, Building2, MapPin } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppShell from "@/components/AppShell";
-import { auth, api } from "@/lib/api";
+import api, { auth } from "@/lib/api";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger('EditPayoutMethods');
