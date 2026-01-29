@@ -13,6 +13,31 @@ Features:
 - Idempotency keys for double-payment prevention
 - Webhook retry tracking
 - Payment status polling for timeout recovery
+
+SECURITY: Payout Timing and Refund Protection
+=============================================
+This module uses Stripe Connect destination charges for tutor payouts. With destination
+charges, funds are transferred to the tutor's Connect account balance immediately when
+the student pays.
+
+**Risk**: If a session is later cancelled or a refund is needed, the tutor may have
+already withdrawn funds from their bank account, forcing the platform to cover the
+refund from its own balance.
+
+**Mitigation**: We configure a payout delay (STRIPE_PAYOUT_DELAY_DAYS, default 7 days)
+on all tutor Connect accounts. This delay holds funds in the tutor's Stripe balance
+before they can be paid out to their bank account. This ensures:
+
+1. Funds remain available for refunds within the cancellation window
+2. Platform doesn't have to cover refunds from its own balance
+3. Tutors still see their earnings immediately (just can't withdraw yet)
+
+The delay is configured:
+- At Connect account creation time (see stripe_client.create_connect_account)
+- Can be updated for existing accounts via admin endpoints (see connect_router)
+
+For sessions that complete successfully, the tutor can withdraw after the delay period.
+For cancelled/refunded sessions, we can recover the funds from their Stripe balance.
 """
 
 import logging
@@ -38,7 +63,7 @@ from core.stripe_client import (
     retrieve_checkout_session,
     verify_webhook_signature,
 )
-from models import Booking, Payment, Refund, StudentProfile, TutorProfile, WebhookEvent
+from models import Booking, Payment, Refund, StudentPackage, StudentProfile, TutorProfile, WebhookEvent
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +253,11 @@ async def create_checkout(
             db.commit()
 
     # Get tutor's Connect account (if they have one and it's fully verified)
+    # SECURITY NOTE: When tutor_connect_account_id is set, we use destination charges.
+    # Funds transfer to the tutor's Stripe balance immediately upon payment.
+    # To protect against refunds, tutor Connect accounts have a payout delay
+    # (configured via STRIPE_PAYOUT_DELAY_DAYS) that holds funds before bank payout.
+    # See module docstring for full security documentation.
     tutor_connect_account_id = None
     if booking.tutor_profile:
         tutor_profile = booking.tutor_profile
@@ -250,7 +280,7 @@ async def create_checkout(
                     f"transfer - funds will be held on platform for admin review."
                 )
 
-    # Create checkout session
+    # Create checkout session (uses destination charges if tutor has verified Connect account)
     session = create_checkout_session(
         booking_id=booking.id,
         amount_cents=booking.rate_cents or 0,
@@ -281,6 +311,154 @@ async def create_checkout(
         checkout_url=session.url,
         session_id=session.id,
         expires_at=datetime.fromtimestamp(session.expires_at, tz=UTC) if session.expires_at else None,
+    )
+
+
+class CheckoutSuccessResponse(BaseModel):
+    """Response for checkout success redirect."""
+
+    status: str  # success, processing, failed
+    booking_id: int
+    message: str
+    payment_confirmed: bool = False
+
+
+@router.get(
+    "/checkout/success",
+    response_model=CheckoutSuccessResponse,
+    summary="Handle checkout success redirect",
+    description="""
+**Handle return from Stripe checkout**
+
+This endpoint handles the user redirect after completing Stripe checkout.
+It gracefully handles the race condition where the webhook may process
+before or after the user returns.
+
+**States handled:**
+- Payment already confirmed (webhook processed first) - returns success
+- Payment pending but Stripe shows paid (webhook slow) - returns success with finalization message
+- Payment still processing - returns processing status
+- Payment failed - returns failed status
+
+**Note:** This endpoint should be called with the session_id query parameter
+that Stripe includes in the success_url redirect.
+    """,
+)
+async def checkout_success(
+    session_id: Annotated[str, Query(description="Stripe checkout session ID")],
+    db: DatabaseSession,
+) -> CheckoutSuccessResponse:
+    """
+    Handle return from Stripe checkout - may be called before or after webhook.
+
+    This provides a graceful UX regardless of webhook timing by checking both
+    the local database state and Stripe's actual payment status.
+    """
+    from modules.bookings.domain.status import PaymentState
+
+    # Find booking by checkout session ID
+    booking = (
+        db.query(Booking)
+        .filter(Booking.stripe_checkout_session_id == session_id)
+        .first()
+    )
+
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Booking not found for this checkout session",
+        )
+
+    # Check current payment state - webhook may have already processed
+    if booking.payment_state in [PaymentState.AUTHORIZED.value, PaymentState.CAPTURED.value]:
+        # Webhook already processed - return success
+        logger.info(
+            f"Checkout success for booking {booking.id}: "
+            f"payment already confirmed (state={booking.payment_state})"
+        )
+        return CheckoutSuccessResponse(
+            status="success",
+            booking_id=booking.id,
+            message="Payment confirmed",
+            payment_confirmed=True,
+        )
+
+    if booking.payment_state == PaymentState.PENDING.value:
+        # Webhook hasn't arrived yet - check with Stripe directly
+        try:
+            stripe_session = retrieve_checkout_session(session_id)
+
+            if stripe_session.payment_status == "paid":
+                # Payment succeeded at Stripe, webhook just slow - return success anyway
+                # The webhook will update the database when it arrives
+                logger.info(
+                    f"Checkout success for booking {booking.id}: "
+                    f"Stripe confirms paid, webhook pending"
+                )
+                return CheckoutSuccessResponse(
+                    status="success",
+                    booking_id=booking.id,
+                    message="Payment confirmed, finalizing...",
+                    payment_confirmed=True,
+                )
+
+            if stripe_session.status == "expired":
+                logger.warning(
+                    f"Checkout session {session_id} expired for booking {booking.id}"
+                )
+                return CheckoutSuccessResponse(
+                    status="failed",
+                    booking_id=booking.id,
+                    message="Checkout session expired. Please try again.",
+                    payment_confirmed=False,
+                )
+
+            # Still processing (unpaid, or session open but not completed)
+            logger.info(
+                f"Checkout for booking {booking.id} still processing: "
+                f"session_status={stripe_session.status}, "
+                f"payment_status={stripe_session.payment_status}"
+            )
+            return CheckoutSuccessResponse(
+                status="processing",
+                booking_id=booking.id,
+                message="Payment is being processed...",
+                payment_confirmed=False,
+            )
+
+        except HTTPException as e:
+            # Stripe service unavailable or session not found
+            logger.error(
+                f"Error checking Stripe session {session_id} for booking {booking.id}: "
+                f"status={e.status_code}, detail={e.detail}"
+            )
+            # Return processing status since we can't confirm either way
+            return CheckoutSuccessResponse(
+                status="processing",
+                booking_id=booking.id,
+                message="Verifying payment status...",
+                payment_confirmed=False,
+            )
+
+    # Failed or other terminal states
+    if booking.payment_state in [PaymentState.VOIDED.value, PaymentState.REFUNDED.value]:
+        return CheckoutSuccessResponse(
+            status="failed",
+            booking_id=booking.id,
+            message="Payment was cancelled or refunded",
+            payment_confirmed=False,
+        )
+
+    # Unknown state - return processing to be safe
+    logger.warning(
+        f"Checkout success called for booking {booking.id} with "
+        f"unexpected payment_state={booking.payment_state}"
+    )
+    return CheckoutSuccessResponse(
+        status="processing",
+        booking_id=booking.id,
+        message="Verifying payment status...",
+        payment_confirmed=False,
     )
 
 
@@ -500,6 +678,35 @@ async def _handle_checkout_completed(db: Session, session: dict):
         logger.error(f"Booking {booking_id} not found for completed checkout")
         return
 
+    # Check for package expiration during checkout (MEDIUM severity race condition fix)
+    # If a booking was made with a package, but the package expired during the checkout
+    # process, we honor the booking since payment was made in good faith.
+    package_expired_during_checkout = False
+    if booking.package_id:
+        package = (
+            db.query(StudentPackage)
+            .filter(StudentPackage.id == booking.package_id)
+            .first()
+        )
+
+        if package:
+            now = datetime.now(UTC)
+            if package.expires_at and package.expires_at < now:
+                # Package expired during checkout - honor the booking anyway
+                package_expired_during_checkout = True
+                logger.warning(
+                    f"Package {package.id} expired during checkout for booking {booking_id}. "
+                    f"Package expired at {package.expires_at.isoformat()}, current time {now.isoformat()}. "
+                    f"Honoring booking as payment was made in good faith."
+                )
+            elif package.status != "active":
+                # Package status changed during checkout (e.g., marked expired by scheduler)
+                package_expired_during_checkout = True
+                logger.warning(
+                    f"Package {package.id} status changed to '{package.status}' during checkout "
+                    f"for booking {booking_id}. Honoring booking as payment was made in good faith."
+                )
+
     # Create or update payment record
     payment = (
         db.query(Payment)
@@ -530,7 +737,13 @@ async def _handle_checkout_completed(db: Session, session: dict):
 
     db.commit()
 
-    logger.info(f"Payment completed for booking {booking_id}")
+    if package_expired_during_checkout:
+        logger.info(
+            f"Payment completed for booking {booking_id} "
+            f"(package expired during checkout - honored)"
+        )
+    else:
+        logger.info(f"Payment completed for booking {booking_id}")
 
 
 async def _handle_payment_succeeded(db: Session, payment_intent: dict):

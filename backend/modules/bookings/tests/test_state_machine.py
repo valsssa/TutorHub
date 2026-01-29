@@ -40,6 +40,9 @@ def mock_booking():
     booking.version = 1  # Optimistic locking version
     booking.updated_at = None
     booking.end_time = None  # Added for dispute time window tests
+    # Attendance tracking fields
+    booking.tutor_joined_at = None
+    booking.student_joined_at = None
     return booking
 
 
@@ -916,6 +919,84 @@ class TestEndSessionAdvanced:
         assert result.success is True
         assert mock_booking.session_outcome == SessionOutcome.NO_SHOW_TUTOR.value
         assert mock_booking.payment_state == PaymentState.REFUNDED.value
+
+    def test_end_session_not_held(self, mock_booking):
+        """End session with NOT_HELD outcome (neither party joined)."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+
+        result = BookingStateMachine.end_session(
+            mock_booking, SessionOutcome.NOT_HELD
+        )
+
+        assert result.success is True
+        assert mock_booking.session_outcome == SessionOutcome.NOT_HELD.value
+        assert mock_booking.payment_state == PaymentState.VOIDED.value
+
+
+# ============================================================================
+# Attendance-Based Outcome Tests
+# ============================================================================
+
+
+class TestAttendanceBasedOutcome:
+    """Test attendance-based session outcome determination."""
+
+    def test_determine_outcome_both_joined(self, mock_booking):
+        """Both parties joined should result in COMPLETED."""
+        from modules.bookings.jobs import _determine_session_outcome_from_attendance
+
+        mock_booking.tutor_joined_at = datetime.utcnow()
+        mock_booking.student_joined_at = datetime.utcnow()
+
+        outcome = _determine_session_outcome_from_attendance(mock_booking)
+
+        assert outcome == SessionOutcome.COMPLETED
+
+    def test_determine_outcome_neither_joined(self, mock_booking):
+        """Neither party joined should result in NOT_HELD."""
+        from modules.bookings.jobs import _determine_session_outcome_from_attendance
+
+        mock_booking.tutor_joined_at = None
+        mock_booking.student_joined_at = None
+
+        outcome = _determine_session_outcome_from_attendance(mock_booking)
+
+        assert outcome == SessionOutcome.NOT_HELD
+
+    def test_determine_outcome_only_student_joined(self, mock_booking):
+        """Only student joined should result in NO_SHOW_TUTOR."""
+        from modules.bookings.jobs import _determine_session_outcome_from_attendance
+
+        mock_booking.tutor_joined_at = None
+        mock_booking.student_joined_at = datetime.utcnow()
+
+        outcome = _determine_session_outcome_from_attendance(mock_booking)
+
+        assert outcome == SessionOutcome.NO_SHOW_TUTOR
+
+    def test_determine_outcome_only_tutor_joined(self, mock_booking):
+        """Only tutor joined should result in NO_SHOW_STUDENT."""
+        from modules.bookings.jobs import _determine_session_outcome_from_attendance
+
+        mock_booking.tutor_joined_at = datetime.utcnow()
+        mock_booking.student_joined_at = None
+
+        outcome = _determine_session_outcome_from_attendance(mock_booking)
+
+        assert outcome == SessionOutcome.NO_SHOW_STUDENT
+
+    def test_end_session_not_held_voids_payment(self, mock_booking):
+        """NOT_HELD outcome should void the payment authorization."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+
+        result = BookingStateMachine.end_session(mock_booking, SessionOutcome.NOT_HELD)
+
+        assert result.success is True
+        assert mock_booking.session_state == SessionState.ENDED.value
+        assert mock_booking.session_outcome == SessionOutcome.NOT_HELD.value
+        assert mock_booking.payment_state == PaymentState.VOIDED.value
 
 
 # ============================================================================

@@ -15,7 +15,8 @@ from core.audit import AuditLogger
 from core.dependencies import get_current_student_user, get_current_user
 from core.transactions import atomic_operation
 from database import get_db
-from models import StudentPackage, TutorPricingOption, TutorProfile, User
+from models import Booking, StudentPackage, TutorPricingOption, TutorProfile, User
+from modules.bookings.domain.status import SessionState
 from modules.packages.services.expiration_service import PackageExpirationService
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,15 @@ class PackageResponse(BaseModel):
         from_attributes = True
 
 
-@router.post("", response_model=PackageResponse, status_code=status.HTTP_201_CREATED)
+class PackagePurchaseResponse(BaseModel):
+    """Package purchase response with optional warning for active sessions."""
+
+    package: PackageResponse
+    warning: str | None = None
+    active_booking_id: int | None = None
+
+
+@router.post("", response_model=PackagePurchaseResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 async def purchase_package(
     request: Request,
@@ -63,6 +72,12 @@ async def purchase_package(
 ):
     """
     Purchase a package from a tutor.
+
+    **Important Note on Package Application:**
+    Packages only apply to FUTURE bookings. If a student purchases a package
+    while they have an active session in progress, that session will still be
+    charged as pay-per-session. The package credits will be available for
+    subsequent bookings only.
 
     **Decision Tracking Philosophy:**
     This captures the critical moment when a student DECIDES to commit
@@ -94,6 +109,31 @@ async def purchase_package(
     # Verify pricing option belongs to tutor
     if pricing_option.tutor_profile_id != purchase_data.tutor_profile_id:
         raise HTTPException(status_code=400, detail="Pricing option does not belong to this tutor")
+
+    # Check for active sessions - packages only apply to future bookings
+    # This is informational (warning), not a blocker
+    active_session = (
+        db.query(Booking)
+        .filter(
+            Booking.student_id == current_user.id,
+            Booking.session_state == SessionState.ACTIVE.value,
+            Booking.deleted_at.is_(None),
+        )
+        .first()
+    )
+
+    active_session_warning = None
+    active_booking_id = None
+    if active_session:
+        active_session_warning = (
+            "You have an active session in progress. This package will only apply to "
+            "future bookings, not your current session which will be charged separately."
+        )
+        active_booking_id = active_session.id
+        logger.info(
+            f"Student {current_user.email} purchasing package during active session "
+            f"(booking ID: {active_session.id}). Package will apply to future bookings only."
+        )
 
     # Calculate expiration date (if pricing option has validity)
     expires_at = None
@@ -168,7 +208,11 @@ async def purchase_package(
         logger.error(f"Error purchasing package: {e}")
         raise HTTPException(status_code=500, detail="Failed to purchase package")
 
-    return package
+    return PackagePurchaseResponse(
+        package=PackageResponse.model_validate(package),
+        warning=active_session_warning,
+        active_booking_id=active_booking_id,
+    )
 
 
 @router.get("", response_model=list[PackageResponse])
@@ -299,19 +343,11 @@ async def use_package_credit(
                 detail="No credits available or package is not active",
             )
 
-        # Atomically update status to exhausted if credits are now zero
-        db.execute(
-            update(StudentPackage)
-            .where(
-                StudentPackage.id == package_id,
-                StudentPackage.sessions_remaining == 0,
-                StudentPackage.status == "active",
-            )
-            .values(
-                status="exhausted",
-                updated_at=datetime.now(UTC),
-            )
-        )
+        # NOTE: Do NOT set "exhausted" status here!
+        # The status should only be updated after all operations succeed,
+        # just before commit. This ensures the package status is not
+        # prematurely set to "exhausted" if subsequent operations fail.
+        # See the status update below, just before commit.
 
         # Refresh to get updated values for audit logging
         db.refresh(package)
@@ -340,6 +376,23 @@ async def use_package_credit(
             new_data=audit_new_data,
             changed_by=current_user.id,
             ip_address=request.client.host if request.client else None,
+        )
+
+        # Now that all operations are complete, safely update package status
+        # to "exhausted" if sessions_remaining is 0.
+        # This is done just before commit to ensure the status is not set
+        # prematurely if earlier operations fail.
+        db.execute(
+            update(StudentPackage)
+            .where(
+                StudentPackage.id == package_id,
+                StudentPackage.sessions_remaining == 0,
+                StudentPackage.status == "active",
+            )
+            .values(
+                status="exhausted",
+                updated_at=datetime.now(UTC),
+            )
         )
 
         db.commit()

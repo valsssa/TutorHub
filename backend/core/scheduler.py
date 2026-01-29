@@ -51,13 +51,74 @@ from typing import TYPE_CHECKING
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
+from core.clock_skew import check_clock_skew
+
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
 
+# Clock skew configuration
+CLOCK_SKEW_CHECK_INTERVAL_MINUTES = 5
+CLOCK_SKEW_THRESHOLD_SECONDS = 5
+
 # Global scheduler instance
 scheduler: AsyncIOScheduler | None = None
+
+
+def _check_clock_skew_job() -> None:
+    """
+    Periodic job to check clock skew between app and database servers.
+
+    Logs warnings if skew exceeds threshold to help detect time drift issues
+    that could affect booking state transitions.
+    """
+    from database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        result = check_clock_skew(db, threshold_seconds=CLOCK_SKEW_THRESHOLD_SECONDS)
+        if result.is_within_threshold:
+            logger.debug(
+                "Clock skew check: %.2f seconds (within %ds threshold)",
+                result.offset_seconds,
+                CLOCK_SKEW_THRESHOLD_SECONDS,
+            )
+    except Exception as e:
+        logger.error("Error checking clock skew: %s", e)
+    finally:
+        db.close()
+
+
+def _startup_clock_skew_check() -> None:
+    """
+    Perform a clock skew check at scheduler startup.
+
+    Issues a warning if significant drift is detected so operators
+    can investigate before it affects job timing.
+    """
+    from database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        result = check_clock_skew(db, threshold_seconds=CLOCK_SKEW_THRESHOLD_SECONDS)
+        if result.is_within_threshold:
+            logger.info(
+                "Startup clock skew check: %.2f seconds offset (OK)",
+                result.offset_seconds,
+            )
+        else:
+            logger.warning(
+                "Startup clock skew check: SIGNIFICANT DRIFT detected! "
+                "App server is %.2f seconds %s database server. "
+                "This may affect booking job timing accuracy.",
+                abs(result.offset_seconds),
+                "ahead of" if result.offset_seconds > 0 else "behind",
+            )
+    except Exception as e:
+        logger.error("Error during startup clock skew check: %s", e)
+    finally:
+        db.close()
 
 
 def get_scheduler() -> AsyncIOScheduler:
@@ -146,7 +207,17 @@ def init_scheduler() -> AsyncIOScheduler:
         max_instances=1,
     )
 
-    logger.info("Scheduler configured with booking and package management jobs")
+    # Add clock skew monitoring job
+    scheduler.add_job(
+        _check_clock_skew_job,
+        trigger=IntervalTrigger(minutes=CLOCK_SKEW_CHECK_INTERVAL_MINUTES),
+        id="check_clock_skew",
+        name="Monitor clock skew between app and database servers",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    logger.info("Scheduler configured with booking, package management, and monitoring jobs")
     return scheduler
 
 
@@ -158,6 +229,8 @@ def start_scheduler() -> None:
         scheduler = init_scheduler()
 
     if not scheduler.running:
+        # Perform startup clock skew check before starting jobs
+        _startup_clock_skew_check()
         scheduler.start()
         logger.info("Scheduler started")
 

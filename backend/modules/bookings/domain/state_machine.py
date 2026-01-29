@@ -59,6 +59,24 @@ class BookingStateMachine:
     Handles all state transitions with validation and business rule enforcement.
     Uses pessimistic locking (SELECT FOR UPDATE) and optimistic locking (version)
     to prevent race conditions.
+
+    Transaction Safety:
+    -------------------
+    All state transition methods in this class are designed to be transaction-safe:
+    - Methods modify the booking object in memory but DO NOT call db.commit()
+    - The caller is responsible for committing the transaction
+    - This allows the caller to wrap multiple operations in a single atomic transaction
+    - Use the atomic_operation context manager from core.transactions for safety
+
+    Example usage:
+        from core.transactions import atomic_operation
+
+        with atomic_operation(db):
+            booking = BookingStateMachine.get_booking_with_lock(db, booking_id)
+            result = BookingStateMachine.accept_booking(booking)
+            if result.success:
+                # Additional operations can be added here
+                # All changes commit together on context exit
     """
 
     # Time limit for opening disputes after session end (in days)
@@ -250,6 +268,8 @@ class BookingStateMachine:
         - payment_state: PENDING → AUTHORIZED
 
         Idempotent: Returns success if already in SCHEDULED state.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already in target state
         if booking.session_state == SessionState.SCHEDULED.value:
@@ -282,6 +302,8 @@ class BookingStateMachine:
         - payment_state: PENDING → VOIDED
 
         Idempotent: Returns success if already CANCELLED by tutor.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already cancelled by tutor
         if (
@@ -329,6 +351,8 @@ class BookingStateMachine:
         - payment_state: Depends on refund policy
 
         Idempotent: Returns success if already CANCELLED.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already cancelled
         if booking.session_state == SessionState.CANCELLED.value:
@@ -379,6 +403,8 @@ class BookingStateMachine:
         - payment_state: PENDING → VOIDED
 
         Idempotent: Returns success if already EXPIRED.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already expired
         if booking.session_state == SessionState.EXPIRED.value:
@@ -421,6 +447,8 @@ class BookingStateMachine:
         - session_state: SCHEDULED → ACTIVE
 
         Idempotent: Returns success if already ACTIVE.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already active
         if booking.session_state == SessionState.ACTIVE.value:
@@ -458,7 +486,11 @@ class BookingStateMachine:
 
         Args:
             booking: The booking to end
-            outcome: How the session ended (COMPLETED, NO_SHOW_STUDENT, NO_SHOW_TUTOR)
+            outcome: How the session ended:
+                - COMPLETED: Both parties attended, normal completion
+                - NO_SHOW_STUDENT: Student didn't attend, tutor earns payment
+                - NO_SHOW_TUTOR: Tutor didn't attend, student gets refund
+                - NOT_HELD: Neither party attended, void payment
 
         Transitions:
         - session_state: ACTIVE → ENDED
@@ -466,6 +498,8 @@ class BookingStateMachine:
         - payment_state: Based on outcome
 
         Idempotent: Returns success if already ENDED with same outcome.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already ended
         if booking.session_state == SessionState.ENDED.value:
@@ -492,6 +526,10 @@ class BookingStateMachine:
         elif outcome == SessionOutcome.NO_SHOW_TUTOR:
             # Student gets refund when tutor is no-show
             booking.payment_state = PaymentState.REFUNDED.value
+        elif outcome == SessionOutcome.NOT_HELD:
+            # Neither party joined - void the payment authorization
+            # No one should be charged for a session that didn't happen
+            booking.payment_state = PaymentState.VOIDED.value
 
         cls.increment_version(booking)
 
@@ -521,6 +559,8 @@ class BookingStateMachine:
         Note:
             The booking should be acquired with get_booking_with_lock() before
             calling this method to prevent race conditions.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Determine reporter role if not provided (for backwards compatibility)
         if reporter_role is None:
@@ -640,6 +680,8 @@ class BookingStateMachine:
         Must be filed within DISPUTE_WINDOW_DAYS of session completion.
 
         Idempotent: Returns success if already has OPEN dispute.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already has open dispute
         if booking.dispute_state == DisputeState.OPEN.value:
@@ -726,6 +768,8 @@ class BookingStateMachine:
             refund_amount_cents: Amount to refund (for partial refunds)
 
         Idempotent: Returns success if already resolved.
+
+        Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already resolved
         if booking.dispute_state in {

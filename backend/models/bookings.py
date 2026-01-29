@@ -92,6 +92,9 @@ class Booking(Base):
     zoom_meeting_pending = Column(Boolean, default=False, nullable=False)  # Flag for retry when Zoom fails
     # Google Calendar integration
     google_calendar_event_id = Column(String(255), nullable=True)
+    # Session attendance tracking (for attendance-based outcome determination)
+    tutor_joined_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    student_joined_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

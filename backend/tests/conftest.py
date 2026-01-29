@@ -191,6 +191,13 @@ def client(setup_database) -> Generator[TestClient, None, None]:
 # User Creation Utilities
 # =============================================================================
 
+# Standard test password that meets complexity requirements
+# (uppercase, lowercase, digit, special character, 8+ chars)
+TEST_PASSWORD = "TestPass123!"
+ADMIN_PASSWORD = "AdminPass123!"
+TUTOR_PASSWORD = "TutorPass123!"
+STUDENT_PASSWORD = "StudentPass123!"
+
 
 def _ensure_student_profile(db: Session, user: User) -> None:
     """Create a student profile for the user if missing."""
@@ -271,7 +278,7 @@ def admin_user(db_session: Session) -> User:
     return create_test_user(
         db_session,
         email="admin@test.com",
-        password="admin123",
+        password=ADMIN_PASSWORD,
         role="admin",
         first_name="Admin",
         last_name="User",
@@ -284,7 +291,7 @@ def tutor_user(db_session: Session) -> User:
     user = create_test_user(
         db_session,
         email="tutor@test.com",
-        password="tutor123",
+        password=TUTOR_PASSWORD,
         role="tutor",
         first_name="Test",
         last_name="Tutor",
@@ -304,7 +311,7 @@ def student_user(db_session: Session) -> User:
     return create_test_user(
         db_session,
         email="student@test.com",
-        password="student123",
+        password=STUDENT_PASSWORD,
         role="student",
         first_name="Test",
         last_name="Student",
@@ -321,7 +328,7 @@ def admin_token(client: TestClient, admin_user: User) -> str:
     """Get admin auth token via login."""
     response = client.post(
         "/api/v1/auth/login",
-        data={"username": admin_user.email, "password": "admin123"}
+        data={"username": admin_user.email, "password": ADMIN_PASSWORD}
     )
     assert response.status_code == 200, f"Admin login failed: {response.text}"
     return response.json()["access_token"]
@@ -332,7 +339,7 @@ def tutor_token(client: TestClient, tutor_user: User) -> str:
     """Get tutor auth token via login."""
     response = client.post(
         "/api/v1/auth/login",
-        data={"username": tutor_user.email, "password": "tutor123"}
+        data={"username": tutor_user.email, "password": TUTOR_PASSWORD}
     )
     assert response.status_code == 200, f"Tutor login failed: {response.text}"
     return response.json()["access_token"]
@@ -343,7 +350,7 @@ def student_token(client: TestClient, student_user: User) -> str:
     """Get student auth token via login."""
     response = client.post(
         "/api/v1/auth/login",
-        data={"username": student_user.email, "password": "student123"}
+        data={"username": student_user.email, "password": STUDENT_PASSWORD}
     )
     assert response.status_code == 200, f"Student login failed: {response.text}"
     return response.json()["access_token"]
@@ -439,7 +446,7 @@ def test_student_token(db_session: Session) -> str:
         student = create_test_user(
             db_session,
             email="student@example.com",
-            password="password123",
+            password=TEST_PASSWORD,
             role="student",
         )
     return TokenManager.create_access_token({"sub": student.email})
@@ -457,7 +464,7 @@ def test_tutor_token(db_session: Session) -> str:
         tutor = create_test_user(
             db_session,
             email="tutor@example.com",
-            password="password123",
+            password=TEST_PASSWORD,
             role="tutor",
         )
     return TokenManager.create_access_token({"sub": tutor.email})
@@ -468,6 +475,11 @@ def test_tutor_token(db_session: Session) -> str:
 # =============================================================================
 
 __all__ = [
+    # Password constants
+    "TEST_PASSWORD",
+    "ADMIN_PASSWORD",
+    "TUTOR_PASSWORD",
+    "STUDENT_PASSWORD",
     # Core fixtures
     "setup_database",
     "db_session",

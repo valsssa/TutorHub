@@ -51,7 +51,7 @@ from modules.messages.api import router as messages_router
 from modules.messages.websocket import router as websocket_router
 from modules.notifications.presentation.api import router as notifications_router
 from modules.packages.presentation.api import router as packages_router
-from modules.payments.connect_router import router as connect_router
+from modules.payments.connect_router import admin_connect_router, router as connect_router
 from modules.payments.router import router as payments_router
 from modules.payments.wallet_router import router as wallet_router
 from modules.profiles.presentation.api import router as profiles_router
@@ -631,6 +631,7 @@ app.include_router(packages_router, prefix=API_V1_PREFIX)
 app.include_router(payments_router, prefix=API_V1_PREFIX)
 app.include_router(wallet_router, prefix=API_V1_PREFIX)
 app.include_router(connect_router, prefix=API_V1_PREFIX)
+app.include_router(admin_connect_router, prefix=API_V1_PREFIX)
 app.include_router(admin_router, prefix=API_V1_PREFIX)
 app.include_router(audit_router, prefix=API_V1_PREFIX)
 app.include_router(owner_router, prefix=API_V1_PREFIX)

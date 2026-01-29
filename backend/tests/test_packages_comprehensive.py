@@ -56,12 +56,17 @@ class TestPackagePurchase:
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
-        assert data["student_id"] == student_user.id
-        assert data["tutor_profile_id"] == tutor_user.tutor_profile.id
-        assert data["sessions_purchased"] == 1
-        assert data["sessions_remaining"] == 1
-        assert data["sessions_used"] == 0
-        assert data["status"] == "active"
+        # Response wraps package in a 'package' field with optional warning
+        package = data["package"]
+        assert package["student_id"] == student_user.id
+        assert package["tutor_profile_id"] == tutor_user.tutor_profile.id
+        assert package["sessions_purchased"] == 1
+        assert package["sessions_remaining"] == 1
+        assert package["sessions_used"] == 0
+        assert package["status"] == "active"
+        # No active session, so no warning expected
+        assert data["warning"] is None
+        assert data["active_booking_id"] is None
 
     def test_purchase_package_with_validity(
         self, client, student_token, db_session, tutor_user
@@ -82,7 +87,7 @@ class TestPackagePurchase:
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
-        assert data["expires_at"] is not None
+        assert data["package"]["expires_at"] is not None
 
     def test_purchase_package_tutor_not_found(self, client, student_token, db_session):
         """Test purchase fails when tutor doesn't exist."""
@@ -226,6 +231,54 @@ class TestPackagePurchase:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_purchase_during_active_session_shows_warning(
+        self, client, student_token, db_session, tutor_user, student_user
+    ):
+        """Test that purchasing during an active session returns a warning."""
+        from models import Booking
+
+        pricing_option = self._create_pricing_option(
+            db_session, tutor_user.tutor_profile
+        )
+
+        # Create an active session for the student
+        active_booking = Booking(
+            tutor_profile_id=tutor_user.tutor_profile.id,
+            student_id=student_user.id,
+            start_time=datetime.now(UTC) - timedelta(minutes=30),
+            end_time=datetime.now(UTC) + timedelta(minutes=30),
+            session_state="ACTIVE",
+            payment_state="AUTHORIZED",
+            hourly_rate=Decimal("50.00"),
+            total_amount=Decimal("50.00"),
+            currency="USD",
+        )
+        db_session.add(active_booking)
+        db_session.commit()
+        db_session.refresh(active_booking)
+
+        response = client.post(
+            "/api/v1/packages",
+            json={
+                "tutor_profile_id": tutor_user.tutor_profile.id,
+                "pricing_option_id": pricing_option.id,
+            },
+            headers={"Authorization": f"Bearer {student_token}"},
+        )
+
+        # Purchase should still succeed
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+
+        # But should include a warning about active session
+        assert data["warning"] is not None
+        assert "active session" in data["warning"].lower()
+        assert "future bookings" in data["warning"].lower()
+        assert data["active_booking_id"] == active_booking.id
+
+        # Package should still be created successfully
+        assert data["package"]["status"] == "active"
 
 
 class TestPackageCreditUsage:

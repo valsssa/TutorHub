@@ -11,13 +11,18 @@ Race Condition Prevention:
 - Transitions are idempotent, so concurrent updates don't cause errors
 - Each booking is processed in its own transaction to minimize lock contention
 
+Clock Skew Handling:
+- Uses database server time for critical time comparisons
+- Periodically checks and logs clock skew between app and database servers
+- Ensures consistent timing even if app server clock drifts
+
 Migration Note:
     This module migrates the APScheduler jobs from modules/bookings/jobs.py
     to Celery tasks for improved reliability and monitoring.
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 from celery import shared_task
 from sqlalchemy import and_
@@ -54,6 +59,7 @@ def expire_requests(self) -> dict:
         dict: Summary of processed bookings
     """
     # Import inside task to avoid circular imports and ensure fresh DB session
+    from core.clock_skew import get_db_time, get_job_skew_monitor
     from database import SessionLocal
     from models import Booking
     from modules.bookings.domain.state_machine import BookingStateMachine
@@ -65,7 +71,13 @@ def expire_requests(self) -> dict:
     result = {"expired": 0, "skipped": 0, "errors": 0}
 
     try:
-        cutoff_time = datetime.now(UTC) - timedelta(hours=REQUEST_EXPIRY_HOURS)
+        # Check clock skew periodically and use database time for consistency
+        skew_monitor = get_job_skew_monitor()
+        skew_monitor.check_and_warn(db)
+
+        # Use database time for critical time comparisons to avoid clock skew issues
+        now = get_db_time(db)
+        cutoff_time = now - timedelta(hours=REQUEST_EXPIRY_HOURS)
 
         # Find IDs of REQUESTED bookings created before cutoff
         booking_ids = (
@@ -154,6 +166,7 @@ def start_sessions(self) -> dict:
     Returns:
         dict: Summary of processed sessions
     """
+    from core.clock_skew import get_db_time, get_job_skew_monitor
     from database import SessionLocal
     from models import Booking
     from modules.bookings.domain.state_machine import BookingStateMachine
@@ -165,7 +178,12 @@ def start_sessions(self) -> dict:
     result = {"started": 0, "skipped": 0, "errors": 0}
 
     try:
-        now = datetime.now(UTC)
+        # Check clock skew periodically and use database time for consistency
+        skew_monitor = get_job_skew_monitor()
+        skew_monitor.check_and_warn(db)
+
+        # Use database time for critical time comparisons to avoid clock skew issues
+        now = get_db_time(db)
 
         # Find IDs of SCHEDULED bookings where start_time has passed
         booking_ids = (
@@ -253,6 +271,7 @@ def end_sessions(self) -> dict:
     Returns:
         dict: Summary of processed sessions
     """
+    from core.clock_skew import get_db_time, get_job_skew_monitor
     from database import SessionLocal
     from models import Booking
     from modules.bookings.domain.state_machine import BookingStateMachine
@@ -264,7 +283,12 @@ def end_sessions(self) -> dict:
     result = {"ended": 0, "skipped": 0, "errors": 0}
 
     try:
-        now = datetime.now(UTC)
+        # Check clock skew periodically and use database time for consistency
+        skew_monitor = get_job_skew_monitor()
+        skew_monitor.check_and_warn(db)
+
+        # Use database time for critical time comparisons to avoid clock skew issues
+        now = get_db_time(db)
         grace_cutoff = now - timedelta(minutes=SESSION_END_GRACE_MINUTES)
 
         # Find IDs of ACTIVE bookings where end_time + grace has passed

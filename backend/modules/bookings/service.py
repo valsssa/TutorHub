@@ -199,8 +199,15 @@ class BookingService:
         self.db.flush()
 
         # 10. If using package, decrement credits
+        # Note: We split this into two steps for safety:
+        # 1. First decrement the credit (but don't set "exhausted" status yet)
+        # 2. After booking is successfully created, update status if exhausted
+        # This ensures the package status is only set to "exhausted" after
+        # the booking creation succeeds, preventing inconsistent states.
         if package_id:
             self._consume_package_credit(package_id)
+            # Now that booking is created, safely update package status if exhausted
+            self._update_package_status_if_exhausted(package_id)
 
         return booking
 
@@ -701,6 +708,11 @@ class BookingService:
 
         Uses atomic SQL UPDATE with WHERE guard to prevent race conditions
         where two concurrent requests could consume the same credit.
+
+        Note: This method intentionally does NOT set the "exhausted" status.
+        The status should only be updated after the booking creation succeeds
+        and the transaction is about to commit. Use `_update_package_status_if_exhausted()`
+        after successful booking creation to update the status.
         """
         # Atomic decrement with validation guard
         result = self.db.execute(
@@ -723,7 +735,24 @@ class BookingService:
                 detail="No package credits available or package is not active",
             )
 
-        # Check if package is now exhausted and update status atomically
+        # NOTE: Do NOT set "exhausted" status here!
+        # The status should only be updated after the booking is successfully
+        # created and the transaction is ready to commit.
+        # See _update_package_status_if_exhausted() for the safe status update.
+
+    def _update_package_status_if_exhausted(self, package_id: int) -> None:
+        """
+        Update package status to "exhausted" if sessions_remaining is 0.
+
+        This method should be called AFTER successful booking creation,
+        just before committing the transaction. This ensures that:
+        1. The package status is not prematurely set to "exhausted"
+        2. If booking creation fails, the package status remains "active"
+        3. The status update is atomic and consistent with the booking state
+
+        This follows the principle of setting terminal states as late as possible
+        to prevent inconsistent states if intermediate operations fail.
+        """
         self.db.execute(
             update(StudentPackage)
             .where(
@@ -957,4 +986,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
         # Dispute information
         dispute_reason=booking.dispute_reason,
         disputed_at=booking.disputed_at,
+        # Attendance tracking
+        tutor_joined_at=booking.tutor_joined_at,
+        student_joined_at=booking.student_joined_at,
     )

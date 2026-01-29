@@ -8,6 +8,8 @@ Handles:
 - Payout balance and history
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import UTC, datetime
 from typing import Annotated
@@ -15,11 +17,12 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
-from core.dependencies import DatabaseSession, TutorUser
+from core.dependencies import CurrentUser, DatabaseSession, TutorUser
 from core.stripe_client import (
     create_connect_account,
     create_connect_account_link,
     is_connect_account_ready,
+    update_connect_account_payout_settings,
 )
 from models import TutorProfile
 
@@ -498,3 +501,222 @@ async def get_earnings_summary(
         "commission_tier": tier_name,
         "current_fee_percentage": float(current_fee_pct),
     }
+
+
+# ============================================================================
+# Admin Endpoints - Payout Settings Management
+# ============================================================================
+
+
+class PayoutSettingsUpdateRequest(BaseModel):
+    """Request to update payout settings for a tutor."""
+    tutor_user_id: int
+    delay_days: int | None = None  # None uses system default
+
+
+class PayoutSettingsUpdateResponse(BaseModel):
+    """Response from updating payout settings."""
+    tutor_user_id: int
+    account_id: str
+    delay_days: int
+    success: bool
+    message: str
+
+
+class BatchPayoutSettingsResponse(BaseModel):
+    """Response from batch payout settings update."""
+    total_tutors: int
+    updated_count: int
+    skipped_count: int
+    failed_count: int
+    delay_days: int
+    results: list[dict]
+
+
+# Create a separate admin router for these endpoints
+admin_connect_router = APIRouter(
+    prefix="/admin/connect",
+    tags=["admin-payments"],
+)
+
+
+@admin_connect_router.post(
+    "/update-payout-settings",
+    response_model=PayoutSettingsUpdateResponse,
+    summary="Update tutor payout settings (admin only)",
+    description="""
+**Update payout delay settings for a specific tutor**
+
+SECURITY: This endpoint allows admins to add or modify the payout delay on
+a tutor's Connect account. The delay protects against refund scenarios where
+a tutor might withdraw funds before a session completes or gets cancelled.
+
+Use this to:
+- Add delay to existing tutors who were onboarded before this protection
+- Modify delay for specific tutors based on risk assessment
+    """,
+)
+async def admin_update_payout_settings(
+    request: PayoutSettingsUpdateRequest,
+    current_user: CurrentUser,
+    db: DatabaseSession,
+) -> PayoutSettingsUpdateResponse:
+    """Update payout settings for a specific tutor (admin only)."""
+    from core.config import Roles, settings
+
+    # Admin only
+    if not Roles.has_admin_access(current_user.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+
+    # Get tutor profile
+    tutor_profile = (
+        db.query(TutorProfile)
+        .filter(TutorProfile.user_id == request.tutor_user_id)
+        .first()
+    )
+
+    if not tutor_profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tutor profile not found for user {request.tutor_user_id}",
+        )
+
+    if not tutor_profile.stripe_account_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tutor {request.tutor_user_id} does not have a Connect account",
+        )
+
+    # Determine delay days
+    delay_days = request.delay_days if request.delay_days is not None else settings.STRIPE_PAYOUT_DELAY_DAYS
+
+    try:
+        update_connect_account_payout_settings(
+            account_id=tutor_profile.stripe_account_id,
+            delay_days=delay_days,
+        )
+
+        logger.info(
+            f"Admin {current_user.id} updated payout settings for tutor {request.tutor_user_id}: "
+            f"{delay_days}-day delay"
+        )
+
+        return PayoutSettingsUpdateResponse(
+            tutor_user_id=request.tutor_user_id,
+            account_id=tutor_profile.stripe_account_id,
+            delay_days=delay_days,
+            success=True,
+            message=f"Payout delay set to {delay_days} days",
+        )
+
+    except HTTPException as e:
+        return PayoutSettingsUpdateResponse(
+            tutor_user_id=request.tutor_user_id,
+            account_id=tutor_profile.stripe_account_id,
+            delay_days=delay_days,
+            success=False,
+            message=str(e.detail),
+        )
+
+
+@admin_connect_router.post(
+    "/batch-update-payout-settings",
+    response_model=BatchPayoutSettingsResponse,
+    summary="Batch update all tutor payout settings (admin only)",
+    description="""
+**Update payout delay settings for all tutors with Connect accounts**
+
+SECURITY: Use this endpoint to migrate existing tutors to the secure payout
+delay configuration. This is a one-time migration task for tutors who were
+onboarded before the payout delay protection was implemented.
+
+The endpoint processes all tutors with Connect accounts and applies the
+configured payout delay (default from STRIPE_PAYOUT_DELAY_DAYS setting).
+
+WARNING: This makes API calls for each tutor, so it may take time for
+large numbers of tutors. Consider running during low-traffic periods.
+    """,
+)
+async def admin_batch_update_payout_settings(
+    current_user: CurrentUser,
+    db: DatabaseSession,
+    delay_days: Annotated[int | None, Query(description="Override delay days (None uses system default)")] = None,
+) -> BatchPayoutSettingsResponse:
+    """Batch update payout settings for all tutors (admin only)."""
+    from core.config import Roles, settings
+
+    # Admin only
+    if not Roles.has_admin_access(current_user.role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+
+    # Determine delay days
+    effective_delay = delay_days if delay_days is not None else settings.STRIPE_PAYOUT_DELAY_DAYS
+
+    # Get all tutors with Connect accounts
+    tutors_with_accounts = (
+        db.query(TutorProfile)
+        .filter(TutorProfile.stripe_account_id.isnot(None))
+        .all()
+    )
+
+    total = len(tutors_with_accounts)
+    updated = 0
+    skipped = 0
+    failed = 0
+    results = []
+
+    for tutor in tutors_with_accounts:
+        try:
+            update_connect_account_payout_settings(
+                account_id=tutor.stripe_account_id,
+                delay_days=effective_delay,
+            )
+            updated += 1
+            results.append({
+                "tutor_user_id": tutor.user_id,
+                "account_id": tutor.stripe_account_id,
+                "status": "updated",
+            })
+
+        except HTTPException as e:
+            if "service unavailable" in str(e.detail).lower():
+                # Circuit breaker or service issue - stop batch
+                failed += 1
+                results.append({
+                    "tutor_user_id": tutor.user_id,
+                    "account_id": tutor.stripe_account_id,
+                    "status": "failed",
+                    "error": str(e.detail),
+                })
+                logger.warning(
+                    f"Stopping batch update due to service unavailability at tutor {tutor.user_id}"
+                )
+                break
+            else:
+                failed += 1
+                results.append({
+                    "tutor_user_id": tutor.user_id,
+                    "account_id": tutor.stripe_account_id,
+                    "status": "failed",
+                    "error": str(e.detail),
+                })
+
+    logger.info(
+        f"Admin {current_user.id} batch updated payout settings: "
+        f"{updated}/{total} tutors updated with {effective_delay}-day delay"
+    )
+
+    return BatchPayoutSettingsResponse(
+        total_tutors=total,
+        updated_count=updated,
+        skipped_count=skipped,
+        failed_count=failed,
+        delay_days=effective_delay,
+        results=results,
+    )

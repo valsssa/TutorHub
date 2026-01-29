@@ -83,6 +83,46 @@ class PackageExpirationService:
         return True, None
 
     @staticmethod
+    def check_package_validity_for_checkout(
+        package: StudentPackage,
+    ) -> tuple[bool, bool, str | None]:
+        """
+        Check if a package is valid specifically for checkout completion.
+
+        This method is used during webhook processing to detect if a package
+        expired during the checkout process. Unlike check_package_validity(),
+        this returns additional information about whether the package expired
+        during checkout (as opposed to being invalid from the start).
+
+        Args:
+            package: StudentPackage to check
+
+        Returns:
+            tuple: (is_valid, expired_during_checkout, error_message)
+                - is_valid: Whether the package can be used
+                - expired_during_checkout: True if package was likely valid when
+                  checkout started but expired since then
+                - error_message: Description of the issue if not valid
+        """
+        now = datetime.now(UTC)
+
+        # Check sessions remaining - this wouldn't change during checkout
+        if package.sessions_remaining <= 0:
+            return False, False, "No credits remaining in package"
+
+        # Check expiration - could have expired during checkout
+        if package.expires_at and package.expires_at < now:
+            return False, True, f"Package expired at {package.expires_at.isoformat()}"
+
+        # Check status - could have been marked expired by scheduler during checkout
+        if package.status != "active":
+            # If status is 'expired', it likely expired during checkout
+            expired_during = package.status == "expired"
+            return False, expired_during, f"Package status is {package.status}"
+
+        return True, False, None
+
+    @staticmethod
     def get_active_packages_for_student(db: Session, student_id: int) -> list[StudentPackage]:
         """
         Get all active, non-expired packages for a student.

@@ -37,6 +37,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import and_
 from sqlalchemy.exc import OperationalError
 
+from core.clock_skew import get_db_time, get_job_skew_monitor
 from core.distributed_lock import distributed_lock
 from core.tracing import trace_background_job
 from database import SessionLocal
@@ -48,6 +49,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 REQUEST_EXPIRY_HOURS = 24  # Requests expire after 24 hours
+SESSION_START_BUFFER_MINUTES = 2  # Buffer before auto-starting (prevents cancel race condition)
 SESSION_END_GRACE_MINUTES = 5  # Grace period after end_time before auto-ending
 ZOOM_RETRY_BATCH_SIZE = 10  # Maximum bookings to process per retry run
 ZOOM_RETRY_MAX_ATTEMPTS = 5  # Stop retrying after this many job runs
@@ -84,7 +86,13 @@ async def expire_requests() -> None:
 
             db = SessionLocal()
             try:
-                cutoff_time = datetime.now(UTC) - timedelta(hours=REQUEST_EXPIRY_HOURS)
+                # Check clock skew periodically and use database time for consistency
+                skew_monitor = get_job_skew_monitor()
+                skew_monitor.check_and_warn(db)
+
+                # Use database time for critical time comparisons to avoid clock skew issues
+                now = get_db_time(db)
+                cutoff_time = now - timedelta(hours=REQUEST_EXPIRY_HOURS)
 
                 # Find IDs of REQUESTED bookings created before cutoff
                 # We only fetch IDs first, then lock each one individually
@@ -161,6 +169,12 @@ async def start_sessions() -> None:
 
     Uses row-level locking to prevent race conditions.
     Uses distributed locking to prevent overlap across server instances.
+
+    Race Condition Prevention:
+    - Adds a 2-minute buffer before auto-starting sessions
+    - This grace period allows students to cancel right up until the start time
+    - Without the buffer, a student could pass the is_cancellable() check but have
+      the cancel fail because the job transitioned the booking to ACTIVE
     """
     async with distributed_lock.acquire(
         "job:start_sessions", timeout=START_SESSIONS_LOCK_TIMEOUT
@@ -176,15 +190,27 @@ async def start_sessions() -> None:
 
             db = SessionLocal()
             try:
-                now = datetime.now(UTC)
+                # Check clock skew periodically and use database time for consistency
+                skew_monitor = get_job_skew_monitor()
+                skew_monitor.check_and_warn(db)
 
-                # Find IDs of SCHEDULED bookings where start_time has passed
+                # Use database time for critical time comparisons to avoid clock skew issues
+                now = get_db_time(db)
+
+                # Find IDs of SCHEDULED bookings where start_time + buffer has passed
+                # The buffer prevents race conditions with cancellation requests:
+                # - Student checks is_cancellable() at 10:00:00 (passes, booking is SCHEDULED)
+                # - Job runs at 10:00:01 and transitions to ACTIVE
+                # - Student's cancel request fails because booking is now ACTIVE
+                # With a 2-minute buffer, the job waits until 10:02:00 to transition,
+                # giving users a grace period to complete their cancellation
+                start_cutoff = now - timedelta(minutes=SESSION_START_BUFFER_MINUTES)
                 booking_ids = (
                     db.query(Booking.id)
                     .filter(
                         and_(
                             Booking.session_state == SessionState.SCHEDULED.value,
-                            Booking.start_time <= now,
+                            Booking.start_time <= start_cutoff,
                         )
                     )
                     .all()
@@ -239,12 +265,65 @@ async def start_sessions() -> None:
                 db.close()
 
 
+def _determine_session_outcome_from_attendance(booking: Booking) -> SessionOutcome:
+    """
+    Determine the appropriate session outcome based on attendance tracking.
+
+    This function examines the tutor_joined_at and student_joined_at timestamps
+    to determine how the session should be categorized:
+
+    - Neither joined -> NOT_HELD (session didn't happen, void payment)
+    - Only student joined -> NO_SHOW_TUTOR (tutor absent, refund student)
+    - Only tutor joined -> NO_SHOW_STUDENT (student absent, tutor earns payment)
+    - Both joined -> COMPLETED (session happened normally)
+
+    Args:
+        booking: The booking to evaluate
+
+    Returns:
+        SessionOutcome: The appropriate outcome based on attendance
+    """
+    tutor_joined = booking.tutor_joined_at is not None
+    student_joined = booking.student_joined_at is not None
+
+    if not tutor_joined and not student_joined:
+        # Neither party joined - session didn't happen
+        return SessionOutcome.NOT_HELD
+    elif not tutor_joined:
+        # Student was present but tutor didn't show
+        return SessionOutcome.NO_SHOW_TUTOR
+    elif not student_joined:
+        # Tutor was present but student didn't show
+        return SessionOutcome.NO_SHOW_STUDENT
+    else:
+        # Both parties joined - successful session
+        return SessionOutcome.COMPLETED
+
+
 async def end_sessions() -> None:
     """
     End active sessions that have passed their end_time plus grace period.
 
     Runs every 1 minute.
     Transitions: ACTIVE -> ENDED
+
+    Attendance-Based Outcome Determination:
+    The outcome is determined based on whether participants actually joined:
+    - Neither joined -> NOT_HELD (void payment, flag for review)
+    - Only student joined -> NO_SHOW_TUTOR (refund student)
+    - Only tutor joined -> NO_SHOW_STUDENT (tutor earns payment)
+    - Both joined -> COMPLETED (normal completion, capture payment)
+
+    Payment Handling:
+    - For pay-per-session bookings (package_id is NULL): captures the pre-authorized
+      payment. The booking's original payment method is preserved.
+    - For package bookings (package_id is set): the package credit was already
+      deducted when the booking was created. No additional payment action needed.
+
+    IMPORTANT: This job does NOT retroactively apply packages to sessions. If a
+    student purchases a package during an active session, that session continues
+    to use its original payment method (pay-per-session). The package only applies
+    to future bookings created after the purchase.
 
     Uses row-level locking to prevent race conditions with manual
     no-show marking or other session end operations.
@@ -264,7 +343,12 @@ async def end_sessions() -> None:
 
             db = SessionLocal()
             try:
-                now = datetime.now(UTC)
+                # Check clock skew periodically and use database time for consistency
+                skew_monitor = get_job_skew_monitor()
+                skew_monitor.check_and_warn(db)
+
+                # Use database time for critical time comparisons to avoid clock skew issues
+                now = get_db_time(db)
                 grace_cutoff = now - timedelta(minutes=SESSION_END_GRACE_MINUTES)
 
                 # Find IDs of ACTIVE bookings where end_time + grace has passed
@@ -281,6 +365,10 @@ async def end_sessions() -> None:
 
                 count = 0
                 skipped = 0
+                not_held_count = 0
+                no_show_tutor_count = 0
+                no_show_student_count = 0
+
                 for (booking_id,) in booking_ids:
                     try:
                         # Lock and fetch the booking
@@ -291,10 +379,33 @@ async def end_sessions() -> None:
                         if not booking:
                             continue
 
-                        # Default to COMPLETED outcome for auto-ended sessions
-                        result = BookingStateMachine.end_session(
-                            booking, SessionOutcome.COMPLETED
-                        )
+                        # Determine outcome based on attendance tracking
+                        outcome = _determine_session_outcome_from_attendance(booking)
+
+                        # Log special cases for monitoring
+                        if outcome == SessionOutcome.NOT_HELD:
+                            logger.warning(
+                                "Session %d: Neither party joined - marking as NOT_HELD",
+                                booking_id,
+                            )
+                            not_held_count += 1
+                        elif outcome == SessionOutcome.NO_SHOW_TUTOR:
+                            logger.info(
+                                "Session %d: Tutor did not join (attendance-based) - "
+                                "marking as NO_SHOW_TUTOR",
+                                booking_id,
+                            )
+                            no_show_tutor_count += 1
+                        elif outcome == SessionOutcome.NO_SHOW_STUDENT:
+                            logger.info(
+                                "Session %d: Student did not join (attendance-based) - "
+                                "marking as NO_SHOW_STUDENT",
+                                booking_id,
+                            )
+                            no_show_student_count += 1
+
+                        result = BookingStateMachine.end_session(booking, outcome)
+
                         if result.success:
                             if result.already_in_target_state:
                                 skipped += 1
@@ -319,8 +430,14 @@ async def end_sessions() -> None:
 
                 if count > 0 or skipped > 0:
                     logger.info(
-                        "End sessions job: ended %d sessions, skipped %d",
+                        "End sessions job: ended %d sessions (completed: %d, "
+                        "not_held: %d, no_show_tutor: %d, no_show_student: %d), "
+                        "skipped %d",
                         count,
+                        count - not_held_count - no_show_tutor_count - no_show_student_count,
+                        not_held_count,
+                        no_show_tutor_count,
+                        no_show_student_count,
                         skipped,
                     )
 
@@ -357,7 +474,12 @@ async def retry_zoom_meetings() -> None:
             try:
                 from modules.integrations.zoom_router import ZoomError, zoom_client
 
-                now = datetime.now(UTC)
+                # Check clock skew periodically and use database time for consistency
+                skew_monitor = get_job_skew_monitor()
+                skew_monitor.check_and_warn(db)
+
+                # Use database time for critical time comparisons to avoid clock skew issues
+                now = get_db_time(db)
 
                 # Find bookings needing Zoom meeting retry
                 # Only process SCHEDULED or ACTIVE bookings (not past sessions)

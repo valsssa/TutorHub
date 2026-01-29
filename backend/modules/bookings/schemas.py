@@ -192,6 +192,12 @@ class MarkNoShowRequest(BaseModel):
     notes: str | None = Field(None, max_length=500)
 
 
+class RecordJoinRequest(BaseModel):
+    """Record that a user joined the session (optional notes)."""
+
+    notes: str | None = Field(None, max_length=500)
+
+
 # ============================================================================
 # Response schemas
 # ============================================================================
@@ -278,6 +284,10 @@ class BookingDTO(BaseModel):
     # Dispute information (only included if dispute exists)
     dispute_reason: str | None = None
     disputed_at: datetime | None = None
+
+    # Attendance tracking (for determining session outcome)
+    tutor_joined_at: datetime | None = None
+    student_joined_at: datetime | None = None
 
     class Config:
         from_attributes = True

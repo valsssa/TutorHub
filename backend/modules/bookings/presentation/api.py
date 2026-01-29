@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from core.dependencies import get_current_tutor_profile, get_current_user
+from core.transactions import atomic_operation
 from database import get_db
 from models import Booking, TutorProfile, User
 from modules.bookings.policy_engine import ReschedulePolicy
@@ -27,6 +28,7 @@ from modules.bookings.schemas import (
     DisputeCreateRequest,
     DisputeResolveRequest,
     MarkNoShowRequest,
+    RecordJoinRequest,
 )
 from modules.bookings.service import BookingService, booking_to_dto
 
@@ -364,18 +366,53 @@ async def cancel_booking(
     - Students and tutors can cancel their bookings
     - Refund policy: >= 12h before = full refund, < 12h = no refund
     - Restores package credit if applicable
+
+    Race Condition Prevention:
+    - Uses row-level locking (SELECT FOR UPDATE) to prevent race conditions
+      with the start_sessions background job
+    - Re-checks cancellability after acquiring the lock to ensure the booking
+      state hasn't changed between the initial check and the lock acquisition
+
+    Transaction Safety:
+    - Uses atomic_operation to ensure all state changes commit together or rollback
+    - State machine updates are atomic with package credit restoration
     """
+    # First, verify the booking exists and user has access (without lock)
     booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
 
     try:
-        service = BookingService(db)
-        cancelled_booking = service.cancel_booking(
-            booking=booking,
-            cancelled_by_role=current_user.role.upper(),
-            reason=request.reason,
-        )
+        # Use atomic_operation to ensure all state changes commit together
+        with atomic_operation(db):
+            # Acquire row-level lock to prevent race conditions with start_sessions job
+            # This ensures the booking state doesn't change while we're processing the cancel
+            locked_booking = BookingStateMachine.get_booking_with_lock(db, booking_id, nowait=False)
 
-        db.commit()
+            if not locked_booking:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Booking not found",
+                )
+
+            # Re-check cancellability after acquiring lock
+            # The booking state may have changed between the initial check and lock acquisition
+            # (e.g., start_sessions job may have transitioned SCHEDULED -> ACTIVE)
+            if not BookingStateMachine.is_cancellable(locked_booking.session_state):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Booking cannot be cancelled (current state: {locked_booking.session_state}). "
+                    "The session may have already started.",
+                )
+
+            service = BookingService(db)
+            cancelled_booking = service.cancel_booking(
+                booking=locked_booking,
+                cancelled_by_role=current_user.role.upper(),
+                reason=request.reason,
+            )
+
+            # atomic_operation commits all changes together on context exit
+
+        # Refresh after commit to get updated state
         db.refresh(cancelled_booking)
 
         await _broadcast_availability_update(
@@ -520,100 +557,109 @@ async def confirm_booking(
     - Creates Zoom meeting and generates join URL
     - Uses row-level locking to prevent race conditions
     - If Zoom fails, booking is still confirmed but flagged for retry
+
+    Transaction Safety:
+    - Uses atomic_operation to ensure all state changes commit together or rollback
+    - State machine updates (session_state, payment_state, confirmed_at) are atomic
     """
     try:
         from modules.bookings.services.response_tracking import ResponseTrackingService
         from modules.integrations.zoom_router import ZoomError, zoom_client
 
-        # Acquire row-level lock to prevent race conditions
-        # (e.g., concurrent expiry job or duplicate confirm requests)
-        booking = BookingStateMachine.get_booking_with_lock(db, booking_id)
+        # Use atomic_operation to ensure all state changes commit together
+        with atomic_operation(db):
+            # Acquire row-level lock to prevent race conditions
+            # (e.g., concurrent expiry job or duplicate confirm requests)
+            booking = BookingStateMachine.get_booking_with_lock(db, booking_id)
 
-        if not booking:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Booking not found",
-            )
-
-        if booking.tutor_profile_id != tutor_profile.id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Booking not found",
-            )
-
-        # Use state machine to validate and transition (idempotent)
-        result = BookingStateMachine.accept_booking(booking)
-
-        if not result.success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error_message or f"Cannot confirm booking with state {booking.session_state}",
-            )
-
-        # Only update additional fields if this wasn't an idempotent no-op
-        if not result.already_in_target_state:
-            # Try to create Zoom meeting with retry logic
-            zoom_meeting_created = False
-            try:
-                # Build meeting topic
-                topic = f"EduStream: {booking.subject_name or 'Tutoring Session'}"
-                if booking.student_name:
-                    topic += f" with {booking.student_name}"
-
-                duration_minutes = int((booking.end_time - booking.start_time).total_seconds() / 60)
-
-                meeting = await zoom_client.create_meeting(
-                    topic=topic,
-                    start_time=booking.start_time,
-                    duration_minutes=duration_minutes,
-                    tutor_email=tutor_profile.user.email if tutor_profile.user else None,
-                    student_email=booking.student.email if booking.student else None,
+            if not booking:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Booking not found",
                 )
 
-                # Update booking with Zoom meeting details
-                booking.join_url = meeting["join_url"]
-                booking.meeting_url = meeting.get("start_url")  # Host URL
-                booking.zoom_meeting_id = str(meeting["id"])
-                booking.zoom_meeting_pending = False
-                zoom_meeting_created = True
-                logger.info("Created Zoom meeting %s for booking %d", meeting["id"], booking.id)
-
-            except ZoomError as e:
-                # Zoom failed but don't fail the booking confirmation
-                # Flag for background retry
-                logger.error(
-                    "Failed to create Zoom meeting for booking %d (will retry): %s",
-                    booking.id,
-                    e.message,
+            if booking.tutor_profile_id != tutor_profile.id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Booking not found",
                 )
-                booking.zoom_meeting_pending = True
-                booking.join_url = None
-                # Note: We still proceed with confirmation
 
-            except Exception as e:
-                # Unexpected error - log and flag for retry
-                logger.error(
-                    "Unexpected error creating Zoom meeting for booking %d (will retry): %s",
-                    booking.id,
-                    str(e),
+            # Use state machine to validate and transition (idempotent)
+            # State machine does NOT commit - all changes are atomic within this block
+            result = BookingStateMachine.accept_booking(booking)
+
+            if not result.success:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=result.error_message or f"Cannot confirm booking with state {booking.session_state}",
                 )
-                booking.zoom_meeting_pending = True
-                booking.join_url = None
 
-            # If no Zoom meeting was created, generate a fallback URL
-            if not zoom_meeting_created and not booking.join_url:
-                service = BookingService(db)
-                booking.join_url = service._generate_join_url(booking.id)
+            # Only update additional fields if this wasn't an idempotent no-op
+            if not result.already_in_target_state:
+                # Try to create Zoom meeting with retry logic
+                zoom_meeting_created = False
+                try:
+                    # Build meeting topic
+                    topic = f"EduStream: {booking.subject_name or 'Tutoring Session'}"
+                    if booking.student_name:
+                        topic += f" with {booking.student_name}"
 
-            # Add tutor notes
-            if request.notes_tutor:
-                booking.notes_tutor = request.notes_tutor
+                    duration_minutes = int((booking.end_time - booking.start_time).total_seconds() / 60)
 
-            # Track response time
-            response_tracker = ResponseTrackingService(db)
-            response_tracker.log_tutor_response(booking, "confirmed")
+                    meeting = await zoom_client.create_meeting(
+                        topic=topic,
+                        start_time=booking.start_time,
+                        duration_minutes=duration_minutes,
+                        tutor_email=tutor_profile.user.email if tutor_profile.user else None,
+                        student_email=booking.student.email if booking.student else None,
+                    )
 
-        db.commit()
+                    # Update booking with Zoom meeting details
+                    booking.join_url = meeting["join_url"]
+                    booking.meeting_url = meeting.get("start_url")  # Host URL
+                    booking.zoom_meeting_id = str(meeting["id"])
+                    booking.zoom_meeting_pending = False
+                    zoom_meeting_created = True
+                    logger.info("Created Zoom meeting %s for booking %d", meeting["id"], booking.id)
+
+                except ZoomError as e:
+                    # Zoom failed but don't fail the booking confirmation
+                    # Flag for background retry
+                    logger.error(
+                        "Failed to create Zoom meeting for booking %d (will retry): %s",
+                        booking.id,
+                        e.message,
+                    )
+                    booking.zoom_meeting_pending = True
+                    booking.join_url = None
+                    # Note: We still proceed with confirmation
+
+                except Exception as e:
+                    # Unexpected error - log and flag for retry
+                    logger.error(
+                        "Unexpected error creating Zoom meeting for booking %d (will retry): %s",
+                        booking.id,
+                        str(e),
+                    )
+                    booking.zoom_meeting_pending = True
+                    booking.join_url = None
+
+                # If no Zoom meeting was created, generate a fallback URL
+                if not zoom_meeting_created and not booking.join_url:
+                    service = BookingService(db)
+                    booking.join_url = service._generate_join_url(booking.id)
+
+                # Add tutor notes
+                if request.notes_tutor:
+                    booking.notes_tutor = request.notes_tutor
+
+                # Track response time
+                response_tracker = ResponseTrackingService(db)
+                response_tracker.log_tutor_response(booking, "confirmed")
+
+            # atomic_operation commits all changes together on context exit
+
+        # Refresh after commit to get updated state
         db.refresh(booking)
 
         await _broadcast_availability_update(
@@ -648,37 +694,45 @@ async def decline_booking(
     - Changes status to CANCELLED_BY_TUTOR
     - Automatically refunds student
     - Uses row-level locking to prevent race conditions
+
+    Transaction Safety:
+    - Uses atomic_operation to ensure all state changes commit together or rollback
+    - State machine updates are atomic with response tracking
     """
     try:
         from modules.bookings.services.response_tracking import ResponseTrackingService
 
-        # Acquire row-level lock to prevent race conditions
-        booking = BookingStateMachine.get_booking_with_lock(db, booking_id)
+        # Use atomic_operation to ensure all state changes commit together
+        with atomic_operation(db):
+            # Acquire row-level lock to prevent race conditions
+            booking = BookingStateMachine.get_booking_with_lock(db, booking_id)
 
-        if not booking:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Booking not found",
+            if not booking:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Booking not found",
+                )
+
+            if booking.tutor_profile_id != tutor_profile.id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Booking not found",
+                )
+
+            service = BookingService(db)
+            declined_booking = service.cancel_booking(
+                booking=booking,
+                cancelled_by_role="TUTOR",
+                reason=request.reason,
             )
 
-        if booking.tutor_profile_id != tutor_profile.id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Booking not found",
-            )
+            # Track response time
+            response_tracker = ResponseTrackingService(db)
+            response_tracker.log_tutor_response(booking, "cancelled")
 
-        service = BookingService(db)
-        declined_booking = service.cancel_booking(
-            booking=booking,
-            cancelled_by_role="TUTOR",
-            reason=request.reason,
-        )
+            # atomic_operation commits all changes together on context exit
 
-        # Track response time
-        response_tracker = ResponseTrackingService(db)
-        response_tracker.log_tutor_response(booking, "cancelled")
-
-        db.commit()
+        # Refresh after commit to get updated state
         db.refresh(declined_booking)
 
         await _broadcast_availability_update(
@@ -714,6 +768,10 @@ async def mark_student_no_show(
     - Tutor earns full payment
     - Uses row-level locking to prevent race conditions with concurrent reports
     - If both parties report no-show, auto-escalates to dispute for admin review
+
+    Transaction Safety:
+    - Uses atomic_operation to ensure all state changes commit together or rollback
+    - State machine updates are atomic with dispute escalation if needed
     """
     # First verify the booking exists and belongs to this tutor (without lock)
     booking = (
@@ -732,16 +790,20 @@ async def mark_student_no_show(
         )
 
     try:
-        service = BookingService(db)
-        # Use row-level locking to prevent race conditions
-        no_show_booking, escalated = service.mark_no_show(
-            booking=booking,
-            reporter_role="TUTOR",
-            notes=request.notes,
-            use_lock=True,  # Acquire row lock for race condition safety
-        )
+        # Use atomic_operation to ensure all state changes commit together
+        with atomic_operation(db):
+            service = BookingService(db)
+            # Use row-level locking to prevent race conditions
+            no_show_booking, escalated = service.mark_no_show(
+                booking=booking,
+                reporter_role="TUTOR",
+                notes=request.notes,
+                use_lock=True,  # Acquire row lock for race condition safety
+            )
 
-        db.commit()
+            # atomic_operation commits all changes together on context exit
+
+        # Refresh after commit to get updated state
         db.refresh(no_show_booking)
 
         _add_booking_cache_headers(response, no_show_booking)
@@ -781,6 +843,10 @@ async def mark_tutor_no_show(
     - Student receives full refund
     - Uses row-level locking to prevent race conditions with concurrent reports
     - If both parties report no-show, auto-escalates to dispute for admin review
+
+    Transaction Safety:
+    - Uses atomic_operation to ensure all state changes commit together or rollback
+    - State machine updates are atomic with package credit restoration if needed
     """
     _require_role(current_user, "student")
 
@@ -801,16 +867,20 @@ async def mark_tutor_no_show(
         )
 
     try:
-        service = BookingService(db)
-        # Use row-level locking to prevent race conditions
-        no_show_booking, escalated = service.mark_no_show(
-            booking=booking,
-            reporter_role="STUDENT",
-            notes=request.notes,
-            use_lock=True,  # Acquire row lock for race condition safety
-        )
+        # Use atomic_operation to ensure all state changes commit together
+        with atomic_operation(db):
+            service = BookingService(db)
+            # Use row-level locking to prevent race conditions
+            no_show_booking, escalated = service.mark_no_show(
+                booking=booking,
+                reporter_role="STUDENT",
+                notes=request.notes,
+                use_lock=True,  # Acquire row lock for race condition safety
+            )
 
-        db.commit()
+            # atomic_operation commits all changes together on context exit
+
+        # Refresh after commit to get updated state
         db.refresh(no_show_booking)
 
         _add_booking_cache_headers(response, no_show_booking)
@@ -853,24 +923,31 @@ async def open_dispute(
 
     - Can only dispute bookings in terminal states (ENDED, CANCELLED, EXPIRED)
     - Cannot dispute if already has an open dispute
+
+    Transaction Safety:
+    - Uses atomic_operation to ensure all state changes commit together or rollback
     """
     booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
 
     try:
-        result = BookingStateMachine.open_dispute(
-            booking=booking,
-            reason=request.reason,
-            disputed_by_user_id=current_user.id,
-        )
-
-        if not result.success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error_message or "Cannot open dispute",
+        # Use atomic_operation to ensure all state changes commit together
+        with atomic_operation(db):
+            result = BookingStateMachine.open_dispute(
+                booking=booking,
+                reason=request.reason,
+                disputed_by_user_id=current_user.id,
             )
 
-        booking.updated_at = datetime.now(UTC)
-        db.commit()
+            if not result.success:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=result.error_message or "Cannot open dispute",
+                )
+
+            booking.updated_at = datetime.now(UTC)
+            # atomic_operation commits all changes together on context exit
+
+        # Refresh after commit to get updated state
         db.refresh(booking)
 
         _add_booking_cache_headers(response, booking)
@@ -899,6 +976,10 @@ async def resolve_dispute(
 
     - Resolves to RESOLVED_UPHELD (original decision stands) or RESOLVED_REFUNDED (refund granted)
     - Can issue full or partial refund
+
+    Transaction Safety:
+    - Uses atomic_operation to ensure all state changes commit together or rollback
+    - Dispute resolution is atomic with package credit restoration if needed
     """
     # Require admin role
     if current_user.role not in ["admin", "owner"]:
@@ -910,28 +991,32 @@ async def resolve_dispute(
     booking = _get_booking_or_404(booking_id, db, current_user=None, verify_ownership=False)
 
     try:
-        resolution = DisputeState(request.resolution)
-        result = BookingStateMachine.resolve_dispute(
-            booking=booking,
-            resolution=resolution,
-            resolved_by_user_id=current_user.id,
-            notes=request.notes,
-            refund_amount_cents=request.refund_amount_cents,
-        )
-
-        if not result.success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.error_message or "Cannot resolve dispute",
+        # Use atomic_operation to ensure all state changes commit together
+        with atomic_operation(db):
+            resolution = DisputeState(request.resolution)
+            result = BookingStateMachine.resolve_dispute(
+                booking=booking,
+                resolution=resolution,
+                resolved_by_user_id=current_user.id,
+                notes=request.notes,
+                refund_amount_cents=request.refund_amount_cents,
             )
 
-        # Restore package credit if dispute resolution includes refund
-        if result.restore_package_credit and booking.package_id:
-            service = BookingService(db)
-            service._restore_package_credit(booking.package_id)
+            if not result.success:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=result.error_message or "Cannot resolve dispute",
+                )
 
-        booking.updated_at = datetime.now(UTC)
-        db.commit()
+            # Restore package credit if dispute resolution includes refund
+            if result.restore_package_credit and booking.package_id:
+                service = BookingService(db)
+                service._restore_package_credit(booking.package_id)
+
+            booking.updated_at = datetime.now(UTC)
+            # atomic_operation commits all changes together on context exit
+
+        # Refresh after commit to get updated state
         db.refresh(booking)
 
         _add_booking_cache_headers(response, booking)
@@ -1046,4 +1131,116 @@ async def regenerate_meeting(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to regenerate meeting: {str(e)}",
+        )
+
+
+# ============================================================================
+# Session Attendance Tracking Endpoints
+# ============================================================================
+
+
+@router.post("/bookings/{booking_id}/join", response_model=BookingDTO)
+async def record_session_join(
+    booking_id: int,
+    request: RecordJoinRequest,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Record that the current user has joined the session.
+
+    This endpoint tracks attendance for determining session outcomes when
+    the session auto-ends. It should be called when a user clicks the
+    "Join Session" button or enters the video call.
+
+    - Can only join SCHEDULED or ACTIVE sessions
+    - Tutors record tutor_joined_at
+    - Students record student_joined_at
+    - Idempotent: subsequent calls do not update the timestamp
+
+    Attendance-based outcome determination:
+    - Neither joined -> NOT_HELD (void payment)
+    - Only student joined -> NO_SHOW_TUTOR (refund student)
+    - Only tutor joined -> NO_SHOW_STUDENT (tutor earns payment)
+    - Both joined -> COMPLETED (normal completion)
+    """
+    booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
+
+    # Validate booking state
+    if booking.session_state not in [SessionState.SCHEDULED.value, SessionState.ACTIVE.value]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot join session with state {booking.session_state}. "
+            "Sessions can only be joined when SCHEDULED or ACTIVE.",
+        )
+
+    try:
+        now = datetime.now(UTC)
+        updated = False
+
+        # Determine which field to update based on user role
+        if current_user.role == "tutor":
+            # Verify this is the tutor for this booking
+            tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == current_user.id).first()
+            if not tutor_profile or booking.tutor_profile_id != tutor_profile.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to join this session as tutor",
+                )
+            # Idempotent: only set if not already set
+            if booking.tutor_joined_at is None:
+                booking.tutor_joined_at = now
+                updated = True
+                logger.info(
+                    "Tutor (user %d) joined session for booking %d at %s",
+                    current_user.id,
+                    booking_id,
+                    now.isoformat(),
+                )
+        elif current_user.role == "student":
+            # Verify this is the student for this booking
+            if booking.student_id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to join this session as student",
+                )
+            # Idempotent: only set if not already set
+            if booking.student_joined_at is None:
+                booking.student_joined_at = now
+                updated = True
+                logger.info(
+                    "Student (user %d) joined session for booking %d at %s",
+                    current_user.id,
+                    booking_id,
+                    now.isoformat(),
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only tutors and students can join sessions",
+            )
+
+        if updated:
+            booking.updated_at = now
+            BookingStateMachine.increment_version(booking)
+            db.commit()
+            db.refresh(booking)
+
+        _add_booking_cache_headers(response, booking)
+        return booking_to_dto(booking, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(
+            "Failed to record session join for booking %d, user %d: %s",
+            booking_id,
+            current_user.id,
+            str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record session join: {str(e)}",
         )

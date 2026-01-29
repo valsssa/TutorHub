@@ -11,6 +11,30 @@ Features:
 - Circuit breaker pattern for resilience
 - Idempotency keys for double-payment prevention
 - Timeout handling and recovery
+- Payout delay for refund protection
+
+SECURITY: Tutor Payout Timing
+=============================
+This module implements destination charges for Stripe Connect, which means funds
+transfer to the tutor's Connect account immediately upon successful payment.
+
+To protect against scenarios where a session is cancelled after payment but the
+tutor has already withdrawn funds (leaving the platform to cover the refund), we
+configure a payout delay on all tutor Connect accounts.
+
+Configuration: STRIPE_PAYOUT_DELAY_DAYS (default: 7 days)
+
+This delay:
+- Holds funds in the tutor's Stripe balance before bank payout
+- Gives time for cancellations and refund processing
+- Does NOT affect when tutors see earnings (they see it immediately)
+- Only affects when they can withdraw to their bank account
+
+The delay is applied:
+1. When creating new Connect accounts (create_connect_account)
+2. Can be updated for existing accounts (update_connect_account_payout_settings)
+
+Admin endpoints in connect_router.py allow batch migration of existing accounts.
 """
 
 import logging
@@ -247,6 +271,18 @@ def create_connect_account(
 
     Uses idempotency key based on tutor_user_id to prevent duplicate accounts.
 
+    SECURITY: Payout Delay for Refund Protection
+    --------------------------------------------
+    With destination charges, funds transfer to the tutor's Connect account immediately
+    upon payment. If a session is later cancelled or refunded, the tutor may have already
+    withdrawn those funds, leaving the platform to cover the refund from its own balance.
+
+    To mitigate this risk, we configure a payout delay (default: 7 days) which holds funds
+    in the tutor's Stripe balance before they can be paid out to their bank account. This
+    ensures funds remain available for potential refunds within the cancellation window.
+
+    The delay is configured via STRIPE_PAYOUT_DELAY_DAYS setting.
+
     Args:
         tutor_user_id: Internal tutor user ID
         tutor_email: Tutor's email address
@@ -263,6 +299,9 @@ def create_connect_account(
         country,
         user_id=tutor_user_id,
     )
+
+    # Get payout delay from settings (default 7 days for refund protection)
+    payout_delay_days = settings.STRIPE_PAYOUT_DELAY_DAYS
 
     try:
         with stripe_circuit_breaker.call():
@@ -283,13 +322,17 @@ def create_connect_account(
                         "schedule": {
                             "interval": "weekly",
                             "weekly_anchor": "friday",
+                            "delay_days": payout_delay_days,
                         },
                     },
                 },
                 idempotency_key=idempotency_key,
             )
 
-        logger.info(f"Created Connect account {account.id} for tutor {tutor_user_id}")
+        logger.info(
+            f"Created Connect account {account.id} for tutor {tutor_user_id} "
+            f"with {payout_delay_days}-day payout delay"
+        )
         return account
 
     except CircuitOpenError:
@@ -361,6 +404,69 @@ def get_connect_account(account_id: str) -> stripe.Account:
         )
     except stripe.error.StripeError as e:
         logger.error(f"Error retrieving Connect account {account_id}: {e}")
+        raise handle_stripe_error(e)
+
+
+def update_connect_account_payout_settings(
+    account_id: str,
+    delay_days: int | None = None,
+    interval: str = "weekly",
+    weekly_anchor: str = "friday",
+) -> stripe.Account:
+    """
+    Update payout settings for an existing Connect account.
+
+    SECURITY: This function can be used to add payout delays to existing tutor
+    accounts that were created before the delay protection was implemented.
+
+    Args:
+        account_id: Stripe Connect account ID
+        delay_days: Number of days to delay payouts (None uses settings default)
+        interval: Payout interval ('daily', 'weekly', 'monthly', 'manual')
+        weekly_anchor: Day of week for weekly payouts
+
+    Returns:
+        Updated Stripe Account object
+
+    Raises:
+        HTTPException: If Stripe call fails
+    """
+    client = get_stripe_client()
+
+    # Use configured delay if not specified
+    if delay_days is None:
+        delay_days = settings.STRIPE_PAYOUT_DELAY_DAYS
+
+    try:
+        with stripe_circuit_breaker.call():
+            account = client.Account.modify(
+                account_id,
+                settings={
+                    "payouts": {
+                        "schedule": {
+                            "interval": interval,
+                            "weekly_anchor": weekly_anchor,
+                            "delay_days": delay_days,
+                        },
+                    },
+                },
+            )
+
+        logger.info(
+            f"Updated Connect account {account_id} payout settings: "
+            f"{delay_days}-day delay, {interval} payouts"
+        )
+        return account
+
+    except CircuitOpenError:
+        logger.error(f"Circuit breaker open when updating account {account_id}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment service temporarily unavailable.",
+        )
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Error updating Connect account {account_id}: {e}")
         raise handle_stripe_error(e)
 
 

@@ -141,10 +141,19 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str | None = None  # whsec_...
     STRIPE_CONNECT_CLIENT_ID: str | None = None  # ca_... for Connect OAuth
     STRIPE_CURRENCY: str = "usd"  # Default currency for payments
-    STRIPE_SUCCESS_URL: str = "https://edustream.valsa.solutions/bookings/{booking_id}?payment=success"
+    # NOTE: {CHECKOUT_SESSION_ID} is a Stripe placeholder that gets replaced with the actual session ID
+    # This allows the frontend to call /api/payments/checkout/success to verify payment status
+    STRIPE_SUCCESS_URL: str = "https://edustream.valsa.solutions/bookings/{booking_id}?payment=success&session_id={CHECKOUT_SESSION_ID}"
     STRIPE_CANCEL_URL: str = "https://edustream.valsa.solutions/bookings/{booking_id}?payment=cancelled"
     STRIPE_CONNECT_REFRESH_URL: str = "https://edustream.valsa.solutions/tutor/earnings?connect=refresh"
     STRIPE_CONNECT_RETURN_URL: str = "https://edustream.valsa.solutions/tutor/earnings?connect=success"
+
+    # Stripe Payout Security Settings
+    # SECURITY: Delay payouts to protect against refund scenarios where tutors withdraw
+    # funds before a session is completed or cancelled. With destination charges, funds
+    # transfer immediately - this delay ensures funds remain available for potential refunds.
+    # Recommended: 7 days minimum for MVP (covers most cancellation windows)
+    STRIPE_PAYOUT_DELAY_DAYS: int = 7  # Hold funds for this many days before payout
 
     # Google OAuth/OIDC Configuration
     GOOGLE_CLIENT_ID: str | None = None
