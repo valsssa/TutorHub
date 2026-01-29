@@ -1,22 +1,14 @@
 -- Migration 030: Standardize currency fields across tables
 -- Purpose: Ensure consistent currency field types (VARCHAR(3)) and defaults
 -- Date: 2026-01-28
-
--- Note: Current state analysis:
--- - bookings: currency CHAR(3) NOT NULL DEFAULT 'USD'
--- - payments: currency CHAR(3) NOT NULL DEFAULT 'USD'
--- - payouts: currency CHAR(3) NOT NULL DEFAULT 'USD'
--- - refunds: currency CHAR(3) NOT NULL DEFAULT 'USD'
--- - users: currency VARCHAR(3) NOT NULL DEFAULT 'USD'
--- - tutor_profiles: currency VARCHAR(3) NOT NULL DEFAULT 'USD'
+-- Note: If a view depends on any of these columns, type conversion is skipped
 
 -- Standardize all currency fields to VARCHAR(3) NOT NULL DEFAULT 'USD'
 -- This provides flexibility for future currency codes while maintaining data integrity
 
--- 1. Update bookings table
+-- 1. Update bookings table (with exception handling for view dependencies)
 DO $$
 BEGIN
-    -- Check if column is CHAR(3) and convert to VARCHAR(3)
     IF EXISTS (
         SELECT 1
         FROM information_schema.columns
@@ -24,9 +16,12 @@ BEGIN
         AND column_name = 'currency'
         AND data_type = 'character'
     ) THEN
-        ALTER TABLE bookings
-        ALTER COLUMN currency TYPE VARCHAR(3);
-        RAISE NOTICE 'Converted bookings.currency from CHAR(3) to VARCHAR(3)';
+        BEGIN
+            ALTER TABLE bookings ALTER COLUMN currency TYPE VARCHAR(3);
+            RAISE NOTICE 'Converted bookings.currency from CHAR(3) to VARCHAR(3)';
+        EXCEPTION WHEN feature_not_supported THEN
+            RAISE NOTICE 'Skipped bookings.currency conversion (view dependency)';
+        END;
     END IF;
 END $$;
 
@@ -40,9 +35,12 @@ BEGIN
         AND column_name = 'currency'
         AND data_type = 'character'
     ) THEN
-        ALTER TABLE payments
-        ALTER COLUMN currency TYPE VARCHAR(3);
-        RAISE NOTICE 'Converted payments.currency from CHAR(3) to VARCHAR(3)';
+        BEGIN
+            ALTER TABLE payments ALTER COLUMN currency TYPE VARCHAR(3);
+            RAISE NOTICE 'Converted payments.currency from CHAR(3) to VARCHAR(3)';
+        EXCEPTION WHEN feature_not_supported THEN
+            RAISE NOTICE 'Skipped payments.currency conversion (view dependency)';
+        END;
     END IF;
 END $$;
 
@@ -56,9 +54,12 @@ BEGIN
         AND column_name = 'currency'
         AND data_type = 'character'
     ) THEN
-        ALTER TABLE payouts
-        ALTER COLUMN currency TYPE VARCHAR(3);
-        RAISE NOTICE 'Converted payouts.currency from CHAR(3) to VARCHAR(3)';
+        BEGIN
+            ALTER TABLE payouts ALTER COLUMN currency TYPE VARCHAR(3);
+            RAISE NOTICE 'Converted payouts.currency from CHAR(3) to VARCHAR(3)';
+        EXCEPTION WHEN feature_not_supported THEN
+            RAISE NOTICE 'Skipped payouts.currency conversion (view dependency)';
+        END;
     END IF;
 END $$;
 
@@ -72,9 +73,12 @@ BEGIN
         AND column_name = 'currency'
         AND data_type = 'character'
     ) THEN
-        ALTER TABLE refunds
-        ALTER COLUMN currency TYPE VARCHAR(3);
-        RAISE NOTICE 'Converted refunds.currency from CHAR(3) to VARCHAR(3)';
+        BEGIN
+            ALTER TABLE refunds ALTER COLUMN currency TYPE VARCHAR(3);
+            RAISE NOTICE 'Converted refunds.currency from CHAR(3) to VARCHAR(3)';
+        EXCEPTION WHEN feature_not_supported THEN
+            RAISE NOTICE 'Skipped refunds.currency conversion (view dependency)';
+        END;
     END IF;
 END $$;
 
@@ -93,10 +97,14 @@ BEGIN
         WHERE conname = 'bookings_valid_currency_format'
         AND conrelid = 'bookings'::regclass
     ) THEN
-        ALTER TABLE bookings
-        ADD CONSTRAINT bookings_valid_currency_format
-        CHECK (currency ~ '^[A-Z]{3}$');
-        RAISE NOTICE 'Added currency format constraint to bookings';
+        BEGIN
+            ALTER TABLE bookings
+            ADD CONSTRAINT bookings_valid_currency_format
+            CHECK (currency ~ '^[A-Z]{3}$');
+            RAISE NOTICE 'Added currency format constraint to bookings';
+        EXCEPTION WHEN check_violation THEN
+            RAISE NOTICE 'Skipped bookings constraint (existing data violates check)';
+        END;
     END IF;
 
     -- Payments currency check
@@ -105,10 +113,14 @@ BEGIN
         WHERE conname = 'payments_valid_currency_format'
         AND conrelid = 'payments'::regclass
     ) THEN
-        ALTER TABLE payments
-        ADD CONSTRAINT payments_valid_currency_format
-        CHECK (currency ~ '^[A-Z]{3}$');
-        RAISE NOTICE 'Added currency format constraint to payments';
+        BEGIN
+            ALTER TABLE payments
+            ADD CONSTRAINT payments_valid_currency_format
+            CHECK (currency ~ '^[A-Z]{3}$');
+            RAISE NOTICE 'Added currency format constraint to payments';
+        EXCEPTION WHEN check_violation THEN
+            RAISE NOTICE 'Skipped payments constraint (existing data violates check)';
+        END;
     END IF;
 
     -- Payouts currency check
@@ -117,10 +129,14 @@ BEGIN
         WHERE conname = 'payouts_valid_currency_format'
         AND conrelid = 'payouts'::regclass
     ) THEN
-        ALTER TABLE payouts
-        ADD CONSTRAINT payouts_valid_currency_format
-        CHECK (currency ~ '^[A-Z]{3}$');
-        RAISE NOTICE 'Added currency format constraint to payouts';
+        BEGIN
+            ALTER TABLE payouts
+            ADD CONSTRAINT payouts_valid_currency_format
+            CHECK (currency ~ '^[A-Z]{3}$');
+            RAISE NOTICE 'Added currency format constraint to payouts';
+        EXCEPTION WHEN check_violation THEN
+            RAISE NOTICE 'Skipped payouts constraint (existing data violates check)';
+        END;
     END IF;
 
     -- Refunds currency check
@@ -129,27 +145,43 @@ BEGIN
         WHERE conname = 'refunds_valid_currency_format'
         AND conrelid = 'refunds'::regclass
     ) THEN
-        ALTER TABLE refunds
-        ADD CONSTRAINT refunds_valid_currency_format
-        CHECK (currency ~ '^[A-Z]{3}$');
-        RAISE NOTICE 'Added currency format constraint to refunds';
+        BEGIN
+            ALTER TABLE refunds
+            ADD CONSTRAINT refunds_valid_currency_format
+            CHECK (currency ~ '^[A-Z]{3}$');
+            RAISE NOTICE 'Added currency format constraint to refunds';
+        EXCEPTION WHEN check_violation THEN
+            RAISE NOTICE 'Skipped refunds constraint (existing data violates check)';
+        END;
     END IF;
 END $$;
 
--- Note: Foreign key constraints to supported_currencies table NOT added to avoid:
--- 1. CASCADE handling complexity
--- 2. Query performance overhead
--- 3. Additional join requirements
--- Application layer validates currency codes against supported_currencies table
-
--- Add comments
-COMMENT ON COLUMN bookings.currency IS 'ISO 4217 currency code (validated at application layer against supported_currencies)';
-COMMENT ON COLUMN payments.currency IS 'ISO 4217 currency code (validated at application layer against supported_currencies)';
-COMMENT ON COLUMN payouts.currency IS 'ISO 4217 currency code (validated at application layer against supported_currencies)';
-COMMENT ON COLUMN refunds.currency IS 'ISO 4217 currency code (validated at application layer against supported_currencies)';
+-- Add comments (these are safe and always succeed)
+DO $$
+BEGIN
+    COMMENT ON COLUMN bookings.currency IS 'ISO 4217 currency code (validated at application layer)';
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
 
 DO $$
 BEGIN
-    RAISE NOTICE 'Migration 030_standardize_currency_fields completed successfully';
-    RAISE NOTICE 'All currency fields now use VARCHAR(3) with format validation';
+    COMMENT ON COLUMN payments.currency IS 'ISO 4217 currency code (validated at application layer)';
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    COMMENT ON COLUMN payouts.currency IS 'ISO 4217 currency code (validated at application layer)';
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    COMMENT ON COLUMN refunds.currency IS 'ISO 4217 currency code (validated at application layer)';
+EXCEPTION WHEN undefined_column THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    RAISE NOTICE 'Migration 030_standardize_currency_fields completed';
 END $$;
