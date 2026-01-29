@@ -84,6 +84,24 @@ See [TODO_PHASE_0_STABILIZATION.md](./TODO_PHASE_0_STABILIZATION.md) for detaile
 - ✅ Dispute state transition tests
 - ✅ Full lifecycle tests
 
+### Load Testing (2026-01-29)
+- ✅ Locust test suite (`tests/load/locustfile.py`)
+- ✅ User behavior simulation (anonymous, student, tutor)
+- ✅ Success criteria (P95 <500ms, Error <1%)
+- ✅ Test scenarios (normal, peak, stress, soak)
+
+### Process Documentation (2026-01-29)
+- ✅ Success metrics (`docs/METRICS.md`)
+- ✅ On-call procedures (`docs/ON_CALL.md`)
+- ✅ Support processes (`docs/SUPPORT.md`)
+- ✅ Engineer onboarding guide (`docs/ONBOARDING.md`)
+
+### Feature Flags System (2026-01-29)
+- ✅ Redis-backed feature flags (`backend/core/feature_flags.py`)
+- ✅ Admin API (`backend/modules/admin/feature_flags_router.py`)
+- ✅ Frontend client & React hooks (`frontend/lib/featureFlags.ts`)
+- ✅ Percentage rollouts, allowlist/denylist support
+
 ---
 
 ## In Progress
@@ -92,7 +110,6 @@ See [TODO_PHASE_0_STABILIZATION.md](./TODO_PHASE_0_STABILIZATION.md) for detaile
 - [ ] Security configuration review
 - [ ] Backend test coverage improvement (target: 80%)
 - [ ] Frontend test coverage improvement (target: 70%)
-- [ ] Load testing setup
 
 ### Bug Fixes
 - [ ] Payment flow edge cases
@@ -104,10 +121,9 @@ See [TODO_PHASE_0_STABILIZATION.md](./TODO_PHASE_0_STABILIZATION.md) for detaile
 ## Pending (Next Steps)
 
 ### Phase 0 Remaining
-- [ ] Success metrics definition
-- [ ] On-call rotation setup
-- [ ] Support processes documentation
-- [ ] Onboarding guide for engineers
+- [ ] Complete backend test coverage (80%)
+- [ ] Complete frontend test coverage (70%)
+- [ ] Security audit and hardening
 
 ### Phase 1: MVP Launch (Weeks 5-12)
 - [ ] AI tutor matching
@@ -117,7 +133,6 @@ See [TODO_PHASE_0_STABILIZATION.md](./TODO_PHASE_0_STABILIZATION.md) for detaile
 
 ### Technical Debt
 - [ ] APScheduler → Celery migration
-- [ ] Feature flags system
 - [ ] Distributed tracing
 
 ---

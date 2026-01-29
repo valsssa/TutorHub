@@ -86,7 +86,10 @@ async def get_current_user_optional(
     token: Annotated[str | None, Depends(oauth2_scheme)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User | None:
-    """Get the current authenticated user from JWT token, or None if not authenticated."""
+    """Get the current authenticated user from JWT token, or None if not authenticated.
+
+    Returns None for any invalid token (including stale password/role tokens).
+    """
     if not token:
         return None
 
@@ -101,6 +104,17 @@ async def get_current_user_optional(
 
     user = db.query(User).filter(User.email == StringUtils.normalize_email(email)).first()
     if user is None or not user.is_active:
+        return None
+
+    # Validate token was issued after any password change
+    if user.password_changed_at:
+        token_pwd_ts = payload.get("pwd_ts")
+        if not token_pwd_ts or user.password_changed_at.timestamp() > token_pwd_ts:
+            return None
+
+    # Validate role hasn't changed
+    token_role = payload.get("role")
+    if token_role and token_role != user.role:
         return None
 
     return user

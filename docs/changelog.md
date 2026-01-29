@@ -12,6 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Booking state machine with four-field status system
 - APScheduler integration for background jobs
 - Owner dashboard with revenue analytics
+- Feature flags system with Redis backend (`backend/core/feature_flags.py`)
+- Feature flags admin API (`backend/modules/admin/feature_flags_router.py`)
+- Frontend feature flags client with React hooks (`frontend/lib/featureFlags.ts`)
+- Load testing suite with Locust (`tests/load/`)
+- Success metrics documentation (`docs/METRICS.md`)
+- On-call procedures (`docs/ON_CALL.md`)
+- Support processes documentation (`docs/SUPPORT.md`)
+- Engineer onboarding guide (`docs/ONBOARDING.md`)
 
 ### Changed
 - Standardized currency fields across tables

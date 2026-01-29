@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
     locale_detection_confidence NUMERIC(3,2),
     deleted_at TIMESTAMPTZ,
     deleted_by INTEGER,
+    password_changed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT valid_role CHECK (role IN ('student', 'tutor', 'admin')),

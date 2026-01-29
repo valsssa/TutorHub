@@ -364,6 +364,49 @@ class TestConflictChecking:
 
         assert conflicts == ""
 
+    def test_check_conflicts_with_locking(self, db_session, test_student, test_tutor):
+        """Verify check_conflicts supports row-level locking to prevent race conditions."""
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() + timedelta(days=1)
+        end_at = start_at + timedelta(hours=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+
+        # Create first booking
+        _ = service.create_booking(
+            student_id=test_student.id,
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            duration_minutes=60,
+        )
+        db_session.commit()
+
+        # Check conflicts with locking enabled (use_lock=True)
+        # This should acquire FOR UPDATE locks on overlapping bookings
+        conflicts = service.check_conflicts(
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at + timedelta(minutes=30),
+            end_at=start_at + timedelta(minutes=90),
+            use_lock=True,
+        )
+
+        assert conflicts != ""
+        assert "Overlaps" in conflicts
+
+    def test_check_conflicts_without_locking_backward_compatible(self, db_session, test_student, test_tutor):
+        """Verify check_conflicts works without locking (backward compatible)."""
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+
+        # Default call without use_lock should still work
+        conflicts = service.check_conflicts(
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
+        )
+
+        assert conflicts == ""
+
 
 # ============================================================================
 # Cancellation Tests

@@ -549,7 +549,16 @@ class BookingStateMachine:
         Open a dispute on a booking.
 
         Can only open disputes on terminal session states.
+
+        Idempotent: Returns success if already has OPEN dispute.
         """
+        # Idempotent check: already has open dispute
+        if booking.dispute_state == DisputeState.OPEN.value:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
         if not cls.is_terminal_session_state(booking.session_state):
             return TransitionResult(
                 success=False,
@@ -566,6 +575,7 @@ class BookingStateMachine:
         booking.dispute_reason = reason
         booking.disputed_at = datetime.utcnow()
         booking.disputed_by = disputed_by_user_id
+        cls.increment_version(booking)
 
         return TransitionResult(success=True)
 
@@ -587,7 +597,19 @@ class BookingStateMachine:
             resolved_by_user_id: Admin user ID
             notes: Resolution notes
             refund_amount_cents: Amount to refund (for partial refunds)
+
+        Idempotent: Returns success if already resolved.
         """
+        # Idempotent check: already resolved
+        if booking.dispute_state in {
+            DisputeState.RESOLVED_UPHELD.value,
+            DisputeState.RESOLVED_REFUNDED.value,
+        }:
+            return TransitionResult(
+                success=True,
+                already_in_target_state=True,
+            )
+
         if booking.dispute_state != DisputeState.OPEN.value:
             return TransitionResult(
                 success=False,
@@ -613,5 +635,7 @@ class BookingStateMachine:
                     booking.payment_state = PaymentState.PARTIALLY_REFUNDED.value
                 else:
                     booking.payment_state = PaymentState.REFUNDED.value
+
+        cls.increment_version(booking)
 
         return TransitionResult(success=True)

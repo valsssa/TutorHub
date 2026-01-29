@@ -147,7 +147,7 @@ class AuthService:
         }
         # Include password_changed_at timestamp if available (for token invalidation)
         if user.password_changed_at:
-            token_data["pwd_ts"] = user.password_changed_at
+            token_data["pwd_ts"] = user.password_changed_at.timestamp()
         access_token = create_access_token(
             data=token_data,
             expires_delta=timedelta(minutes=30),

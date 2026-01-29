@@ -322,10 +322,25 @@ async def lifespan(app: FastAPI):
     # 2. Create default users
     await create_default_users()
 
+    # 3. Initialize feature flags
+    try:
+        from core.feature_flags import init_default_flags
+        await init_default_flags()
+        logger.info("✓ Feature flags initialized")
+    except Exception as e:
+        logger.warning(f"Feature flags initialization failed (Redis may be unavailable): {e}")
+
     logger.info("✓ Application started successfully")
     yield
     # Shutdown
     logger.info("Application shutting down")
+
+    # Close feature flags Redis connection
+    try:
+        from core.feature_flags import feature_flags
+        await feature_flags.close()
+    except Exception:
+        pass
 
 
 # OpenAPI Tags Metadata - Comprehensive API documentation structure

@@ -183,9 +183,11 @@ async def reset_password(
             detail="User not found",
         )
 
-    # Update password
+    # Update password and track change time for token invalidation
+    now = datetime.now(UTC)
     user.hashed_password = PasswordHasher.hash(request.new_password)
-    user.updated_at = datetime.now(UTC)
+    user.password_changed_at = now
+    user.updated_at = now
     db.commit()
 
     # Consume token
