@@ -152,7 +152,7 @@ export default function ModernBookingModal({
         ?.split("=")[1];
 
       const response = await fetch(
-        `${API_URL}/api/tutors/${tutor.id}/available-slots?start_date=${startDateStr}&end_date=${endDateStr}`,
+        `${API_URL}/api/v1/tutors/${tutor.id}/available-slots?start_date=${startDateStr}&end_date=${endDateStr}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

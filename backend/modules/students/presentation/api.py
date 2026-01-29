@@ -18,7 +18,7 @@ from schemas import FavoriteTutorCreate, FavoriteTutorResponse, StudentProfileRe
 logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
 
-router = APIRouter(prefix="/api/profile/student", tags=["students"])
+router = APIRouter(prefix="/profile/student", tags=["students"])
 
 
 @router.get("/me", response_model=StudentProfileResponse)
@@ -111,7 +111,7 @@ async def update_student_profile(
 # Favorite Tutors Endpoints
 # ============================================================================
 
-favorites_router = APIRouter(prefix="/api/favorites", tags=["favorites"])
+favorites_router = APIRouter(prefix="/favorites", tags=["favorites"])
 
 
 @favorites_router.get("", response_model=list[FavoriteTutorResponse])

@@ -19,7 +19,7 @@ from models import Payment, StudentProfile, User
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/wallet", tags=["wallet"])
+router = APIRouter(prefix="/wallet", tags=["wallet"])
 
 
 # ============================================================================

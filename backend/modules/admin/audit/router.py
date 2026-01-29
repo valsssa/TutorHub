@@ -17,7 +17,7 @@ from models import User
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin/audit", tags=["admin-audit"])
+router = APIRouter(prefix="/admin/audit", tags=["admin-audit"])
 
 
 class AuditLogResponse(BaseModel):

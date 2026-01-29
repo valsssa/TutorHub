@@ -153,6 +153,11 @@ class Settings(BaseSettings):
     ZOOM_ACCOUNT_ID: str | None = None  # For Server-to-Server OAuth
     ZOOM_REDIRECT_URI: str = "https://edustream.valsa.solutions/api/integrations/zoom/callback"
 
+    # Sentry Error Monitoring
+    SENTRY_DSN: str | None = None  # Sentry DSN for error tracking
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1  # 10% of transactions sampled
+    SENTRY_PROFILES_SAMPLE_RATE: float = 0.1  # 10% of transactions profiled
+
     # Frontend URLs for OAuth redirects
     FRONTEND_URL: str = "https://edustream.valsa.solutions"
     FRONTEND_LOGIN_SUCCESS_URL: str = "https://edustream.valsa.solutions/dashboard"

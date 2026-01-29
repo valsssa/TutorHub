@@ -18,7 +18,7 @@ from core.dependencies import DatabaseSession, OwnerUser
 from models import Booking, TutorProfile, User
 
 router = APIRouter(
-    prefix="/api/owner",
+    prefix="/owner",
     tags=["owner-analytics"],
     responses={
         401: {"description": "Not authenticated"},

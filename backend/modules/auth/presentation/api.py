@@ -22,7 +22,7 @@ from schemas import Token, UserCreate, UserResponse, UserSelfUpdate
 logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:

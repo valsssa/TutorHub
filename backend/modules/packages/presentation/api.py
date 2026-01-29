@@ -18,7 +18,7 @@ from modules.packages.services.expiration_service import PackageExpirationServic
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/packages", tags=["packages"])
+router = APIRouter(prefix="/packages", tags=["packages"])
 
 
 # Schemas

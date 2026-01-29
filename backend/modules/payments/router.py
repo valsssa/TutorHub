@@ -28,7 +28,7 @@ from models import Booking, Payment, TutorProfile
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/payments",
+    prefix="/payments",
     tags=["payments"],
 )
 

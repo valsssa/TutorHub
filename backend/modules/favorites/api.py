@@ -12,7 +12,7 @@ from core.logger import logger
 from modules.favorites.entities import FavoriteTutor
 from modules.favorites.schemas import FavoriteCreate, FavoriteResponse
 
-router = APIRouter(prefix="/api/favorites", tags=["favorites"])
+router = APIRouter(prefix="/favorites", tags=["favorites"])
 
 
 @router.get("", response_model=list[FavoriteResponse])

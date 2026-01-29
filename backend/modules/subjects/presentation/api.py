@@ -17,7 +17,7 @@ from schemas import SubjectResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/subjects", tags=["subjects"])
+router = APIRouter(prefix="/subjects", tags=["subjects"])
 
 # Initialize rate limiter
 

@@ -21,7 +21,7 @@ from schemas import ReviewCreate, ReviewResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/reviews", tags=["reviews"])
+router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 
 @cache_with_ttl(ttl_seconds=300)  # Cache for 5 minutes

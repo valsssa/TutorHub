@@ -139,7 +139,7 @@ export default function TimeSlotPicker({
           ?.split("=")[1];
 
         const response = await fetch(
-          `${API_URL}/api/tutors/${tutorId}/available-slots?start_date=${startDateStr}&end_date=${endDateStr}`,
+          `${API_URL}/api/v1/tutors/${tutorId}/available-slots?start_date=${startDateStr}&end_date=${endDateStr}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

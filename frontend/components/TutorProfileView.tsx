@@ -197,7 +197,7 @@ export default function TutorProfileView({
         const endDateStr = endDate.toISOString().split("T")[0];
 
         const response = await fetch(
-          `${API_URL}/api/tutors/${tutor.id}/available-slots?start_date=${startDateStr}T00:00:00&end_date=${endDateStr}T23:59:59`,
+          `${API_URL}/api/v1/tutors/${tutor.id}/available-slots?start_date=${startDateStr}T00:00:00&end_date=${endDateStr}T23:59:59`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 

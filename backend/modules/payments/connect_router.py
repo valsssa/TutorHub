@@ -26,7 +26,7 @@ from models import TutorProfile
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/tutor/connect",
+    prefix="/tutor/connect",
     tags=["tutor-payments"],
 )
 

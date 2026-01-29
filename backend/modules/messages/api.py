@@ -28,7 +28,7 @@ from schemas import MessageResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/messages", tags=["messages"])
+router = APIRouter(prefix="/messages", tags=["messages"])
 
 
 # ============================================================================

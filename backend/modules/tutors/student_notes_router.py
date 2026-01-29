@@ -14,7 +14,7 @@ from schemas import StudentNoteResponse, StudentNoteUpdate
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/tutor/student-notes", tags=["tutor-student-notes"])
+router = APIRouter(prefix="/tutor/student-notes", tags=["tutor-student-notes"])
 
 
 @router.get("/{student_id}", response_model=StudentNoteResponse | None)

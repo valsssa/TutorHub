@@ -16,7 +16,7 @@ from modules.users.avatar.service import AvatarService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 def _service(db: Session) -> AvatarService:

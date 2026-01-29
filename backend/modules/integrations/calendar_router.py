@@ -25,7 +25,7 @@ from models import Booking, User
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/integrations/calendar",
+    prefix="/integrations/calendar",
     tags=["integrations"],
 )
 

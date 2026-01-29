@@ -1,0 +1,203 @@
+EduStream System Architecture Diagram
+=====================================
+
+                                    CLIENTS
+    +------------------------------------------------------------------+
+    |                                                                   |
+    |  +------------------+              +------------------+           |
+    |  |    Browser       |              |   Mobile Apps    |           |
+    |  | (Next.js SSR)    |              |   (Future)       |           |
+    |  +--------+---------+              +--------+---------+           |
+    |           |                                 |                     |
+    +-----------|---------- HTTPS/WSS -----------|---------------------+
+                |                                 |
+                v                                 v
+    +------------------------------------------------------------------+
+    |                         EDGE LAYER                                |
+    |                                                                   |
+    |  +----------------------------------------------------------+    |
+    |  |              Nginx / Cloud Load Balancer                  |    |
+    |  |     - TLS Termination                                     |    |
+    |  |     - Rate Limiting (60 req/min default)                  |    |
+    |  |     - Request Routing                                     |    |
+    |  +---------------------------+------------------------------+    |
+    +------------------------------|-------------------------------+
+                                   |
+                +------------------+------------------+
+                |                                     |
+                v                                     v
+    +--------------------------+         +--------------------------+
+    |     API SERVER           |         |   WEBSOCKET SERVER       |
+    |     (FastAPI)            |         |   (FastAPI/Starlette)    |
+    |                          |         |                          |
+    | - REST API endpoints     |         | - Real-time messaging    |
+    | - JWT Authentication     |         | - Typing indicators      |
+    | - Rate Limiting          |         | - Presence tracking      |
+    | - CORS/Security Headers  |         | - Availability updates   |
+    |                          |         |                          |
+    | Port: 8000               |         | Port: 8000/ws            |
+    +-----------+--------------+         +-----------+--------------+
+                |                                     |
+                +------------------+------------------+
+                                   |
+    +------------------------------------------------------------------+
+    |                       SERVICE LAYER                               |
+    |                                                                   |
+    | +-------------+ +-------------+ +-------------+ +-------------+  |
+    | | Booking     | | TutorProfile| | Payment     | | Notification|  |
+    | | Service     | | Service     | | Service     | | Service     |  |
+    | +-------------+ +-------------+ +-------------+ +-------------+  |
+    |                                                                   |
+    | +-------------+ +-------------+ +-------------+ +-------------+  |
+    | | Message     | | Package     | | Review      | | Admin       |  |
+    | | Service     | | Service     | | Service     | | Service     |  |
+    | +-------------+ +-------------+ +-------------+ +-------------+  |
+    +------------------------------------------------------------------+
+                |                   |                   |
+    +-----------+-------------------+-------------------+-----------+
+    |           |                   |                   |           |
+    v           v                   v                   v           v
++----------+ +----------+     +----------+     +---------------------+
+|PostgreSQL| |  Redis   |     |  MinIO   |     | External Services   |
+|    17    | |    7     |     |  (S3)    |     |                     |
++----------+ +----------+     +----------+     | +------+ +------+   |
+| 45+ tables| | Cache   |     | Avatars  |     | |Stripe| |Brevo |   |
+| Connection| | Pub/Sub |     | Docs     |     | +------+ +------+   |
+| Pool: 30  | | Queue   |     | Certs    |     | +------+ +------+   |
++----------+ +----------+     +----------+     | |Google| | Zoom |   |
+                                               | |OAuth | |      |   |
+                                               | +------+ +------+   |
+                                               +---------------------+
+
+    +------------------------------------------------------------------+
+    |                    BACKGROUND JOBS                                |
+    |                    (APScheduler)                                  |
+    |                                                                   |
+    |  +------------------------+  +------------------------+           |
+    |  | expire_requests        |  | start_sessions         |           |
+    |  | Every 5 min            |  | Every 1 min            |           |
+    |  | REQUESTED -> EXPIRED   |  | SCHEDULED -> ACTIVE    |           |
+    |  +------------------------+  +------------------------+           |
+    |                                                                   |
+    |  +------------------------+                                       |
+    |  | end_sessions           |                                       |
+    |  | Every 1 min            |                                       |
+    |  | ACTIVE -> ENDED        |                                       |
+    |  +------------------------+                                       |
+    +------------------------------------------------------------------+
+
+
+BOOKING STATE MACHINE
+=====================
+
+Session State Flow:
+    REQUESTED -----> SCHEDULED -----> ACTIVE -----> ENDED
+        |               |               |
+        +----> CANCELLED <--------------+
+        |
+        +----> EXPIRED (24h timeout)
+
+Payment State Flow:
+    PENDING -----> AUTHORIZED -----> CAPTURED -----> REFUNDED
+        |              |                   |
+        +----> VOIDED <+                   +----> PARTIALLY_REFUNDED
+                                                         |
+                                                         v
+                                                     REFUNDED
+
+Dispute State Flow:
+    NONE -----> OPEN -----> RESOLVED_UPHELD
+                    |
+                    +----> RESOLVED_REFUNDED
+
+
+MODULE ARCHITECTURE
+===================
+
+backend/
+    +-- core/                 # Shared utilities (27 modules)
+    +-- models/               # SQLAlchemy ORM (domain models)
+    +-- modules/              # Feature modules (18 modules)
+        |
+        +-- auth/             # Full DDD
+        +-- bookings/         # Full DDD (state machine)
+        +-- tutor_profile/    # Full DDD
+        |
+        +-- packages/         # Service + Presentation
+        +-- notifications/    # Service + Presentation
+        +-- messages/         # Service + Presentation
+        +-- payments/         # Service + Presentation
+        +-- admin/            # Service + Presentation
+        |
+        +-- reviews/          # Presentation Only
+        +-- favorites/        # Presentation Only
+        +-- students/         # Presentation Only
+        +-- subjects/         # Presentation Only
+        +-- (others...)
+
+
+frontend/
+    +-- app/                  # Next.js App Router (pages)
+    +-- components/           # React components (~95 files)
+    +-- contexts/             # React Context (Theme, Locale, Timezone)
+    +-- hooks/                # Custom hooks (useAuth, useApi, useWebSocket)
+    +-- lib/                  # Utilities + API client
+    +-- types/                # TypeScript definitions
+
+
+DATABASE RELATIONSHIPS
+======================
+
+users (1) -----> (1) user_profiles
+  |
+  +-----> (1) tutor_profiles -----> (*) tutor_subjects
+  |             |                    |
+  |             +---> (*) tutor_certifications
+  |             +---> (*) tutor_education
+  |             +---> (*) tutor_availabilities
+  |             +---> (*) tutor_pricing_options
+  |
+  +-----> (1) student_profiles
+  |             |
+  |             +---> (*) student_packages
+  |             +---> (*) favorite_tutors
+  |
+  +-----> (*) bookings -----> (1) reviews
+  |             |
+  |             +---> (*) session_materials
+  |             +---> (*) payments
+  |
+  +-----> (*) messages -----> (*) message_attachments
+  |
+  +-----> (*) notifications
+
+
+ROLE HIERARCHY
+==============
+
+    OWNER (level 3)
+       |
+       +-- Full platform access
+       +-- Business analytics
+       +-- Commission settings
+       |
+       v
+    ADMIN (level 2)
+       |
+       +-- User management
+       +-- Tutor approvals
+       +-- Dispute resolution
+       |
+       v
+    TUTOR (level 1)
+       |
+       +-- Tutor dashboard
+       +-- Booking management
+       +-- Earnings tracking
+       |
+       v
+    STUDENT (level 0)
+       |
+       +-- Tutor search
+       +-- Session booking
+       +-- Messaging

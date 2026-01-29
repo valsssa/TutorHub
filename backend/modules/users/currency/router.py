@@ -17,7 +17,7 @@ from schemas import UserResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/users/currency", tags=["user-currency"])
+router = APIRouter(prefix="/users/currency", tags=["user-currency"])
 
 
 class CurrencyUpdateRequest(BaseModel):

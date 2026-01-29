@@ -30,7 +30,7 @@ from schemas import (
 from ..application.services import TutorProfileService
 from ..infrastructure.repositories import SqlAlchemyTutorProfileRepository
 
-router = APIRouter(prefix="/api/tutors", tags=["tutors"])
+router = APIRouter(prefix="/tutors", tags=["tutors"])
 
 # Initialize rate limiter
 

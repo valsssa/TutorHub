@@ -10,6 +10,10 @@ from datetime import UTC, datetime
 from io import BytesIO
 
 from fastapi import Depends, FastAPI, HTTPException
+
+# Initialize Sentry early (before other imports that might error)
+from core.sentry import init_sentry
+sentry_initialized = init_sentry()
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -298,6 +302,12 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("=== Application Startup ===")
 
+    # 0. Log Sentry status
+    if sentry_initialized:
+        logger.info("✓ Sentry error monitoring enabled")
+    else:
+        logger.info("○ Sentry error monitoring disabled (no DSN configured)")
+
     # 1. Run database migrations (auto-apply schema changes)
     from core.migrations import run_startup_migrations
     from database import engine
@@ -446,15 +456,18 @@ app = FastAPI(
 - **12-Factor App**: Environment-based config, stateless services
 
 ## 📚 API Usage
-1. **Register**: `POST /auth/register` → Get JWT token
-2. **Login**: `POST /auth/login` → Refresh token
+1. **Register**: `POST /api/v1/auth/register` → Get JWT token
+2. **Login**: `POST /api/v1/auth/login` → Refresh token
 3. **Protected Endpoints**: Include `Authorization: Bearer <token>` header
 4. **Role Requirements**: Check endpoint descriptions for required roles
 
 ## 🔗 Base URLs
-- **Production**: https://api.valsa.solutions
+- **Production API**: https://api.valsa.solutions/api/v1
 - **Documentation**: https://api.valsa.solutions/docs
 - **ReDoc**: https://api.valsa.solutions/redoc
+
+## 🏷️ API Versioning
+All endpoints are versioned under `/api/v1`. Future breaking changes will be introduced under `/api/v2`.
     """,
     version="1.0.0",
     contact={
@@ -472,12 +485,12 @@ app = FastAPI(
     openapi_tags=tags_metadata,
     servers=[
         {
-            "url": "https://api.valsa.solutions",
-            "description": "Production server",
+            "url": "https://api.valsa.solutions/api/v1",
+            "description": "Production API v1",
         },
         {
-            "url": "http://localhost:8000",
-            "description": "Local development server (Docker)",
+            "url": "http://localhost:8000/api/v1",
+            "description": "Local development API v1",
         },
     ],
     lifespan=lifespan,
@@ -528,44 +541,47 @@ app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
 app.add_middleware(SlowAPIMiddleware)
 
 # ============================================================================
-# Register Module Routers
+# Register Module Routers - API v1
 # ============================================================================
+# All API endpoints are versioned under /api/v1 prefix
 
-app.include_router(auth_router)
-app.include_router(oauth_router)
-app.include_router(password_router)
-app.include_router(profiles_router)
-app.include_router(students_router)
-app.include_router(favorites_router)
-app.include_router(subjects_router)
-app.include_router(bookings_router)
-app.include_router(reviews_router)
-app.include_router(messages_router)
-app.include_router(notifications_router)
-app.include_router(packages_router)
-app.include_router(payments_router)
-app.include_router(wallet_router)
-app.include_router(connect_router)
-app.include_router(admin_router)
-app.include_router(audit_router)
-app.include_router(owner_router)
-app.include_router(avatar_router)
-app.include_router(preferences_router)
-app.include_router(currency_router)
-app.include_router(tutor_profile_router)
-app.include_router(availability_router)
-app.include_router(student_notes_router)
-app.include_router(utils_router)
-app.include_router(websocket_router)
-app.include_router(zoom_router)
-app.include_router(calendar_router)
+API_V1_PREFIX = "/api/v1"
+
+app.include_router(auth_router, prefix=API_V1_PREFIX)
+app.include_router(oauth_router, prefix=API_V1_PREFIX)
+app.include_router(password_router, prefix=API_V1_PREFIX)
+app.include_router(profiles_router, prefix=API_V1_PREFIX)
+app.include_router(students_router, prefix=API_V1_PREFIX)
+app.include_router(favorites_router, prefix=API_V1_PREFIX)
+app.include_router(subjects_router, prefix=API_V1_PREFIX)
+app.include_router(bookings_router, prefix=API_V1_PREFIX)
+app.include_router(reviews_router, prefix=API_V1_PREFIX)
+app.include_router(messages_router, prefix=API_V1_PREFIX)
+app.include_router(notifications_router, prefix=API_V1_PREFIX)
+app.include_router(packages_router, prefix=API_V1_PREFIX)
+app.include_router(payments_router, prefix=API_V1_PREFIX)
+app.include_router(wallet_router, prefix=API_V1_PREFIX)
+app.include_router(connect_router, prefix=API_V1_PREFIX)
+app.include_router(admin_router, prefix=API_V1_PREFIX)
+app.include_router(audit_router, prefix=API_V1_PREFIX)
+app.include_router(owner_router, prefix=API_V1_PREFIX)
+app.include_router(avatar_router, prefix=API_V1_PREFIX)
+app.include_router(preferences_router, prefix=API_V1_PREFIX)
+app.include_router(currency_router, prefix=API_V1_PREFIX)
+app.include_router(tutor_profile_router, prefix=API_V1_PREFIX)
+app.include_router(availability_router, prefix=API_V1_PREFIX)
+app.include_router(student_notes_router, prefix=API_V1_PREFIX)
+app.include_router(utils_router, prefix=API_V1_PREFIX)
+app.include_router(websocket_router, prefix=API_V1_PREFIX)
+app.include_router(zoom_router, prefix=API_V1_PREFIX)
+app.include_router(calendar_router, prefix=API_V1_PREFIX)
 
 
 # ============================================================================
 # Legacy Avatar Route - Handle old avatar URLs for tutor profile photos
 # ============================================================================
 
-@app.get("/api/avatars/{user_id}/{filename:path}")
+@app.get("/api/v1/avatars/{user_id}/{filename:path}")
 async def serve_legacy_avatar(
     user_id: int,
     filename: str,
@@ -688,7 +704,7 @@ def health_check(db: Session = Depends(get_db)):
 
 
 @app.get(
-    "/api/health/integrity",
+    "/api/v1/health/integrity",
     tags=["health"],
     summary="Data integrity check (admin only)",
     description="""

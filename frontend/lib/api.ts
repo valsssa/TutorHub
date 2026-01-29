@@ -501,7 +501,7 @@ export const auth = {
   ): Promise<User> {
     logger.info(`Registering user: ${email}, role: ${role}, tz: ${timezone}, cur: ${currency}`);
     try {
-      const { data } = await api.post<User>("/api/auth/register", {
+      const { data } = await api.post<User>("/api/v1/auth/register", {
         email,
         password,
         first_name,
@@ -527,7 +527,7 @@ export const auth = {
       params.append("password", password);
 
       const { data } = await api.post<{ access_token: string }>(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         params.toString(),
         {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -563,7 +563,7 @@ export const auth = {
   async getCurrentUser(): Promise<User> {
     logger.debug("Fetching current user");
     try {
-      const { data } = await api.get<User>("/api/auth/me");
+      const { data } = await api.get<User>("/api/v1/auth/me");
       logger.debug(`Current user fetched: ${data.email}, role: ${data.role}`);
       return normalizeUser(data);
     } catch (error) {
@@ -586,17 +586,17 @@ export const auth = {
       let latest: User | null = null;
 
       if (currency) {
-        const { data } = await api.patch<User>("/api/users/currency", { currency });
+        const { data } = await api.patch<User>("/api/v1/users/currency", { currency });
         latest = data;
       }
 
       if (timezone) {
-        const { data } = await api.patch<User>("/api/users/preferences", { timezone });
+        const { data } = await api.patch<User>("/api/v1/users/preferences", { timezone });
         latest = data;
       }
 
       if (!latest) {
-        const { data } = await api.get<User>("/api/auth/me");
+        const { data } = await api.get<User>("/api/v1/auth/me");
         return normalizeUser(data);
       }
 
@@ -616,7 +616,7 @@ export const auth = {
   }): Promise<User> {
     logger.info(`Updating user: ${Object.keys(updates).join(", ")}`);
     try {
-      const { data } = await api.put<User>("/api/auth/me", updates);
+      const { data } = await api.put<User>("/api/v1/auth/me", updates);
       logger.info(`User updated successfully`);
       return normalizeUser(data);
     } catch (error) {
@@ -632,7 +632,7 @@ export const auth = {
 
 export const subjects = {
   async list(): Promise<Subject[]> {
-    const cacheKey = getCacheKey("/api/subjects");
+    const cacheKey = getCacheKey("/api/v1/subjects");
     const cached = getFromCache<Subject[]>(cacheKey, 10 * 60 * 1000); // Cache subjects for 10 minutes
     if (cached) {
       logger.debug("Subjects loaded from cache");
@@ -640,7 +640,7 @@ export const subjects = {
     }
 
     logger.debug("Fetching subjects from API");
-    const { data } = await api.get<Subject[]>("/api/subjects");
+    const { data } = await api.get<Subject[]>("/api/v1/subjects");
     setCache(cacheKey, data);
     return data;
   },
@@ -663,7 +663,7 @@ export const tutors = {
     page_size?: number;
   }): Promise<PaginatedResponse<TutorPublicSummary>> {
     // Cache tutors list for 1 minute (less than subjects since it changes more often)
-    const cacheKey = getCacheKey("/api/tutors", filters);
+    const cacheKey = getCacheKey("/api/v1/tutors", filters);
     const cached = getFromCache<PaginatedResponse<TutorPublicSummary>>(cacheKey, 60 * 1000);
     if (cached && !filters?.search_query) {
       logger.debug("Tutors loaded from cache");
@@ -671,7 +671,7 @@ export const tutors = {
     }
 
     logger.debug("Fetching tutors from API", { filters });
-    const { data } = await api.get<PaginatedResponse<TutorPublicSummary>>("/api/tutors", {
+    const { data } = await api.get<PaginatedResponse<TutorPublicSummary>>("/api/v1/tutors", {
       params: { page: filters?.page || 1, page_size: filters?.page_size || 20, ...filters },
     });
 
@@ -694,7 +694,7 @@ export const tutors = {
   },
 
   async getMyProfile(): Promise<TutorProfile> {
-    const { data } = await api.get<TutorProfile>("/api/tutors/me/profile");
+    const { data } = await api.get<TutorProfile>("/api/v1/tutors/me/profile");
     return data;
   },
 
@@ -706,7 +706,7 @@ export const tutors = {
     languages?: string[];
   }): Promise<TutorProfile> {
     const { data } = await api.patch<TutorProfile>(
-      "/api/tutors/me/about",
+      "/api/v1/tutors/me/about",
       payload,
     );
     return data;
@@ -716,7 +716,7 @@ export const tutors = {
     subjectsPayload: SubjectPayload[],
   ): Promise<TutorProfile> {
     const { data } = await api.put<TutorProfile>(
-      "/api/tutors/me/subjects",
+      "/api/v1/tutors/me/subjects",
       subjectsPayload,
     );
     return data;
@@ -736,7 +736,7 @@ export const tutors = {
     }
 
     const { data } = await api.put<TutorProfile>(
-      "/api/tutors/me/certifications",
+      "/api/v1/tutors/me/certifications",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -759,7 +759,7 @@ export const tutors = {
     }
 
     const { data } = await api.put<TutorProfile>(
-      "/api/tutors/me/education",
+      "/api/v1/tutors/me/education",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -772,7 +772,7 @@ export const tutors = {
     description: string;
   }): Promise<TutorProfile> {
     const { data } = await api.patch<TutorProfile>(
-      "/api/tutors/me/description",
+      "/api/v1/tutors/me/description",
       payload,
     );
     return data;
@@ -780,7 +780,7 @@ export const tutors = {
 
   async updateVideo(payload: { video_url: string }): Promise<TutorProfile> {
     const { data } = await api.patch<TutorProfile>(
-      "/api/tutors/me/video",
+      "/api/v1/tutors/me/video",
       payload,
     );
     return data;
@@ -792,7 +792,7 @@ export const tutors = {
     version: number;
   }): Promise<TutorProfile> {
     const { data } = await api.patch<TutorProfile>(
-      "/api/tutors/me/pricing",
+      "/api/v1/tutors/me/pricing",
       payload,
     );
     return data;
@@ -804,14 +804,14 @@ export const tutors = {
     version: number;
   }): Promise<TutorProfile> {
     const { data } = await api.put<TutorProfile>(
-      "/api/tutors/me/availability",
+      "/api/v1/tutors/me/availability",
       payload,
     );
     return data;
   },
 
   async submitForReview(): Promise<TutorProfile> {
-    const { data } = await api.post<TutorProfile>("/api/tutors/me/submit", {});
+    const { data } = await api.post<TutorProfile>("/api/v1/tutors/me/submit", {});
     return data;
   },
 
@@ -825,7 +825,7 @@ export const tutors = {
     const formData = new FormData();
     formData.append("profile_photo", file);
     const { data } = await api.patch<TutorProfile>(
-      "/api/tutors/me/photo",
+      "/api/v1/tutors/me/photo",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -851,7 +851,7 @@ export const bookings = {
     page?: number;
     page_size?: number;
   }): Promise<BookingListResponse> {
-    const { data } = await api.get<BookingListResponse>("/api/bookings", { params });
+    const { data } = await api.get<BookingListResponse>("/api/v1/bookings", { params });
     return data;
   },
 
@@ -867,7 +867,7 @@ export const bookings = {
    * Create new booking (student only)
    */
   async create(bookingData: BookingCreateRequest): Promise<BookingDTO> {
-    const { data } = await api.post<BookingDTO>("/api/bookings", bookingData);
+    const { data } = await api.post<BookingDTO>("/api/v1/bookings", bookingData);
     return data;
   },
 
@@ -938,7 +938,7 @@ export const reviews = {
     rating: number,
     comment?: string,
   ): Promise<Review> {
-    const { data } = await api.post<Review>("/api/reviews", {
+    const { data } = await api.post<Review>("/api/v1/reviews", {
       booking_id: bookingId,
       rating,
       comment,
@@ -953,7 +953,7 @@ export const reviews = {
 
 export const packages = {
   async list(statusFilter?: string): Promise<StudentPackage[]> {
-    const { data } = await api.get<StudentPackage[]>("/api/packages", {
+    const { data } = await api.get<StudentPackage[]>("/api/v1/packages", {
       params: statusFilter ? { status_filter: statusFilter } : undefined,
     });
     return data;
@@ -965,7 +965,7 @@ export const packages = {
     payment_intent_id?: string;
     agreed_terms?: string;
   }): Promise<StudentPackage> {
-    const { data } = await api.post<StudentPackage>("/api/packages", packageData);
+    const { data } = await api.post<StudentPackage>("/api/v1/packages", packageData);
     return data;
   },
 
@@ -988,7 +988,7 @@ export const messages = {
     bookingId?: number,
   ): Promise<Message> {
     try {
-      const { data } = await api.post<Message>("/api/messages", {
+      const { data } = await api.post<Message>("/api/v1/messages", {
         recipient_id: recipientId,
         message,
         booking_id: bookingId,
@@ -1001,7 +1001,7 @@ export const messages = {
   },
 
   async listThreads(limit?: number): Promise<MessageThread[]> {
-    const { data } = await api.get<MessageThread[]>("/api/messages/threads", {
+    const { data } = await api.get<MessageThread[]>("/api/v1/messages/threads", {
       params: limit ? { limit } : undefined,
     });
     return data;
@@ -1043,7 +1043,7 @@ export const messages = {
     page: number = 1,
     pageSize: number = 20
   ): Promise<{ messages: Message[]; total: number; total_pages: number }> {
-    const { data } = await api.get("/api/messages/search", {
+    const { data } = await api.get("/api/v1/messages/search", {
       params: {
         q: query,
         page,
@@ -1064,7 +1064,7 @@ export const messages = {
   },
 
   async getUnreadCount(): Promise<{ total: number; by_sender: Record<number, number> }> {
-    const { data } = await api.get("/api/messages/unread/count");
+    const { data } = await api.get("/api/v1/messages/unread/count");
     return data;
   },
 
@@ -1087,7 +1087,7 @@ export const messages = {
 export const avatars = {
   async fetch(): Promise<AvatarSignedUrl> {
     logger.debug("Fetching avatar signed URL");
-    const { data } = await api.get<AvatarApiResponse>("/api/users/me/avatar");
+    const { data } = await api.get<AvatarApiResponse>("/api/v1/users/me/avatar");
     return transformAvatarResponse(data);
   },
 
@@ -1096,7 +1096,7 @@ export const avatars = {
     const formData = new FormData();
     formData.append("file", file);
     const { data } = await api.post<AvatarApiResponse>(
-      "/api/users/me/avatar",
+      "/api/v1/users/me/avatar",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -1107,7 +1107,7 @@ export const avatars = {
 
   async remove(): Promise<void> {
     logger.info("Deleting user avatar");
-    await api.delete("/api/users/me/avatar");
+    await api.delete("/api/v1/users/me/avatar");
   },
 
   async uploadForUser(userId: number, file: File): Promise<AvatarSignedUrl> {
@@ -1131,7 +1131,7 @@ export const avatars = {
 
 export const students = {
   async getProfile(): Promise<StudentProfile> {
-    const { data } = await api.get<StudentProfile>("/api/profile/student/me");
+    const { data } = await api.get<StudentProfile>("/api/v1/profile/student/me");
     return data;
   },
 
@@ -1139,7 +1139,7 @@ export const students = {
     updates: Partial<StudentProfile>,
   ): Promise<StudentProfile> {
     const { data } = await api.patch<StudentProfile>(
-      "/api/profile/student/me",
+      "/api/v1/profile/student/me",
       updates,
     );
     return data;
@@ -1229,7 +1229,7 @@ export const notifications = {
   },
 
   async getUnreadCount(): Promise<number> {
-    const { data } = await api.get<{ count: number }>("/api/notifications/unread-count");
+    const { data } = await api.get<{ count: number }>("/api/v1/notifications/unread-count");
     return data.count;
   },
 
@@ -1238,7 +1238,7 @@ export const notifications = {
   },
 
   async markAllAsRead(): Promise<void> {
-    await api.patch("/api/notifications/mark-all-read");
+    await api.patch("/api/v1/notifications/mark-all-read");
   },
 
   async markRead(notificationId: number): Promise<void> {
@@ -1254,12 +1254,12 @@ export const notifications = {
   },
 
   async getPreferences(): Promise<NotificationPreferences> {
-    const { data } = await api.get<NotificationPreferences>("/api/notifications/preferences");
+    const { data } = await api.get<NotificationPreferences>("/api/v1/notifications/preferences");
     return data;
   },
 
   async updatePreferences(preferences: NotificationPreferencesUpdate): Promise<NotificationPreferences> {
-    const { data } = await api.put<NotificationPreferences>("/api/notifications/preferences", preferences);
+    const { data } = await api.put<NotificationPreferences>("/api/v1/notifications/preferences", preferences);
     return data;
   },
 };
@@ -1271,12 +1271,12 @@ export const notifications = {
 // Favorites API
 export const favorites = {
   async getFavorites(): Promise<FavoriteTutor[]> {
-    const { data } = await api.get("/api/favorites");
+    const { data } = await api.get("/api/v1/favorites");
     return data;
   },
 
   async addFavorite(tutorProfileId: number): Promise<FavoriteTutor> {
-    const { data } = await api.post("/api/favorites", { tutor_profile_id: tutorProfileId });
+    const { data } = await api.post("/api/v1/favorites", { tutor_profile_id: tutorProfileId });
     return data;
   },
 
@@ -1316,12 +1316,12 @@ export interface AvailableSlot {
 
 export const availability = {
   async getMyAvailability(): Promise<AvailabilitySlot[]> {
-    const { data } = await api.get<AvailabilitySlot[]>("/api/tutors/availability");
+    const { data } = await api.get<AvailabilitySlot[]>("/api/v1/tutors/availability");
     return data;
   },
 
   async createAvailability(slot: Omit<AvailabilitySlot, "id">): Promise<AvailabilitySlot> {
-    const { data } = await api.post<AvailabilitySlot>("/api/tutors/availability", slot);
+    const { data } = await api.post<AvailabilitySlot>("/api/v1/tutors/availability", slot);
     return data;
   },
 
@@ -1330,7 +1330,7 @@ export const availability = {
   },
 
   async createBulkAvailability(slots: Omit<AvailabilitySlot, "id">[]): Promise<{ message: string; count: number }> {
-    const { data } = await api.post<{ message: string; count: number }>("/api/tutors/availability/bulk", slots);
+    const { data } = await api.post<{ message: string; count: number }>("/api/v1/tutors/availability/bulk", slots);
     return data;
   },
 
@@ -1344,7 +1344,7 @@ export const availability = {
 
 export const admin = {
   async listUsers(): Promise<User[]> {
-    const { data } = await api.get<{ items?: User[] }>("/api/admin/users");
+    const { data } = await api.get<{ items?: User[] }>("/api/v1/admin/users");
     const items = data.items || [];
     return items.map((item) => normalizeUser(item));
   },
@@ -1359,14 +1359,14 @@ export const admin = {
   },
 
   async listPendingTutors(page: number = 1, pageSize: number = 20): Promise<{ items: TutorProfile[]; total: number; page: number; page_size: number }> {
-    const { data } = await api.get("/api/admin/tutors/pending", {
+    const { data } = await api.get("/api/v1/admin/tutors/pending", {
       params: { page, page_size: pageSize },
     });
     return data;
   },
 
   async listApprovedTutors(page: number = 1, pageSize: number = 20): Promise<{ items: TutorProfile[]; total: number; page: number; page_size: number }> {
-    const { data } = await api.get("/api/admin/tutors/approved", {
+    const { data } = await api.get("/api/v1/admin/tutors/approved", {
       params: { page, page_size: pageSize },
     });
     return data;
@@ -1392,19 +1392,19 @@ export const admin = {
   },
 
   async getDashboardStats(): Promise<DashboardStats> {
-    const cacheKey = getCacheKey("/api/admin/dashboard/stats");
+    const cacheKey = getCacheKey("/api/v1/admin/dashboard/stats");
     const cached = getFromCache<DashboardStats>(cacheKey, 30 * 1000); // 30 seconds cache
     if (cached) {
       logger.debug("Dashboard stats loaded from cache");
       return cached;
     }
-    const { data } = await api.get("/api/admin/dashboard/stats");
+    const { data } = await api.get("/api/v1/admin/dashboard/stats");
     setCache(cacheKey, data);
     return data;
   },
 
   async getRecentActivities(limit: number = 50): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/admin/dashboard/recent-activities", { limit });
+    const cacheKey = getCacheKey("/api/v1/admin/dashboard/recent-activities", { limit });
     const cached = getFromCache<any[]>(cacheKey, 15 * 1000); // 15 seconds cache
     if (cached) return cached;
     const { data } = await api.get(`/api/admin/dashboard/recent-activities?limit=${limit}`);
@@ -1413,7 +1413,7 @@ export const admin = {
   },
 
   async getUpcomingSessions(limit: number = 50): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/admin/dashboard/upcoming-sessions", { limit });
+    const cacheKey = getCacheKey("/api/v1/admin/dashboard/upcoming-sessions", { limit });
     const cached = getFromCache<any[]>(cacheKey, 30 * 1000);
     if (cached) return cached;
     const { data } = await api.get(`/api/admin/dashboard/upcoming-sessions?limit=${limit}`);
@@ -1422,16 +1422,16 @@ export const admin = {
   },
 
   async getSessionMetrics(): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/admin/dashboard/session-metrics");
+    const cacheKey = getCacheKey("/api/v1/admin/dashboard/session-metrics");
     const cached = getFromCache<any[]>(cacheKey, 60 * 1000); // 1 minute cache
     if (cached) return cached;
-    const { data } = await api.get("/api/admin/dashboard/session-metrics");
+    const { data } = await api.get("/api/v1/admin/dashboard/session-metrics");
     setCache(cacheKey, data);
     return data;
   },
 
   async getMonthlyRevenue(months: number = 6): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/admin/dashboard/monthly-revenue", { months });
+    const cacheKey = getCacheKey("/api/v1/admin/dashboard/monthly-revenue", { months });
     const cached = getFromCache<any[]>(cacheKey, 5 * 60 * 1000); // 5 minutes cache
     if (cached) return cached;
     const { data } = await api.get(`/api/admin/dashboard/monthly-revenue?months=${months}`);
@@ -1440,16 +1440,16 @@ export const admin = {
   },
 
   async getSubjectDistribution(): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/admin/dashboard/subject-distribution");
+    const cacheKey = getCacheKey("/api/v1/admin/dashboard/subject-distribution");
     const cached = getFromCache<any[]>(cacheKey, 5 * 60 * 1000);
     if (cached) return cached;
-    const { data } = await api.get("/api/admin/dashboard/subject-distribution");
+    const { data } = await api.get("/api/v1/admin/dashboard/subject-distribution");
     setCache(cacheKey, data);
     return data;
   },
 
   async getUserGrowth(months: number = 6): Promise<any[]> {
-    const cacheKey = getCacheKey("/api/admin/dashboard/user-growth", { months });
+    const cacheKey = getCacheKey("/api/v1/admin/dashboard/user-growth", { months });
     const cached = getFromCache<any[]>(cacheKey, 5 * 60 * 1000);
     if (cached) return cached;
     const { data } = await api.get(`/api/admin/dashboard/user-growth?months=${months}`);
@@ -1461,13 +1461,13 @@ export const admin = {
 // Owner API
 export const owner = {
   async getDashboard(periodDays: number = 30): Promise<OwnerDashboard> {
-    const cacheKey = getCacheKey("/api/owner/dashboard", { period_days: periodDays });
+    const cacheKey = getCacheKey("/api/v1/owner/dashboard", { period_days: periodDays });
     const cached = getFromCache<OwnerDashboard>(cacheKey, 60 * 1000); // 1 min cache
     if (cached) {
       logger.debug("Owner dashboard loaded from cache");
       return cached;
     }
-    const { data } = await api.get("/api/owner/dashboard", {
+    const { data } = await api.get("/api/v1/owner/dashboard", {
       params: { period_days: periodDays },
     });
     setCache(cacheKey, data);
@@ -1475,10 +1475,10 @@ export const owner = {
   },
 
   async getRevenue(periodDays: number = 30): Promise<RevenueMetrics> {
-    const cacheKey = getCacheKey("/api/owner/revenue", { period_days: periodDays });
+    const cacheKey = getCacheKey("/api/v1/owner/revenue", { period_days: periodDays });
     const cached = getFromCache<RevenueMetrics>(cacheKey, 60 * 1000);
     if (cached) return cached;
-    const { data } = await api.get("/api/owner/revenue", {
+    const { data } = await api.get("/api/v1/owner/revenue", {
       params: { period_days: periodDays },
     });
     setCache(cacheKey, data);
@@ -1486,10 +1486,10 @@ export const owner = {
   },
 
   async getGrowth(periodDays: number = 30): Promise<GrowthMetrics> {
-    const cacheKey = getCacheKey("/api/owner/growth", { period_days: periodDays });
+    const cacheKey = getCacheKey("/api/v1/owner/growth", { period_days: periodDays });
     const cached = getFromCache<GrowthMetrics>(cacheKey, 60 * 1000);
     if (cached) return cached;
-    const { data } = await api.get("/api/owner/growth", {
+    const { data } = await api.get("/api/v1/owner/growth", {
       params: { period_days: periodDays },
     });
     setCache(cacheKey, data);
@@ -1497,19 +1497,19 @@ export const owner = {
   },
 
   async getHealth(): Promise<MarketplaceHealth> {
-    const cacheKey = getCacheKey("/api/owner/health");
+    const cacheKey = getCacheKey("/api/v1/owner/health");
     const cached = getFromCache<MarketplaceHealth>(cacheKey, 2 * 60 * 1000); // 2 min
     if (cached) return cached;
-    const { data } = await api.get("/api/owner/health");
+    const { data } = await api.get("/api/v1/owner/health");
     setCache(cacheKey, data);
     return data;
   },
 
   async getCommissionTiers(): Promise<CommissionTierBreakdown> {
-    const cacheKey = getCacheKey("/api/owner/commission-tiers");
+    const cacheKey = getCacheKey("/api/v1/owner/commission-tiers");
     const cached = getFromCache<CommissionTierBreakdown>(cacheKey, 5 * 60 * 1000); // 5 min
     if (cached) return cached;
-    const { data } = await api.get("/api/owner/commission-tiers");
+    const { data } = await api.get("/api/v1/owner/commission-tiers");
     setCache(cacheKey, data);
     return data;
   },

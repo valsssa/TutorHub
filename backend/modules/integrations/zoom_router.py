@@ -24,7 +24,7 @@ from models import Booking
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/integrations/zoom",
+    prefix="/integrations/zoom",
     tags=["integrations"],
 )
 

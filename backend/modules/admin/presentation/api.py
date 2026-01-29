@@ -29,7 +29,7 @@ from schemas import (
 logger = logging.getLogger(__name__)
 audit_logger = logging.getLogger("audit.avatar")
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/users", response_model=PaginatedResponse[UserResponse])

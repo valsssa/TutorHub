@@ -16,7 +16,7 @@ from schemas import UserProfileResponse, UserProfileUpdate
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/profile", tags=["profiles"])
+router = APIRouter(prefix="/profile", tags=["profiles"])
 
 
 @router.get("/me", response_model=UserProfileResponse)

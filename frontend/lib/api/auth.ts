@@ -22,7 +22,7 @@ export const auth = {
   ): Promise<User> {
     logger.info(`Registering user: ${email}, role: ${role}, tz: ${timezone}, cur: ${currency}`);
     try {
-      const { data } = await api.post<User>("/api/auth/register", {
+      const { data } = await api.post<User>("/api/v1/auth/register", {
         email,
         password,
         first_name,
@@ -48,7 +48,7 @@ export const auth = {
       params.append("password", password);
 
       const { data } = await api.post<{ access_token: string }>(
-        "/api/auth/login",
+        "/api/v1/auth/login",
         params.toString(),
         {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -75,7 +75,7 @@ export const auth = {
   async getCurrentUser(): Promise<User> {
     logger.debug("Fetching current user");
     try {
-      const { data } = await api.get<User>("/api/auth/me");
+      const { data } = await api.get<User>("/api/v1/auth/me");
       logger.debug(`Current user fetched: ${data.email}, role: ${data.role}`);
       return normalizeUser(data);
     } catch (error) {
@@ -102,7 +102,7 @@ export const auth = {
   }): Promise<User> {
     logger.info(`Updating user: ${Object.keys(updates).join(", ")}`);
     try {
-      const { data } = await api.put<User>("/api/auth/me", updates);
+      const { data } = await api.put<User>("/api/v1/auth/me", updates);
       logger.info(`User updated successfully`);
       return normalizeUser(data);
     } catch (error) {
@@ -117,17 +117,17 @@ export const auth = {
       let latest: User | null = null;
 
       if (currency) {
-        const { data } = await api.patch<User>("/api/users/currency", { currency });
+        const { data } = await api.patch<User>("/api/v1/users/currency", { currency });
         latest = data;
       }
 
       if (timezone) {
-        const { data } = await api.patch<User>("/api/users/preferences", { timezone });
+        const { data } = await api.patch<User>("/api/v1/users/preferences", { timezone });
         latest = data;
       }
 
       if (!latest) {
-        const { data } = await api.get<User>("/api/auth/me");
+        const { data } = await api.get<User>("/api/v1/auth/me");
         return normalizeUser(data);
       }
 

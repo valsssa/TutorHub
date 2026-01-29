@@ -31,7 +31,7 @@ from modules.bookings.service import BookingService, booking_to_dto
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api", tags=["bookings"])
+router = APIRouter(prefix="", tags=["bookings"])
 
 
 async def _broadcast_availability_update(tutor_profile_id: int, tutor_user_id: int) -> None:

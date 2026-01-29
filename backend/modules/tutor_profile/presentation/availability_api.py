@@ -15,7 +15,7 @@ from schemas import AvailableSlot, TutorAvailabilityCreate, TutorAvailabilityRes
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/tutors", tags=["tutor-availability"])
+router = APIRouter(prefix="/tutors", tags=["tutor-availability"])
 
 
 @router.get("/{tutor_id}/available-slots", response_model=list[AvailableSlot])

@@ -17,7 +17,7 @@ from schemas import UserPreferencesUpdate, UserResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/users/preferences", tags=["user-preferences"])
+router = APIRouter(prefix="/users/preferences", tags=["user-preferences"])
 
 
 class TimezoneSync(BaseModel):

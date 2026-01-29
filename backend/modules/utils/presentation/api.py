@@ -7,7 +7,7 @@ from core.rate_limiting import limiter
 from core.cache import cache_with_ttl
 from core.constants import COUNTRIES, LANGUAGES, PHONE_COUNTRY_CODES, PROFICIENCY_LEVELS
 
-router = APIRouter(prefix="/api/utils", tags=["utils"])
+router = APIRouter(prefix="/utils", tags=["utils"])
 
 # Initialize rate limiter
 
