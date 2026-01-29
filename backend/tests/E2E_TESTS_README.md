@@ -186,9 +186,10 @@ API_URL=https://api.valsa.solutions pytest backend/tests/test_e2e_admin.py -v
 
 3. **Test Improvements**
    - ✅ Added pagination handling for booking lists
-   - ✅ Added flexible status checking (PENDING/pending, CONFIRMED/confirmed)
+   - ✅ Updated to use new four-field status system (session_state, session_outcome, payment_state, dispute_state)
    - ✅ Added better error messages in assertions
    - ✅ Added timezone handling tests
+   - ✅ Added state machine tests for booking transitions
 
 ---
 
@@ -437,15 +438,33 @@ e2e-staging:
 
 ---
 
+## Booking Status System
+
+Bookings use a four-field status system. Tests should check these fields:
+
+| Field | Values |
+|-------|--------|
+| `session_state` | REQUESTED, SCHEDULED, ACTIVE, ENDED, CANCELLED, EXPIRED |
+| `session_outcome` | COMPLETED, NOT_HELD, NO_SHOW_STUDENT, NO_SHOW_TUTOR (null if not ended) |
+| `payment_state` | PENDING, AUTHORIZED, CAPTURED, VOIDED, REFUNDED, PARTIALLY_REFUNDED |
+| `dispute_state` | NONE, OPEN, RESOLVED_UPHELD, RESOLVED_REFUNDED |
+
+The legacy `status` field is still returned for backward compatibility.
+
+**See:** `backend/modules/bookings/domain/status.py` for enum definitions.
+
+---
+
 ## Related Documentation
 
 - `tests/README.md` - Test infrastructure documentation
 - `tests/conftest.py` - Consolidated test fixtures
+- `docs/flows/02_BOOKING_FLOW.md` - Booking flow and status documentation
 - `CLAUDE.md` - Project development guidelines
 - `docker-compose.test.yml` - Test environment configuration
 
 ---
 
-**Last Updated:** 2026-01-28
-**Status:** ✅ E2E tests updated and verified
-**Coverage:** Booking workflows + Admin workflows
+**Last Updated:** 2026-01-29
+**Status:** ✅ E2E tests updated for four-field booking status system
+**Coverage:** Booking workflows + Admin workflows + State machine tests

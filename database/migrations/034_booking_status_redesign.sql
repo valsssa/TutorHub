@@ -9,11 +9,29 @@
 -- ============================================================================
 
 -- ============================================================================
--- STEP 1: ADD NEW FIELDS
+-- STEP 1: DROP OLD CONSTRAINTS FIRST (before any data migration)
 -- ============================================================================
 
--- Rename status → session_state
-ALTER TABLE bookings RENAME COLUMN status TO session_state;
+-- Drop old booking status constraint if exists (MUST be done before data migration)
+ALTER TABLE bookings DROP CONSTRAINT IF EXISTS valid_booking_status;
+
+-- ============================================================================
+-- STEP 2: ADD NEW FIELDS (if not already exists)
+-- ============================================================================
+
+-- Check if we need to rename status → session_state
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'bookings' AND column_name = 'status'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'bookings' AND column_name = 'session_state'
+    ) THEN
+        ALTER TABLE bookings RENAME COLUMN status TO session_state;
+    END IF;
+END $$;
 
 -- Add session outcome field (nullable - only set when session ends)
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS session_outcome VARCHAR(30);
@@ -34,7 +52,7 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS resolution_notes TEXT;
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancelled_by_role VARCHAR(20);
 
 -- ============================================================================
--- STEP 2: DATA MIGRATION
+-- STEP 3: DATA MIGRATION (now that old constraint is dropped)
 -- ============================================================================
 
 -- Migrate PENDING → REQUESTED
@@ -57,7 +75,6 @@ SET session_state = 'ENDED',
 WHERE session_state = 'COMPLETED';
 
 -- Migrate CANCELLED_BY_STUDENT → CANCELLED with NOT_HELD outcome
--- Payment state depends on timing (assume VOIDED for simplicity, can be refined)
 UPDATE bookings
 SET session_state = 'CANCELLED',
     session_outcome = 'NOT_HELD',
@@ -66,7 +83,6 @@ SET session_state = 'CANCELLED',
 WHERE session_state = 'CANCELLED_BY_STUDENT';
 
 -- Migrate CANCELLED_BY_TUTOR → CANCELLED with NOT_HELD outcome
--- Tutor cancellations always result in refund
 UPDATE bookings
 SET session_state = 'CANCELLED',
     session_outcome = 'NOT_HELD',
@@ -97,41 +113,73 @@ SET session_state = 'ENDED',
 WHERE session_state = 'REFUNDED';
 
 -- ============================================================================
--- STEP 3: DROP OLD CONSTRAINTS AND ADD NEW ONES
+-- STEP 4: ADD NEW CONSTRAINTS
 -- ============================================================================
 
--- Drop old booking status constraint if exists
-ALTER TABLE bookings DROP CONSTRAINT IF EXISTS valid_booking_status;
-
--- Add new session_state constraint
-ALTER TABLE bookings ADD CONSTRAINT valid_session_state CHECK (
-    session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE', 'ENDED', 'CANCELLED', 'EXPIRED')
-);
+-- Add new session_state constraint (if not exists)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'valid_session_state'
+    ) THEN
+        ALTER TABLE bookings ADD CONSTRAINT valid_session_state CHECK (
+            session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE', 'ENDED', 'CANCELLED', 'EXPIRED')
+        );
+    END IF;
+END $$;
 
 -- Add session_outcome constraint (nullable, but if set must be valid)
-ALTER TABLE bookings ADD CONSTRAINT valid_session_outcome CHECK (
-    session_outcome IS NULL OR session_outcome IN (
-        'COMPLETED', 'NOT_HELD', 'NO_SHOW_STUDENT', 'NO_SHOW_TUTOR'
-    )
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'valid_session_outcome'
+    ) THEN
+        ALTER TABLE bookings ADD CONSTRAINT valid_session_outcome CHECK (
+            session_outcome IS NULL OR session_outcome IN (
+                'COMPLETED', 'NOT_HELD', 'NO_SHOW_STUDENT', 'NO_SHOW_TUTOR'
+            )
+        );
+    END IF;
+END $$;
 
 -- Add payment_state constraint
-ALTER TABLE bookings ADD CONSTRAINT valid_payment_state CHECK (
-    payment_state IN ('PENDING', 'AUTHORIZED', 'CAPTURED', 'VOIDED', 'REFUNDED', 'PARTIALLY_REFUNDED')
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'valid_payment_state'
+    ) THEN
+        ALTER TABLE bookings ADD CONSTRAINT valid_payment_state CHECK (
+            payment_state IN ('PENDING', 'AUTHORIZED', 'CAPTURED', 'VOIDED', 'REFUNDED', 'PARTIALLY_REFUNDED')
+        );
+    END IF;
+END $$;
 
 -- Add dispute_state constraint
-ALTER TABLE bookings ADD CONSTRAINT valid_dispute_state CHECK (
-    dispute_state IN ('NONE', 'OPEN', 'RESOLVED_UPHELD', 'RESOLVED_REFUNDED')
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'valid_dispute_state'
+    ) THEN
+        ALTER TABLE bookings ADD CONSTRAINT valid_dispute_state CHECK (
+            dispute_state IN ('NONE', 'OPEN', 'RESOLVED_UPHELD', 'RESOLVED_REFUNDED')
+        );
+    END IF;
+END $$;
 
 -- Add cancelled_by_role constraint (nullable)
-ALTER TABLE bookings ADD CONSTRAINT valid_cancelled_by_role CHECK (
-    cancelled_by_role IS NULL OR cancelled_by_role IN ('STUDENT', 'TUTOR', 'ADMIN', 'SYSTEM')
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'valid_cancelled_by_role'
+    ) THEN
+        ALTER TABLE bookings ADD CONSTRAINT valid_cancelled_by_role CHECK (
+            cancelled_by_role IS NULL OR cancelled_by_role IN ('STUDENT', 'TUTOR', 'ADMIN', 'SYSTEM')
+        );
+    END IF;
+END $$;
 
 -- ============================================================================
--- STEP 4: CREATE INDEXES FOR COMMON QUERIES
+-- STEP 5: CREATE INDEXES FOR COMMON QUERIES
 -- ============================================================================
 
 -- Index for auto-transition jobs (finding bookings to transition)
@@ -155,13 +203,29 @@ CREATE INDEX IF NOT EXISTS idx_bookings_payment_state
     WHERE payment_state IN ('AUTHORIZED', 'PENDING');
 
 -- ============================================================================
--- STEP 5: UPDATE NOT NULL CONSTRAINTS
+-- STEP 6: UPDATE NOT NULL CONSTRAINTS
 -- ============================================================================
 
 -- Ensure payment_state and dispute_state have values
 UPDATE bookings SET payment_state = 'PENDING' WHERE payment_state IS NULL;
 UPDATE bookings SET dispute_state = 'NONE' WHERE dispute_state IS NULL;
 
--- Add NOT NULL constraints after migration
-ALTER TABLE bookings ALTER COLUMN payment_state SET NOT NULL;
-ALTER TABLE bookings ALTER COLUMN dispute_state SET NOT NULL;
+-- Add NOT NULL constraints after migration (with error handling)
+DO $$
+BEGIN
+    ALTER TABLE bookings ALTER COLUMN payment_state SET NOT NULL;
+EXCEPTION WHEN others THEN
+    RAISE NOTICE 'payment_state NOT NULL constraint already exists or failed';
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE bookings ALTER COLUMN dispute_state SET NOT NULL;
+EXCEPTION WHEN others THEN
+    RAISE NOTICE 'dispute_state NOT NULL constraint already exists or failed';
+END $$;
+
+DO $$
+BEGIN
+    RAISE NOTICE 'Migration 034_booking_status_redesign completed';
+END $$;

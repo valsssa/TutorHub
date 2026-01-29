@@ -6,12 +6,14 @@ This directory contains feature-based modules following DDD-inspired patterns.
 
 ### Full DDD Structure (recommended for complex domains)
 
-Used by: `auth/`, `tutor_profile/`
+Used by: `auth/`, `tutor_profile/`, `bookings/`
 
 ```
 module_name/
 ├── domain/          # Domain models, value objects, interfaces
 │   ├── entities.py  # Domain entities and aggregates
+│   ├── status.py    # Status enums and value objects
+│   ├── state_machine.py # State transition logic
 │   └── interfaces.py # Repository interfaces (abstractions)
 ├── application/     # Business logic and use cases
 │   └── services.py  # Application services
@@ -22,9 +24,17 @@ module_name/
 └── tests/           # Module tests
 ```
 
+#### Bookings Module Domain Layer
+
+The bookings module uses a four-field status system managed by a state machine:
+
+- `domain/status.py` - Defines SessionState, SessionOutcome, PaymentState, DisputeState enums
+- `domain/state_machine.py` - BookingStateMachine class enforces valid transitions
+- `jobs.py` - Background jobs for auto-transitions (expire, start, end sessions)
+
 ### Service + Presentation (pragmatic for medium complexity)
 
-Used by: `bookings/`, `packages/`, `notifications/`, `messages/`
+Used by: `packages/`, `notifications/`, `messages/`
 
 ```
 module_name/

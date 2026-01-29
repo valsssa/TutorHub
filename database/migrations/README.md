@@ -23,7 +23,29 @@ Migrations in this directory are **automatically applied** when the backend star
 
 ## Current Migrations
 
-- `001_add_message_tracking_columns.sql` - Adds read receipts, edit tracking, and timestamp management
+Key migrations in this directory:
+
+| Migration | Description |
+|-----------|-------------|
+| `001_add_message_tracking_columns.sql` | Adds read receipts, edit tracking, and timestamp management |
+| `027_add_validity_days_to_pricing_options.sql` | Adds package validity tracking |
+| `028_create_student_notes.sql` | Student notes feature |
+| `029_add_owner_role.sql` | Adds owner role for business intelligence |
+| `030_standardize_currency_fields.sql` | Standardizes currency handling |
+| `031_add_performance_indexes.sql` | Performance optimization indexes |
+| `032_add_tutor_search.sql` | Tutor search functionality |
+| `033_add_package_consistency_check.sql` | Package data integrity |
+| `034_booking_status_redesign.sql` | **Major**: Four-field booking status system |
+
+### Migration 034: Booking Status Redesign
+
+This migration implements the four-field status system for bookings:
+
+- Renames `status` → `session_state`
+- Adds `session_outcome`, `payment_state`, `dispute_state` fields
+- Adds dispute tracking fields (`dispute_reason`, `disputed_at`, `disputed_by`, etc.)
+- Migrates existing data to new status values
+- Adds constraints and indexes for the new fields
 
 ## Creating New Migrations
 
