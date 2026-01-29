@@ -75,13 +75,13 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       let apiResponse: any = null;
 
       page.on('request', request => {
-        if (request.url().includes('/api/auth/register')) {
+        if (request.url().includes('/api/v1/auth/register')) {
           apiRequest = request;
         }
       });
 
       page.on('response', response => {
-        if (response.url().includes('/api/auth/register')) {
+        if (response.url().includes('/api/v1/auth/register')) {
           apiResponse = response;
         }
       });
@@ -106,7 +106,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       // Also handle error responses gracefully
       try {
         await page.waitForResponse(response => 
-          response.url().includes('/api/auth/register') && 
+          response.url().includes('/api/v1/auth/register') && 
           (response.status() === 201 || response.status() === 200 || response.status() === 400 || response.status() === 409),
           { timeout: 15000 }
         );
@@ -184,10 +184,10 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       let loginRequest: any = null;
 
       page.on('request', request => {
-        if (request.url().includes('/api/auth/register')) {
+        if (request.url().includes('/api/v1/auth/register')) {
           registerRequest = request;
         }
-        if (request.url().includes('/api/auth/login')) {
+        if (request.url().includes('/api/v1/auth/login')) {
           loginRequest = request;
         }
       });
@@ -211,7 +211,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       // Also handle error responses gracefully
       try {
         await page.waitForResponse(response => 
-          response.url().includes('/api/auth/register') && (response.status() === 201 || response.status() === 200),
+          response.url().includes('/api/v1/auth/register') && (response.status() === 201 || response.status() === 200),
           { timeout: 15000 }
         );
       } catch (error) {
@@ -268,7 +268,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       // Wait for API error response - be more lenient with status codes
       try {
         await page.waitForResponse(response => 
-          response.url().includes('/api/auth/register') && 
+          response.url().includes('/api/v1/auth/register') && 
           (response.status() === 409 || response.status() === 400 || response.status() === 422),
           { timeout: 10000 }
         );
@@ -482,19 +482,19 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       let meResponse: any = null;
 
       page.on('request', request => {
-        if (request.url().includes('/api/auth/login')) {
+        if (request.url().includes('/api/v1/auth/login')) {
           loginRequest = request;
         }
-        if (request.url().includes('/api/auth/me')) {
+        if (request.url().includes('/api/v1/auth/me')) {
           meRequest = request;
         }
       });
 
       page.on('response', response => {
-        if (response.url().includes('/api/auth/login')) {
+        if (response.url().includes('/api/v1/auth/login')) {
           loginResponse = response;
         }
-        if (response.url().includes('/api/auth/me')) {
+        if (response.url().includes('/api/v1/auth/me')) {
           meResponse = response;
         }
       });
@@ -510,7 +510,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       
       // Wait for login API call
       await page.waitForResponse(response => 
-        response.url().includes('/api/auth/login') && response.status() === 200,
+        response.url().includes('/api/v1/auth/login') && response.status() === 200,
         { timeout: 10000 }
       );
       
@@ -528,7 +528,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       
       // Wait for getCurrentUser API call
       await page.waitForResponse(response => 
-        response.url().includes('/api/auth/me') && response.status() === 200,
+        response.url().includes('/api/v1/auth/me') && response.status() === 200,
         { timeout: 10000 }
       );
       
@@ -558,7 +558,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       
       // Wait for successful login
       await page.waitForResponse(response => 
-        response.url().includes('/api/auth/login') && response.status() === 200,
+        response.url().includes('/api/v1/auth/login') && response.status() === 200,
         { timeout: 10000 }
       );
       
@@ -576,7 +576,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       
       // Wait for successful login
       await page.waitForResponse(response => 
-        response.url().includes('/api/auth/login') && response.status() === 200,
+        response.url().includes('/api/v1/auth/login') && response.status() === 200,
         { timeout: 10000 }
       );
       
@@ -597,7 +597,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       
       // Wait for API error response
       await page.waitForResponse(response => 
-        response.url().includes('/api/auth/login') && response.status() === 401,
+        response.url().includes('/api/v1/auth/login') && response.status() === 401,
         { timeout: 10000 }
       );
       
@@ -743,13 +743,13 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       let meResponse: any = null;
 
       page.on('request', request => {
-        if (request.url().includes('/api/auth/me') || request.url().includes('/users/me')) {
+        if (request.url().includes('/api/v1/auth/me') || request.url().includes('/users/me')) {
           meRequest = request;
         }
       });
 
       page.on('response', response => {
-        if (response.url().includes('/api/auth/me') || response.url().includes('/users/me')) {
+        if (response.url().includes('/api/v1/auth/me') || response.url().includes('/users/me')) {
           meResponse = response;
         }
       });
@@ -760,7 +760,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       // Wait for API call - be more lenient with endpoint names
       try {
         await page.waitForResponse(response => 
-          (response.url().includes('/api/auth/me') || response.url().includes('/users/me')) && 
+          (response.url().includes('/api/v1/auth/me') || response.url().includes('/users/me')) && 
           response.status() === 200,
           { timeout: 10000 }
         );
@@ -1036,7 +1036,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       let requestBody: any = null;
 
       page.on('request', request => {
-        if (request.url().includes('/api/auth/register')) {
+        if (request.url().includes('/api/v1/auth/register')) {
           requestBody = request.postDataJSON();
         }
       });
@@ -1052,7 +1052,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       await page.getByRole('button', { name: /sign up|register/i }).first().click();
       
       await page.waitForResponse(response => 
-        response.url().includes('/api/auth/register'),
+        response.url().includes('/api/v1/auth/register'),
         { timeout: 10000 }
       );
       
@@ -1069,7 +1069,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       let requestBody: string | null = null;
 
       page.on('request', request => {
-        if (request.url().includes('/api/auth/login')) {
+        if (request.url().includes('/api/v1/auth/login')) {
           requestBody = request.postData();
         }
       });
@@ -1081,7 +1081,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       await page.getByRole('button', { name: /^sign in$/i }).first().click();
       
       await page.waitForResponse(response => 
-        response.url().includes('/api/auth/login'),
+        response.url().includes('/api/v1/auth/login'),
         { timeout: 10000 }
       );
       
@@ -1098,7 +1098,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       let requestHeaders: any = null;
 
       page.on('request', request => {
-        if (request.url().includes('/api/auth/me')) {
+        if (request.url().includes('/api/v1/auth/me')) {
           requestHeaders = request.headers();
         }
       });
@@ -1106,7 +1106,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
       await page.goto('/dashboard');
       
       await page.waitForResponse(response => 
-        response.url().includes('/api/auth/me'),
+        response.url().includes('/api/v1/auth/me'),
         { timeout: 10000 }
       );
       
@@ -1123,7 +1123,7 @@ test.describe('Authentication Flow - Complete E2E Tests', () => {
   test.describe('Error Handling', () => {
     test('should handle network errors gracefully', async ({ page }) => {
       // Block API calls to simulate network error
-      await page.route('**/api/auth/login', route => route.abort());
+      await page.route('**/api/v1/auth/login', route => route.abort());
       
       await page.goto('/login');
       await page.getByRole('textbox', { name: /email/i }).fill('student@example.com');

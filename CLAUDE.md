@@ -117,17 +117,26 @@ async def admin_route(current_user: User = Depends(get_current_admin_user)):
 
 1. Create directory in `backend/modules/` with appropriate structure
 2. Add `__init__.py` files
-3. Register router in `backend/main.py`
+3. Register router in `backend/main.py` with API v1 prefix
 4. Add tests
 
 ```python
 # modules/my_feature/api.py
-router = APIRouter(prefix="/api/my-feature", tags=["my-feature"])
+# NOTE: Router prefix does NOT include /api - added centrally in main.py
+router = APIRouter(prefix="/my-feature", tags=["my-feature"])
 
 # main.py
 from modules.my_feature.api import router as my_feature_router
-app.include_router(my_feature_router)
+API_V1_PREFIX = "/api/v1"
+app.include_router(my_feature_router, prefix=API_V1_PREFIX)
 ```
+
+### API Versioning
+
+All API endpoints are versioned under `/api/v1`:
+- Router prefixes use just the resource name (e.g., `/auth`, `/bookings`)
+- The version prefix (`/api/v1`) is added centrally in `main.py`
+- Future breaking changes will be introduced under `/api/v2`
 
 ## Code Quality Requirements
 

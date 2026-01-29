@@ -517,5 +517,357 @@ class TestEdgeCases:
         assert not BookingStateMachine.is_cancellable(SessionState.CANCELLED)
 
 
+# ============================================================================
+# Payment State Transition Tests
+# ============================================================================
+
+
+class TestPaymentStateTransitions:
+    """Test payment_state transition validation."""
+
+    def test_pending_to_authorized(self):
+        """PENDING → AUTHORIZED is valid."""
+        assert BookingStateMachine.can_transition_payment_state(
+            PaymentState.PENDING, PaymentState.AUTHORIZED
+        )
+
+    def test_pending_to_voided(self):
+        """PENDING → VOIDED is valid."""
+        assert BookingStateMachine.can_transition_payment_state(
+            PaymentState.PENDING, PaymentState.VOIDED
+        )
+
+    def test_authorized_to_captured(self):
+        """AUTHORIZED → CAPTURED is valid."""
+        assert BookingStateMachine.can_transition_payment_state(
+            PaymentState.AUTHORIZED, PaymentState.CAPTURED
+        )
+
+    def test_authorized_to_refunded(self):
+        """AUTHORIZED → REFUNDED is valid."""
+        assert BookingStateMachine.can_transition_payment_state(
+            PaymentState.AUTHORIZED, PaymentState.REFUNDED
+        )
+
+    def test_captured_to_refunded(self):
+        """CAPTURED → REFUNDED is valid."""
+        assert BookingStateMachine.can_transition_payment_state(
+            PaymentState.CAPTURED, PaymentState.REFUNDED
+        )
+
+    def test_captured_to_partially_refunded(self):
+        """CAPTURED → PARTIALLY_REFUNDED is valid."""
+        assert BookingStateMachine.can_transition_payment_state(
+            PaymentState.CAPTURED, PaymentState.PARTIALLY_REFUNDED
+        )
+
+    def test_partially_refunded_to_refunded(self):
+        """PARTIALLY_REFUNDED → REFUNDED is valid (complete refund)."""
+        assert BookingStateMachine.can_transition_payment_state(
+            PaymentState.PARTIALLY_REFUNDED, PaymentState.REFUNDED
+        )
+
+    def test_cannot_transition_from_voided(self):
+        """VOIDED is terminal - no transitions allowed."""
+        assert not BookingStateMachine.can_transition_payment_state(
+            PaymentState.VOIDED, PaymentState.AUTHORIZED
+        )
+        assert not BookingStateMachine.can_transition_payment_state(
+            PaymentState.VOIDED, PaymentState.REFUNDED
+        )
+
+    def test_cannot_transition_from_refunded(self):
+        """REFUNDED is terminal - no transitions allowed."""
+        assert not BookingStateMachine.can_transition_payment_state(
+            PaymentState.REFUNDED, PaymentState.CAPTURED
+        )
+
+    def test_invalid_backwards_payment_transition(self):
+        """Cannot transition backwards in payment states."""
+        assert not BookingStateMachine.can_transition_payment_state(
+            PaymentState.CAPTURED, PaymentState.AUTHORIZED
+        )
+        assert not BookingStateMachine.can_transition_payment_state(
+            PaymentState.AUTHORIZED, PaymentState.PENDING
+        )
+
+
+# ============================================================================
+# Dispute State Transition Tests
+# ============================================================================
+
+
+class TestDisputeStateTransitions:
+    """Test dispute_state transition validation."""
+
+    def test_none_to_open(self):
+        """NONE → OPEN is valid."""
+        assert BookingStateMachine.can_transition_dispute_state(
+            DisputeState.NONE, DisputeState.OPEN
+        )
+
+    def test_open_to_resolved_upheld(self):
+        """OPEN → RESOLVED_UPHELD is valid."""
+        assert BookingStateMachine.can_transition_dispute_state(
+            DisputeState.OPEN, DisputeState.RESOLVED_UPHELD
+        )
+
+    def test_open_to_resolved_refunded(self):
+        """OPEN → RESOLVED_REFUNDED is valid."""
+        assert BookingStateMachine.can_transition_dispute_state(
+            DisputeState.OPEN, DisputeState.RESOLVED_REFUNDED
+        )
+
+    def test_cannot_reopen_resolved_dispute(self):
+        """Cannot reopen resolved disputes."""
+        assert not BookingStateMachine.can_transition_dispute_state(
+            DisputeState.RESOLVED_UPHELD, DisputeState.OPEN
+        )
+        assert not BookingStateMachine.can_transition_dispute_state(
+            DisputeState.RESOLVED_REFUNDED, DisputeState.OPEN
+        )
+
+    def test_cannot_change_resolved_disputes(self):
+        """Cannot change between resolved states."""
+        assert not BookingStateMachine.can_transition_dispute_state(
+            DisputeState.RESOLVED_UPHELD, DisputeState.RESOLVED_REFUNDED
+        )
+        assert not BookingStateMachine.can_transition_dispute_state(
+            DisputeState.RESOLVED_REFUNDED, DisputeState.RESOLVED_UPHELD
+        )
+
+
+# ============================================================================
+# Cancel Booking Additional Tests
+# ============================================================================
+
+
+class TestCancelBookingAdvanced:
+    """Additional cancel booking tests for edge cases."""
+
+    def test_cancel_with_captured_payment_refund(self, mock_booking):
+        """Cancel with CAPTURED payment and refund."""
+        mock_booking.session_state = SessionState.SCHEDULED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+
+        result = BookingStateMachine.cancel_booking(
+            mock_booking,
+            cancelled_by=CancelledByRole.ADMIN,
+            refund=True,
+        )
+
+        assert result.success is True
+        assert mock_booking.payment_state == PaymentState.REFUNDED.value
+
+    def test_cancel_by_admin(self, mock_booking):
+        """Admin can cancel bookings."""
+        result = BookingStateMachine.cancel_booking(
+            mock_booking,
+            cancelled_by=CancelledByRole.ADMIN,
+            refund=True,
+        )
+
+        assert result.success is True
+        assert mock_booking.cancelled_by_role == CancelledByRole.ADMIN.value
+
+    def test_cancel_by_system(self, mock_booking):
+        """System can cancel bookings."""
+        result = BookingStateMachine.cancel_booking(
+            mock_booking,
+            cancelled_by=CancelledByRole.SYSTEM,
+            refund=True,
+        )
+
+        assert result.success is True
+        assert mock_booking.cancelled_by_role == CancelledByRole.SYSTEM.value
+
+
+# ============================================================================
+# End Session Additional Tests
+# ============================================================================
+
+
+class TestEndSessionAdvanced:
+    """Additional end session tests for different outcomes."""
+
+    def test_end_session_no_show_student(self, mock_booking):
+        """End session with student no-show outcome."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+
+        result = BookingStateMachine.end_session(
+            mock_booking, SessionOutcome.NO_SHOW_STUDENT
+        )
+
+        assert result.success is True
+        assert mock_booking.session_outcome == SessionOutcome.NO_SHOW_STUDENT.value
+        assert mock_booking.payment_state == PaymentState.CAPTURED.value
+
+    def test_end_session_no_show_tutor(self, mock_booking):
+        """End session with tutor no-show outcome."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+        mock_booking.payment_state = PaymentState.AUTHORIZED.value
+
+        result = BookingStateMachine.end_session(
+            mock_booking, SessionOutcome.NO_SHOW_TUTOR
+        )
+
+        assert result.success is True
+        assert mock_booking.session_outcome == SessionOutcome.NO_SHOW_TUTOR.value
+        assert mock_booking.payment_state == PaymentState.REFUNDED.value
+
+
+# ============================================================================
+# Resolve Dispute Additional Tests
+# ============================================================================
+
+
+class TestResolveDisputeAdvanced:
+    """Additional dispute resolution tests."""
+
+    def test_resolve_with_invalid_resolution_state(self, mock_booking):
+        """Cannot resolve with non-resolution dispute states."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.NONE,  # Invalid resolution
+            resolved_by_user_id=999,
+        )
+
+        assert result.success is False
+        assert "Invalid resolution" in result.error_message
+
+    def test_resolve_with_open_state(self, mock_booking):
+        """Cannot resolve with OPEN as resolution."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.OPEN,  # Invalid resolution
+            resolved_by_user_id=999,
+        )
+
+        assert result.success is False
+
+    def test_resolve_already_resolved_dispute(self, mock_booking):
+        """Cannot re-resolve an already resolved dispute."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.RESOLVED_UPHELD.value
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+        )
+
+        assert result.success is False
+        assert "No open dispute" in result.error_message
+
+
+# ============================================================================
+# State Machine Consistency Tests
+# ============================================================================
+
+
+class TestStateMachineConsistency:
+    """Test overall state machine consistency and behavior."""
+
+    def test_full_successful_booking_lifecycle(self, mock_booking):
+        """Test complete successful booking flow."""
+        # Step 1: Accept booking
+        result = BookingStateMachine.accept_booking(mock_booking)
+        assert result.success is True
+        assert mock_booking.session_state == SessionState.SCHEDULED.value
+        assert mock_booking.payment_state == PaymentState.AUTHORIZED.value
+
+        # Step 2: Start session
+        result = BookingStateMachine.start_session(mock_booking)
+        assert result.success is True
+        assert mock_booking.session_state == SessionState.ACTIVE.value
+
+        # Step 3: End session
+        result = BookingStateMachine.end_session(mock_booking, SessionOutcome.COMPLETED)
+        assert result.success is True
+        assert mock_booking.session_state == SessionState.ENDED.value
+        assert mock_booking.session_outcome == SessionOutcome.COMPLETED.value
+        assert mock_booking.payment_state == PaymentState.CAPTURED.value
+
+    def test_declined_booking_lifecycle(self, mock_booking):
+        """Test declined booking flow."""
+        result = BookingStateMachine.decline_booking(mock_booking)
+
+        assert result.success is True
+        assert mock_booking.session_state == SessionState.CANCELLED.value
+        assert mock_booking.session_outcome == SessionOutcome.NOT_HELD.value
+        assert mock_booking.payment_state == PaymentState.VOIDED.value
+        assert mock_booking.cancelled_by_role == CancelledByRole.TUTOR.value
+
+    def test_expired_booking_lifecycle(self, mock_booking):
+        """Test expired booking flow."""
+        result = BookingStateMachine.expire_booking(mock_booking)
+
+        assert result.success is True
+        assert mock_booking.session_state == SessionState.EXPIRED.value
+        assert mock_booking.session_outcome == SessionOutcome.NOT_HELD.value
+        assert mock_booking.payment_state == PaymentState.VOIDED.value
+        assert mock_booking.cancelled_by_role == CancelledByRole.SYSTEM.value
+
+    def test_disputed_booking_resolved_upheld(self, mock_booking):
+        """Test disputed booking resolved in tutor's favor."""
+        # Complete the booking first
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.session_outcome = SessionOutcome.COMPLETED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+
+        # Open dispute
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Service not as described",
+            disputed_by_user_id=123,
+        )
+        assert result.success is True
+
+        # Resolve dispute - upheld
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_UPHELD,
+            resolved_by_user_id=999,
+            notes="Tutor provided service as advertised",
+        )
+        assert result.success is True
+        assert mock_booking.dispute_state == DisputeState.RESOLVED_UPHELD.value
+        assert mock_booking.payment_state == PaymentState.CAPTURED.value  # Unchanged
+
+    def test_disputed_booking_resolved_refunded(self, mock_booking):
+        """Test disputed booking resolved in student's favor."""
+        # Complete the booking first
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.session_outcome = SessionOutcome.COMPLETED.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        mock_booking.rate_cents = 5000
+
+        # Open dispute
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Tutor was unprepared",
+            disputed_by_user_id=123,
+        )
+        assert result.success is True
+
+        # Resolve dispute - refunded
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_REFUNDED,
+            resolved_by_user_id=999,
+            notes="Student complaint validated",
+        )
+        assert result.success is True
+        assert mock_booking.dispute_state == DisputeState.RESOLVED_REFUNDED.value
+        assert mock_booking.payment_state == PaymentState.REFUNDED.value
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

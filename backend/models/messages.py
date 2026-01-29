@@ -2,6 +2,7 @@
 
 from sqlalchemy import (
     TIMESTAMP,
+    BigInteger,
     Boolean,
     Column,
     ForeignKey,
@@ -66,7 +67,7 @@ class MessageAttachment(Base):
     message_id = Column(Integer, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, index=True)
     file_key = Column(String(500), nullable=False, index=True)
     original_filename = Column(String(255), nullable=False)
-    file_size = Column(Integer, nullable=False)
+    file_size = Column(BigInteger, nullable=False)
     mime_type = Column(String(100), nullable=False)
     file_category = Column(String(50), nullable=False)  # 'image', 'document', 'other'
 

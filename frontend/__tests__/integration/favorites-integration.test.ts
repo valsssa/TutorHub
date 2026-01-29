@@ -32,9 +32,9 @@ describe('Favorites API Integration Tests', () => {
       loginParams.append('username', 'student@example.com')
       loginParams.append('password', 'student123')
 
-      console.log(`Attempting login to ${API_URL}/api/auth/login`)
+      console.log(`Attempting login to ${API_URL}/api/v1/auth/login`)
       
-      const loginResponse = await api.post('/api/auth/login', loginParams, {
+      const loginResponse = await api.post('/api/v1/auth/login', loginParams, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
@@ -50,7 +50,7 @@ describe('Favorites API Integration Tests', () => {
         tutorLoginParams.append('username', 'tutor@example.com')
         tutorLoginParams.append('password', 'tutor123')
         
-        const tutorLogin = await api.post('/api/auth/login', tutorLoginParams, {
+        const tutorLogin = await api.post('/api/v1/auth/login', tutorLoginParams, {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
@@ -59,7 +59,7 @@ describe('Favorites API Integration Tests', () => {
         console.log(`Tutor login successful`)
 
         // Get tutor's profile
-        const profileResponse = await api.get('/api/tutors/me/profile', {
+        const profileResponse = await api.get('/api/v1/tutors/me/profile', {
           headers: { Authorization: `Bearer ${tutorToken}` },
         })
         
@@ -273,7 +273,7 @@ describe('Favorites API Integration Tests', () => {
       tutorLoginParams.append('username', 'tutor@example.com')
       tutorLoginParams.append('password', 'tutor123')
       
-      const tutorLogin = await api.post('/api/auth/login', tutorLoginParams, {
+      const tutorLogin = await api.post('/api/v1/auth/login', tutorLoginParams, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
@@ -320,7 +320,7 @@ describe('Favorites API Integration Tests', () => {
       )
 
       // Verify the tutor profile exists and can be fetched
-      const tutorResponse = await api.get(`/api/tutors/${tutorProfileId}/public`)
+      const tutorResponse = await api.get(`/api/v1/tutors/${tutorProfileId}/public`)
       
       expect(tutorResponse.status).toBe(200)
       expect(tutorResponse.data.id).toBe(tutorProfileId)

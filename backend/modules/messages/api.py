@@ -195,8 +195,8 @@ async def send_message(
 
 @router.get("/threads", response_model=list[MessageThreadResponse])
 async def list_threads(
+    current_user: CurrentUser,
     limit: int = Query(100, ge=1, le=200, description="Maximum threads to return"),
-    current_user: CurrentUser = None,
     service: MessageService = Depends(get_message_service),
 ):
     """
@@ -250,10 +250,10 @@ async def list_threads(
 @router.get("/threads/{other_user_id}", response_model=PaginatedMessagesResponse)
 async def get_conversation(
     other_user_id: int,
+    current_user: CurrentUser,
     booking_id: int | None = Query(None, description="Filter by booking context"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Messages per page"),
-    current_user: CurrentUser = None,
     service: MessageService = Depends(get_message_service),
 ):
     """
@@ -301,10 +301,10 @@ async def get_conversation(
 
 @router.get("/search", response_model=MessageSearchResponse)
 async def search_messages(
+    current_user: CurrentUser,
     search_query: str = Query(..., min_length=2, description="Search query", alias="q"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
-    current_user: CurrentUser = None,
     service: MessageService = Depends(get_message_service),
 ):
     """
@@ -408,8 +408,8 @@ async def mark_read(
 @router.patch("/threads/{other_user_id}/read-all", status_code=status.HTTP_200_OK)
 async def mark_thread_read(
     other_user_id: int,
+    current_user: CurrentUser,
     booking_id: int | None = Query(None),
-    current_user: CurrentUser = None,
     service: MessageService = Depends(get_message_service),
 ):
     """
@@ -456,11 +456,11 @@ async def mark_thread_read(
 
 @router.post("/with-attachment", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def send_message_with_attachment(
+    current_user: CurrentUser,
     recipient_id: int = Form(..., gt=0),
     message: str = Form(..., min_length=1, max_length=2000),
     booking_id: int | None = Form(None, gt=0),
     file: UploadFile = File(...),
-    current_user: CurrentUser = None,
     service: MessageService = Depends(get_message_service),
     db: Session = Depends(get_db),
 ):

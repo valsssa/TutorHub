@@ -112,7 +112,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from database import get_db
 
-router = APIRouter(prefix="/api/my-feature", tags=["my-feature"])
+# NOTE: Router prefix should NOT include /api - this is added centrally in main.py
+router = APIRouter(prefix="/my-feature", tags=["my-feature"])
 
 @router.get("/")
 async def list_items(db: Session = Depends(get_db)):
@@ -123,5 +124,15 @@ async def list_items(db: Session = Depends(get_db)):
 ```python
 # main.py
 from modules.my_feature.api import router as my_feature_router
-app.include_router(my_feature_router)
+
+# All routers are registered under /api/v1 for versioning
+API_V1_PREFIX = "/api/v1"
+app.include_router(my_feature_router, prefix=API_V1_PREFIX)
 ```
+
+## API Versioning
+
+All API endpoints are versioned under `/api/v1`. When creating new modules:
+- Router prefixes should NOT include `/api/` - just the resource name (e.g., `/my-feature`)
+- The version prefix is added centrally in `main.py` when registering routers
+- Future breaking changes will be introduced under `/api/v2`
