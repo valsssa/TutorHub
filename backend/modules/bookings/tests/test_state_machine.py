@@ -872,5 +872,205 @@ class TestStateMachineConsistency:
         assert mock_booking.payment_state == PaymentState.REFUNDED.value
 
 
+# ============================================================================
+# Idempotent Transition Tests
+# ============================================================================
+
+
+class TestIdempotentTransitions:
+    """Test idempotent state transition behavior."""
+
+    def test_accept_booking_is_idempotent(self, mock_booking):
+        """Accepting an already scheduled booking is idempotent."""
+        mock_booking.session_state = SessionState.SCHEDULED.value
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.accept_booking(mock_booking)
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+        # Version should not change for idempotent no-op
+        assert mock_booking.version == initial_version
+
+    def test_cancel_booking_is_idempotent(self, mock_booking):
+        """Cancelling an already cancelled booking is idempotent."""
+        mock_booking.session_state = SessionState.CANCELLED.value
+
+        result = BookingStateMachine.cancel_booking(
+            mock_booking,
+            cancelled_by=CancelledByRole.STUDENT,
+            refund=True,
+        )
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+
+    def test_expire_booking_is_idempotent(self, mock_booking):
+        """Expiring an already expired booking is idempotent."""
+        mock_booking.session_state = SessionState.EXPIRED.value
+
+        result = BookingStateMachine.expire_booking(mock_booking)
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+
+    def test_expire_booking_skips_scheduled(self, mock_booking):
+        """Expire is idempotent when booking was already scheduled."""
+        mock_booking.session_state = SessionState.SCHEDULED.value
+
+        result = BookingStateMachine.expire_booking(mock_booking)
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+
+    def test_start_session_is_idempotent(self, mock_booking):
+        """Starting an already active session is idempotent."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+
+        result = BookingStateMachine.start_session(mock_booking)
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+
+    def test_start_session_skips_ended(self, mock_booking):
+        """Start is idempotent when session has already ended."""
+        mock_booking.session_state = SessionState.ENDED.value
+
+        result = BookingStateMachine.start_session(mock_booking)
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+
+    def test_end_session_is_idempotent(self, mock_booking):
+        """Ending an already ended session is idempotent."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.session_outcome = SessionOutcome.COMPLETED.value
+
+        result = BookingStateMachine.end_session(mock_booking, SessionOutcome.COMPLETED)
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+
+    def test_mark_no_show_is_idempotent(self, mock_booking):
+        """Marking no-show on already ended session is idempotent."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.session_outcome = SessionOutcome.NO_SHOW_STUDENT.value
+
+        result = BookingStateMachine.mark_no_show(mock_booking, "STUDENT")
+
+        assert result.success is True
+        assert result.already_in_target_state is True
+
+
+# ============================================================================
+# Version Increment Tests
+# ============================================================================
+
+
+class TestVersionIncrement:
+    """Test that version is incremented on state transitions."""
+
+    def test_accept_booking_increments_version(self, mock_booking):
+        """Accept booking increments version."""
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.accept_booking(mock_booking)
+
+        assert result.success is True
+        assert result.already_in_target_state is False
+        assert mock_booking.version == initial_version + 1
+
+    def test_decline_booking_increments_version(self, mock_booking):
+        """Decline booking increments version."""
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.decline_booking(mock_booking)
+
+        assert result.success is True
+        assert mock_booking.version == initial_version + 1
+
+    def test_cancel_booking_increments_version(self, mock_booking):
+        """Cancel booking increments version."""
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.cancel_booking(
+            mock_booking,
+            cancelled_by=CancelledByRole.STUDENT,
+            refund=True,
+        )
+
+        assert result.success is True
+        assert mock_booking.version == initial_version + 1
+
+    def test_expire_booking_increments_version(self, mock_booking):
+        """Expire booking increments version."""
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.expire_booking(mock_booking)
+
+        assert result.success is True
+        assert mock_booking.version == initial_version + 1
+
+    def test_start_session_increments_version(self, mock_booking):
+        """Start session increments version."""
+        mock_booking.session_state = SessionState.SCHEDULED.value
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.start_session(mock_booking)
+
+        assert result.success is True
+        assert mock_booking.version == initial_version + 1
+
+    def test_end_session_increments_version(self, mock_booking):
+        """End session increments version."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.end_session(mock_booking, SessionOutcome.COMPLETED)
+
+        assert result.success is True
+        assert mock_booking.version == initial_version + 1
+
+    def test_mark_no_show_increments_version(self, mock_booking):
+        """Mark no-show increments version."""
+        mock_booking.session_state = SessionState.ACTIVE.value
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.mark_no_show(mock_booking, "STUDENT")
+
+        assert result.success is True
+        assert mock_booking.version == initial_version + 1
+
+    def test_open_dispute_increments_version(self, mock_booking):
+        """Open dispute increments version."""
+        mock_booking.session_state = SessionState.ENDED.value
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.open_dispute(
+            mock_booking,
+            reason="Test dispute",
+            disputed_by_user_id=123,
+        )
+
+        assert result.success is True
+        assert mock_booking.version == initial_version + 1
+
+    def test_resolve_dispute_increments_version(self, mock_booking):
+        """Resolve dispute increments version."""
+        mock_booking.session_state = SessionState.ENDED.value
+        mock_booking.dispute_state = DisputeState.OPEN.value
+        mock_booking.payment_state = PaymentState.CAPTURED.value
+        initial_version = mock_booking.version
+
+        result = BookingStateMachine.resolve_dispute(
+            mock_booking,
+            resolution=DisputeState.RESOLVED_UPHELD,
+            resolved_by_user_id=999,
+        )
+
+        assert result.success is True
+        assert mock_booking.version == initial_version + 1
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

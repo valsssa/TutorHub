@@ -110,10 +110,13 @@ class FeatureFlagsClient {
 
   /**
    * Fetch feature status from backend
+   *
+   * Uses the public endpoint /api/v1/features/{name}/check
+   * which doesn't require authentication.
    */
   private async fetchFeatureStatus(name: string): Promise<boolean> {
     try {
-      // Use the check endpoint with optional user ID
+      // Use the public check endpoint with optional user ID
       const params = new URLSearchParams();
       if (this.userId) {
         params.set('user_id', this.userId);
@@ -126,7 +129,6 @@ class FeatureFlagsClient {
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include',
         }
       );
 
