@@ -7,7 +7,7 @@ import { getApiBaseUrl } from './shared/utils/url';
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './__tests__/e2e',
   
   // Maximum time one test can run for
   timeout: 30 * 1000,

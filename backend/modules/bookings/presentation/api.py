@@ -431,50 +431,49 @@ async def confirm_booking(
 
     - Changes status from PENDING to CONFIRMED
     - Generates meeting join URL
+    - Uses row-level locking to prevent race conditions
     """
-    booking = (
-        db.query(Booking)
-        .filter(
-            Booking.id == booking_id,
-            Booking.tutor_profile_id == tutor_profile.id,
-        )
-        .first()
-    )
-
-    if not booking:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Booking not found",
-        )
-
-    # Use state machine to validate and transition
-    result = BookingStateMachine.accept_booking(booking)
-
-    if not result.success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.error_message or f"Cannot confirm booking with state {booking.session_state}",
-        )
-
     try:
-        from datetime import datetime
-
         from modules.bookings.services.response_tracking import ResponseTrackingService
 
-        # Generate join URL
-        service = BookingService(db)
-        booking.join_url = service._generate_join_url(booking.id)
+        # Acquire row-level lock to prevent race conditions
+        # (e.g., concurrent expiry job or duplicate confirm requests)
+        booking = BookingStateMachine.get_booking_with_lock(db, booking_id)
 
-        # Add tutor notes
-        if request.notes_tutor:
-            booking.notes_tutor = request.notes_tutor
+        if not booking:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Booking not found",
+            )
 
-        # Update timestamp in application code (no DB triggers)
-        booking.updated_at = datetime.now(UTC)
+        if booking.tutor_profile_id != tutor_profile.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Booking not found",
+            )
 
-        # Track response time
-        response_tracker = ResponseTrackingService(db)
-        response_tracker.log_tutor_response(booking, "confirmed")
+        # Use state machine to validate and transition (idempotent)
+        result = BookingStateMachine.accept_booking(booking)
+
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.error_message or f"Cannot confirm booking with state {booking.session_state}",
+            )
+
+        # Only update additional fields if this wasn't an idempotent no-op
+        if not result.already_in_target_state:
+            # Generate join URL
+            service = BookingService(db)
+            booking.join_url = service._generate_join_url(booking.id)
+
+            # Add tutor notes
+            if request.notes_tutor:
+                booking.notes_tutor = request.notes_tutor
+
+            # Track response time
+            response_tracker = ResponseTrackingService(db)
+            response_tracker.log_tutor_response(booking, "confirmed")
 
         db.commit()
         db.refresh(booking)
@@ -486,6 +485,8 @@ async def confirm_booking(
 
         return booking_to_dto(booking, db)
 
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(
@@ -506,24 +507,25 @@ async def decline_booking(
 
     - Changes status to CANCELLED_BY_TUTOR
     - Automatically refunds student
+    - Uses row-level locking to prevent race conditions
     """
-    booking = (
-        db.query(Booking)
-        .filter(
-            Booking.id == booking_id,
-            Booking.tutor_profile_id == tutor_profile.id,
-        )
-        .first()
-    )
-
-    if not booking:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Booking not found",
-        )
-
     try:
         from modules.bookings.services.response_tracking import ResponseTrackingService
+
+        # Acquire row-level lock to prevent race conditions
+        booking = BookingStateMachine.get_booking_with_lock(db, booking_id)
+
+        if not booking:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Booking not found",
+            )
+
+        if booking.tutor_profile_id != tutor_profile.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Booking not found",
+            )
 
         service = BookingService(db)
         declined_booking = service.cancel_booking(

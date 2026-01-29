@@ -37,6 +37,8 @@ def mock_booking():
     booking.confirmed_at = None
     booking.rate_cents = 5000
     booking.tutor_profile = MagicMock()
+    booking.version = 1  # Optimistic locking version
+    booking.updated_at = None
     return booking
 
 
@@ -120,14 +122,14 @@ class TestAcceptBooking:
         assert mock_booking.payment_state == PaymentState.AUTHORIZED.value
         assert mock_booking.confirmed_at is not None
 
-    def test_cannot_accept_scheduled_booking(self, mock_booking):
-        """Cannot accept already scheduled booking."""
+    def test_accept_scheduled_booking_is_idempotent(self, mock_booking):
+        """Accepting already scheduled booking is idempotent (returns success)."""
         mock_booking.session_state = SessionState.SCHEDULED.value
 
         result = BookingStateMachine.accept_booking(mock_booking)
 
-        assert result.success is False
-        assert "Cannot accept" in result.error_message
+        assert result.success is True
+        assert result.already_in_target_state is True
 
     def test_cannot_accept_cancelled_booking(self, mock_booking):
         """Cannot accept cancelled booking."""
@@ -391,8 +393,8 @@ class TestDisputes:
         assert result.success is False
         assert "terminal" in result.error_message.lower() or "completed" in result.error_message.lower()
 
-    def test_cannot_open_duplicate_dispute(self, mock_booking):
-        """Cannot open dispute when one is already open."""
+    def test_open_dispute_is_idempotent(self, mock_booking):
+        """Opening dispute when one is already open is idempotent."""
         mock_booking.session_state = SessionState.ENDED.value
         mock_booking.dispute_state = DisputeState.OPEN.value
 
@@ -402,7 +404,8 @@ class TestDisputes:
             disputed_by_user_id=123,
         )
 
-        assert result.success is False
+        assert result.success is True
+        assert result.already_in_target_state is True
 
     def test_resolve_dispute_upheld(self, mock_booking):
         """Resolve dispute as UPHELD (original decision stands)."""
@@ -752,8 +755,8 @@ class TestResolveDisputeAdvanced:
 
         assert result.success is False
 
-    def test_resolve_already_resolved_dispute(self, mock_booking):
-        """Cannot re-resolve an already resolved dispute."""
+    def test_resolve_already_resolved_dispute_is_idempotent(self, mock_booking):
+        """Resolving already resolved dispute is idempotent."""
         mock_booking.session_state = SessionState.ENDED.value
         mock_booking.dispute_state = DisputeState.RESOLVED_UPHELD.value
 
@@ -763,8 +766,8 @@ class TestResolveDisputeAdvanced:
             resolved_by_user_id=999,
         )
 
-        assert result.success is False
-        assert "No open dispute" in result.error_message
+        assert result.success is True
+        assert result.already_in_target_state is True
 
 
 # ============================================================================

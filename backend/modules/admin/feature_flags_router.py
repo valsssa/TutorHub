@@ -20,6 +20,9 @@ from models.user import User
 
 router = APIRouter(prefix="/admin/features", tags=["admin-features"])
 
+# Public router for checking feature flags without authentication
+public_router = APIRouter(prefix="/features", tags=["features"])
+
 
 # Request/Response Models
 
@@ -309,3 +312,30 @@ async def invalidate_cache(
 ) -> None:
     """Invalidate all feature flag caches."""
     feature_flags.invalidate_cache()
+
+
+# Public endpoints for checking feature flags (no authentication required)
+
+
+@public_router.get("/{name}/check", response_model=CheckFeatureResponse)
+async def public_check_feature(
+    name: str,
+    user_id: str | None = None,
+) -> CheckFeatureResponse:
+    """
+    Check if a feature is enabled (public endpoint).
+
+    This endpoint can be called without authentication to check
+    if a feature flag is enabled. Optionally pass a user_id for
+    percentage rollouts.
+    """
+    if user_id:
+        enabled = await feature_flags.is_enabled_for_user(name, user_id)
+    else:
+        enabled = await feature_flags.is_enabled(name)
+
+    return CheckFeatureResponse(
+        name=name,
+        enabled=enabled,
+        user_id=user_id,
+    )
