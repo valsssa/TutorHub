@@ -178,14 +178,33 @@ export interface Booking {
   subject_id: number;
   start_time: string;
   end_time: string;
+  // Also support snake_case versions from API
+  start_at?: string;
+  end_at?: string;
   topic?: string;
   notes?: string;
   hourly_rate: number;
   total_amount: number;
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  // Legacy status field
+  status: "pending" | "confirmed" | "cancelled" | "completed" | string;
+  // New four-field status system
+  session_state?: string;
+  session_outcome?: string | null;
+  payment_state?: string;
+  dispute_state?: string;
+  cancelled_by_role?: string | null;
   meeting_url?: string;
   pricing_option_id?: number;
   pricing_type?: string;
+  // Pricing fields
+  rate_cents?: number;
+  currency?: string;
+  platform_fee_pct?: number;
+  platform_fee_cents?: number;
+  tutor_earnings_cents?: number;
+  // Timezone fields
+  student_tz?: string;
+  tutor_tz?: string;
   // Immutable snapshot fields (populated by backend on booking creation)
   tutor_name?: string;
   tutor_title?: string;
@@ -201,17 +220,28 @@ export interface Booking {
   cancelled_at?: string;
   is_rebooked?: boolean;
   original_booking_id?: number;
+  // Dispute fields
+  dispute_reason?: string | null;
+  disputed_at?: string | null;
+  disputed_by?: number | null;
+  resolved_at?: string | null;
+  resolved_by?: number | null;
+  resolution_notes?: string | null;
   // Enhanced tutor view fields
   student_avatar_url?: string;
   student_language_level?: string;
   tutor_earnings?: number;
-  lesson_type?: "trial" | "regular" | "package";
+  lesson_type?: "trial" | "regular" | "package" | "TRIAL" | "REGULAR" | "PACKAGE";
   student_timezone?: string;
   // Enhanced student view fields
   tutor_photo_url?: string;
   tutor_rating?: number;
   tutor_language?: string;
   tutor_total_lessons?: number;
+  // Join URL
+  join_url?: string | null;
+  notes_student?: string | null;
+  notes_tutor?: string | null;
   created_at: string;
   updated_at?: string;
 }

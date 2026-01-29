@@ -10,6 +10,42 @@ from pydantic import BaseModel, Field, field_validator
 # Enums as Literals
 # ============================================================================
 
+# New four-field status system
+SessionState = Literal[
+    "REQUESTED",  # Waiting for tutor response
+    "SCHEDULED",  # Confirmed, session upcoming
+    "ACTIVE",  # Session happening now
+    "ENDED",  # Session lifecycle complete
+    "EXPIRED",  # Request timed out (24h)
+    "CANCELLED",  # Explicitly cancelled
+]
+
+SessionOutcome = Literal[
+    "COMPLETED",  # Session happened successfully
+    "NOT_HELD",  # Session didn't happen (cancelled/expired)
+    "NO_SHOW_STUDENT",  # Student didn't attend
+    "NO_SHOW_TUTOR",  # Tutor didn't attend
+]
+
+PaymentState = Literal[
+    "PENDING",  # Awaiting authorization
+    "AUTHORIZED",  # Funds held
+    "CAPTURED",  # Tutor earned payment
+    "VOIDED",  # Authorization released
+    "REFUNDED",  # Full refund issued
+    "PARTIALLY_REFUNDED",  # Partial refund issued
+]
+
+DisputeState = Literal[
+    "NONE",  # No dispute
+    "OPEN",  # Under review
+    "RESOLVED_UPHELD",  # Original decision stands
+    "RESOLVED_REFUNDED",  # Refund granted
+]
+
+CancelledByRole = Literal["STUDENT", "TUTOR", "ADMIN", "SYSTEM"]
+
+# Legacy status (for backward compatibility)
 BookingStatus = Literal[
     "PENDING",
     "CONFIRMED",
@@ -116,7 +152,21 @@ class BookingDTO(BaseModel):
 
     id: int
     lesson_type: LessonType
-    status: str  # Using str for backward compat with old statuses
+
+    # New four-field status system
+    session_state: str
+    session_outcome: str | None = None
+    payment_state: str
+    dispute_state: str
+
+    # Legacy status field (computed for backward compatibility)
+    status: str  # Computed from session_state + session_outcome
+
+    # Cancellation info
+    cancelled_by_role: str | None = None
+    cancelled_at: datetime | None = None
+    cancellation_reason: str | None = None
+
     start_at: datetime  # ISO UTC
     end_at: datetime  # ISO UTC
     student_tz: str
@@ -135,6 +185,10 @@ class BookingDTO(BaseModel):
     topic: str | None = None
     created_at: datetime
     updated_at: datetime
+
+    # Dispute information (only included if dispute exists)
+    dispute_reason: str | None = None
+    disputed_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -228,3 +282,35 @@ class PaymentIntentResponse(BaseModel):
     amount_cents: int
     currency: str
     status: str
+
+
+# ============================================================================
+# Dispute schemas
+# ============================================================================
+
+
+class DisputeCreateRequest(BaseModel):
+    """Open a dispute on a booking."""
+
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
+class DisputeResolveRequest(BaseModel):
+    """Admin resolves a dispute."""
+
+    resolution: Literal["RESOLVED_UPHELD", "RESOLVED_REFUNDED"]
+    notes: str | None = Field(None, max_length=2000)
+    refund_amount_cents: int | None = Field(None, ge=0)
+
+
+class DisputeDTO(BaseModel):
+    """Dispute information for a booking."""
+
+    booking_id: int
+    dispute_state: str
+    dispute_reason: str | None = None
+    disputed_at: datetime | None = None
+    disputed_by: int | None = None
+    resolved_at: datetime | None = None
+    resolved_by: int | None = None
+    resolution_notes: str | None = None

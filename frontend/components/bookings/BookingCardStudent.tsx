@@ -21,9 +21,17 @@ import { useTimezone } from "@/contexts/TimezoneContext";
 import {
   BOOKING_STATUS_COLORS,
   LESSON_TYPE_BADGES,
+  SESSION_STATE_COLORS,
+  DISPUTE_STATE_COLORS,
   calculateBookingTiming,
   formatBookingPrice,
   getDisplayTimezone,
+  getSessionStateLabel,
+  getSessionOutcomeLabel,
+  getDisputeStateLabel,
+  isUpcomingBooking,
+  isCancellableBooking,
+  hasOpenDispute,
 } from "@/lib/bookingUtils";
 
 interface BookingCardStudentProps {
@@ -32,6 +40,7 @@ interface BookingCardStudentProps {
   onCancel?: (bookingId: number) => void;
   onReschedule?: (bookingId: number) => void;
   onMarkNoShow?: (bookingId: number) => void;
+  onDispute?: (bookingId: number) => void;
 }
 
 export default function BookingCardStudent({
@@ -40,13 +49,21 @@ export default function BookingCardStudent({
   onCancel,
   onReschedule,
   onMarkNoShow,
+  onDispute,
 }: BookingCardStudentProps) {
   const { userTimezone } = useTimezone();
-  const isUpcoming = ["PENDING", "CONFIRMED", "pending", "confirmed"].includes(
-    booking.status
-  );
-  const isCompleted = ["COMPLETED", "completed"].includes(booking.status);
-  const isCancelled = booking.status.toLowerCase().includes("cancel");
+
+  // Use new four-field status system with fallback to legacy
+  const sessionState = booking.session_state || booking.status;
+  const sessionOutcome = booking.session_outcome;
+  const disputeState = booking.dispute_state || "NONE";
+
+  const isUpcoming = isUpcomingBooking(sessionState);
+  const canCancel = isCancellableBooking(sessionState);
+  const isCompleted = sessionState === "ENDED" && sessionOutcome === "COMPLETED";
+  const isCancelled = sessionState === "CANCELLED" || sessionState === "EXPIRED";
+  const isActive = sessionState === "ACTIVE";
+  const showDispute = hasOpenDispute(disputeState);
 
   // Use shared timing calculation and formatting utilities
   const timing = calculateBookingTiming(booking, userTimezone);
@@ -91,15 +108,32 @@ export default function BookingCardStudent({
           </div>
         </div>
 
-        {/* Status Badge */}
+        {/* Status Badges */}
         <div className="flex flex-col gap-2 items-end">
+          {/* Session State Badge */}
           <span
             className={`px-3 py-1 rounded-full text-xs font-medium ${
-              BOOKING_STATUS_COLORS[booking.status] || "bg-gray-100 text-gray-800"
+              SESSION_STATE_COLORS[sessionState] || BOOKING_STATUS_COLORS[booking.status] || "bg-gray-100 text-gray-800"
             }`}
           >
-            {booking.status.replace(/_/g, " ")}
+            {getSessionStateLabel(sessionState)}
           </span>
+          {/* Session Outcome Badge (if ended) */}
+          {sessionOutcome && (
+            <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+              {getSessionOutcomeLabel(sessionOutcome)}
+            </span>
+          )}
+          {/* Dispute Badge (if has dispute) */}
+          {disputeState !== "NONE" && (
+            <span
+              className={`px-2 py-1 rounded text-xs font-medium ${
+                DISPUTE_STATE_COLORS[disputeState] || "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {getDisputeStateLabel(disputeState)}
+            </span>
+          )}
           {/* Lesson Type Badge */}
           <span
             className={`px-2 py-1 rounded text-xs font-medium ${
@@ -177,20 +211,20 @@ export default function BookingCardStudent({
       {/* Policy Hint */}
       {isUpcoming && (
         <div className={`text-xs bg-gray-50 dark:bg-slate-800 p-3 rounded-lg mb-4 border ${
-          canCancelFree 
-            ? "text-green-700 dark:text-green-400 border-green-200 dark:border-green-800" 
+          canCancelFree
+            ? "text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
             : "text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
         }`}>
           {canCancelFree
-            ? "✓ Free cancellation available (12+ hours before session)"
-            : "⚠ No refund if cancelled now (less than 12 hours before)"}
+            ? "Free cancellation available (24+ hours before session)"
+            : "No refund if cancelled now (less than 24 hours before)"}
         </div>
       )}
 
       {/* Action Buttons */}
       <div className="flex gap-2 flex-wrap">
-        {/* Join Button */}
-        {booking.status === "CONFIRMED" &&
+        {/* Join Button - show when SCHEDULED or ACTIVE and within time window */}
+        {(sessionState === "SCHEDULED" || sessionState === "ACTIVE") &&
           booking.join_url &&
           hoursUntil <= 1 &&
           hoursUntil >= -1 && (
@@ -208,28 +242,39 @@ export default function BookingCardStudent({
           )}
 
         {/* Reschedule Button */}
-        {isUpcoming && onReschedule && hoursUntil >= 12 && (
+        {canCancel && onReschedule && hoursUntil >= 24 && (
           <Button variant="secondary" onClick={() => onReschedule(booking.id)}>
             Reschedule
           </Button>
         )}
 
         {/* Cancel Button */}
-        {isUpcoming && onCancel && (
+        {canCancel && onCancel && (
           <Button variant="outline" onClick={() => onCancel(booking.id)}>
             <FiX className="w-4 h-4 mr-1" />
             Cancel
           </Button>
         )}
 
-        {/* Mark Tutor No-Show */}
-        {booking.status === "CONFIRMED" && hoursUntil < 0 && onMarkNoShow && (
+        {/* Mark Tutor No-Show - available when SCHEDULED/ACTIVE and past start time */}
+        {(sessionState === "SCHEDULED" || sessionState === "ACTIVE") && hoursUntil < 0 && onMarkNoShow && (
           <Button
             variant="danger"
             onClick={() => onMarkNoShow(booking.id)}
             size="sm"
           >
             Report Tutor No-Show
+          </Button>
+        )}
+
+        {/* Open Dispute - available when session ended/cancelled and no open dispute */}
+        {(sessionState === "ENDED" || sessionState === "CANCELLED") && disputeState === "NONE" && onDispute && (
+          <Button
+            variant="outline"
+            onClick={() => onDispute(booking.id)}
+            size="sm"
+          >
+            Open Dispute
           </Button>
         )}
       </div>

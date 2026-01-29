@@ -21,9 +21,17 @@ import { useTimezone } from "@/contexts/TimezoneContext";
 import {
   BOOKING_STATUS_COLORS,
   LESSON_TYPE_BADGES,
+  SESSION_STATE_COLORS,
+  DISPUTE_STATE_COLORS,
   calculateBookingTiming,
   formatBookingPrice,
   getDisplayTimezone,
+  getSessionStateLabel,
+  getSessionOutcomeLabel,
+  getDisputeStateLabel,
+  isUpcomingBooking,
+  isCancellableBooking,
+  hasOpenDispute,
 } from "@/lib/bookingUtils";
 
 interface BookingCardTutorProps {
@@ -44,11 +52,18 @@ export default function BookingCardTutor({
   onAddNotes,
 }: BookingCardTutorProps) {
   const { userTimezone } = useTimezone();
-  const isPending = ["PENDING", "pending"].includes(booking.status);
-  const isUpcoming = ["PENDING", "CONFIRMED", "pending", "confirmed"].includes(
-    booking.status
-  );
-  const isCompleted = ["COMPLETED", "completed"].includes(booking.status);
+
+  // Use new four-field status system with fallback to legacy
+  const sessionState = booking.session_state || booking.status;
+  const sessionOutcome = booking.session_outcome;
+  const disputeState = booking.dispute_state || "NONE";
+
+  const isPending = sessionState === "REQUESTED";
+  const isScheduled = sessionState === "SCHEDULED";
+  const isActive = sessionState === "ACTIVE";
+  const isUpcoming = isUpcomingBooking(sessionState);
+  const canCancel = isCancellableBooking(sessionState);
+  const isCompleted = sessionState === "ENDED" && sessionOutcome === "COMPLETED";
 
   // Use shared timing calculation and formatting utilities
   const timing = calculateBookingTiming(booking, userTimezone);
@@ -102,15 +117,32 @@ export default function BookingCardTutor({
           </div>
         </div>
 
-        {/* Status Badge */}
+        {/* Status Badges */}
         <div className="flex flex-col gap-2 items-end">
+          {/* Session State Badge */}
           <span
             className={`px-3 py-1 rounded-full text-xs font-medium ${
-              BOOKING_STATUS_COLORS[booking.status] || "bg-gray-100 text-gray-800"
+              SESSION_STATE_COLORS[sessionState] || BOOKING_STATUS_COLORS[booking.status] || "bg-gray-100 text-gray-800"
             }`}
           >
-            {booking.status.replace(/_/g, " ")}
+            {getSessionStateLabel(sessionState)}
           </span>
+          {/* Session Outcome Badge (if ended) */}
+          {sessionOutcome && (
+            <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+              {getSessionOutcomeLabel(sessionOutcome)}
+            </span>
+          )}
+          {/* Dispute Badge (if has dispute) */}
+          {disputeState !== "NONE" && (
+            <span
+              className={`px-2 py-1 rounded text-xs font-medium ${
+                DISPUTE_STATE_COLORS[disputeState] || "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {getDisputeStateLabel(disputeState)}
+            </span>
+          )}
           {/* Lesson Type Badge */}
           <span
             className={`px-2 py-1 rounded text-xs font-medium ${
@@ -203,7 +235,7 @@ export default function BookingCardTutor({
 
       {/* Action Buttons */}
       <div className="flex gap-2 flex-wrap">
-        {/* Confirm Button (for pending bookings) */}
+        {/* Confirm Button (for REQUESTED bookings) */}
         {isPending && onConfirm && (
           <Button variant="primary" onClick={() => onConfirm(booking.id)}>
             <FiCheck className="w-4 h-4 mr-2" />
@@ -211,7 +243,7 @@ export default function BookingCardTutor({
           </Button>
         )}
 
-        {/* Decline Button (for pending bookings) */}
+        {/* Decline Button (for REQUESTED bookings) */}
         {isPending && onDecline && (
           <Button variant="outline" onClick={() => onDecline(booking.id)}>
             <FiX className="w-4 h-4 mr-1" />
@@ -219,8 +251,8 @@ export default function BookingCardTutor({
           </Button>
         )}
 
-        {/* Cancel Button (for confirmed bookings) */}
-        {booking.status === "CONFIRMED" && onCancel && (
+        {/* Cancel Button (for SCHEDULED bookings) */}
+        {isScheduled && onCancel && (
           <Button variant="outline" onClick={() => onCancel(booking.id)}>
             <FiX className="w-4 h-4 mr-1" />
             Cancel
@@ -247,9 +279,9 @@ export default function BookingCardTutor({
       </div>
 
       {/* Cancellation Warning */}
-      {booking.status === "CONFIRMED" && hoursUntil < 12 && hoursUntil > 0 && (
+      {isScheduled && hoursUntil < 24 && hoursUntil > 0 && (
         <div className="mt-3 text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
-          ⚠ Cancelling within 12h will result in a penalty strike
+          Cancelling within 24h will result in a penalty strike
         </div>
       )}
     </div>

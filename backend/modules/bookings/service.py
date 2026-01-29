@@ -15,36 +15,15 @@ from core.config import settings
 from core.currency import calculate_platform_fee_dynamic
 from core.utils import StringUtils
 from models import Booking, StudentPackage, TutorBlackout, TutorProfile, User
+from modules.bookings.domain.state_machine import BookingStateMachine
+from modules.bookings.domain.status import (
+    CancelledByRole,
+    PaymentState,
+    SessionOutcome,
+    SessionState,
+)
 from modules.bookings.policy_engine import CancellationPolicy, NoShowPolicy
 from modules.bookings.schemas import BookingDTO, StudentInfoDTO, TutorInfoDTO
-
-# ============================================================================
-# Booking State Machine
-# ============================================================================
-
-VALID_TRANSITIONS = {
-    "PENDING": ["CONFIRMED", "CANCELLED_BY_STUDENT", "CANCELLED_BY_TUTOR"],
-    "CONFIRMED": [
-        "CANCELLED_BY_STUDENT",
-        "CANCELLED_BY_TUTOR",
-        "NO_SHOW_STUDENT",
-        "NO_SHOW_TUTOR",
-        "COMPLETED",
-    ],
-    "COMPLETED": ["REFUNDED"],  # Exception via admin only
-    # Terminal states have no transitions
-    "CANCELLED_BY_STUDENT": [],
-    "CANCELLED_BY_TUTOR": [],
-    "NO_SHOW_STUDENT": [],
-    "NO_SHOW_TUTOR": [],
-    "REFUNDED": [],
-}
-
-
-def can_transition(from_status: str, to_status: str) -> bool:
-    """Check if state transition is valid."""
-    allowed = VALID_TRANSITIONS.get(from_status.upper(), [])
-    return to_status.upper() in allowed
 
 
 # ============================================================================
@@ -129,10 +108,10 @@ class BookingService:
         student_tz = student.timezone or "UTC"
         tutor_tz = tutor_profile.user.timezone or "UTC"
 
-        # 7. Determine initial status
-        initial_status = "CONFIRMED" if tutor_profile.auto_confirm else "PENDING"
+        # 7. Determine initial state based on auto_confirm
+        is_auto_confirm = tutor_profile.auto_confirm
 
-        # 8. Create booking (using actual schema fields)
+        # 8. Create booking with new four-field status system
         booking = Booking(
             tutor_profile_id=tutor_profile.id,
             student_id=student_id,
@@ -140,7 +119,11 @@ class BookingService:
             package_id=package_id,
             start_time=start_at,
             end_time=end_at,
-            status=initial_status,
+            # New status fields
+            session_state=SessionState.SCHEDULED.value if is_auto_confirm else SessionState.REQUESTED.value,
+            session_outcome=None,  # Only set on terminal states
+            payment_state=PaymentState.AUTHORIZED.value if is_auto_confirm else PaymentState.PENDING.value,
+            dispute_state="NONE",
             lesson_type=lesson_type,
             notes_student=notes_student,
             # Use actual schema fields for pricing
@@ -165,8 +148,9 @@ class BookingService:
             ),
         )
 
-        # 9. If auto-confirm, generate join URL
-        if initial_status == "CONFIRMED":
+        # 9. If auto-confirm, set confirmed timestamp and generate join URL
+        if is_auto_confirm:
+            booking.confirmed_at = datetime.now(UTC)
             booking.join_url = self._generate_join_url(booking.id)
 
         self.db.add(booking)
@@ -202,7 +186,11 @@ class BookingService:
 
         query = self.db.query(Booking).filter(
             Booking.tutor_profile_id == tutor_profile.id,
-            Booking.status.in_(["PENDING", "CONFIRMED"]),
+            Booking.session_state.in_([
+                SessionState.REQUESTED.value,
+                SessionState.SCHEDULED.value,
+                SessionState.ACTIVE.value,
+            ]),
             or_(
                 and_(Booking.start_time <= start_at, Booking.end_time > start_at),
                 and_(Booking.start_time < end_at, Booking.end_time >= end_at),
@@ -282,12 +270,11 @@ class BookingService:
         """
         now = datetime.now(UTC)
 
-        # Validate transition
-        new_status = f"CANCELLED_BY_{cancelled_by_role}"
-        if not can_transition(booking.status, new_status):
+        # Check if booking can be cancelled using state machine
+        if not BookingStateMachine.is_cancellable(booking.session_state):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot cancel booking with status {booking.status}",
+                detail=f"Cannot cancel booking with state {booking.session_state}",
             )
 
         # Apply policy
@@ -314,9 +301,23 @@ class BookingService:
                 detail=decision.message,
             )
 
-        # Update booking
-        booking.status = new_status
+        # Determine if refund should be issued
+        issue_refund = decision.refund_cents > 0 or decision.restore_package_unit
+
+        # Use state machine to cancel booking
+        role = CancelledByRole.STUDENT if cancelled_by_role == "STUDENT" else CancelledByRole.TUTOR
+        result = BookingStateMachine.cancel_booking(booking, role, refund=issue_refund)
+
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.error_message or "Failed to cancel booking",
+            )
+
+        # Set cancellation reason
+        booking.cancellation_reason = reason
         booking.notes = (booking.notes or "") + f"\n[Cancelled: {decision.message}]"
+        booking.updated_at = datetime.now(UTC)
 
         # Apply penalties/compensations
         if decision.apply_strike_to_tutor and booking.tutor_profile:
@@ -350,18 +351,22 @@ class BookingService:
                 detail=decision.message,
             )
 
-        # Set status
-        new_status = f"NO_SHOW_{'STUDENT' if reporter_role == 'TUTOR' else 'TUTOR'}"
+        # Determine who was absent (opposite of reporter)
+        who_was_absent = "STUDENT" if reporter_role == "TUTOR" else "TUTOR"
 
-        if not can_transition(booking.status, new_status):
+        # Use state machine to mark no-show
+        result = BookingStateMachine.mark_no_show(booking, who_was_absent)
+
+        if not result.success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot mark no-show for booking with status {booking.status}",
+                detail=result.error_message or f"Cannot mark no-show for booking with state {booking.session_state}",
             )
 
-        booking.status = new_status
         if notes:
             booking.notes = (booking.notes or "") + f"\n[No-show: {notes}]"
+
+        booking.updated_at = datetime.now(UTC)
 
         # Apply penalties
         if decision.apply_strike_to_tutor and booking.tutor_profile:
@@ -451,6 +456,47 @@ class BookingService:
 # ============================================================================
 
 
+def _compute_legacy_status(booking: Booking) -> str:
+    """
+    Compute legacy status for backward compatibility.
+
+    Maps new four-field system to old single status field.
+    """
+    session_state = booking.session_state
+    session_outcome = booking.session_outcome
+    cancelled_by = booking.cancelled_by_role
+
+    # Map to legacy statuses
+    if session_state == "REQUESTED":
+        return "PENDING"
+    elif session_state == "SCHEDULED":
+        return "CONFIRMED"
+    elif session_state == "ACTIVE":
+        return "CONFIRMED"  # Active sessions show as confirmed
+    elif session_state == "CANCELLED":
+        if cancelled_by == "STUDENT":
+            return "CANCELLED_BY_STUDENT"
+        elif cancelled_by == "TUTOR":
+            return "CANCELLED_BY_TUTOR"
+        else:
+            return "CANCELLED_BY_STUDENT"  # Default
+    elif session_state == "EXPIRED":
+        return "CANCELLED_BY_STUDENT"  # Expired treated as student cancel
+    elif session_state == "ENDED":
+        if session_outcome == "COMPLETED":
+            return "COMPLETED"
+        elif session_outcome == "NO_SHOW_STUDENT":
+            return "NO_SHOW_STUDENT"
+        elif session_outcome == "NO_SHOW_TUTOR":
+            return "NO_SHOW_TUTOR"
+        elif session_outcome == "NOT_HELD":
+            return "COMPLETED"  # Shouldn't happen, fallback
+        else:
+            return "COMPLETED"
+
+    return "PENDING"  # Default fallback
+
+
 def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     """
     Convert booking model to DTO with tutor and student info.
@@ -514,11 +560,24 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
     tutor_earnings_cents = booking.tutor_earnings_cents or 0
     currency = booking.currency or "USD"
 
+    # Compute legacy status for backward compatibility
+    legacy_status = _compute_legacy_status(booking)
+
     # Use booking fields directly (they are already denormalized/calculated)
     return BookingDTO(
         id=booking.id,
         lesson_type=booking.lesson_type or "REGULAR",
-        status=booking.status or "PENDING",  # Keep uppercase status
+        # New four-field status system
+        session_state=booking.session_state or "REQUESTED",
+        session_outcome=booking.session_outcome,
+        payment_state=booking.payment_state or "PENDING",
+        dispute_state=booking.dispute_state or "NONE",
+        # Legacy status for backward compatibility
+        status=legacy_status,
+        # Cancellation info
+        cancelled_by_role=booking.cancelled_by_role,
+        cancelled_at=booking.cancelled_at,
+        cancellation_reason=booking.cancellation_reason,
         start_at=booking.start_time,
         end_at=booking.end_time,
         student_tz=student_tz,
@@ -537,4 +596,7 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
         topic=booking.topic,
         created_at=booking.created_at,
         updated_at=booking.updated_at,
+        # Dispute information
+        dispute_reason=booking.dispute_reason,
+        disputed_at=booking.disputed_at,
     )

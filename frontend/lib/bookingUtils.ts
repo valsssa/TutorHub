@@ -3,12 +3,59 @@
  *
  * Consolidates duplicate logic from BookingCardStudent and BookingCardTutor
  * to eliminate ~200 lines of duplication.
+ *
+ * Updated for four-field status system: session_state, session_outcome, payment_state, dispute_state
  */
 
 import type { Booking } from "@/types";
+import type { SessionState, SessionOutcome, PaymentState, DisputeState } from "@/types/booking";
 
 /**
- * Status badge color mappings
+ * Session state badge color mappings
+ */
+export const SESSION_STATE_COLORS: Record<SessionState | string, string> = {
+  REQUESTED: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+  SCHEDULED: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+  ACTIVE: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+  ENDED: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+  CANCELLED: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+  EXPIRED: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+};
+
+/**
+ * Session outcome badge color mappings
+ */
+export const SESSION_OUTCOME_COLORS: Record<SessionOutcome | string, string> = {
+  COMPLETED: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+  NOT_HELD: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+  NO_SHOW_STUDENT: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+  NO_SHOW_TUTOR: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+};
+
+/**
+ * Payment state badge color mappings
+ */
+export const PAYMENT_STATE_COLORS: Record<PaymentState | string, string> = {
+  PENDING: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+  AUTHORIZED: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+  CAPTURED: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+  VOIDED: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+  REFUNDED: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+  PARTIALLY_REFUNDED: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300",
+};
+
+/**
+ * Dispute state badge color mappings
+ */
+export const DISPUTE_STATE_COLORS: Record<DisputeState | string, string> = {
+  NONE: "",
+  OPEN: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+  RESOLVED_UPHELD: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+  RESOLVED_REFUNDED: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+};
+
+/**
+ * Legacy status badge color mappings (for backward compatibility)
  */
 export const BOOKING_STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
@@ -22,6 +69,13 @@ export const BOOKING_STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
   NO_SHOW_STUDENT: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
   NO_SHOW_TUTOR: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+  // New session states mapped to status colors
+  REQUESTED: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+  SCHEDULED: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+  ACTIVE: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+  ENDED: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+  CANCELLED: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+  EXPIRED: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
 };
 
 /**
@@ -60,7 +114,7 @@ export function calculateBookingTiming(
     (startDate.getTime() - now.getTime()) / (1000 * 60 * 60)
   );
 
-  const canCancelFree = hoursUntilStart >= 12;
+  const canCancelFree = hoursUntilStart >= 24;
 
   return {
     startDate,
@@ -110,4 +164,103 @@ export function formatBookingDateTime(
   });
 
   return { date: dateStr, time: timeStr };
+}
+
+/**
+ * Get human-readable label for session state
+ */
+export function getSessionStateLabel(state: SessionState | string): string {
+  const labels: Record<string, string> = {
+    REQUESTED: "Pending",
+    SCHEDULED: "Scheduled",
+    ACTIVE: "In Progress",
+    ENDED: "Ended",
+    CANCELLED: "Cancelled",
+    EXPIRED: "Expired",
+  };
+  return labels[state] || state;
+}
+
+/**
+ * Get human-readable label for session outcome
+ */
+export function getSessionOutcomeLabel(outcome: SessionOutcome | string | null): string {
+  if (!outcome) return "";
+  const labels: Record<string, string> = {
+    COMPLETED: "Completed",
+    NOT_HELD: "Not Held",
+    NO_SHOW_STUDENT: "Student No-Show",
+    NO_SHOW_TUTOR: "Tutor No-Show",
+  };
+  return labels[outcome] || outcome;
+}
+
+/**
+ * Get human-readable label for payment state
+ */
+export function getPaymentStateLabel(state: PaymentState | string): string {
+  const labels: Record<string, string> = {
+    PENDING: "Pending",
+    AUTHORIZED: "Authorized",
+    CAPTURED: "Paid",
+    VOIDED: "Voided",
+    REFUNDED: "Refunded",
+    PARTIALLY_REFUNDED: "Partial Refund",
+  };
+  return labels[state] || state;
+}
+
+/**
+ * Get human-readable label for dispute state
+ */
+export function getDisputeStateLabel(state: DisputeState | string): string {
+  const labels: Record<string, string> = {
+    NONE: "",
+    OPEN: "Dispute Open",
+    RESOLVED_UPHELD: "Dispute Upheld",
+    RESOLVED_REFUNDED: "Dispute Refunded",
+  };
+  return labels[state] || state;
+}
+
+/**
+ * Check if booking is in an upcoming/active state
+ */
+export function isUpcomingBooking(sessionState: SessionState | string): boolean {
+  return ["REQUESTED", "SCHEDULED", "ACTIVE"].includes(sessionState);
+}
+
+/**
+ * Check if booking can be cancelled
+ */
+export function isCancellableBooking(sessionState: SessionState | string): boolean {
+  return ["REQUESTED", "SCHEDULED"].includes(sessionState);
+}
+
+/**
+ * Check if booking is in a terminal state
+ */
+export function isTerminalBooking(sessionState: SessionState | string): boolean {
+  return ["ENDED", "CANCELLED", "EXPIRED"].includes(sessionState);
+}
+
+/**
+ * Check if booking has an open dispute
+ */
+export function hasOpenDispute(disputeState: DisputeState | string): boolean {
+  return disputeState === "OPEN";
+}
+
+/**
+ * Get the primary status color for a booking based on session_state
+ */
+export function getBookingStatusColor(booking: Booking): string {
+  // Check for dispute first
+  if (booking.dispute_state === "OPEN") {
+    return DISPUTE_STATE_COLORS.OPEN;
+  }
+
+  // Use session state for primary color
+  const sessionState = booking.session_state || booking.status;
+  return SESSION_STATE_COLORS[sessionState] || BOOKING_STATUS_COLORS[sessionState] || "";
 }

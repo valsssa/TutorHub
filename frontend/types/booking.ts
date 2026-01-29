@@ -1,8 +1,40 @@
 /**
  * Booking type definitions matching backend BookingDTO schema.
- * Based on booking_detail.md specification.
+ * Based on booking_detail.md specification with four-field status system.
  */
 
+// New four-field status system
+export type SessionState =
+  | "REQUESTED"  // Waiting for tutor response
+  | "SCHEDULED"  // Confirmed, session upcoming
+  | "ACTIVE"     // Session happening now
+  | "ENDED"      // Session lifecycle complete
+  | "EXPIRED"    // Request timed out (24h)
+  | "CANCELLED"; // Explicitly cancelled
+
+export type SessionOutcome =
+  | "COMPLETED"        // Session happened successfully
+  | "NOT_HELD"         // Session didn't happen
+  | "NO_SHOW_STUDENT"  // Student didn't attend
+  | "NO_SHOW_TUTOR";   // Tutor didn't attend
+
+export type PaymentState =
+  | "PENDING"            // Awaiting authorization
+  | "AUTHORIZED"         // Funds held
+  | "CAPTURED"           // Tutor earned payment
+  | "VOIDED"             // Authorization released
+  | "REFUNDED"           // Full refund issued
+  | "PARTIALLY_REFUNDED"; // Partial refund issued
+
+export type DisputeState =
+  | "NONE"              // No dispute
+  | "OPEN"              // Under review
+  | "RESOLVED_UPHELD"   // Original decision stands
+  | "RESOLVED_REFUNDED"; // Refund granted
+
+export type CancelledByRole = "STUDENT" | "TUTOR" | "ADMIN" | "SYSTEM";
+
+// Legacy status (for backward compatibility)
 export type BookingStatus =
   | "PENDING"
   | "CONFIRMED"
@@ -39,7 +71,21 @@ export interface StudentInfo {
 export interface BookingDTO {
   id: number;
   lesson_type: LessonType;
+
+  // New four-field status system
+  session_state: SessionState;
+  session_outcome?: SessionOutcome | null;
+  payment_state: PaymentState;
+  dispute_state: DisputeState;
+
+  // Legacy status (for backward compatibility)
   status: string;
+
+  // Cancellation info
+  cancelled_by_role?: CancelledByRole | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+
   start_at: string; // ISO datetime
   end_at: string; // ISO datetime
   student_tz: string;
@@ -58,6 +104,10 @@ export interface BookingDTO {
   topic?: string | null;
   created_at: string;
   updated_at: string;
+
+  // Dispute information
+  dispute_reason?: string | null;
+  disputed_at?: string | null;
 }
 
 export interface BookingListResponse {
@@ -83,4 +133,15 @@ export interface BookingCancelRequest {
 
 export interface BookingRescheduleRequest {
   new_start_at: string;
+}
+
+// Dispute request schemas
+export interface DisputeCreateRequest {
+  reason: string;
+}
+
+export interface DisputeResolveRequest {
+  resolution: "RESOLVED_UPHELD" | "RESOLVED_REFUNDED";
+  notes?: string;
+  refund_amount_cents?: number;
 }

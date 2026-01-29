@@ -13,6 +13,8 @@ from core.dependencies import get_current_tutor_profile, get_current_user
 from database import get_db
 from models import Booking, TutorProfile, User
 from modules.bookings.policy_engine import ReschedulePolicy
+from modules.bookings.domain.state_machine import BookingStateMachine
+from modules.bookings.domain.status import DisputeState, SessionState
 from modules.bookings.schemas import (
     BookingCancelRequest,
     BookingConfirmRequest,
@@ -21,6 +23,8 @@ from modules.bookings.schemas import (
     BookingDTO,
     BookingListResponse,
     BookingRescheduleRequest,
+    DisputeCreateRequest,
+    DisputeResolveRequest,
     MarkNoShowRequest,
 )
 from modules.bookings.service import BookingService, booking_to_dto
@@ -148,14 +152,12 @@ async def create_booking(
             package_id=request.use_package_id,
         )
 
-        # Log booking creation for response time tracking (only for pending bookings)
-        if booking.status == "PENDING":
-            response_tracker = ResponseTrackingService(db)
-            response_tracker.log_booking_created(booking)
-        elif booking.status == "CONFIRMED":
-            # Auto-confirmed booking - log with auto_confirmed action
-            response_tracker = ResponseTrackingService(db)
-            response_tracker.log_booking_created(booking)
+        # Log booking creation for response time tracking
+        response_tracker = ResponseTrackingService(db)
+        response_tracker.log_booking_created(booking)
+
+        # If auto-confirmed (SCHEDULED state), log the auto_confirmed action
+        if booking.session_state == SessionState.SCHEDULED.value:
             response_tracker.log_tutor_response(booking, "auto_confirmed")
 
         db.commit()
@@ -209,28 +211,35 @@ async def list_bookings(
             return BookingListResponse(bookings=[], total=0, page=page, page_size=page_size)
         query = query.filter(Booking.tutor_profile_id == tutor_profile.id)
 
-    # Apply status filter
+    # Apply status filter using new session_state field
     if status_filter:
         if status_filter.lower() == "upcoming":
             query = query.filter(
-                Booking.status.in_(["PENDING", "CONFIRMED"]),
+                Booking.session_state.in_([
+                    SessionState.REQUESTED.value,
+                    SessionState.SCHEDULED.value,
+                    SessionState.ACTIVE.value,
+                ]),
                 Booking.start_time >= datetime.utcnow(),
             )
         elif status_filter.lower() == "pending":
-            query = query.filter(Booking.status == "PENDING")
+            query = query.filter(Booking.session_state == SessionState.REQUESTED.value)
         elif status_filter.lower() == "completed":
-            query = query.filter(Booking.status == "COMPLETED")
+            query = query.filter(
+                Booking.session_state == SessionState.ENDED.value,
+                Booking.session_outcome == "COMPLETED",
+            )
         elif status_filter.lower() == "cancelled":
             query = query.filter(
-                Booking.status.in_(
-                    [
-                        "CANCELLED_BY_STUDENT",
-                        "CANCELLED_BY_TUTOR",
-                        "NO_SHOW_STUDENT",
-                        "NO_SHOW_TUTOR",
-                    ]
-                )
+                Booking.session_state.in_([
+                    SessionState.CANCELLED.value,
+                    SessionState.EXPIRED.value,
+                ])
             )
+        elif status_filter.lower() == "active":
+            query = query.filter(Booking.session_state == SessionState.ACTIVE.value)
+        elif status_filter.lower() == "scheduled":
+            query = query.filter(Booking.session_state == SessionState.SCHEDULED.value)
 
     # Pagination
     total = query.count()
@@ -423,18 +432,19 @@ async def confirm_booking(
             detail="Booking not found",
         )
 
-    if booking.status.upper() not in ["PENDING"]:
+    # Use state machine to validate and transition
+    result = BookingStateMachine.accept_booking(booking)
+
+    if not result.success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot confirm booking with status {booking.status}",
+            detail=result.error_message or f"Cannot confirm booking with state {booking.session_state}",
         )
 
     try:
         from datetime import datetime
 
         from modules.bookings.services.response_tracking import ResponseTrackingService
-
-        booking.status = "CONFIRMED"
 
         # Generate join URL
         service = BookingService(db)
@@ -631,5 +641,108 @@ async def mark_tutor_no_show(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to mark no-show: {str(e)}",
+            detail=f"Failed to mark tutor no-show: {str(e)}",
+        )
+
+
+# ============================================================================
+# Dispute Endpoints
+# ============================================================================
+
+
+@router.post("/bookings/{booking_id}/dispute", response_model=BookingDTO)
+async def open_dispute(
+    booking_id: int,
+    request: DisputeCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Open a dispute on a booking (student or tutor).
+
+    - Can only dispute bookings in terminal states (ENDED, CANCELLED, EXPIRED)
+    - Cannot dispute if already has an open dispute
+    """
+    booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
+
+    try:
+        result = BookingStateMachine.open_dispute(
+            booking=booking,
+            reason=request.reason,
+            disputed_by_user_id=current_user.id,
+        )
+
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.error_message or "Cannot open dispute",
+            )
+
+        booking.updated_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(booking)
+
+        return booking_to_dto(booking, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to open dispute: {str(e)}",
+        )
+
+
+@router.post("/admin/bookings/{booking_id}/resolve", response_model=BookingDTO)
+async def resolve_dispute(
+    booking_id: int,
+    request: DisputeResolveRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Resolve a dispute (admin only).
+
+    - Resolves to RESOLVED_UPHELD (original decision stands) or RESOLVED_REFUNDED (refund granted)
+    - Can issue full or partial refund
+    """
+    # Require admin role
+    if current_user.role not in ["admin", "owner"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can resolve disputes",
+        )
+
+    booking = _get_booking_or_404(booking_id, db, current_user=None, verify_ownership=False)
+
+    try:
+        resolution = DisputeState(request.resolution)
+        result = BookingStateMachine.resolve_dispute(
+            booking=booking,
+            resolution=resolution,
+            resolved_by_user_id=current_user.id,
+            notes=request.notes,
+            refund_amount_cents=request.refund_amount_cents,
+        )
+
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.error_message or "Cannot resolve dispute",
+            )
+
+        booking.updated_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(booking)
+
+        return booking_to_dto(booking, db)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to resolve dispute: {str(e)}",
         )

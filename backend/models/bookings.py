@@ -28,7 +28,23 @@ class Booking(Base):
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="SET NULL"))
     start_time = Column(TIMESTAMP(timezone=True), nullable=False)
     end_time = Column(TIMESTAMP(timezone=True), nullable=False)
-    status = Column(String(20), default="PENDING", nullable=False)
+
+    # Four independent status fields (booking flow redesign)
+    session_state = Column(String(20), default="REQUESTED", nullable=False)
+    session_outcome = Column(String(30), nullable=True)  # Set on terminal states
+    payment_state = Column(String(30), default="PENDING", nullable=False)
+    dispute_state = Column(String(30), default="NONE", nullable=False)
+
+    # Dispute tracking fields
+    dispute_reason = Column(Text, nullable=True)
+    disputed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    disputed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolved_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    resolved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolution_notes = Column(Text, nullable=True)
+
+    # Cancellation tracking
+    cancelled_by_role = Column(String(20), nullable=True)  # STUDENT, TUTOR, ADMIN, SYSTEM
     topic = Column(String(255))
     notes = Column(Text)
     notes_student = Column(Text)
@@ -113,6 +129,26 @@ class Booking(Base):
         CheckConstraint(
             "created_by IN ('STUDENT', 'TUTOR', 'ADMIN')",
             name="valid_created_by",
+        ),
+        CheckConstraint(
+            "session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE', 'ENDED', 'CANCELLED', 'EXPIRED')",
+            name="valid_session_state",
+        ),
+        CheckConstraint(
+            "session_outcome IS NULL OR session_outcome IN ('COMPLETED', 'NOT_HELD', 'NO_SHOW_STUDENT', 'NO_SHOW_TUTOR')",
+            name="valid_session_outcome",
+        ),
+        CheckConstraint(
+            "payment_state IN ('PENDING', 'AUTHORIZED', 'CAPTURED', 'VOIDED', 'REFUNDED', 'PARTIALLY_REFUNDED')",
+            name="valid_payment_state",
+        ),
+        CheckConstraint(
+            "dispute_state IN ('NONE', 'OPEN', 'RESOLVED_UPHELD', 'RESOLVED_REFUNDED')",
+            name="valid_dispute_state",
+        ),
+        CheckConstraint(
+            "cancelled_by_role IS NULL OR cancelled_by_role IN ('STUDENT', 'TUTOR', 'ADMIN', 'SYSTEM')",
+            name="valid_cancelled_by_role",
         ),
     )
 
