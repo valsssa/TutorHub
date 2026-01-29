@@ -1,6 +1,7 @@
 """
 Tests for booking service business logic.
 Tests booking creation, conflict checking, state transitions.
+Updated for four-field status system.
 """
 
 from datetime import datetime, timedelta
@@ -12,7 +13,15 @@ from sqlalchemy.orm import sessionmaker
 
 from auth import get_password_hash
 from models import Base, TutorProfile, User, UserProfile
-from modules.bookings.service import BookingService, can_transition
+from modules.bookings.domain.state_machine import BookingStateMachine
+from modules.bookings.domain.status import (
+    CancelledByRole,
+    DisputeState,
+    PaymentState,
+    SessionOutcome,
+    SessionState,
+)
+from modules.bookings.service import BookingService
 
 # ============================================================================
 # Test Database Setup
@@ -90,26 +99,69 @@ def _get_tutor_profile(session, tutor_user):
 
 
 class TestStateMachine:
-    """Test booking state transitions."""
+    """Test booking state transitions using new four-field system."""
 
-    def test_valid_transitions(self):
-        """Test all valid state transitions."""
-        assert can_transition("PENDING", "CONFIRMED") is True
-        assert can_transition("PENDING", "CANCELLED_BY_STUDENT") is True
-        assert can_transition("CONFIRMED", "COMPLETED") is True
-        assert can_transition("CONFIRMED", "NO_SHOW_STUDENT") is True
-        assert can_transition("CONFIRMED", "NO_SHOW_TUTOR") is True
+    def test_valid_session_state_transitions(self):
+        """Test all valid session_state transitions."""
+        # REQUESTED can go to SCHEDULED, CANCELLED, or EXPIRED
+        assert BookingStateMachine.can_transition_session_state("REQUESTED", "SCHEDULED") is True
+        assert BookingStateMachine.can_transition_session_state("REQUESTED", "CANCELLED") is True
+        assert BookingStateMachine.can_transition_session_state("REQUESTED", "EXPIRED") is True
 
-    def test_invalid_transitions(self):
-        """Test invalid state transitions."""
-        assert can_transition("COMPLETED", "PENDING") is False
-        assert can_transition("CANCELLED_BY_STUDENT", "CONFIRMED") is False
-        assert can_transition("NO_SHOW_STUDENT", "COMPLETED") is False
+        # SCHEDULED can go to ACTIVE or CANCELLED
+        assert BookingStateMachine.can_transition_session_state("SCHEDULED", "ACTIVE") is True
+        assert BookingStateMachine.can_transition_session_state("SCHEDULED", "CANCELLED") is True
 
-    def test_terminal_states_no_transitions(self):
-        """Terminal states should have no valid transitions (except refund for completed)."""
-        assert can_transition("CANCELLED_BY_STUDENT", "ANYTHING") is False
-        assert can_transition("NO_SHOW_STUDENT", "ANYTHING") is False
+        # ACTIVE can only go to ENDED
+        assert BookingStateMachine.can_transition_session_state("ACTIVE", "ENDED") is True
+
+    def test_invalid_session_state_transitions(self):
+        """Test invalid session_state transitions."""
+        # Cannot go backwards
+        assert BookingStateMachine.can_transition_session_state("SCHEDULED", "REQUESTED") is False
+        assert BookingStateMachine.can_transition_session_state("ACTIVE", "SCHEDULED") is False
+        assert BookingStateMachine.can_transition_session_state("ENDED", "ACTIVE") is False
+
+        # Cannot skip states
+        assert BookingStateMachine.can_transition_session_state("REQUESTED", "ACTIVE") is False
+        assert BookingStateMachine.can_transition_session_state("REQUESTED", "ENDED") is False
+
+    def test_terminal_session_states(self):
+        """Terminal session states should have no valid transitions."""
+        assert BookingStateMachine.is_terminal_session_state("ENDED") is True
+        assert BookingStateMachine.is_terminal_session_state("CANCELLED") is True
+        assert BookingStateMachine.is_terminal_session_state("EXPIRED") is True
+
+        # Non-terminal states
+        assert BookingStateMachine.is_terminal_session_state("REQUESTED") is False
+        assert BookingStateMachine.is_terminal_session_state("SCHEDULED") is False
+        assert BookingStateMachine.is_terminal_session_state("ACTIVE") is False
+
+    def test_cancellable_states(self):
+        """Only REQUESTED and SCHEDULED should be cancellable."""
+        assert BookingStateMachine.is_cancellable("REQUESTED") is True
+        assert BookingStateMachine.is_cancellable("SCHEDULED") is True
+
+        # Cannot cancel these
+        assert BookingStateMachine.is_cancellable("ACTIVE") is False
+        assert BookingStateMachine.is_cancellable("ENDED") is False
+        assert BookingStateMachine.is_cancellable("CANCELLED") is False
+
+    def test_payment_state_transitions(self):
+        """Test valid payment_state transitions."""
+        assert BookingStateMachine.can_transition_payment_state("PENDING", "AUTHORIZED") is True
+        assert BookingStateMachine.can_transition_payment_state("AUTHORIZED", "CAPTURED") is True
+        assert BookingStateMachine.can_transition_payment_state("AUTHORIZED", "VOIDED") is True
+        assert BookingStateMachine.can_transition_payment_state("CAPTURED", "REFUNDED") is True
+
+    def test_dispute_state_transitions(self):
+        """Test valid dispute_state transitions."""
+        assert BookingStateMachine.can_transition_dispute_state("NONE", "OPEN") is True
+        assert BookingStateMachine.can_transition_dispute_state("OPEN", "RESOLVED_UPHELD") is True
+        assert BookingStateMachine.can_transition_dispute_state("OPEN", "RESOLVED_REFUNDED") is True
+
+        # Cannot reopen resolved dispute
+        assert BookingStateMachine.can_transition_dispute_state("RESOLVED_UPHELD", "OPEN") is False
 
 
 # ============================================================================
@@ -160,8 +212,31 @@ class TestBookingCreation:
             duration_minutes=60,
         )
 
-        assert booking.status == "CONFIRMED"
+        # Check new status fields
+        assert booking.session_state == SessionState.SCHEDULED.value
+        assert booking.payment_state == PaymentState.AUTHORIZED.value
         assert booking.join_url is not None
+
+    def test_create_booking_without_auto_confirm(self, db_session, test_student, test_tutor):
+        """Test booking creation without auto-confirm (default REQUESTED state)."""
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+        tutor_profile.auto_confirm = False
+        db_session.commit()
+
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() + timedelta(days=1)
+
+        booking = service.create_booking(
+            student_id=test_student.id,
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            duration_minutes=60,
+        )
+
+        # Check new status fields
+        assert booking.session_state == SessionState.REQUESTED.value
+        assert booking.payment_state == PaymentState.PENDING.value
+        assert booking.join_url is None  # No join URL until confirmed
 
     def test_create_booking_calculates_30min_rate(self, db_session, test_student, test_tutor):
         """Test pro-rated pricing for 30-minute session."""
@@ -296,12 +371,12 @@ class TestConflictChecking:
 
 
 class TestCancellation:
-    """Test booking cancellation logic."""
+    """Test booking cancellation logic with new status system."""
 
     def test_student_cancels_early(self, db_session, test_student, test_tutor):
         """Student cancels 24h before: allowed with refund."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = datetime.utcnow() + timedelta(days=2)  # 48h away - well outside window
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -319,10 +394,13 @@ class TestCancellation:
         )
         db_session.refresh(booking)
 
-        assert booking.status == "CANCELLED_BY_STUDENT"
+        # Check new status fields
+        assert booking.session_state == SessionState.CANCELLED.value
+        assert booking.session_outcome == SessionOutcome.NOT_HELD.value
+        assert booking.cancelled_by_role == CancelledByRole.STUDENT.value
 
     def test_tutor_cancels_late_gets_strike(self, db_session, test_student, test_tutor):
-        """Tutor cancels < 12h: gets penalty strike."""
+        """Tutor cancels < 24h: gets penalty strike."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(hours=6)  # 6h away
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
@@ -333,7 +411,9 @@ class TestCancellation:
             start_at=start_at,
             duration_minutes=60,
         )
-        booking.status = "CONFIRMED"
+        # Set to SCHEDULED state (tutor accepted)
+        booking.session_state = SessionState.SCHEDULED.value
+        booking.payment_state = PaymentState.AUTHORIZED.value
         db_session.commit()
 
         # Reuse tutor_profile from above for strike tracking
@@ -349,6 +429,12 @@ class TestCancellation:
         db_session.refresh(tutor_profile)
         assert tutor_profile.cancellation_strikes == initial_strikes + 1
 
+        # Check status
+        db_session.refresh(booking)
+        assert booking.session_state == SessionState.CANCELLED.value
+        assert booking.cancelled_by_role == CancelledByRole.TUTOR.value
+        assert booking.payment_state == PaymentState.REFUNDED.value  # Tutor cancel = refund
+
 
 # ============================================================================
 # No-Show Tests
@@ -356,7 +442,7 @@ class TestCancellation:
 
 
 class TestNoShow:
-    """Test no-show marking logic."""
+    """Test no-show marking logic with new status system."""
 
     def test_mark_student_no_show_after_grace(self, db_session, test_student, test_tutor):
         """Tutor marks student no-show after 10min grace."""
@@ -370,7 +456,9 @@ class TestNoShow:
             start_at=start_at,
             duration_minutes=60,
         )
-        booking.status = "CONFIRMED"
+        # Set to SCHEDULED state (tutor accepted, session time passed)
+        booking.session_state = SessionState.SCHEDULED.value
+        booking.payment_state = PaymentState.AUTHORIZED.value
         db_session.commit()
 
         marked = service.mark_no_show(
@@ -379,7 +467,156 @@ class TestNoShow:
             notes="Student didn't join",
         )
 
-        assert marked.status == "NO_SHOW_STUDENT"
+        # Check new status fields
+        assert marked.session_state == SessionState.ENDED.value
+        assert marked.session_outcome == SessionOutcome.NO_SHOW_STUDENT.value
+        assert marked.payment_state == PaymentState.CAPTURED.value  # Tutor gets paid
+
+    def test_mark_tutor_no_show_after_grace(self, db_session, test_student, test_tutor):
+        """Student marks tutor no-show after 10min grace."""
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() - timedelta(minutes=15)  # Started 15 min ago
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+
+        booking = service.create_booking(
+            student_id=test_student.id,
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            duration_minutes=60,
+        )
+        # Set to SCHEDULED state (tutor accepted, session time passed)
+        booking.session_state = SessionState.SCHEDULED.value
+        booking.payment_state = PaymentState.AUTHORIZED.value
+        db_session.commit()
+
+        marked = service.mark_no_show(
+            booking=booking,
+            reporter_role="STUDENT",
+            notes="Tutor didn't join",
+        )
+
+        # Check new status fields
+        assert marked.session_state == SessionState.ENDED.value
+        assert marked.session_outcome == SessionOutcome.NO_SHOW_TUTOR.value
+        assert marked.payment_state == PaymentState.REFUNDED.value  # Student gets refund
+
+
+# ============================================================================
+# State Machine Method Tests
+# ============================================================================
+
+
+class TestStateMachineMethods:
+    """Test BookingStateMachine helper methods."""
+
+    def test_accept_booking(self, db_session, test_student, test_tutor):
+        """Test accepting a booking request."""
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+
+        booking = service.create_booking(
+            student_id=test_student.id,
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            duration_minutes=60,
+        )
+        db_session.commit()
+
+        assert booking.session_state == SessionState.REQUESTED.value
+
+        result = BookingStateMachine.accept_booking(booking)
+
+        assert result.success is True
+        assert booking.session_state == SessionState.SCHEDULED.value
+        assert booking.payment_state == PaymentState.AUTHORIZED.value
+        assert booking.confirmed_at is not None
+
+    def test_decline_booking(self, db_session, test_student, test_tutor):
+        """Test declining a booking request."""
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+
+        booking = service.create_booking(
+            student_id=test_student.id,
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            duration_minutes=60,
+        )
+        db_session.commit()
+
+        result = BookingStateMachine.decline_booking(booking)
+
+        assert result.success is True
+        assert booking.session_state == SessionState.CANCELLED.value
+        assert booking.session_outcome == SessionOutcome.NOT_HELD.value
+        assert booking.payment_state == PaymentState.VOIDED.value
+        assert booking.cancelled_by_role == CancelledByRole.TUTOR.value
+
+    def test_expire_booking(self, db_session, test_student, test_tutor):
+        """Test expiring a booking request (24h timeout)."""
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+
+        booking = service.create_booking(
+            student_id=test_student.id,
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            duration_minutes=60,
+        )
+        db_session.commit()
+
+        result = BookingStateMachine.expire_booking(booking)
+
+        assert result.success is True
+        assert booking.session_state == SessionState.EXPIRED.value
+        assert booking.session_outcome == SessionOutcome.NOT_HELD.value
+        assert booking.payment_state == PaymentState.VOIDED.value
+
+    def test_start_session(self, db_session, test_student, test_tutor):
+        """Test starting a scheduled session."""
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+
+        booking = service.create_booking(
+            student_id=test_student.id,
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            duration_minutes=60,
+        )
+        booking.session_state = SessionState.SCHEDULED.value
+        db_session.commit()
+
+        result = BookingStateMachine.start_session(booking)
+
+        assert result.success is True
+        assert booking.session_state == SessionState.ACTIVE.value
+
+    def test_end_session(self, db_session, test_student, test_tutor):
+        """Test ending an active session."""
+        service = BookingService(db_session)
+        start_at = datetime.utcnow() + timedelta(days=1)
+        tutor_profile = _get_tutor_profile(db_session, test_tutor)
+
+        booking = service.create_booking(
+            student_id=test_student.id,
+            tutor_profile_id=tutor_profile.id,
+            start_at=start_at,
+            duration_minutes=60,
+        )
+        booking.session_state = SessionState.ACTIVE.value
+        booking.payment_state = PaymentState.AUTHORIZED.value
+        db_session.commit()
+
+        result = BookingStateMachine.end_session(booking, SessionOutcome.COMPLETED)
+
+        assert result.success is True
+        assert booking.session_state == SessionState.ENDED.value
+        assert booking.session_outcome == SessionOutcome.COMPLETED.value
+        assert booking.payment_state == PaymentState.CAPTURED.value
 
 
 if __name__ == "__main__":

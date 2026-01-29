@@ -38,7 +38,7 @@ class Notification(Base):
     sent_at = Column(TIMESTAMP(timezone=True))
     read_at = Column(TIMESTAMP(timezone=True))
     dismissed_at = Column(TIMESTAMP(timezone=True))
-    metadata = Column(JSON)
+    extra_data = Column(JSON)  # renamed from 'metadata' which is reserved in SQLAlchemy
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (CheckConstraint("priority BETWEEN 1 AND 5", name="notification_priority_check"),)

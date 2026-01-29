@@ -112,11 +112,10 @@ async def update_student_profile(
 # ============================================================================
 
 favorites_router = APIRouter(prefix="/api/favorites", tags=["favorites"])
-limiter_favorites = Limiter(key_func=get_remote_address)
 
 
 @favorites_router.get("", response_model=list[FavoriteTutorResponse])
-@limiter_favorites.limit("20/minute")
+@limiter.limit("20/minute")
 async def get_favorite_tutors(
     request: Request,
     current_user: User = Depends(get_current_student_user),
@@ -144,7 +143,7 @@ async def get_favorite_tutors(
 
 
 @favorites_router.post("", response_model=FavoriteTutorResponse)
-@limiter_favorites.limit("10/minute")
+@limiter.limit("10/minute")
 async def add_favorite_tutor(
     request: Request,
     favorite_data: FavoriteTutorCreate,
@@ -202,7 +201,7 @@ async def add_favorite_tutor(
 
 
 @favorites_router.delete("/{tutor_profile_id}", response_model=dict)
-@limiter_favorites.limit("10/minute")
+@limiter.limit("10/minute")
 async def remove_favorite_tutor(
     request: Request,
     tutor_profile_id: int,
@@ -246,7 +245,7 @@ async def remove_favorite_tutor(
 
 
 @favorites_router.get("/{tutor_profile_id}", response_model=FavoriteTutorResponse)
-@limiter_favorites.limit("20/minute")
+@limiter.limit("20/minute")
 async def check_favorite_status(
     request: Request,
     tutor_profile_id: int,
