@@ -527,7 +527,7 @@ export default function TutorDashboard({
                   }}
                   className="w-full py-3.5 px-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
-                  <Calendar size={18} /> Schedule lesson
+                  <Calendar size={18} /> Schedule session
                 </button>
 
                 <button

@@ -509,7 +509,7 @@ async def auto_create_meetings(
     bookings = (
         db.query(Booking)
         .filter(
-            Booking.status == "CONFIRMED",
+            Booking.session_state == "SCHEDULED",
             Booking.start_time <= cutoff,
             Booking.start_time > datetime.now(UTC),
             Booking.join_url.is_(None),

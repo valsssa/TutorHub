@@ -206,7 +206,8 @@ def _calculate_revenue_metrics(db: Session, period_start: datetime, period_days:
     bookings = (
         db.query(Booking)
         .filter(
-            Booking.status == "COMPLETED",
+            Booking.session_state == "ENDED",
+            Booking.session_outcome == "COMPLETED",
             Booking.created_at >= period_start,
         )
         .all()
@@ -257,7 +258,8 @@ def _calculate_growth_metrics(db: Session, period_start: datetime, period_days: 
     completed_bookings = (
         db.query(Booking)
         .filter(
-            Booking.status == "COMPLETED",
+            Booking.session_state == "ENDED",
+            Booking.session_outcome == "COMPLETED",
             Booking.deleted_at.is_(None),
         )
         .count()
@@ -338,7 +340,7 @@ def _calculate_health_metrics(db: Session) -> MarketplaceHealth:
     cancelled = (
         db.query(Booking)
         .filter(
-            Booking.status.in_(["CANCELLED_BY_STUDENT", "CANCELLED_BY_TUTOR"]),
+            Booking.session_state == "CANCELLED",
             Booking.deleted_at.is_(None),
         )
         .count()
@@ -347,7 +349,7 @@ def _calculate_health_metrics(db: Session) -> MarketplaceHealth:
     no_shows = (
         db.query(Booking)
         .filter(
-            Booking.status.in_(["NO_SHOW_STUDENT", "NO_SHOW_TUTOR"]),
+            Booking.session_outcome.in_(["NO_SHOW_STUDENT", "NO_SHOW_TUTOR"]),
             Booking.deleted_at.is_(None),
         )
         .count()

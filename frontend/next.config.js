@@ -57,7 +57,14 @@ const nextConfig = {
     // Reduce memory usage during build
     workerThreads: false,
     cpus: 1,
-    optimizePackageImports: ["react-icons"],
+    // Optimize package imports for smaller bundles
+    optimizePackageImports: [
+      "react-icons",
+      "lucide-react",
+      "recharts",
+      "framer-motion",
+      "date-fns",
+    ],
   },
 
   // Optimize bundle

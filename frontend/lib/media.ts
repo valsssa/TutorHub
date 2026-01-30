@@ -50,11 +50,13 @@ export function getVideoInfo(url: string): VideoInfo | null {
       }
 
       if (videoId) {
+        // Use hqdefault as primary thumbnail - maxresdefault doesn't exist for older videos
+        // Fallback order: hqdefault (480x360) is most reliable across all videos
         return {
           platform: "youtube",
           videoId,
           embedUrl: `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`,
-          thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
         };
       }
     }

@@ -303,7 +303,7 @@ export default function ScheduleManagerModal({
                   disabled={isSubmitting}
                   className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 mt-4 active:scale-[0.98]"
                 >
-                  {isSubmitting ? "Scheduling..." : "Schedule lesson"}
+                  {isSubmitting ? "Scheduling..." : "Schedule session"}
                 </button>
               </div>
             )}

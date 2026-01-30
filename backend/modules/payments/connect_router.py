@@ -481,7 +481,8 @@ async def get_earnings_summary(
         )
         .filter(
             Booking.tutor_profile_id == tutor_profile.id,
-            Booking.status == "COMPLETED",
+            Booking.session_state == "ENDED",
+            Booking.session_outcome == "COMPLETED",
         )
         .first()
     )

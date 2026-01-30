@@ -111,7 +111,7 @@ export default function StudentHero({
               <Wallet size={16} /> Top up wallet
             </button>
             <div className="flex items-center justify-between text-xs text-emerald-50/80">
-              <span>Next lesson</span>
+              <span>Next session</span>
               <span>
                 {nextSession
                   ? new Date(nextSession.start_at).toLocaleString([], {

@@ -78,7 +78,7 @@ export default function StudentSessionsList({
               No sessions yet
             </h3>
             <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto">
-              Book your first lesson with a tutor to start your learning journey.
+              Book your first session with a tutor to start your learning journey.
             </p>
             {onManageAll && (
               <button

@@ -627,20 +627,28 @@ async def get_dashboard_stats(
             or 0
         )
 
-        # Total sessions
+        # Total sessions (SCHEDULED or completed)
         total_sessions = (
-            db.query(func.count(Booking.id)).filter(Booking.status.in_(["confirmed", "completed"])).scalar() or 0
+            db.query(func.count(Booking.id)).filter(
+                Booking.session_state.in_(["SCHEDULED", "ENDED"])
+            ).scalar() or 0
         )
 
         # Revenue (sum of completed bookings)
-        revenue = db.query(func.sum(Booking.total_amount)).filter(Booking.status == "completed").scalar() or 0.0
+        revenue = db.query(func.sum(Booking.total_amount)).filter(
+            Booking.session_state == "ENDED",
+            Booking.session_outcome == "COMPLETED"
+        ).scalar() or 0.0
 
         # Average satisfaction (rating)
         avg_rating = db.query(func.avg(Review.rating)).filter(Review.is_public.is_(True)).scalar() or 0.0
 
         # Completion rate (completed vs all bookings)
         total_bookings = db.query(func.count(Booking.id)).scalar() or 1
-        completed_bookings = db.query(func.count(Booking.id)).filter(Booking.status == "completed").scalar() or 0
+        completed_bookings = db.query(func.count(Booking.id)).filter(
+            Booking.session_state == "ENDED",
+            Booking.session_outcome == "COMPLETED"
+        ).scalar() or 0
         completion_rate = (completed_bookings / total_bookings * 100) if total_bookings > 0 else 0
 
         logger.info(f"Admin {current_user.email} fetched dashboard stats")
@@ -675,7 +683,7 @@ async def get_recent_activities(
             db.query(Booking)
             .join(User, Booking.student_id == User.id)
             .options(joinedload(Booking.student))
-            .filter(Booking.status.in_(["completed", "confirmed"]))
+            .filter(Booking.session_state.in_(["SCHEDULED", "ENDED"]))
             .order_by(desc(Booking.created_at))
             .limit(limit // 2)
             .all()
@@ -683,7 +691,8 @@ async def get_recent_activities(
 
         for booking in recent_bookings:
             student_name = booking.student.email.split("@")[0] if booking.student else "Unknown"
-            action = "completed a session" if booking.status == "completed" else "scheduled a session"
+            is_completed = booking.session_state == "ENDED" and booking.session_outcome == "COMPLETED"
+            action = "completed a session" if is_completed else "scheduled a session"
             time_diff = datetime.now(UTC) - booking.created_at
             time_str = format_time_ago(time_diff)
 
@@ -693,7 +702,7 @@ async def get_recent_activities(
                     "user": student_name.title(),
                     "action": action,
                     "time": time_str,
-                    "type": "success" if booking.status == "completed" else "info",
+                    "type": "success" if is_completed else "info",
                 }
             )
 
@@ -752,7 +761,7 @@ async def get_upcoming_sessions(
             .filter(
                 and_(
                     Booking.start_time >= now,
-                    Booking.status.in_(["pending", "confirmed"]),
+                    Booking.session_state.in_(["REQUESTED", "SCHEDULED"]),
                 )
             )
             .order_by(Booking.start_time.asc())
@@ -787,7 +796,7 @@ async def get_session_metrics(
             .filter(
                 and_(
                     Booking.created_at >= current_month_start,
-                    Booking.status.in_(["confirmed", "completed"]),
+                    Booking.session_state.in_(["SCHEDULED", "ENDED"]),
                 )
             )
             .all()
@@ -800,7 +809,7 @@ async def get_session_metrics(
                 and_(
                     Booking.created_at >= previous_month_start,
                     Booking.created_at < current_month_start,
-                    Booking.status.in_(["confirmed", "completed"]),
+                    Booking.session_state.in_(["SCHEDULED", "ENDED"]),
                 )
             )
             .all()
@@ -880,7 +889,7 @@ async def get_subject_distribution(
         subject_counts = (
             db.query(Subject.name, func.count(Booking.id).label("count"))
             .join(Booking, Booking.subject_id == Subject.id)
-            .filter(Booking.status.in_(["confirmed", "completed"]))
+            .filter(Booking.session_state.in_(["SCHEDULED", "ENDED"]))
             .group_by(Subject.name)
             .order_by(desc("count"))
             .limit(5)
@@ -931,7 +940,8 @@ async def get_monthly_revenue(
                     and_(
                         Booking.created_at >= month_start,
                         Booking.created_at <= month_end,
-                        Booking.status == "completed",
+                        Booking.session_state == "ENDED",
+                        Booking.session_outcome == "COMPLETED",
                     )
                 )
                 .scalar()
@@ -944,7 +954,7 @@ async def get_monthly_revenue(
                     and_(
                         Booking.created_at >= month_start,
                         Booking.created_at <= month_end,
-                        Booking.status.in_(["confirmed", "completed"]),
+                        Booking.session_state.in_(["SCHEDULED", "ENDED"]),
                     )
                 )
                 .scalar()

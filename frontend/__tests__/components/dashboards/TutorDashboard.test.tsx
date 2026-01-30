@@ -78,7 +78,7 @@ describe('TutorDashboard', () => {
   it('shows quick schedule buttons', () => {
     render(<TutorDashboard user={mockUser} bookings={mockBookingsList} profile={mockProfile} />)
 
-    expect(screen.getByText('Schedule lesson')).toBeInTheDocument()
+    expect(screen.getByText('Schedule session')).toBeInTheDocument()
     expect(screen.getByText('Add time off')).toBeInTheDocument()
     expect(screen.getByText('Add extra slots')).toBeInTheDocument()
     expect(screen.getByText('Set up availability')).toBeInTheDocument()

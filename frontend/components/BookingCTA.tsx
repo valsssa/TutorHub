@@ -25,10 +25,10 @@ export default function BookingCTA({ tutorId, tutorName, messageCount }: Booking
         </div>
         <div className="flex-1">
           <h4 className="text-sm font-semibold text-gray-900 mb-1">
-            Ready to book a lesson?
+            Ready to book a session?
           </h4>
           <p className="text-sm text-gray-600 mb-3">
-            You&apos;ve been chatting with {tutorName}. Book your first lesson to get started!
+            You&apos;ve been chatting with {tutorName}. Book your first session to get started!
           </p>
           <Button
             variant="primary"

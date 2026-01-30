@@ -84,6 +84,15 @@ module.exports = {
         'zoom-in': 'zoomIn 0.2s ease-out',
         'shimmer': 'shimmer 2s infinite',
         'spin': 'spin 1s linear infinite',
+        // Micro-interaction animations
+        'success-check': 'successCheck 0.5s ease-out',
+        'button-press': 'buttonPress 0.1s ease-in-out',
+        'card-hover': 'cardHover 0.2s ease-out forwards',
+        'ring-pulse': 'ringPulse 1.5s ease-out infinite',
+        'confetti-pop': 'confettiPop 0.6s ease-out',
+        'shake': 'shake 0.5s ease-in-out',
+        'wiggle': 'wiggle 0.3s ease-in-out',
+        'pop-in': 'popIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       },
       keyframes: {
         fadeIn: {
@@ -133,6 +142,45 @@ module.exports = {
         spin: {
           '0%': { transform: 'rotate(0deg)' },
           '100%': { transform: 'rotate(360deg)' },
+        },
+        // Micro-interaction keyframes
+        successCheck: {
+          '0%': { transform: 'scale(0) rotate(-45deg)', opacity: '0' },
+          '50%': { transform: 'scale(1.2) rotate(0deg)', opacity: '1' },
+          '100%': { transform: 'scale(1) rotate(0deg)', opacity: '1' },
+        },
+        buttonPress: {
+          '0%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(0.97)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        cardHover: {
+          '0%': { transform: 'translateY(0) scale(1)', boxShadow: '0 2px 15px -3px rgba(0, 0, 0, 0.07)' },
+          '100%': { transform: 'translateY(-4px) scale(1.01)', boxShadow: '0 12px 40px -10px rgba(0, 0, 0, 0.15)' },
+        },
+        ringPulse: {
+          '0%': { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.4)' },
+          '70%': { boxShadow: '0 0 0 8px rgba(16, 185, 129, 0)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0)' },
+        },
+        confettiPop: {
+          '0%': { transform: 'scale(0)', opacity: '0' },
+          '50%': { transform: 'scale(1.3)', opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-2px)' },
+          '20%, 40%, 60%, 80%': { transform: 'translateX(2px)' },
+        },
+        wiggle: {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(-3deg)' },
+          '75%': { transform: 'rotate(3deg)' },
+        },
+        popIn: {
+          '0%': { transform: 'scale(0.5)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
         },
       },
       fontFamily: {

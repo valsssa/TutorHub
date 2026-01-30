@@ -7,6 +7,9 @@ This directory contains end-to-end tests using Playwright.
 - `auth-flow.spec.ts` - Authentication tests (login, registration, logout)
 - `tutor-search.spec.ts` - Tutor browsing and search functionality
 - `booking-flow.spec.ts` - Complete booking workflow tests
+- `booking-success.spec.ts` - Full booking success flow (tutor profile to success modal)
+- `password-reset.spec.ts` - Password reset flow (forgot password to new password)
+- `email-verification.spec.ts` - Email verification states (valid, expired, invalid tokens)
 - `messaging.spec.ts` - Real-time messaging system tests
 - `accessibility.spec.ts` - WCAG compliance and a11y tests
 - `helpers.ts` - Test utilities and helper functions

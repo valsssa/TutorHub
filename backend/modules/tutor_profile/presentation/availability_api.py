@@ -70,11 +70,12 @@ async def get_available_slots(
         return []
 
     # Get existing bookings that overlap the date range
+    # Use session_state from the new booking state machine design
     bookings = (
         db.query(Booking)
         .filter(
             Booking.tutor_profile_id == tutor_id,
-            Booking.status.in_(["PENDING", "CONFIRMED"]),
+            Booking.session_state.in_(["REQUESTED", "SCHEDULED"]),
             Booking.start_time < end_dt,
             Booking.end_time > start_dt,
         )

@@ -247,7 +247,7 @@ export default function TutorCard({
   // Default variant
   return (
     <div
-      className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.1)] cursor-pointer overflow-hidden flex flex-col"
+      className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all duration-300 ease-out hover:shadow-emerald-lg hover:-translate-y-1 cursor-pointer overflow-hidden flex flex-col"
       onClick={() => (onViewProfile ? onViewProfile() : router.push(`/tutors/${tutor.id}`))}
     >
       <div className="p-5 flex-1 relative flex flex-col">
@@ -256,12 +256,12 @@ export default function TutorCard({
           <div className="absolute top-4 right-4 z-10">
             <button
               onClick={(e) => onToggleSave(e, tutor.id)}
-              className="p-2 rounded-full bg-slate-100 dark:bg-slate-900/50 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all active:scale-90"
+              className="p-2 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-soft hover:bg-white dark:hover:bg-slate-800 transition-all duration-200 active:scale-90 hover:shadow-lg"
               title={isSaved ? "Remove from saved" : "Save tutor"}
               aria-label={isSaved ? "Remove from saved" : "Save tutor"}
             >
               <FiHeart
-                className={`w-[18px] h-[18px] transition-colors duration-200 ${isSaved ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`}
+                className={`w-[18px] h-[18px] transition-all duration-300 ${isSaved ? "fill-red-500 text-red-500 scale-110" : "text-slate-400 hover:text-red-400"}`}
               />
             </button>
           </div>

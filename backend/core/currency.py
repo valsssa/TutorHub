@@ -166,7 +166,8 @@ def get_tutor_lifetime_earnings(db: Session, tutor_profile_id: int) -> int:
         db.query(func.coalesce(func.sum(Booking.tutor_earnings_cents), 0))
         .filter(
             Booking.tutor_profile_id == tutor_profile_id,
-            Booking.status == "COMPLETED",
+            Booking.session_state == "ENDED",
+            Booking.session_outcome == "COMPLETED",
         )
         .scalar()
     )

@@ -115,7 +115,7 @@ describe("ScheduleManagerModal", () => {
 
       expect(screen.getByPlaceholderText("Add student")).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /schedule lesson/i })
+        screen.getByRole("button", { name: /schedule session/i })
       ).toBeInTheDocument();
     });
 
@@ -243,7 +243,7 @@ describe("ScheduleManagerModal", () => {
       render(<ScheduleManagerModal {...defaultProps} />);
 
       await user.click(
-        screen.getByRole("button", { name: /schedule lesson/i })
+        screen.getByRole("button", { name: /schedule session/i })
       );
 
       expect(mockShowError).toHaveBeenCalledWith(
@@ -258,7 +258,7 @@ describe("ScheduleManagerModal", () => {
 
       await user.type(screen.getByPlaceholderText("Add student"), "John");
       await user.click(
-        screen.getByRole("button", { name: /schedule lesson/i })
+        screen.getByRole("button", { name: /schedule session/i })
       );
 
       expect(mockShowError).toHaveBeenCalledWith("Please select a date");
@@ -276,7 +276,7 @@ describe("ScheduleManagerModal", () => {
       fireEvent.change(dateInput, { target: { value: "2025-06-15" } });
 
       await user.click(
-        screen.getByRole("button", { name: /schedule lesson/i })
+        screen.getByRole("button", { name: /schedule session/i })
       );
 
       expect(mockShowError).toHaveBeenCalledWith(
@@ -485,7 +485,7 @@ describe("ScheduleManagerModal", () => {
       fireEvent.change(dateInput, { target: { value: "2025-06-15" } });
 
       const submitButton = screen.getByRole("button", {
-        name: /schedule lesson/i,
+        name: /schedule session/i,
       });
       await user.click(submitButton);
 

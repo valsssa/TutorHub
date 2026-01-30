@@ -281,7 +281,10 @@ def seed_bookings(db: Session):
 
 def seed_reviews(db: Session):
     """Create sample reviews."""
-    completed_bookings = db.query(Booking).filter(Booking.status == "completed").all()
+    completed_bookings = db.query(Booking).filter(
+        Booking.session_state == "ENDED",
+        Booking.session_outcome == "COMPLETED"
+    ).all()
 
     for booking in completed_bookings[:15]:  # Add reviews to half of completed bookings
         existing = db.query(Review).filter(Review.booking_id == booking.id).first()
