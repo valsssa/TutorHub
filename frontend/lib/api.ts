@@ -14,6 +14,8 @@ import type {
   Review,
   Message,
   MessageThread,
+  MessageAttachment,
+  AttachmentDownloadResponse,
   TutorCertification,
   TutorEducation,
   TutorPricingOption,
@@ -1075,6 +1077,37 @@ export const bookings = {
     });
     return data;
   },
+
+  /**
+   * File a dispute on a booking.
+   * Can only dispute bookings in terminal states (ENDED, CANCELLED, EXPIRED).
+   */
+  async fileDispute(bookingId: number, reason: string): Promise<BookingDTO> {
+    const { data } = await api.post<BookingDTO>(`/api/v1/bookings/${bookingId}/dispute`, {
+      reason,
+    });
+    return data;
+  },
+
+  /**
+   * Regenerate Zoom meeting link for a booking.
+   * Can only regenerate for SCHEDULED or ACTIVE sessions.
+   */
+  async regenerateMeeting(bookingId: number): Promise<BookingDTO> {
+    const { data } = await api.post<BookingDTO>(`/api/v1/bookings/${bookingId}/regenerate-meeting`);
+    return data;
+  },
+
+  /**
+   * Record that the current user has joined the session.
+   * Used for attendance tracking and outcome determination.
+   */
+  async recordJoin(bookingId: number, notes?: string): Promise<BookingDTO> {
+    const { data } = await api.post<BookingDTO>(`/api/v1/bookings/${bookingId}/join`, {
+      notes,
+    });
+    return data;
+  },
 };
 
 // ============================================================================
@@ -1122,6 +1155,44 @@ export const packages = {
     const { data } = await api.patch<StudentPackage>(
       `/api/v1/packages/${packageId}/use-credit`
     );
+    return data;
+  },
+};
+
+// ============================================================================
+// Wallet
+// ============================================================================
+
+export interface WalletCheckoutResponse {
+  checkout_url: string;
+  session_id: string;
+  amount_cents: number;
+  currency: string;
+}
+
+export interface WalletBalance {
+  balance_cents: number;
+  currency: string;
+}
+
+export const wallet = {
+  /**
+   * Create a Stripe checkout session for wallet credit top-up.
+   * Redirects user to Stripe to complete payment.
+   */
+  async checkout(amountCents: number, currency: string = "USD"): Promise<WalletCheckoutResponse> {
+    const { data } = await api.post<WalletCheckoutResponse>("/api/v1/wallet/checkout", {
+      amount_cents: amountCents,
+      currency: currency.toUpperCase(),
+    });
+    return data;
+  },
+
+  /**
+   * Get current student's wallet credit balance.
+   */
+  async getBalance(): Promise<WalletBalance> {
+    const { data } = await api.get<WalletBalance>("/api/v1/wallet/balance");
     return data;
   },
 };
@@ -1226,6 +1297,58 @@ export const messages = {
 
   async deleteMessage(messageId: number): Promise<void> {
     await api.delete(`/api/v1/messages/${messageId}`);
+  },
+
+  /**
+   * Send a message with a file attachment.
+   * Supports images (JPEG, PNG, GIF, WebP) up to 5MB
+   * and documents (PDF, DOC, DOCX, TXT) up to 10MB.
+   */
+  async sendWithAttachment(
+    recipientId: number,
+    message: string,
+    file: File,
+    bookingId?: number,
+  ): Promise<Message> {
+    const formData = new FormData();
+    formData.append("recipient_id", recipientId.toString());
+    formData.append("message", message);
+    formData.append("file", file);
+    if (bookingId) {
+      formData.append("booking_id", bookingId.toString());
+    }
+
+    try {
+      const { data } = await api.post<Message>(
+        "/api/v1/messages/with-attachment",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+      return data;
+    } catch (error: unknown) {
+      logger.error("Failed to send message with attachment", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get a presigned download URL for a message attachment.
+   * URLs expire after 1 hour.
+   */
+  async getAttachmentDownloadUrl(attachmentId: number): Promise<AttachmentDownloadResponse> {
+    try {
+      const { data } = await api.get<AttachmentDownloadResponse>(
+        `/api/v1/messages/attachments/${attachmentId}/download`,
+      );
+      return data;
+    } catch (error: unknown) {
+      logger.error("Failed to get attachment download URL", error);
+      throw error;
+    }
   },
 };
 

@@ -36,6 +36,60 @@ from models import User
 
 logger = logging.getLogger(__name__)
 
+
+def get_allowed_ws_origins() -> list[str]:
+    """
+    Get list of allowed WebSocket origins.
+
+    WebSocket doesn't use CORS headers - origin must be validated explicitly.
+    Returns normalized origins (lowercase, no trailing slash).
+    """
+    import os
+
+    raw_origins = os.getenv("CORS_ORIGINS")
+    if raw_origins:
+        origins = [
+            origin.strip().rstrip("/").lower()
+            for origin in raw_origins.split(",")
+            if origin.strip() and origin.strip().startswith(("http://", "https://"))
+        ]
+    else:
+        origins = [origin.rstrip("/").lower() for origin in settings.CORS_ORIGINS]
+
+    # Always allow localhost in development
+    env = os.getenv("ENVIRONMENT", "development").lower()
+    if env == "development":
+        dev_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+        ]
+        for dev_origin in dev_origins:
+            if dev_origin not in origins:
+                origins.append(dev_origin)
+
+    return origins
+
+
+def is_valid_ws_origin(origin: str | None) -> bool:
+    """
+    Validate WebSocket connection origin.
+
+    Args:
+        origin: Origin header from WebSocket request
+
+    Returns:
+        True if origin is allowed, False otherwise
+    """
+    if not origin:
+        # No origin header - could be non-browser client (allowed)
+        return True
+
+    allowed = get_allowed_ws_origins()
+    normalized = origin.strip().rstrip("/").lower()
+    return normalized in allowed
+
 router = APIRouter()
 
 
@@ -637,18 +691,26 @@ async def websocket_endpoint(
 
     **Connection Lifecycle:**
     1. Client connects with JWT token in query param
-    2. Server authenticates and accepts connection
+    2. Server validates origin and authenticates
     3. Server sends connection confirmation
     4. Client/Server exchange messages
     5. Client sends ping every 30s for keep-alive
     6. On disconnect, server cleans up resources
 
     **Error Handling:**
+    - Invalid origin -> Connection rejected (4003)
     - Invalid token -> Connection rejected (1008)
     - Expired token -> token_expired message sent, connection closed (4001)
     - Malformed JSON -> Error message sent, connection stays open
     - Unexpected errors -> Connection closed gracefully
     """
+
+    # Validate origin (WebSocket CORS equivalent - OWASP best practice)
+    origin = websocket.headers.get("origin")
+    if not is_valid_ws_origin(origin):
+        logger.warning(f"WebSocket connection rejected: invalid origin '{origin}'")
+        await websocket.close(code=4003, reason="Origin not allowed")
+        return
 
     # Authentication required
     if not token:

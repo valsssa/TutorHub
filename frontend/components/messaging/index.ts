@@ -5,6 +5,7 @@
 
 export { default as ConnectionStatus } from './ConnectionStatus';
 export { default as EmptyState } from './EmptyState';
+export { default as MessageAttachment } from './MessageAttachment';
 export { default as MessageBubble } from './MessageBubble';
 export { default as MessageInput } from './MessageInput';
 export { default as MessageList } from './MessageList';

@@ -1,10 +1,13 @@
 import { SentIcon, DeliveredIcon, ReadIcon } from "./MessageIcons";
+import MessageAttachment from "./MessageAttachment";
+import type { MessageAttachment as MessageAttachmentType } from "@/types";
 
 interface MessageBubbleProps {
   body: string;
   sender: "user" | "opponent";
   sentAt: string;
   status?: "sent" | "delivered" | "read";
+  attachments?: MessageAttachmentType[];
 }
 
 export default function MessageBubble({
@@ -12,6 +15,7 @@ export default function MessageBubble({
   sender,
   sentAt,
   status,
+  attachments,
 }: MessageBubbleProps) {
   const isFromUser = sender === "user";
 
@@ -47,7 +51,23 @@ export default function MessageBubble({
             : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
         }`}
       >
-        <p className="text-sm break-words">{body}</p>
+        {/* Message text */}
+        {body && <p className="text-sm break-words">{body}</p>}
+
+        {/* Attachments */}
+        {attachments && attachments.length > 0 && (
+          <div className={body ? "mt-2" : ""}>
+            {attachments.map((attachment) => (
+              <MessageAttachment
+                key={attachment.id}
+                attachment={attachment}
+                isFromUser={isFromUser}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Timestamp and status */}
         <div
           className={`flex items-center gap-1 mt-1 text-xs ${
             isFromUser ? "text-emerald-100" : "text-slate-500 dark:text-slate-400"

@@ -274,6 +274,19 @@ export interface Review {
   created_at: string;
 }
 
+export interface MessageAttachment {
+  id: number;
+  message_id: number;
+  file_key: string;
+  original_filename: string;
+  file_size: number;
+  mime_type: string;
+  file_category: "image" | "document" | "other";
+  width?: number | null;
+  height?: number | null;
+  created_at: string;
+}
+
 export interface Message {
   id: number;
   sender_id: number;
@@ -283,6 +296,15 @@ export interface Message {
   is_read: boolean;
   created_at: string;
   delivery_state?: "sent" | "delivered" | "read";
+  attachments?: MessageAttachment[];
+}
+
+export interface AttachmentDownloadResponse {
+  download_url: string;
+  filename: string;
+  file_size: number;
+  mime_type: string;
+  expires_in: number;
 }
 
 export interface MessageThread {

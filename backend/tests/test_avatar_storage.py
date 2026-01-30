@@ -393,7 +393,7 @@ class TestGetAvatarStorage:
 
 
 class TestBuildAvatarUrl:
-    """Test build_avatar_url function."""
+    """Test build_avatar_url function with presigned URL generation."""
 
     def test_build_avatar_url_none_key_returns_default(self):
         """Test build_avatar_url returns default for None key."""
@@ -410,7 +410,7 @@ class TestBuildAvatarUrl:
         assert result == "https://example.com/default.png"
 
     def test_build_avatar_url_absolute_url_returned_unchanged(self):
-        """Test build_avatar_url returns absolute URLs unchanged."""
+        """Test build_avatar_url returns absolute URLs unchanged (OAuth avatars)."""
         from core.avatar_storage import build_avatar_url
 
         http_url = "http://example.com/avatar.jpg"
@@ -419,72 +419,51 @@ class TestBuildAvatarUrl:
         assert build_avatar_url(http_url) == http_url
         assert build_avatar_url(https_url) == https_url
 
-    def test_build_avatar_url_absolute_not_allowed(self):
-        """Test build_avatar_url constructs URL when allow_absolute=False."""
-        from core.avatar_storage import build_avatar_url, get_avatar_storage
+    def test_build_avatar_url_generates_presigned_url(self):
+        """Test build_avatar_url generates presigned URL for storage keys."""
+        from core.avatar_storage import (
+            _get_sync_s3_client,
+            build_avatar_url,
+        )
 
-        # Clear cache to ensure fresh instance
-        get_avatar_storage.cache_clear()
+        # Clear caches
+        _get_sync_s3_client.cache_clear()
 
-        with patch("core.avatar_storage.settings") as mock_settings:
-            mock_settings.AVATAR_STORAGE_ENDPOINT = "http://minio:9000"
-            mock_settings.AVATAR_STORAGE_ACCESS_KEY = "access"
-            mock_settings.AVATAR_STORAGE_SECRET_KEY = "secret"
-            mock_settings.AVATAR_STORAGE_BUCKET = "avatars"
-            mock_settings.AVATAR_STORAGE_REGION = None
-            mock_settings.AVATAR_STORAGE_USE_SSL = False
-            mock_settings.AVATAR_STORAGE_PUBLIC_ENDPOINT = "http://public:9000"
-            mock_settings.AVATAR_STORAGE_URL_TTL_SECONDS = 300
+        mock_presigned_url = "https://minio.example.com/avatars/users/123/avatar.jpg?X-Amz-Signature=abc123"
 
+        with patch("core.avatar_storage._get_sync_s3_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.generate_presigned_url.return_value = mock_presigned_url
+            mock_get_client.return_value = mock_client
+
+            result = build_avatar_url("users/123/avatar.jpg")
+
+            assert result == mock_presigned_url
+            mock_client.generate_presigned_url.assert_called_once()
+
+    def test_build_avatar_url_absolute_not_allowed_generates_presigned(self):
+        """Test build_avatar_url with allow_absolute=False generates presigned URL."""
+        from core.avatar_storage import (
+            _get_sync_s3_client,
+            build_avatar_url,
+        )
+
+        _get_sync_s3_client.cache_clear()
+
+        mock_presigned_url = "https://minio.example.com/avatars/key?X-Amz-Signature=xyz"
+
+        with patch("core.avatar_storage._get_sync_s3_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.generate_presigned_url.return_value = mock_presigned_url
+            mock_get_client.return_value = mock_client
+
+            # Even with a URL-like key, should generate presigned URL when allow_absolute=False
             result = build_avatar_url(
                 "http://example.com/avatar.jpg",
                 allow_absolute=False
             )
 
-        # When allow_absolute=False, treat the key as a storage key
-        assert "http://public:9000/avatars/http://example.com/avatar.jpg" == result
-
-    def test_build_avatar_url_constructs_full_url(self):
-        """Test build_avatar_url constructs full URL from key."""
-        from core.avatar_storage import build_avatar_url, get_avatar_storage
-
-        # Clear cache to ensure fresh instance
-        get_avatar_storage.cache_clear()
-
-        with patch("core.avatar_storage.settings") as mock_settings:
-            mock_settings.AVATAR_STORAGE_ENDPOINT = "http://minio:9000"
-            mock_settings.AVATAR_STORAGE_ACCESS_KEY = "access"
-            mock_settings.AVATAR_STORAGE_SECRET_KEY = "secret"
-            mock_settings.AVATAR_STORAGE_BUCKET = "avatars"
-            mock_settings.AVATAR_STORAGE_REGION = None
-            mock_settings.AVATAR_STORAGE_USE_SSL = False
-            mock_settings.AVATAR_STORAGE_PUBLIC_ENDPOINT = "http://public:9000"
-            mock_settings.AVATAR_STORAGE_URL_TTL_SECONDS = 300
-
-            result = build_avatar_url("users/123/avatar.jpg")
-
-        assert result == "http://public:9000/avatars/users/123/avatar.jpg"
-
-    def test_build_avatar_url_strips_trailing_slash(self):
-        """Test build_avatar_url strips trailing slash from endpoint."""
-        from core.avatar_storage import build_avatar_url, get_avatar_storage
-
-        # Clear cache
-        get_avatar_storage.cache_clear()
-
-        with patch("core.avatar_storage.settings") as mock_settings:
-            mock_settings.AVATAR_STORAGE_ENDPOINT = "http://minio:9000"
-            mock_settings.AVATAR_STORAGE_ACCESS_KEY = "access"
-            mock_settings.AVATAR_STORAGE_SECRET_KEY = "secret"
-            mock_settings.AVATAR_STORAGE_BUCKET = "avatars"
-            mock_settings.AVATAR_STORAGE_REGION = None
-            mock_settings.AVATAR_STORAGE_USE_SSL = False
-            mock_settings.AVATAR_STORAGE_PUBLIC_ENDPOINT = "http://public:9000/"
-            mock_settings.AVATAR_STORAGE_URL_TTL_SECONDS = 300
-
-            result = build_avatar_url("users/123/avatar.jpg")
-
-        assert result == "http://public:9000/avatars/users/123/avatar.jpg"
+            assert result == mock_presigned_url
 
     def test_build_avatar_url_no_default_returns_none(self):
         """Test build_avatar_url returns None when no default and empty key."""
@@ -495,3 +474,51 @@ class TestBuildAvatarUrl:
 
         result = build_avatar_url("")
         assert result is None
+
+    def test_generate_presigned_url_sync_uses_configured_ttl(self):
+        """Test presigned URL uses configured TTL."""
+        from core.avatar_storage import (
+            _get_sync_s3_client,
+            generate_presigned_url_sync,
+        )
+
+        _get_sync_s3_client.cache_clear()
+
+        with patch("core.avatar_storage._get_sync_s3_client") as mock_get_client:
+            with patch("core.avatar_storage.settings") as mock_settings:
+                mock_settings.AVATAR_STORAGE_URL_TTL_SECONDS = 600
+                mock_settings.AVATAR_STORAGE_BUCKET = "avatars"
+
+                mock_client = MagicMock()
+                mock_client.generate_presigned_url.return_value = "https://signed-url"
+                mock_get_client.return_value = mock_client
+
+                generate_presigned_url_sync("test/key.jpg")
+
+                # Verify TTL was passed correctly
+                call_args = mock_client.generate_presigned_url.call_args
+                assert call_args[1]["ExpiresIn"] == 600
+
+    def test_generate_presigned_url_sync_custom_ttl(self):
+        """Test presigned URL with custom TTL override."""
+        from core.avatar_storage import (
+            _get_sync_s3_client,
+            generate_presigned_url_sync,
+        )
+
+        _get_sync_s3_client.cache_clear()
+
+        with patch("core.avatar_storage._get_sync_s3_client") as mock_get_client:
+            with patch("core.avatar_storage.settings") as mock_settings:
+                mock_settings.AVATAR_STORAGE_URL_TTL_SECONDS = 300
+                mock_settings.AVATAR_STORAGE_BUCKET = "avatars"
+
+                mock_client = MagicMock()
+                mock_client.generate_presigned_url.return_value = "https://signed-url"
+                mock_get_client.return_value = mock_client
+
+                # Pass custom TTL
+                generate_presigned_url_sync("test/key.jpg", ttl_seconds=3600)
+
+                call_args = mock_client.generate_presigned_url.call_args
+                assert call_args[1]["ExpiresIn"] == 3600

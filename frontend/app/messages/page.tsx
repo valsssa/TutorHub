@@ -10,11 +10,16 @@ import {
   FiChevronLeft,
   FiSend,
   FiCheck,
+  FiPaperclip,
+  FiFile,
+  FiImage,
+  FiAlertCircle,
 } from "react-icons/fi";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { messages, auth } from "@/lib/api";
 import Avatar from "@/components/Avatar";
-import { MessageThread, User, Message } from "@/types";
+import { MessageThread, User, Message, MessageAttachment } from "@/types";
+import MessageAttachmentDisplay from "@/components/messaging/MessageAttachment";
 import { useToast } from "@/components/ToastContainer";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useMessaging } from "@/hooks/useMessaging";
@@ -54,6 +59,81 @@ function MessagesContent() {
   const [recentMessageIds, setRecentMessageIds] = useState<number[]>([]);
   const messageTimeoutsRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const prevMessageIdsRef = useRef<Record<number, number[]>>({});
+
+  // File attachment state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // File type constants
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  const ALLOWED_DOCUMENT_TYPES = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+  ];
+  const ALLOWED_MIME_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES];
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+  const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10 MB
+
+  // File size formatter
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  };
+
+  // File validation
+  const validateFile = (file: File): { valid: boolean; error?: string } => {
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return {
+        valid: false,
+        error: "File type not supported. Allowed: images (JPEG, PNG, GIF, WebP) and documents (PDF, DOC, TXT)",
+      };
+    }
+    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+    const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_DOCUMENT_SIZE;
+    const maxSizeLabel = isImage ? "5 MB" : "10 MB";
+    if (file.size > maxSize) {
+      return { valid: false, error: `File too large. Maximum size: ${maxSizeLabel}` };
+    }
+    return { valid: true };
+  };
+
+  // File selection handler
+  const handleFileSelect = useCallback((file: File) => {
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      setFileError(validation.error || "Invalid file");
+      return;
+    }
+    setFileError(null);
+    setSelectedFile(file);
+    if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setFilePreviewUrl(URL.createObjectURL(file));
+    } else {
+      setFilePreviewUrl(null);
+    }
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileSelect(file);
+    e.target.value = "";
+  }, [handleFileSelect]);
+
+  const clearFile = useCallback(() => {
+    setSelectedFile(null);
+    if (filePreviewUrl) {
+      URL.revokeObjectURL(filePreviewUrl);
+      setFilePreviewUrl(null);
+    }
+    setFileError(null);
+  }, [filePreviewUrl]);
 
   const getThreadDisplayName = (thread: MessageThread): string => {
     if (thread.other_user_first_name && thread.other_user_last_name) {
@@ -211,29 +291,48 @@ function MessagesContent() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       const messageText = newMessage.trim();
-      if (!messageText || !selectedThread || !currentUser) return;
 
-      // Validate message before sending
-      const validationError = validateMessage(newMessage);
-      if (validationError) {
-        setMessageError(validationError);
-        return;
-      }
+      // Need either message or file
+      if (!messageText && !selectedFile) return;
+      if (!selectedThread || !currentUser) return;
 
-      // Additional validation: min length
-      if (messageText.length < MESSAGE_MIN_LENGTH) {
-        setMessageError(`Message must be at least ${MESSAGE_MIN_LENGTH} character`);
-        return;
+      // Validate message if provided
+      if (messageText) {
+        const validationError = validateMessage(newMessage);
+        if (validationError) {
+          setMessageError(validationError);
+          return;
+        }
+
+        // Additional validation: min length (only if no file)
+        if (!selectedFile && messageText.length < MESSAGE_MIN_LENGTH) {
+          setMessageError(`Message must be at least ${MESSAGE_MIN_LENGTH} character`);
+          return;
+        }
       }
 
       setSendingMessage(true);
       setMessageError(null);
       try {
-        const sentMessage = await messages.send(
-          selectedThread.other_user_id,
-          messageText,
-          selectedThread.booking_id || undefined
-        );
+        let sentMessage: Message;
+
+        if (selectedFile) {
+          // Send message with attachment
+          sentMessage = await messages.sendWithAttachment(
+            selectedThread.other_user_id,
+            messageText || " ", // Backend requires non-empty message
+            selectedFile,
+            selectedThread.booking_id || undefined
+          );
+          clearFile();
+        } else {
+          // Send text-only message
+          sentMessage = await messages.send(
+            selectedThread.other_user_id,
+            messageText,
+            selectedThread.booking_id || undefined
+          );
+        }
 
         setMessages((prevMessages) => [...prevMessages, sentMessage]);
         setNewMessage("");
@@ -261,7 +360,7 @@ function MessagesContent() {
               t.booking_id === selectedThread.booking_id
                 ? {
                     ...t,
-                    last_message: messageText,
+                    last_message: messageText || "[Attachment]",
                     last_message_time: sentMessage.created_at,
                     last_sender_id: currentUser.id,
                     total_messages: (t.total_messages || 0) + 1,
@@ -278,7 +377,7 @@ function MessagesContent() {
         setSendingMessage(false);
       }
     },
-    [currentUser, selectedThread, threads, loadThreads, showError, showSuccess, setMessages, newMessage]
+    [currentUser, selectedThread, selectedFile, threads, loadThreads, showError, showSuccess, setMessages, newMessage, clearFile]
   );
 
   // Scroll to bottom helper
@@ -736,7 +835,23 @@ function MessagesContent() {
                                 ? 'bg-emerald-600 text-white rounded-br-sm'
                                 : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-sm'
                             }`}>
-                              <p className="leading-relaxed break-words">{msg.message}</p>
+                              {/* Message text */}
+                              {msg.message && msg.message.trim() && (
+                                <p className="leading-relaxed break-words">{msg.message}</p>
+                              )}
+
+                              {/* Attachments */}
+                              {msg.attachments && msg.attachments.length > 0 && (
+                                <div className={msg.message && msg.message.trim() ? "mt-2" : ""}>
+                                  {msg.attachments.map((attachment) => (
+                                    <MessageAttachmentDisplay
+                                      key={attachment.id}
+                                      attachment={attachment}
+                                      isFromUser={isMe}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                               <div className={`mt-1.5 sm:mt-1 flex items-center gap-1 text-[10px] sm:text-[11px] ${
                                 isMe ? 'justify-end text-emerald-100' : 'justify-start text-slate-400 dark:text-slate-500'
                               }`}>
@@ -779,8 +894,74 @@ function MessagesContent() {
                 )}
 
                 <div className="flex-shrink-0 p-3 sm:p-4 border-t border-slate-200 dark:border-slate-800 safe-area-inset-bottom bg-white dark:bg-slate-900">
+                  {/* File preview */}
+                  {selectedFile && (
+                    <div className="mb-3 p-2 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center gap-3">
+                      {ALLOWED_IMAGE_TYPES.includes(selectedFile.type) && filePreviewUrl ? (
+                        <img
+                          src={filePreviewUrl}
+                          alt="Preview"
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded flex items-center justify-center">
+                          <FiFile className="w-6 h-6 text-slate-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                          {selectedFile.name}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {formatFileSize(selectedFile.size)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={clearFile}
+                        className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                        title="Remove file"
+                      >
+                        <FiX className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* File error */}
+                  {fileError && (
+                    <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-400 text-sm">
+                      <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>{fileError}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFileError(null)}
+                        className="ml-auto p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                      >
+                        <FiX className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
                   <form onSubmit={sendMessage} className="space-y-2">
                     <div className="flex gap-2 sm:gap-3 items-end">
+                      {/* File attachment button */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={sendingMessage}
+                        className="flex-shrink-0 p-2.5 sm:p-3 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        title="Attach file"
+                      >
+                        <FiPaperclip size={18} className="sm:w-5 sm:h-5" />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={handleFileChange}
+                        accept={ALLOWED_MIME_TYPES.join(",")}
+                        className="hidden"
+                      />
+
                       <div className="flex-1 relative">
                         <textarea
                           ref={messageInputRef}
@@ -830,9 +1011,9 @@ function MessagesContent() {
                           </div>
                         )}
                       </div>
-                      <button 
+                      <button
                         type="submit"
-                        disabled={!newMessage.trim() || sendingMessage || !!messageError || newMessage.length > MESSAGE_MAX_LENGTH}
+                        disabled={(!newMessage.trim() && !selectedFile) || sendingMessage || !!messageError || newMessage.length > MESSAGE_MAX_LENGTH}
                         className="p-2.5 sm:p-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all touch-manipulation active:scale-95 min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
                         aria-label="Send message"
                       >

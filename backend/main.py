@@ -566,10 +566,15 @@ All endpoints are versioned under `/api/v1`. Future breaking changes will be int
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS configuration
+# CORS configuration - following OWASP and industry best practices
 raw_cors_origins = os.getenv("CORS_ORIGINS")
 if raw_cors_origins:
-    CORS_ORIGINS = [origin.strip().rstrip("/") for origin in raw_cors_origins.split(",") if origin.strip()]
+    # Validate origin format before trusting
+    CORS_ORIGINS = [
+        origin.strip().rstrip("/")
+        for origin in raw_cors_origins.split(",")
+        if origin.strip() and origin.strip().startswith(("http://", "https://"))
+    ]
 else:
     CORS_ORIGINS = [origin.rstrip("/") for origin in settings.CORS_ORIGINS]
 
@@ -577,22 +582,27 @@ ENV = os.getenv("ENVIRONMENT", os.getenv("ENV", "development")).lower()
 logger.info("CORS allowed origins: %s", CORS_ORIGINS)
 logger.info("Runtime environment: %s", ENV)
 
-# In production, be more restrictive but include necessary headers
-if ENV == "production":
-    ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    ALLOWED_HEADERS = [
-        "Authorization",
-        "Content-Type",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-        "X-Request-ID",
-        "Cache-Control",
-        "Pragma",
-    ]
-else:
-    ALLOWED_METHODS = ["*"]
-    ALLOWED_HEADERS = ["*"]
+# Use consistent config across environments (OWASP recommendation)
+# Only the origin list and cache duration should differ, not the structure
+ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+ALLOWED_HEADERS = [
+    "Authorization",
+    "Content-Type",
+    "Accept",
+    "Origin",
+    "X-Requested-With",
+    "X-Request-ID",
+    "Cache-Control",
+    "Pragma",
+]
+# Headers the frontend is allowed to read from responses
+EXPOSE_HEADERS = [
+    "X-Request-ID",           # For request tracing/debugging
+    "X-RateLimit-Limit",      # Rate limit info for client handling
+    "X-RateLimit-Remaining",
+    "X-RateLimit-Reset",
+    "Content-Disposition",    # For file downloads
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -600,7 +610,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=ALLOWED_METHODS,
     allow_headers=ALLOWED_HEADERS,
-    max_age=600,  # Cache preflight for 10 minutes
+    expose_headers=EXPOSE_HEADERS,
+    max_age=86400 if ENV == "production" else 600,  # 24h prod, 10min dev
 )
 
 # Add tracing middleware (must be early to capture full request lifecycle)
