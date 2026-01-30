@@ -58,34 +58,3 @@ export default function TestimonialCard({ testimonial }: TestimonialCardProps) {
   );
 }
 
-// Placeholder testimonials data (replace with real customer quotes when available)
-export const placeholderTestimonials: Testimonial[] = [
-  {
-    quote: "I improved from a B- to an A+ in calculus in just 8 weeks. My tutor Maria was incredible at breaking down complex concepts!",
-    author: "Sarah M.",
-    role: "College Student",
-    rating: 5,
-    initials: "SM",
-  },
-  {
-    quote: "Finally found a Spanish tutor who matches my busy schedule. Flexible, patient, and really understands adult learners.",
-    author: "James K.",
-    role: "Working Professional",
-    rating: 5,
-    initials: "JK",
-  },
-  {
-    quote: "My son's confidence in reading has skyrocketed. His tutor makes every session fun and engaging. Worth every penny!",
-    author: "Linda T.",
-    role: "Parent",
-    rating: 5,
-    initials: "LT",
-  },
-  {
-    quote: "As a working mom, the flexibility to book lessons anytime is a game-changer. The tutors are always prepared and professional.",
-    author: "Rachel P.",
-    role: "Parent & Part-time Student",
-    rating: 5,
-    initials: "RP",
-  },
-];

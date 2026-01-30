@@ -72,6 +72,7 @@ from modules.users.avatar.router import router as avatar_router
 from modules.users.currency.router import router as currency_router
 from modules.users.preferences.router import router as preferences_router
 from modules.utils.presentation.api import router as utils_router
+from modules.public.router import router as public_router
 from core.transactions import atomic_operation
 
 logging.basicConfig(
@@ -667,6 +668,7 @@ app.include_router(zoom_router, prefix=API_V1_PREFIX)
 app.include_router(calendar_router, prefix=API_V1_PREFIX)
 app.include_router(feature_flags_router, prefix=API_V1_PREFIX)
 app.include_router(feature_flags_public_router, prefix=API_V1_PREFIX)
+app.include_router(public_router, prefix=API_V1_PREFIX)
 
 
 # ============================================================================

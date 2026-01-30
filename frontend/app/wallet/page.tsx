@@ -49,13 +49,20 @@ function WalletContent() {
 
   const loadData = async () => {
     try {
-      const [currentUser, profile] = await Promise.all([
+      const [currentUser, profile, balanceData] = await Promise.all([
         auth.getCurrentUser(),
         students.getProfile(),
+        wallet.getBalance().catch(() => null), // Balance is optional, don't fail if unavailable
       ]);
 
       setUser(currentUser);
       setStudentProfile(profile);
+
+      // Update balance from wallet API if available
+      if (balanceData && profile) {
+        profile.credit_balance_cents = balanceData.balance_cents;
+        setStudentProfile({ ...profile });
+      }
     } catch (error) {
       showError("Failed to load wallet data");
     } finally {

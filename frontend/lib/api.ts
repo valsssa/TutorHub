@@ -33,6 +33,9 @@ import type {
   TutorListParams,
   MessageSendResponse,
   UnreadCountResponse,
+  PlatformStats,
+  FeaturedReview,
+  FeaturedReviewsResponse,
 } from "@/types/api";
 import type {
   OwnerDashboard,
@@ -1838,6 +1841,52 @@ export const tutorStudentNotes = {
 
   async deleteNote(studentId: number): Promise<void> {
     await api.delete(`/api/v1/tutor/student-notes/${studentId}`);
+  },
+};
+
+// ============================================================================
+// Public API (No Authentication Required)
+// ============================================================================
+
+export const publicApi = {
+  /**
+   * Get public platform statistics for homepage display.
+   * No authentication required.
+   */
+  async getStats(): Promise<PlatformStats> {
+    const cacheKey = getCacheKey("/api/v1/public/stats");
+    const { data: cached, isExpired } = cacheStore.get<PlatformStats>(cacheKey);
+
+    // Return cached data if available and not expired
+    if (cached && !isExpired) {
+      return cached;
+    }
+
+    const { data } = await api.get<PlatformStats>("/api/v1/public/stats");
+    // Cache for 5 minutes (public data doesn't need to be real-time)
+    cacheStore.set(cacheKey, data, "public");
+    return data;
+  },
+
+  /**
+   * Get featured reviews for homepage testimonials.
+   * No authentication required.
+   */
+  async getFeaturedReviews(limit: number = 4): Promise<FeaturedReviewsResponse> {
+    const cacheKey = getCacheKey("/api/v1/public/featured-reviews", { limit });
+    const { data: cached, isExpired } = cacheStore.get<FeaturedReviewsResponse>(cacheKey);
+
+    // Return cached data if available and not expired
+    if (cached && !isExpired) {
+      return cached;
+    }
+
+    const { data } = await api.get<FeaturedReviewsResponse>("/api/v1/public/featured-reviews", {
+      params: { limit },
+    });
+    // Cache for 5 minutes
+    cacheStore.set(cacheKey, data, "public");
+    return data;
   },
 };
 

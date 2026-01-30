@@ -60,3 +60,29 @@ export interface UnreadCountResponse {
   total: number;
   by_thread?: Record<number, number>;
 }
+
+// ============================================================================
+// Public API Types (No Authentication Required)
+// ============================================================================
+
+export interface PlatformStats {
+  tutor_count: number;
+  student_count: number;
+  average_rating: number;
+  completed_sessions: number;
+  generated_at: string;
+}
+
+export interface FeaturedReview {
+  quote: string;
+  author: string;
+  role: string;
+  rating: number;
+  initials: string;
+  tutor_name?: string | null;
+}
+
+export interface FeaturedReviewsResponse {
+  reviews: FeaturedReview[];
+  total_reviews: number;
+}

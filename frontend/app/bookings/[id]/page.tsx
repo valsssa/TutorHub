@@ -147,6 +147,36 @@ function BookingDetailContent() {
     }
   };
 
+  const handleJoinSession = async () => {
+    if (!booking || !booking.join_url) return;
+
+    // Record that user joined the session (for attendance tracking)
+    try {
+      await bookings.recordJoin(booking.id);
+    } catch (err) {
+      // Don't block joining if recording fails - just log it
+      console.error("Failed to record session join:", err);
+    }
+
+    // Open Zoom meeting in new tab
+    window.open(booking.join_url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleRegenerateMeeting = async () => {
+    if (!booking) return;
+
+    setActionLoading(true);
+    try {
+      await bookings.regenerateMeeting(booking.id);
+      showSuccess("Meeting link regenerated successfully!");
+      loadBooking();
+    } catch (err: any) {
+      showError(err?.response?.data?.detail || "Failed to regenerate meeting link");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Determine user role in this booking
   const isStudent = user && authUtils.isStudent(user);
   const isTutor = user && authUtils.isTutor(user);
@@ -196,8 +226,14 @@ function BookingDetailContent() {
     booking.session_state === "SCHEDULED" && isUpcoming;
 
   const canJoin =
-    booking.session_state === "SCHEDULED" &&
+    (booking.session_state === "SCHEDULED" || booking.session_state === "ACTIVE") &&
     booking.join_url &&
+    (isUpcoming || isInProgress);
+
+  // Can regenerate meeting if scheduled/active but no join URL
+  const canRegenerateMeeting =
+    (booking.session_state === "SCHEDULED" || booking.session_state === "ACTIVE") &&
+    !booking.join_url &&
     (isUpcoming || isInProgress);
 
   const canAcceptDecline =
@@ -376,17 +412,22 @@ function BookingDetailContent() {
 
               {/* Actions */}
               <div className="flex flex-wrap gap-3">
-                {canJoin && booking.join_url && (
-                  <a
-                    href={booking.join_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                {canJoin && (
+                  <Button variant="primary" onClick={handleJoinSession}>
+                    <Video className="w-4 h-4 mr-2" />
+                    Join Session
+                  </Button>
+                )}
+
+                {canRegenerateMeeting && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleRegenerateMeeting}
+                    isLoading={actionLoading}
                   >
-                    <Button variant="primary">
-                      <Video className="w-4 h-4 mr-2" />
-                      Join Session
-                    </Button>
-                  </a>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Generate Meeting Link
+                  </Button>
                 )}
 
                 {canAcceptDecline && (

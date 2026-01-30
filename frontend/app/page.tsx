@@ -6,8 +6,10 @@ import Image from "next/image";
 import Cookies from "js-cookie";
 import { motion } from "framer-motion";
 import { FiStar, FiUsers, FiBookOpen, FiAward, FiTrendingUp, FiCheck, FiArrowRight, FiSearch, FiCalendar, FiPlay } from "react-icons/fi";
-import TestimonialCard, { placeholderTestimonials } from "@/components/TestimonialCard";
-import { tutors, subjects, auth } from "@/lib/api";
+import TestimonialCard from "@/components/TestimonialCard";
+import type { Testimonial } from "@/components/TestimonialCard";
+import { tutors, subjects, auth, publicApi } from "@/lib/api";
+import type { PlatformStats, FeaturedReview } from "@/types/api";
 import { TutorPublicSummary, Subject, User } from "@/types";
 import { PRICE_LIMITS, SORT_OPTIONS } from "@/types/filters";
 import TutorCard from "@/components/TutorCard";
@@ -27,6 +29,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [filtering, setFiltering] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
   // Search section state
   const [selectedSubject, setSelectedSubject] = useState<number | undefined>();
@@ -49,15 +53,34 @@ export default function HomePage() {
           setCurrentUser(user);
         }
 
-        const [tutorsList, subjectsData] = await Promise.all([
+        const [tutorsList, subjectsData, stats, featuredReviewsData] = await Promise.all([
           tutors.list({ sort_by: "rating", page_size: 6 }),
-          subjects.list()
+          subjects.list(),
+          publicApi.getStats().catch(() => null),
+          publicApi.getFeaturedReviews(4).catch(() => ({ reviews: [], total_reviews: 0 })),
         ]);
 
         setFeaturedTutors(tutorsList.items);
         setFilteredTutors(tutorsList.items); // Initially show featured tutors
         setResultsCount(tutorsList.total || tutorsList.items.length);
         setSubjectsList(subjectsData);
+
+        // Set platform stats
+        if (stats) {
+          setPlatformStats(stats);
+        }
+
+        // Convert featured reviews to testimonials format
+        if (featuredReviewsData.reviews.length > 0) {
+          const convertedTestimonials: Testimonial[] = featuredReviewsData.reviews.map((review: FeaturedReview) => ({
+            quote: review.quote,
+            author: review.author,
+            role: review.role,
+            rating: review.rating,
+            initials: review.initials,
+          }));
+          setTestimonials(convertedTestimonials);
+        }
       } catch (error) {
         console.error("Error loading homepage data:", error);
       } finally {
@@ -205,7 +228,7 @@ export default function HomePage() {
               {/* Trust Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold mb-6 border border-emerald-200 dark:border-emerald-800">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Over 30,000 trusted tutors
+                {platformStats ? `${platformStats.tutor_count.toLocaleString()}+ trusted tutors` : "Trusted tutors available"}
               </div>
 
               {/* Main Heading */}
@@ -220,13 +243,13 @@ export default function HomePage() {
 
               {/* Subject Pills */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-2 mb-2 lg:mb-0">
-                {['English', 'Mathematics', 'Spanish', 'Physics', 'Piano', 'Computer Science'].map((topic) => (
+                {(subjectsList.length > 0 ? subjectsList.slice(0, 6) : [{ id: 0, name: 'All Subjects' }]).map((subject) => (
                   <button
-                    key={topic}
-                    onClick={() => router.push(`/tutors?search=${encodeURIComponent(topic)}`)}
+                    key={subject.id || subject.name}
+                    onClick={() => router.push(`/tutors?search=${encodeURIComponent(subject.name)}`)}
                     className="px-4 py-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 dark:hover:border-emerald-500 transition-all shadow-sm active:scale-95"
                   >
-                    {topic}
+                    {subject.name}
                   </button>
                 ))}
               </div>
@@ -317,7 +340,7 @@ export default function HomePage() {
                     <FiStar key={i} className="w-4 h-4 fill-current" />
                   ))}
                 </div>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">4.9/5 Average Rating</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{platformStats ? `${platformStats.average_rating}/5` : "4.9/5"} Average Rating</p>
               </motion.div>
             </motion.div>
           </div>
@@ -346,7 +369,7 @@ export default function HomePage() {
               {
                 icon: FiSearch,
                 title: "Find Your Tutor",
-                description: "Browse 30,000+ verified experts. Filter by subject, price, and availability to find your perfect match.",
+                description: `Browse ${platformStats ? platformStats.tutor_count.toLocaleString() + '+' : ''} verified experts. Filter by subject, price, and availability to find your perfect match.`,
                 step: 1,
               },
               {
@@ -404,7 +427,7 @@ export default function HomePage() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold mb-4">
               <FiStar className="w-3 h-3" />
-              Trusted by 500,000+ students
+              {platformStats ? `Trusted by ${platformStats.student_count.toLocaleString()}+ students` : "Trusted by students worldwide"}
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
               What Our Students Say
@@ -414,19 +437,25 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {placeholderTestimonials.map((testimonial, index) => (
-              <motion.div
-                key={testimonial.author}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <TestimonialCard testimonial={testimonial} />
-              </motion.div>
-            ))}
-          </div>
+          {testimonials.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {testimonials.map((testimonial, index) => (
+                <motion.div
+                  key={`${testimonial.author}-${index}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <TestimonialCard testimonial={testimonial} />
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+              <p>Be the first to share your learning experience!</p>
+            </div>
+          )}
         </div>
       </section>
 
