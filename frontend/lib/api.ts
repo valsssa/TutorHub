@@ -392,6 +392,11 @@ async function refreshAccessToken(): Promise<string | null> {
 api.interceptors.request.use(async (config) => {
   const token = Cookies.get("token");
 
+  // Suppress error logging for background polling endpoints (notifications)
+  if (config.url?.includes('/notifications')) {
+    config.suppressErrorLog = true;
+  }
+
   // Skip auth for login/register/refresh endpoints
   const isAuthEndpoint = config.url?.includes('/auth/login') ||
     config.url?.includes('/auth/register') ||
@@ -487,8 +492,8 @@ api.interceptors.response.use(
   },
   (error: AxiosError) => {
     const status = error.response?.status;
-    const shouldSuppress =
-      status === 404 && error.config?.suppressErrorLog;
+    // Suppress all errors for requests with suppressErrorLog flag (e.g., background polling)
+    const shouldSuppress = error.config?.suppressErrorLog === true;
     const errorMessage = (error.response?.data as ApiErrorResponse)?.detail || error.message;
     if (!shouldSuppress) {
       logger.error(`API Error: ${error.config?.url} - ${status || 'Network Error'}`, { detail: errorMessage });

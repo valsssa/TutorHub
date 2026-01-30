@@ -20,6 +20,7 @@ import { resolveAssetUrl } from "@/lib/media";
 import type { TutorProfile, User, Subject, Review } from "@/types";
 import { useToast } from "@/components/ToastContainer";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import BookingSuccess from "@/components/BookingSuccess";
 
 export default function BookingPage() {
   return (
@@ -51,6 +52,17 @@ function BookingPageContent() {
     null
   );
   const [topic, setTopic] = useState("");
+
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [completedBooking, setCompletedBooking] = useState<{
+    bookingId: number;
+    tutorName: string;
+    subject: string;
+    date: Date;
+    duration: number;
+    price: number;
+  } | null>(null);
 
   const tutorId = params?.id ? Number(params.id) : null;
   const slotParam = searchParams?.get("slot");
@@ -114,11 +126,10 @@ function BookingPageContent() {
     if (!tutor || !dateObj || !selectedSubjectId) return;
 
     const startDate = new Date(dateObj);
-    const endDate = new Date(startDate.getTime() + duration * 60000);
 
     setSubmitting(true);
     try {
-      await bookings.create({
+      const result = await bookings.create({
         tutor_profile_id: tutor.id,
         subject_id: selectedSubjectId,
         start_at: startDate.toISOString(),
@@ -126,15 +137,27 @@ function BookingPageContent() {
         notes_student: topic || undefined,
       });
 
-      showSuccess("Booking confirmed! Check your email for details.");
+      // Get subject name for display
+      const selectedSubject = tutor.subjects?.find(
+        (s) => s.subject_id === selectedSubjectId
+      );
 
-      // Use setTimeout to ensure toast is shown before redirect
-      setTimeout(() => {
-        router.replace("/bookings");
-      }, 100);
+      // Set completed booking data for success modal
+      setCompletedBooking({
+        bookingId: result.id || Date.now(), // Use result ID or fallback
+        tutorName: tutorDisplayName,
+        subject: selectedSubject?.subject_name || "Lesson",
+        date: startDate,
+        duration: duration,
+        price: total,
+      });
+
+      // Show success modal
+      setShowSuccessModal(true);
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.detail || "Failed to create booking";
+      const errorCode = error?.response?.data?.code || "";
 
       // Check if slot is no longer available
       if (
@@ -146,12 +169,74 @@ function BookingPageContent() {
           "This time slot is no longer available. Please select another time."
         );
         router.push(`/tutors/${tutorId}`);
-      } else {
-        showError(errorMessage);
+        return;
       }
+
+      // Handle payment-specific errors with recovery options
+      if (
+        errorMessage.toLowerCase().includes("card declined") ||
+        errorMessage.toLowerCase().includes("declined") ||
+        errorCode === "card_declined"
+      ) {
+        showError(
+          "Your card was declined. Please try a different payment method or contact your bank."
+        );
+        // Keep user on page to try again
+        return;
+      }
+
+      if (
+        errorMessage.toLowerCase().includes("insufficient funds") ||
+        errorCode === "insufficient_funds"
+      ) {
+        showError(
+          "Insufficient funds. Please try a different card or payment method."
+        );
+        return;
+      }
+
+      if (
+        errorMessage.toLowerCase().includes("expired") ||
+        errorCode === "expired_card"
+      ) {
+        showError(
+          "Your card has expired. Please update your payment method and try again."
+        );
+        return;
+      }
+
+      if (
+        errorMessage.toLowerCase().includes("network") ||
+        errorMessage.toLowerCase().includes("timeout") ||
+        errorCode === "network_error"
+      ) {
+        showError(
+          "Network error. Please check your connection and try again."
+        );
+        return;
+      }
+
+      // Generic payment error
+      if (
+        errorMessage.toLowerCase().includes("payment") ||
+        errorMessage.toLowerCase().includes("charge")
+      ) {
+        showError(
+          `Payment failed: ${errorMessage}. Please try again or use a different payment method.`
+        );
+        return;
+      }
+
+      // Generic error fallback
+      showError(errorMessage);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    router.replace("/bookings");
   };
 
   if (loading || !tutor || !dateObj) {
@@ -627,6 +712,23 @@ function BookingPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Booking Success Modal */}
+      {completedBooking && (
+        <BookingSuccess
+          isOpen={showSuccessModal}
+          onClose={handleSuccessModalClose}
+          booking={completedBooking}
+          onViewBookings={() => {
+            setShowSuccessModal(false);
+            router.push("/bookings");
+          }}
+          onBookAnother={() => {
+            setShowSuccessModal(false);
+            router.push("/tutors");
+          }}
+        />
+      )}
     </div>
   );
 }

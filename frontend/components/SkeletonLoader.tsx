@@ -90,6 +90,129 @@ export function TutorCardSkeleton() {
   );
 }
 
+export function BookingCardSkeleton() {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 animate-pulse">
+      <div className="flex items-start gap-4">
+        <SkeletonLoader variant="circle" width="48px" height="48px" />
+        <div className="flex-1">
+          <SkeletonLoader height="18px" width="60%" className="mb-2" />
+          <div className="flex items-center gap-3 mb-2">
+            <SkeletonLoader height="14px" width="80px" />
+            <SkeletonLoader height="14px" width="60px" />
+          </div>
+          <SkeletonLoader height="24px" width="80px" className="rounded-full" />
+        </div>
+        <SkeletonLoader height="36px" width="100px" className="rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+export function BookingListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <BookingCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+export function MessageThreadSkeleton() {
+  return (
+    <div className="flex items-start gap-3 p-4 animate-pulse">
+      <SkeletonLoader variant="circle" width="40px" height="40px" />
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-baseline mb-1">
+          <SkeletonLoader height="16px" width="120px" />
+          <SkeletonLoader height="12px" width="40px" />
+        </div>
+        <SkeletonLoader height="14px" width="80%" />
+      </div>
+    </div>
+  );
+}
+
+export function MessageListSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+      {Array.from({ length: count }).map((_, i) => (
+        <MessageThreadSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+export function DashboardStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4"
+        >
+          <SkeletonLoader height="14px" width="60%" className="mb-2" />
+          <SkeletonLoader height="28px" width="50%" className="mb-1" />
+          <SkeletonLoader height="12px" width="80%" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function NotificationSkeleton() {
+  return (
+    <div className="flex items-start gap-4 p-4 animate-pulse">
+      <SkeletonLoader variant="circle" width="40px" height="40px" />
+      <div className="flex-1">
+        <div className="flex justify-between items-start mb-1">
+          <SkeletonLoader height="16px" width="70%" />
+          <SkeletonLoader height="12px" width="50px" />
+        </div>
+        <SkeletonLoader height="14px" width="90%" />
+      </div>
+    </div>
+  );
+}
+
+export function NotificationListSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+      {Array.from({ length: count }).map((_, i) => (
+        <NotificationSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+export function CalendarSkeleton() {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 animate-pulse">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-4">
+        <SkeletonLoader height="24px" width="150px" />
+        <div className="flex gap-2">
+          <SkeletonLoader height="32px" width="32px" className="rounded" />
+          <SkeletonLoader height="32px" width="32px" className="rounded" />
+        </div>
+      </div>
+      {/* Days header */}
+      <div className="grid grid-cols-7 gap-2 mb-2">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <SkeletonLoader key={i} height="14px" width="30px" className="mx-auto" />
+        ))}
+      </div>
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-2">
+        {Array.from({ length: 35 }).map((_, i) => (
+          <SkeletonLoader key={i} height="40px" width="100%" className="rounded" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TutorProfileSkeleton() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 md:pb-8">

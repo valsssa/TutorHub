@@ -135,12 +135,12 @@ export default function FilterBar({
       <button
         onClick={() => toggleDropdown(type)}
         className={`
-          flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium tap-target
-          transition-all duration-200 whitespace-nowrap
+          flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium min-h-[44px] min-w-[44px]
+          transition-all duration-200 whitespace-nowrap touch-manipulation
           ${
             active
               ? "bg-emerald-600 text-white shadow-md"
-              : "bg-white text-slate-700 border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
+              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
           }
         `}
       >
@@ -172,7 +172,7 @@ export default function FilterBar({
           {activeFiltersCount > 0 && (
             <button
               onClick={onClearAll}
-              className="ml-auto flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-all"
+              className="ml-auto flex items-center gap-2 px-4 py-3 text-sm font-medium text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all min-h-[44px] touch-manipulation"
             >
               <FiX className="w-4 h-4" />
               Clear All ({activeFiltersCount})
@@ -196,10 +196,10 @@ export default function FilterBar({
                         onSubjectChange(undefined);
                         closeDropdown();
                       }}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all ${
+                      className={`px-3 py-3 rounded-lg text-sm font-medium text-left transition-all min-h-[44px] touch-manipulation ${
                         !selectedSubject
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-50 hover:bg-slate-100 text-slate-700"
+                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
                       }`}
                     >
                       All Subjects
@@ -211,10 +211,10 @@ export default function FilterBar({
                           onSubjectChange(subject.id);
                           closeDropdown();
                         }}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-all ${
+                        className={`px-3 py-3 rounded-lg text-sm font-medium text-left transition-all min-h-[44px] touch-manipulation ${
                           selectedSubject === subject.id
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-slate-50 hover:bg-slate-100 text-slate-700"
+                            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                            : "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
                         }`}
                       >
                         {subject.name}

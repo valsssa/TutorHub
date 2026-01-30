@@ -70,8 +70,24 @@ export default function StudentSessionsList({
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {sessions.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 dark:text-slate-400">
-            No sessions yet. Book your first lesson to get started.
+          <div className="p-10 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Calendar className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+              No sessions yet
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-6 max-w-sm mx-auto">
+              Book your first lesson with a tutor to start your learning journey.
+            </p>
+            {onManageAll && (
+              <button
+                onClick={onManageAll}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-500 transition-colors"
+              >
+                Find a Tutor
+              </button>
+            )}
           </div>
         ) : (
           sessions.map((booking, idx) => {

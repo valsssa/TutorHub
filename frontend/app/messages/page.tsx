@@ -569,8 +569,32 @@ function MessagesContent() {
 
             <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
               {filteredThreads.length === 0 ? (
-                <div className="p-6 sm:p-8 text-center text-slate-500 text-sm sm:text-base">
-                  {searchQuery ? "No conversations found" : "No messages yet"}
+                <div className="p-6 sm:p-8 flex flex-col items-center justify-center text-center">
+                  {searchQuery ? (
+                    <>
+                      <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                        <FiSearch className="w-6 h-6 text-slate-400" />
+                      </div>
+                      <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">No conversations found</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Try a different search term</p>
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="text-sm font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
+                      >
+                        Clear search
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
+                        <FiMessageSquare className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">No messages yet</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        Start a conversation with a tutor or student
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 filteredThreads.map(thread => {

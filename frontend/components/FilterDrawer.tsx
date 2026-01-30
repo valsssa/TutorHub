@@ -110,17 +110,17 @@ export default function FilterPanel({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Subject */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-3">
-              <FiBookOpen className="w-4 h-4 text-sky-600" />
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white mb-3">
+              <FiBookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               Subject
             </label>
             <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
               <button
                 onClick={() => onSubjectChange(undefined)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] touch-manipulation ${
                   !selectedSubject
-                    ? "bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-md"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    ? "bg-emerald-600 text-white shadow-md"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
                 }`}
               >
                 All Subjects
@@ -129,10 +129,10 @@ export default function FilterPanel({
                 <button
                   key={subject.id}
                   onClick={() => onSubjectChange(subject.id)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all text-left min-h-[44px] touch-manipulation ${
                     selectedSubject === subject.id
-                      ? "bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-md"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
                   {subject.name}
@@ -161,7 +161,7 @@ export default function FilterPanel({
                       tempPrice[1],
                     ])
                   }
-                  className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   min={PRICE_LIMITS.min}
                   max={tempPrice[1] - PRICE_LIMITS.step}
                 />
@@ -178,7 +178,7 @@ export default function FilterPanel({
                       ),
                     ])
                   }
-                  className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   min={tempPrice[0] + PRICE_LIMITS.step}
                   max={PRICE_LIMITS.max}
                 />
@@ -200,7 +200,7 @@ export default function FilterPanel({
                       ),
                     ])
                   }
-                  className="w-full h-2 bg-gradient-to-r from-sky-200 to-sky-500 rounded-full appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gradient-to-r from-emerald-200 to-emerald-500 rounded-full appearance-none cursor-pointer"
                 />
                 <div className="flex justify-between text-xs text-slate-500 font-medium">
                   <span>${PRICE_LIMITS.min}</span>
@@ -212,17 +212,17 @@ export default function FilterPanel({
 
           {/* Rating */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-3">
-              <FiStar className="w-4 h-4 text-sky-600" />
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white mb-3">
+              <FiStar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               Minimum Rating
             </label>
             <div className="space-y-2">
               <button
                 onClick={() => onMinRatingChange(undefined)}
-                className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium text-left flex items-center justify-between transition-all ${
+                className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium text-left flex items-center justify-between transition-all min-h-[44px] touch-manipulation ${
                   !minRating
-                    ? "bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-md"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    ? "bg-emerald-600 text-white shadow-md"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
                 }`}
               >
                 <span>Any Rating</span>
@@ -232,10 +232,10 @@ export default function FilterPanel({
                 <button
                   key={option.value}
                   onClick={() => onMinRatingChange(option.value)}
-                  className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium text-left flex items-center justify-between transition-all ${
+                  className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium text-left flex items-center justify-between transition-all min-h-[44px] touch-manipulation ${
                     minRating === option.value
-                      ? "bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-md"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
                   <span>{option.label}</span>
@@ -247,17 +247,17 @@ export default function FilterPanel({
 
           {/* Experience */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-3">
-              <FiClock className="w-4 h-4 text-sky-600" />
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white mb-3">
+              <FiClock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               Minimum Experience
             </label>
             <div className="space-y-2">
               <button
                 onClick={() => onMinExperienceChange(undefined)}
-                className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium text-left flex items-center justify-between transition-all ${
+                className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium text-left flex items-center justify-between transition-all min-h-[44px] touch-manipulation ${
                   !minExperience
-                    ? "bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-md"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    ? "bg-emerald-600 text-white shadow-md"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
                 }`}
               >
                 <span>Any Experience</span>
@@ -267,10 +267,10 @@ export default function FilterPanel({
                 <button
                   key={option.value}
                   onClick={() => onMinExperienceChange(option.value)}
-                  className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium text-left flex items-center justify-between transition-all ${
+                  className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium text-left flex items-center justify-between transition-all min-h-[44px] touch-manipulation ${
                     minExperience === option.value
-                      ? "bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-md"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
                   <span>{option.label}</span>
@@ -295,7 +295,7 @@ export default function FilterPanel({
           )}
           <button
             onClick={handleApply}
-            className="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold hover:shadow-lg transition-all min-h-[44px] touch-manipulation"
           >
             Show {resultsCount} Results
           </button>

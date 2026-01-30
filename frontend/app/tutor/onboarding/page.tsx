@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { FiCheck, FiAlertCircle, FiUpload, FiCamera, FiPlus, FiX, FiStar } from "react-icons/fi";
+import { FiCheck, FiAlertCircle, FiUpload, FiCamera, FiPlus, FiX, FiStar, FiSave, FiLoader } from "react-icons/fi";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import StepIndicator from "@/components/StepIndicator";
 import Button from "@/components/Button";
@@ -12,6 +12,9 @@ import TextArea from "@/components/TextArea";
 import { useToast } from "@/components/ToastContainer";
 import { tutors, subjects as subjectsApi } from "@/lib/api";
 import type { Subject } from "@/types";
+
+const STORAGE_KEY = "tutor_onboarding_draft";
+const AUTO_SAVE_DELAY = 1000; // 1 second debounce
 
 // CEFR Language Proficiency Levels (matching backend validation)
 const LANGUAGE_LEVELS = [
@@ -131,13 +134,16 @@ function TutorOnboardingContent() {
   const { showSuccess, showError } = useToast();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [subjectsList, setSubjectsList] = useState<Subject[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [formData, setFormData] = useState<OnboardingData>({
+  const defaultFormData: OnboardingData = {
     firstName: '',
     lastName: '',
     email: '',
@@ -153,7 +159,91 @@ function TutorOnboardingContent() {
     hasHigherEducation: false,
     education: [],
     description: '',
-  });
+  };
+
+  const [formData, setFormData] = useState<OnboardingData>(defaultFormData);
+
+  // Load saved draft from localStorage
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(STORAGE_KEY);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        // Restore form data (excluding file objects which can't be serialized)
+        setFormData({
+          ...defaultFormData,
+          ...parsed.formData,
+          profilePhoto: null, // File can't be restored
+          certificates: (parsed.formData?.certificates || []).map((c: CertificationEntry) => ({ ...c, file: null })),
+          education: (parsed.formData?.education || []).map((e: EducationEntry) => ({ ...e, file: null })),
+        });
+        // Restore step
+        if (parsed.currentStep) {
+          setCurrentStep(parsed.currentStep);
+        }
+        // Restore last saved time
+        if (parsed.savedAt) {
+          setLastSaved(new Date(parsed.savedAt));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load draft:", error);
+    }
+    setLoading(false);
+  }, []);
+
+  // Auto-save to localStorage when form data changes
+  const saveToLocalStorage = useCallback(() => {
+    setIsSaving(true);
+    try {
+      const dataToSave = {
+        formData: {
+          ...formData,
+          profilePhoto: null, // Can't serialize File objects
+          certificates: formData.certificates.map((c) => ({ ...c, file: null })),
+          education: formData.education.map((e) => ({ ...e, file: null })),
+        },
+        currentStep,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+    }
+    setIsSaving(false);
+  }, [formData, currentStep]);
+
+  // Debounced auto-save
+  useEffect(() => {
+    if (loading) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveToLocalStorage();
+    }, AUTO_SAVE_DELAY);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [formData, currentStep, loading, saveToLocalStorage]);
+
+  // Clear draft on successful submission
+  const clearDraft = () => {
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  // Save & Exit handler
+  const handleSaveAndExit = () => {
+    saveToLocalStorage();
+    showSuccess("Progress saved! You can continue later.");
+    router.push("/dashboard");
+  };
 
   const STEP_TITLES = [
     'About You',
@@ -402,6 +492,8 @@ function TutorOnboardingContent() {
       // Step 6: Submit profile for review
       await tutors.submitForReview();
 
+      // Clear saved draft on successful submission
+      clearDraft();
       showSuccess('Profile submitted for review!');
       setTimeout(() => {
         router.push('/tutor/profile/submitted');
@@ -1012,10 +1104,51 @@ function TutorOnboardingContent() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <FiLoader className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400">Loading your progress...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden p-8">
+        {/* Save Status Banner */}
+        <div className="mb-4 flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-sm">
+            {isSaving ? (
+              <>
+                <FiLoader className="w-4 h-4 animate-spin text-slate-500" />
+                <span className="text-slate-500 dark:text-slate-400">Saving...</span>
+              </>
+            ) : lastSaved ? (
+              <>
+                <FiCheck className="w-4 h-4 text-emerald-500" />
+                <span className="text-slate-600 dark:text-slate-400">
+                  Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </>
+            ) : (
+              <span className="text-slate-500 dark:text-slate-400">Auto-save enabled</span>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSaveAndExit}
+            className="text-slate-600 dark:text-slate-400"
+          >
+            <FiSave className="w-4 h-4 mr-2" />
+            Save & Exit
+          </Button>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden p-8 border border-slate-200 dark:border-slate-800">
           <StepIndicator
             currentStep={currentStep}
             totalSteps={5}
@@ -1025,7 +1158,7 @@ function TutorOnboardingContent() {
           <div className="mt-8">
             {renderCurrentStep()}
 
-            <div className="flex justify-between pt-8 mt-8 border-t border-gray-200">
+            <div className="flex justify-between pt-8 mt-8 border-t border-gray-200 dark:border-slate-700">
               <Button
                 variant="ghost"
                 onClick={handleBack}
@@ -1034,17 +1167,27 @@ function TutorOnboardingContent() {
                 Back
               </Button>
 
-              <Button
-                variant="primary"
-                onClick={currentStep === 5 ? handleSubmit : handleNext}
-                disabled={submitting}
-              >
-                {submitting
-                  ? 'Submitting...'
-                  : currentStep === 5
-                    ? 'Submit Profile'
-                    : 'Next'}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleSaveAndExit}
+                  disabled={submitting}
+                  className="hidden sm:flex"
+                >
+                  Save & Exit
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={currentStep === 5 ? handleSubmit : handleNext}
+                  disabled={submitting}
+                >
+                  {submitting
+                    ? 'Submitting...'
+                    : currentStep === 5
+                      ? 'Submit Profile'
+                      : 'Next'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

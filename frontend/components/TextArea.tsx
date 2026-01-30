@@ -1,9 +1,12 @@
 "use client";
 
-import { TextareaHTMLAttributes, useRef, useEffect, useCallback } from "react";
+import { TextareaHTMLAttributes, useRef, useEffect, useCallback, useId, forwardRef, useImperativeHandle } from "react";
 import clsx from "clsx";
+import { AlertCircle } from "lucide-react";
 
-interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+type TextAreaSize = "sm" | "md" | "lg";
+
+interface TextAreaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "size"> {
   /** Clear intent label explaining who will read this and where it appears */
   label?: string;
   /** Error message to display */
@@ -24,7 +27,28 @@ interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   maxRows?: number;
   /** Enable auto-resize based on content */
   autoResize?: boolean;
+  /** Size variant */
+  size?: TextAreaSize;
+  /** Full width */
+  fullWidth?: boolean;
+  /** Loading state */
+  isLoading?: boolean;
 }
+
+const sizeClasses: Record<TextAreaSize, { textarea: string; label: string }> = {
+  sm: {
+    textarea: "px-3 py-2 text-sm",
+    label: "text-xs",
+  },
+  md: {
+    textarea: "px-4 py-3 text-base",
+    label: "text-sm",
+  },
+  lg: {
+    textarea: "px-4 py-3.5 text-base",
+    label: "text-sm",
+  },
+};
 
 /**
  * TextArea component following global textarea rules:
@@ -35,25 +59,39 @@ interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
  * - Line height ≥ 1.5 for readability
  * - Accessible with proper labels and ARIA attributes
  */
-export default function TextArea({
-  label,
-  error,
-  helperText,
-  className,
-  id,
-  maxLength,
-  minLength,
-  showCounter,
-  warningThreshold = 80,
-  minRows = 3,
-  maxRows = 10,
-  autoResize = true,
-  value,
-  onChange,
-  ...props
-}: TextAreaProps) {
-  const inputId = id || (label ? `textarea-${label.toLowerCase().replace(/\s+/g, "-")}` : `textarea-${Math.random().toString(36).substr(2, 9)}`);
+const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function TextArea(
+  {
+    label,
+    error,
+    helperText,
+    className,
+    id,
+    maxLength,
+    minLength,
+    showCounter,
+    warningThreshold = 80,
+    minRows = 3,
+    maxRows = 10,
+    autoResize = true,
+    size = "md",
+    fullWidth = true,
+    isLoading = false,
+    value,
+    onChange,
+    disabled,
+    required,
+    ...props
+  },
+  ref
+) {
+  const generatedId = useId();
+  const inputId = id || generatedId;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Forward the ref
+  useImperativeHandle(ref, () => textareaRef.current!, []);
+
+  const sizes = sizeClasses[size];
 
   // Calculate character count status
   const currentLength = typeof value === 'string' ? value.length : 0;
@@ -107,44 +145,68 @@ export default function TextArea({
   if (shouldShowCounter) ariaDescribedBy.push(`${inputId}-counter`);
 
   return (
-    <div className="w-full">
+    <div className={clsx("w-full", !fullWidth && "w-auto")}>
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+          className={clsx(
+            "block font-medium text-slate-700 dark:text-slate-300 mb-1.5",
+            sizes.label
+          )}
         >
           {label}
+          {required && (
+            <span className="text-red-500 ml-1" aria-hidden="true">*</span>
+          )}
         </label>
       )}
-      <textarea
-        ref={textareaRef}
-        id={inputId}
-        value={value}
-        onChange={handleChange}
-        maxLength={maxLength}
-        minLength={minLength}
-        rows={minRows}
-        aria-invalid={!!error}
-        aria-describedby={ariaDescribedBy.length > 0 ? ariaDescribedBy.join(' ') : undefined}
-        className={clsx(
-          // Base styles with proper line height (≥1.5)
-          "w-full px-3 py-2 border rounded-lg shadow-sm transition-colors",
-          "leading-relaxed", // line-height: 1.625
-          "focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500",
-          "resize-none", // Disable manual resize, use auto-resize
-          "overflow-y-auto", // Enable scroll when exceeding max height
-          // Dark mode support
-          "dark:bg-slate-800 dark:text-white dark:border-slate-700",
-          // Error state
-          error ? "border-red-500 dark:border-red-500" : "border-slate-300 dark:border-slate-600",
-          // Warning state (near limit)
-          isWarning && !error && "border-amber-500 dark:border-amber-500",
-          // At limit state
-          isAtLimit && !error && "border-red-400 dark:border-red-400",
-          className,
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          id={inputId}
+          value={value}
+          onChange={handleChange}
+          maxLength={maxLength}
+          minLength={minLength}
+          rows={minRows}
+          disabled={disabled || isLoading}
+          required={required}
+          aria-invalid={!!error}
+          aria-required={required}
+          aria-describedby={ariaDescribedBy.length > 0 ? ariaDescribedBy.join(' ') : undefined}
+          className={clsx(
+            // Base styles with proper line height (≥1.5)
+            "w-full border rounded-lg transition-all duration-150",
+            "leading-relaxed", // line-height: 1.625
+            "bg-slate-50 dark:bg-slate-900",
+            "text-slate-900 dark:text-white",
+            "placeholder-slate-400 dark:placeholder-slate-500",
+            "focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500",
+            "resize-none", // Disable manual resize, use auto-resize
+            "overflow-y-auto", // Enable scroll when exceeding max height
+            // Size
+            sizes.textarea,
+            // Error state
+            error
+              ? "border-red-500 dark:border-red-500 focus:ring-red-500/20 focus:border-red-500"
+              : "border-slate-200 dark:border-slate-700",
+            // Warning state (near limit)
+            isWarning && !error && "border-amber-500 dark:border-amber-500 focus:ring-amber-500/20",
+            // At limit state
+            isAtLimit && !error && "border-red-400 dark:border-red-400",
+            // Disabled state
+            (disabled || isLoading) && "opacity-60 cursor-not-allowed bg-slate-100 dark:bg-slate-800",
+            className,
+          )}
+          {...props}
+        />
+        {/* Loading spinner */}
+        {isLoading && (
+          <div className="absolute right-3 top-3">
+            <div className="w-4 h-4 border-2 border-slate-300 border-t-emerald-500 rounded-full animate-spin" />
+          </div>
         )}
-        {...props}
-      />
+      </div>
 
       {/* Character counter */}
       {shouldShowCounter && (
@@ -167,10 +229,11 @@ export default function TextArea({
       {error && (
         <p
           id={`${inputId}-error`}
-          className="mt-1 text-sm text-red-600 dark:text-red-400"
+          className="mt-1.5 text-sm text-red-600 dark:text-red-400 flex items-start gap-1.5"
           role="alert"
         >
-          {typeof error === 'string' ? error : String(error)}
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+          <span>{typeof error === 'string' ? error : String(error)}</span>
         </p>
       )}
 
@@ -178,11 +241,13 @@ export default function TextArea({
       {helperText && !error && (
         <p
           id={`${inputId}-helper`}
-          className="mt-1 text-sm text-gray-500 dark:text-gray-400"
+          className="mt-1.5 text-sm text-slate-500 dark:text-slate-400"
         >
           {helperText}
         </p>
       )}
     </div>
   );
-}
+});
+
+export default TextArea;

@@ -42,8 +42,8 @@ export default function StudentBottomDock({ user }: StudentBottomDockProps) {
       ]
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-floating">
-      <div className="flex items-center justify-around h-16 px-2">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 z-50 shadow-floating pb-safe">
+      <div className="flex items-center justify-around h-16 px-2 safe-area-inset-bottom">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || (pathname?.startsWith(item.href + '/') ?? false)

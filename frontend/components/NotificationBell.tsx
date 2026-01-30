@@ -27,17 +27,19 @@ export default function NotificationBell() {
   const { lastMessage } = useWebSocket();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (showErrorToast = false) => {
     try {
       setLoading(true);
       const data = await notificationAPI.list();
-      const notifications = Array.isArray(data) ? data : [];
-      setNotifications(notifications);
-      setUnreadCount(notifications.filter((n: Notification) => !n.is_read).length);
-    } catch (error) {
-      showError("Failed to load notifications");
-      setNotifications([]);
-      setUnreadCount(0);
+      const notificationsList = Array.isArray(data) ? data : [];
+      setNotifications(notificationsList);
+      setUnreadCount(notificationsList.filter((n: Notification) => !n.is_read).length);
+    } catch {
+      // Silently fail for background polling - only show error if explicitly requested
+      if (showErrorToast) {
+        showError("Failed to load notifications");
+      }
+      // Keep existing notifications on error instead of clearing
     } finally {
       setLoading(false);
     }

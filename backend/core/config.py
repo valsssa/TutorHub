@@ -70,6 +70,8 @@ class Settings(BaseSettings):
         "http://edustream.valsa.solutions",
         "https://api.valsa.solutions",
         "http://api.valsa.solutions",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ]
 
     # Rate Limiting

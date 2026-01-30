@@ -2,9 +2,12 @@
 
 /**
  * Modal for canceling a booking with optional reason
+ * Uses base Modal component for consistent UX
  */
 
 import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
+import Modal from "../Modal";
 import Button from "../Button";
 import TextArea from "../TextArea";
 
@@ -45,75 +48,67 @@ export default function CancelBookingModal({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={handleClose}
-      />
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Cancel Booking"
+      size="md"
+      closeOnBackdropClick={!isSubmitting}
+      footer={
+        <div className="flex flex-col-reverse sm:flex-row gap-3">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="flex-1"
+          >
+            Keep Booking
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleConfirm}
+            isLoading={isSubmitting}
+            className="flex-1"
+          >
+            {isSubmitting ? "Canceling..." : "Cancel Booking"}
+          </Button>
+        </div>
+      }
+    >
+      {/* Session Info */}
+      {tutorName && (
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Session with <span className="font-medium text-slate-900 dark:text-white">{tutorName}</span>
+        </p>
+      )}
 
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-md w-full p-6">
-          {/* Header */}
-          <div className="mb-4">
-            <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
-              Cancel Booking
-            </h3>
-            {tutorName && (
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Session with {tutorName}
-              </p>
-            )}
-          </div>
-
-          {/* Warning */}
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-800">
-              Are you sure you want to cancel this booking? This action cannot be undone.
-            </p>
-          </div>
-
-          {/* Reason Input */}
-          <div className="mb-6">
-            <TextArea
-              id="cancel-reason"
-              label="Reason for cancellation (sent to the tutor)"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="What changed? Is there a scheduling conflict? Would you like to reschedule instead?"
-              minRows={3}
-              maxRows={6}
-              maxLength={500}
-              disabled={isSubmitting}
-              helperText="Optional - helps the tutor understand and potentially accommodate your needs"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              Keep Booking
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleConfirm}
-              disabled={isSubmitting}
-              className="flex-1"
-            >
-              {isSubmitting ? "Canceling..." : "Cancel Booking"}
-            </Button>
-          </div>
+      {/* Warning */}
+      <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            Are you sure you want to cancel?
+          </p>
+          <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+            This action cannot be undone. Refund eligibility depends on timing.
+          </p>
         </div>
       </div>
-    </div>
+
+      {/* Reason Input */}
+      <TextArea
+        id="cancel-reason"
+        label="Reason for cancellation (sent to the tutor)"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="What changed? Is there a scheduling conflict? Would you like to reschedule instead?"
+        minRows={3}
+        maxRows={6}
+        maxLength={500}
+        disabled={isSubmitting}
+        helperText="Optional - helps the tutor understand and potentially accommodate your needs"
+      />
+    </Modal>
   );
 }

@@ -28,6 +28,7 @@ import Avatar from "@/components/Avatar";
 import AppShell from "@/components/AppShell";
 import Badge from "@/components/Badge";
 import ScheduleManagerModal from "@/components/modals/ScheduleManagerModal";
+import ProfileCompletionMeter from "@/components/ProfileCompletionMeter";
 
 interface TutorDashboardProps {
   user: User;
@@ -501,6 +502,13 @@ export default function TutorDashboard({
 
           {/* Right Column (Tools & Feedback) */}
           <div className="space-y-8">
+            {/* Profile Completion Meter */}
+            <ProfileCompletionMeter
+              profile={profile}
+              onNavigate={(section) => router.push(`/tutor/profile?section=${section}`)}
+              compact
+            />
+
             {/* Quick Schedule / Actions Widget */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
               <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-4 flex items-center gap-2">

@@ -119,17 +119,17 @@ export default function CalendarWeekView({
       <div className="px-4 py-2.5 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
         <div className="flex items-center gap-3 order-1 sm:order-1">
           {/* Navigation Arrows */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             <button
               onClick={handlePrev}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+              className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
               aria-label="Previous"
             >
               <ChevronLeft size={20} className="text-slate-600 dark:text-slate-400" />
             </button>
             <button
               onClick={handleNext}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+              className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
               aria-label="Next"
             >
               <ChevronRight size={20} className="text-slate-600 dark:text-slate-400" />
@@ -143,10 +143,10 @@ export default function CalendarWeekView({
 
         <div className="flex items-center gap-2 order-2 sm:order-2 ml-auto sm:ml-0">
           {/* View Toggle */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-md p-0.5">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
             <button
               onClick={handleToday}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all min-h-[36px] touch-manipulation ${
                 view === "Day"
                   ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -156,7 +156,7 @@ export default function CalendarWeekView({
             </button>
             <button
               onClick={() => setView("Week")}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all min-h-[36px] touch-manipulation ${
                 view === "Week"
                   ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -168,11 +168,11 @@ export default function CalendarWeekView({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
               title="Close"
               aria-label="Close"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           )}
         </div>

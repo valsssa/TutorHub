@@ -577,10 +577,19 @@ ENV = os.getenv("ENVIRONMENT", os.getenv("ENV", "development")).lower()
 logger.info("CORS allowed origins: %s", CORS_ORIGINS)
 logger.info("Runtime environment: %s", ENV)
 
-# In production, be more restrictive
+# In production, be more restrictive but include necessary headers
 if ENV == "production":
     ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    ALLOWED_HEADERS = ["Authorization", "Content-Type", "Accept"]
+    ALLOWED_HEADERS = [
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "X-Request-ID",
+        "Cache-Control",
+        "Pragma",
+    ]
 else:
     ALLOWED_METHODS = ["*"]
     ALLOWED_HEADERS = ["*"]
