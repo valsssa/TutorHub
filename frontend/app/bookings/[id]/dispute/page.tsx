@@ -174,8 +174,10 @@ function DisputeContent() {
     setSubmitting(true);
 
     try {
-      // In a real app, this would call the API
-      // await bookings.fileDispute(bookingId, { reason, description, evidence });
+      // Combine reason and description for the dispute
+      const disputeReason = `[${DISPUTE_REASONS.find(r => r.value === reason)?.label || reason}]\n\n${description}`;
+
+      await bookings.fileDispute(bookingId!, disputeReason);
 
       showSuccess("Dispute submitted successfully. We'll review it within 3-5 business days.");
       router.push(`/bookings/${bookingId}`);

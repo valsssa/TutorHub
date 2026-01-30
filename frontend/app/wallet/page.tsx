@@ -14,7 +14,7 @@ import {
   FiTrendingUp
 } from "react-icons/fi";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import api, { auth, students } from "@/lib/api";
+import { auth, students, wallet } from "@/lib/api";
 import { User, StudentProfile } from "@/types";
 import { useToast } from "@/components/ToastContainer";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -109,15 +109,15 @@ function WalletContent() {
     setProcessing(true);
 
     try {
-      // Create Stripe checkout session
-      const response = await api.post('/api/v1/wallet/checkout', {
-        amount_cents: Math.round(selectedAmount * 100),
-        currency: user?.currency || 'USD'
-      });
+      // Create Stripe checkout session using typed API
+      const response = await wallet.checkout(
+        Math.round(selectedAmount * 100),
+        user?.currency || 'USD'
+      );
 
       // Redirect to Stripe Checkout
-      if (response.data.checkout_url) {
-        window.location.href = response.data.checkout_url;
+      if (response.checkout_url) {
+        window.location.href = response.checkout_url;
       } else {
         throw new Error('No checkout URL received');
       }
