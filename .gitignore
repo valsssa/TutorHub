@@ -81,14 +81,8 @@ playwright-report/
 .env.example
 .env.production
 .env.development
-.env.test
-.env.production
-.env.development
-.env.test
-.env.production
-.env.development
-.env.test
-.env.production
+.env
+
 
 # TypeScript
 *.tsbuildinfo
