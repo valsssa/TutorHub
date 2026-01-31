@@ -208,7 +208,7 @@ class NotificationService:
             priority=priority,
             action_url=action_url,
             action_label=action_label,
-            metadata=metadata,
+            extra_data=metadata,  # Column renamed from 'metadata' which is reserved in SQLAlchemy
             sent_at=datetime.now(UTC),
         )
         db.add(notification)
