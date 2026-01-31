@@ -289,6 +289,9 @@ class BookingDTO(BaseModel):
     tutor_joined_at: datetime | None = None
     student_joined_at: datetime | None = None
 
+    # Video meeting provider info
+    video_provider: str | None = None  # zoom, google_meet, teams, custom, manual
+
     class Config:
         from_attributes = True
         json_schema_extra = {

@@ -1,16 +1,17 @@
 """Favorites API endpoints."""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.database_models import TutorProfile, User
 from core.dependencies import get_current_user, get_db
-from core.logger import logger
-from modules.favorites.entities import FavoriteTutor
+from models import FavoriteTutor, TutorProfile, User
 from modules.favorites.schemas import FavoriteCreate, FavoriteResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/favorites", tags=["favorites"])
 

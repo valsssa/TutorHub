@@ -53,6 +53,8 @@ export type BookingStatus =
 
 export type LessonType = "TRIAL" | "REGULAR" | "PACKAGE";
 
+export type VideoProvider = "zoom" | "google_meet" | "teams" | "custom" | "manual";
+
 export interface TutorInfo {
   id: number;
   name: string;
@@ -108,6 +110,13 @@ export interface BookingDTO {
   // Dispute information
   dispute_reason?: string | null;
   disputed_at?: string | null;
+
+  // Attendance tracking
+  tutor_joined_at?: string | null;
+  student_joined_at?: string | null;
+
+  // Video meeting provider
+  video_provider?: "zoom" | "google_meet" | "teams" | "custom" | "manual" | null;
 }
 
 export interface BookingListResponse {

@@ -162,14 +162,14 @@ async def get_featured_reviews(
     """Get featured reviews for homepage testimonials."""
 
     # Get high-rated reviews with comments
+    # Note: Review uses student_id, not reviewer_id
     reviews = (
         db.query(Review)
-        .join(User, Review.reviewer_id == User.id)
+        .join(User, Review.student_id == User.id)
         .filter(
             Review.rating >= 4,
             Review.comment.isnot(None),
             Review.comment != "",
-            Review.deleted_at.is_(None),
             User.deleted_at.is_(None),
         )
         .order_by(Review.rating.desc(), Review.created_at.desc())
@@ -178,16 +178,12 @@ async def get_featured_reviews(
     )
 
     # Get total review count for context
-    total_reviews = (
-        db.query(Review)
-        .filter(Review.deleted_at.is_(None))
-        .count()
-    )
+    total_reviews = db.query(Review).count()
 
     featured_reviews = []
     for review in reviews:
-        # Get reviewer info
-        reviewer = db.query(User).filter(User.id == review.reviewer_id).first()
+        # Get reviewer info (student who wrote the review)
+        reviewer = db.query(User).filter(User.id == review.student_id).first()
         if not reviewer:
             continue
 

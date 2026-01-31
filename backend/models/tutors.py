@@ -61,6 +61,10 @@ class TutorProfile(Base):
     stripe_payouts_enabled = Column(Boolean, default=False)
     stripe_onboarding_completed = Column(Boolean, default=False)
     version = Column(Integer, nullable=False, default=1, server_default="1")
+    # Video meeting provider preferences
+    preferred_video_provider = Column(String(20), default="zoom")  # zoom, google_meet, teams, custom, manual
+    custom_meeting_url_template = Column(String(500), nullable=True)  # For Teams/custom providers
+    video_provider_configured = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
         TIMESTAMP(timezone=True),

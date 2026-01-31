@@ -564,7 +564,7 @@ async def confirm_booking(
     """
     try:
         from modules.bookings.services.response_tracking import ResponseTrackingService
-        from modules.integrations.zoom_router import ZoomError, zoom_client
+        from modules.integrations.video_meeting_service import create_meeting_for_booking
 
         # Use atomic_operation to ensure all state changes commit together
         with atomic_operation(db):
@@ -596,58 +596,42 @@ async def confirm_booking(
 
             # Only update additional fields if this wasn't an idempotent no-op
             if not result.already_in_target_state:
-                # Try to create Zoom meeting with retry logic
-                zoom_meeting_created = False
-                try:
-                    # Build meeting topic
-                    topic = f"EduStream: {booking.subject_name or 'Tutoring Session'}"
-                    if booking.student_name:
-                        topic += f" with {booking.student_name}"
+                # Create video meeting using tutor's preferred provider
+                meeting_result = await create_meeting_for_booking(db, booking, tutor_profile)
 
-                    duration_minutes = int((booking.end_time - booking.start_time).total_seconds() / 60)
+                if meeting_result.success:
+                    booking.join_url = meeting_result.join_url
+                    booking.meeting_url = meeting_result.host_url
+                    booking.video_provider = meeting_result.provider
 
-                    meeting = await zoom_client.create_meeting(
-                        topic=topic,
-                        start_time=booking.start_time,
-                        duration_minutes=duration_minutes,
-                        tutor_email=tutor_profile.user.email if tutor_profile.user else None,
-                        student_email=booking.student.email if booking.student else None,
-                    )
+                    # Provider-specific fields
+                    if meeting_result.provider == "zoom" and meeting_result.meeting_id:
+                        booking.zoom_meeting_id = meeting_result.meeting_id
+                        booking.zoom_meeting_pending = False
+                    elif meeting_result.provider == "google_meet" and meeting_result.join_url:
+                        booking.google_meet_link = meeting_result.join_url
 
-                    # Update booking with Zoom meeting details
-                    booking.join_url = meeting["join_url"]
-                    booking.meeting_url = meeting.get("start_url")  # Host URL
-                    booking.zoom_meeting_id = str(meeting["id"])
-                    booking.zoom_meeting_pending = False
-                    zoom_meeting_created = True
-                    logger.info("Created Zoom meeting %s for booking %d", meeting["id"], booking.id)
-
-                except ZoomError as e:
-                    # Zoom failed but don't fail the booking confirmation
-                    # Flag for background retry
-                    logger.error(
-                        "Failed to create Zoom meeting for booking %d (will retry): %s",
+                    logger.info(
+                        "Created %s meeting for booking %d",
+                        meeting_result.provider,
                         booking.id,
-                        e.message,
                     )
-                    booking.zoom_meeting_pending = True
-                    booking.join_url = None
-                    # Note: We still proceed with confirmation
-
-                except Exception as e:
-                    # Unexpected error - log and flag for retry
+                else:
+                    # Meeting creation failed - flag for retry if applicable
                     logger.error(
-                        "Unexpected error creating Zoom meeting for booking %d (will retry): %s",
+                        "Failed to create meeting for booking %d using %s: %s",
                         booking.id,
-                        str(e),
+                        meeting_result.provider,
+                        meeting_result.error_message,
                     )
-                    booking.zoom_meeting_pending = True
-                    booking.join_url = None
+                    if meeting_result.needs_retry:
+                        booking.zoom_meeting_pending = True
+                    booking.video_provider = meeting_result.provider
 
-                # If no Zoom meeting was created, generate a fallback URL
-                if not zoom_meeting_created and not booking.join_url:
-                    service = BookingService(db)
-                    booking.join_url = service._generate_join_url(booking.id)
+                    # Generate fallback URL if no join_url
+                    if not booking.join_url:
+                        service = BookingService(db)
+                        booking.join_url = service._generate_join_url(booking.id)
 
                 # Add tutor notes
                 if request.notes_tutor:
@@ -1062,45 +1046,39 @@ async def regenerate_meeting(
         )
 
     try:
-        from modules.integrations.zoom_router import ZoomError, zoom_client
+        from modules.integrations.video_meeting_service import create_meeting_for_booking
 
-        # Build meeting topic
-        topic = f"EduStream: {booking.subject_name or 'Tutoring Session'}"
-        if booking.student_name:
-            topic += f" with {booking.student_name}"
-
-        duration_minutes = int((booking.end_time - booking.start_time).total_seconds() / 60)
-
-        # Get emails for logging
-        tutor_email = None
-        student_email = None
-        if booking.tutor_profile and booking.tutor_profile.user:
-            tutor_email = booking.tutor_profile.user.email
-        if booking.student:
-            student_email = booking.student.email
-
-        try:
-            meeting = await zoom_client.create_meeting(
-                topic=topic,
-                start_time=booking.start_time,
-                duration_minutes=duration_minutes,
-                tutor_email=tutor_email,
-                student_email=student_email,
+        # Get tutor profile for provider preferences
+        tutor_profile = booking.tutor_profile
+        if not tutor_profile:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Booking has no associated tutor profile",
             )
 
-            # Update booking with new Zoom meeting details
-            booking.join_url = meeting["join_url"]
-            booking.meeting_url = meeting.get("start_url")  # Host URL
-            booking.zoom_meeting_id = str(meeting["id"])
-            booking.zoom_meeting_pending = False
-            booking.updated_at = datetime.now(UTC)
+        # Create meeting using tutor's preferred provider
+        meeting_result = await create_meeting_for_booking(db, booking, tutor_profile)
 
+        if meeting_result.success:
+            # Update booking with new meeting details
+            booking.join_url = meeting_result.join_url
+            booking.meeting_url = meeting_result.host_url
+            booking.video_provider = meeting_result.provider
+
+            # Provider-specific fields
+            if meeting_result.provider == "zoom" and meeting_result.meeting_id:
+                booking.zoom_meeting_id = meeting_result.meeting_id
+                booking.zoom_meeting_pending = False
+            elif meeting_result.provider == "google_meet" and meeting_result.join_url:
+                booking.google_meet_link = meeting_result.join_url
+
+            booking.updated_at = datetime.now(UTC)
             db.commit()
             db.refresh(booking)
 
             logger.info(
-                "Regenerated Zoom meeting %s for booking %d (requested by user %d)",
-                meeting["id"],
+                "Regenerated %s meeting for booking %d (requested by user %d)",
+                meeting_result.provider,
                 booking_id,
                 current_user.id,
             )
@@ -1108,15 +1086,16 @@ async def regenerate_meeting(
             _add_booking_cache_headers(response, booking)
             return booking_to_dto(booking, db)
 
-        except ZoomError as e:
+        else:
             logger.error(
-                "Failed to regenerate Zoom meeting for booking %d: %s",
+                "Failed to regenerate meeting for booking %d using %s: %s",
                 booking_id,
-                e.message,
+                meeting_result.provider,
+                meeting_result.error_message,
             )
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Failed to create Zoom meeting: {e.message}. Please try again later.",
+                detail=f"Failed to create meeting: {meeting_result.error_message}. Please try again later.",
             )
 
     except HTTPException:

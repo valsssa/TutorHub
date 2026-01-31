@@ -95,6 +95,9 @@ class Booking(Base):
     # Session attendance tracking (for attendance-based outcome determination)
     tutor_joined_at = Column(TIMESTAMP(timezone=True), nullable=True)
     student_joined_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    # Video meeting provider tracking
+    video_provider = Column(String(20), nullable=True)  # zoom, google_meet, teams, custom, manual
+    google_meet_link = Column(String(500), nullable=True)  # Separate from join_url for Meet-specific links
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

@@ -989,4 +989,6 @@ def booking_to_dto(booking: Booking, db: Session) -> BookingDTO:
         # Attendance tracking
         tutor_joined_at=booking.tutor_joined_at,
         student_joined_at=booking.student_joined_at,
+        # Video meeting provider
+        video_provider=booking.video_provider,
     )

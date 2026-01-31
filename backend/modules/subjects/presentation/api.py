@@ -1,7 +1,6 @@
 """Subjects API routes."""
 
 import logging
-from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from core.rate_limiting import limiter
@@ -112,11 +111,6 @@ async def update_subject(
     if is_active is not None:
         subject.is_active = is_active
 
-    # Update timestamp in application code (no DB triggers)
-    from datetime import datetime
-
-    subject.updated_at = datetime.now(UTC)
-
     try:
         db.commit()
         db.refresh(subject)
@@ -147,11 +141,6 @@ async def delete_subject(
 
     # Soft delete instead of hard delete
     subject.is_active = False
-
-    # Update timestamp in application code (no DB triggers)
-    from datetime import datetime
-
-    subject.updated_at = datetime.now(UTC)
 
     try:
         db.commit()

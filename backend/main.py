@@ -64,6 +64,7 @@ from modules.tutor_profile.presentation.availability_api import (
     router as availability_router,
 )
 from modules.tutors.student_notes_router import router as student_notes_router
+from modules.tutors.video_settings_router import router as video_settings_router
 from modules.admin.feature_flags_router import (
     router as feature_flags_router,
     public_router as feature_flags_public_router,
@@ -662,6 +663,7 @@ app.include_router(currency_router, prefix=API_V1_PREFIX)
 app.include_router(tutor_profile_router, prefix=API_V1_PREFIX)
 app.include_router(availability_router, prefix=API_V1_PREFIX)
 app.include_router(student_notes_router, prefix=API_V1_PREFIX)
+app.include_router(video_settings_router, prefix=API_V1_PREFIX)
 app.include_router(utils_router, prefix=API_V1_PREFIX)
 app.include_router(websocket_router, prefix=API_V1_PREFIX)
 app.include_router(zoom_router, prefix=API_V1_PREFIX)
