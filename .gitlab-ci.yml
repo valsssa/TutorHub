@@ -388,6 +388,7 @@ docker:scan:frontend:
   <<: *docker_login
   needs:
     - job: docker:build:frontend
+      optional: true
   script:
     - |
       echo "Waiting for Docker daemon..."
@@ -416,6 +417,7 @@ docker:scan:backend:
   <<: *docker_login
   needs:
     - job: docker:build:backend
+      optional: true
   script:
     - |
       echo "Waiting for Docker daemon..."
