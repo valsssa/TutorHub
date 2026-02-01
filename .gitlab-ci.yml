@@ -24,6 +24,9 @@ stages:
 default:
   interruptible: true
   timeout: 15 minutes
+  tags:
+    - docker
+    - linux
   retry:
     max: 2
     when:
