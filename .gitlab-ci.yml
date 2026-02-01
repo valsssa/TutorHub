@@ -9,8 +9,6 @@
 # - Cached image pulls for faster execution
 #
 # Required CI/CD Variables:
-#   HARBOR_REGISTRY: Harbor registry URL (e.g., harbor.example.com)
-#   DOCKERHUB_USER: Docker Hub username
 #   DOCKERHUB_TOKEN: Docker Hub access token
 #
 # =============================================================================
@@ -25,6 +23,9 @@ stages:
 # =============================================================================
 
 variables:
+  # Harbor Registry (proxy for Docker Hub images)
+  HARBOR_REGISTRY: harbor.in.lazarev.cloud
+
   # Performance
   FF_USE_FASTZIP: "true"
   CACHE_COMPRESSION_LEVEL: "fast"
