@@ -3,6 +3,7 @@
 import { type Dispatch, type SetStateAction } from 'react'
 import { ChevronDown, Menu } from 'lucide-react'
 import type { User } from '@/types'
+import { getDisplayName, getInitials } from '@/lib/displayName'
 
 interface OwnerHeaderProps {
   activeTab: string
@@ -87,19 +88,21 @@ export default function OwnerHeader({
                 className="flex items-center space-x-2"
               >
                 <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
-                  OW
+                  {user ? getInitials(user) : 'OW'}
                 </div>
-                <span className="text-sm font-medium hidden md:inline">Owner</span>
+                <span className="text-sm font-medium hidden md:inline">
+                  {user ? getDisplayName(user, 'Owner') : 'Owner'}
+                </span>
                 <ChevronDown
                   className={`w-4 h-4 text-gray-600 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}
                 />
               </button>
 
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-2 z-[10001]">
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border py-2 z-[10001]">
                   <div className="px-4 py-2 border-b">
-                    <p className="text-sm font-medium">{user?.email}</p>
-                    <p className="text-xs text-gray-500">Owner</p>
+                    <p className="text-sm font-medium">{user ? getDisplayName(user) : 'Owner'}</p>
+                    <p className="text-xs text-gray-500">{user?.email}</p>
                   </div>
                   <button
                     className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"

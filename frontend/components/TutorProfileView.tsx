@@ -25,6 +25,7 @@ import {
 import { TutorProfile, Subject, Review } from "@/types";
 import { resolveAssetUrl, getVideoInfo } from "@/lib/media";
 import { getApiBaseUrl } from "@/shared/utils/url";
+import Avatar from "./Avatar";
 
 interface TutorProfileViewProps {
   tutor: TutorProfile;
@@ -301,22 +302,13 @@ export default function TutorProfileView({
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
             <div className="flex flex-col sm:flex-row gap-6 items-start">
               <div className="relative">
-                {photoUrl ? (
-                  <Image
-                    src={photoUrl}
-                    alt={tutor.title}
-                    width={128}
-                    height={128}
-                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover border-4 border-slate-50 dark:border-slate-800 shadow-lg"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center border-4 border-slate-50 dark:border-slate-800 shadow-lg">
-                    <span className="text-3xl font-bold text-white">
-                      {initials}
-                    </span>
-                  </div>
-                )}
+                <Avatar
+                  name={displayName}
+                  avatarUrl={tutor.profile_photo_url}
+                  userId={tutor.user_id}
+                  size="xl"
+                  className="w-24 h-24 sm:w-32 sm:h-32"
+                />
                 <div
                   className="absolute -bottom-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full border-[3px] border-white dark:border-slate-900 flex items-center justify-center shadow-sm"
                   title="Online"

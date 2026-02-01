@@ -17,6 +17,10 @@ export interface User {
   timezone: string;
   first_name?: string | null;
   last_name?: string | null;
+  /** Computed by backend: "{first_name} {last_name}" */
+  full_name?: string | null;
+  /** True if user needs to complete profile (missing first_name or last_name) */
+  profile_incomplete?: boolean;
   preferred_language?: string | null;
   locale?: string | null;
 }

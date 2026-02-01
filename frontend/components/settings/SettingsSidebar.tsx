@@ -11,7 +11,6 @@ import {
   FiLink,
   FiAlertTriangle,
   FiVideo,
-  FiGlobe,
 } from 'react-icons/fi'
 import { auth } from '@/lib/api'
 
@@ -30,7 +29,6 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'notifications', label: 'Notifications', icon: FiBell, href: '/settings/notifications' },
   { id: 'payments', label: 'Payments & Billing', icon: FiCreditCard, href: '/settings/payments' },
   { id: 'integrations', label: 'Integrations', icon: FiLink, href: '/settings/integrations' },
-  { id: 'locale', label: 'Language & Region', icon: FiGlobe, href: '/settings/locale' },
   { id: 'danger', label: 'Danger Zone', icon: FiAlertTriangle, href: '/settings/danger' },
 ]
 

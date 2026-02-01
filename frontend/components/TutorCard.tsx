@@ -17,6 +17,7 @@ import { auth } from "@/lib/api";
 import Cookies from "js-cookie";
 import Button from "./Button";
 import Badge from "./Badge";
+import Avatar from "./Avatar";
 
 interface TutorCardProps {
   tutor: TutorPublicSummary;
@@ -97,20 +98,12 @@ export default function TutorCard({
         onClick={() => (onViewProfile ? onViewProfile() : router.push(`/tutors/${tutor.id}`))}
       >
         <div className="flex items-start gap-4">
-          {photoUrl ? (
-            <Image
-              src={photoUrl}
-              alt={displayName}
-              width={64}
-              height={64}
-              className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg border-2 border-slate-200 dark:border-slate-700">
-              {initials}
-            </div>
-          )}
+          <Avatar
+            name={displayName}
+            avatarUrl={tutor.profile_photo_url}
+            userId={tutor.id}
+            size="lg"
+          />
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-slate-900 dark:text-white truncate">{displayName}</h3>
             {tutor.headline && (
@@ -148,20 +141,12 @@ export default function TutorCard({
         <div className="p-6">
           {/* Tutor Header */}
           <div className="flex items-start gap-4 mb-4">
-            {photoUrl ? (
-              <Image
-                src={photoUrl}
-                alt={displayName}
-                width={80}
-                height={80}
-                className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-slate-800 shadow-md"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-2xl border-4 border-white dark:border-slate-800 shadow-md">
-                {initials}
-              </div>
-            )}
+            <Avatar
+              name={displayName}
+              avatarUrl={tutor.profile_photo_url}
+              userId={tutor.id}
+              size="xl"
+            />
             <div className="flex-1">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
                 {displayName}
@@ -277,37 +262,24 @@ export default function TutorCard({
 
         {/* Header */}
         <div className="flex gap-4 mb-4">
-          {photoUrl ? (
-            <Image
-              src={photoUrl}
-              alt={displayName}
-              width={64}
-              height={64}
-              className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 hover:scale-105 transition-transform duration-200 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onViewProfile) {
-                  onViewProfile();
-                } else {
-                  router.push(`/tutors/${tutor.id}`);
-                }
-              }}
+          <div
+            className="shrink-0 hover:scale-105 transition-transform duration-200 cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onViewProfile) {
+                onViewProfile();
+              } else {
+                router.push(`/tutors/${tutor.id}`);
+              }
+            }}
+          >
+            <Avatar
+              name={displayName}
+              avatarUrl={tutor.profile_photo_url}
+              userId={tutor.id}
+              size="lg"
             />
-          ) : (
-            <div
-              className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg border-2 border-slate-200 dark:border-slate-700 shrink-0 hover:scale-105 transition-transform duration-200 cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onViewProfile) {
-                  onViewProfile();
-                } else {
-                  router.push(`/tutors/${tutor.id}`);
-                }
-              }}
-            >
-              {initials}
-            </div>
-          )}
+          </div>
           <div>
             <h3 className="font-bold text-lg text-slate-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
               {displayName}

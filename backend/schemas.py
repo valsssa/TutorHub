@@ -17,12 +17,16 @@ from core.utils import StringUtils
 
 
 class UserCreate(BaseModel):
-    """Schema for user registration."""
+    """Schema for user registration.
+
+    Both first_name and last_name are required for all registered users.
+    Names are normalized: trimmed, whitespace-only values rejected.
+    """
 
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
-    first_name: str | None = Field(None, min_length=1, max_length=100)
-    last_name: str | None = Field(None, min_length=1, max_length=100)
+    first_name: str = Field(..., min_length=1, max_length=100, description="User's first name (required)")
+    last_name: str = Field(..., min_length=1, max_length=100, description="User's last name (required)")
     role: str | None = Field(default="student")
     timezone: str | None = Field(default="UTC")
     currency: str | None = Field(default="USD")
@@ -31,6 +35,31 @@ class UserCreate(BaseModel):
     @classmethod
     def email_lowercase(cls, email_value: str) -> str:
         return StringUtils.normalize_email(email_value)
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_name(cls, value: str, info) -> str:
+        """Validate and normalize name fields.
+
+        - Trims leading/trailing whitespace
+        - Rejects whitespace-only strings
+        - Enforces min 1 char after trim, max 100 chars
+        """
+        if not value:
+            raise ValueError(f"{info.field_name.replace('_', ' ').title()} is required")
+
+        # Normalize: trim whitespace
+        normalized = value.strip()
+
+        # Reject whitespace-only strings
+        if not normalized:
+            raise ValueError(f"{info.field_name.replace('_', ' ').title()} cannot be empty or whitespace only")
+
+        # Enforce length constraints after normalization
+        if len(normalized) > 100:
+            raise ValueError(f"{info.field_name.replace('_', ' ').title()} must not exceed 100 characters")
+
+        return normalized
 
     @field_validator("password")
     @classmethod
@@ -117,12 +146,14 @@ class TokenRefreshRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """User response schema."""
+    """User response schema with computed full_name."""
 
     id: int
     email: str
     first_name: str | None = Field(None, min_length=1, max_length=100)
     last_name: str | None = Field(None, min_length=1, max_length=100)
+    full_name: str | None = None  # Computed field: "{first_name} {last_name}"
+    profile_incomplete: bool = False  # True if user needs to complete profile (missing names)
     role: str
     is_active: bool
     is_verified: bool
@@ -135,6 +166,16 @@ class UserResponse(BaseModel):
     locale: str | None = None
 
     model_config = {"from_attributes": True}
+
+    def model_post_init(self, __context: Any) -> None:
+        """Compute full_name and profile_incomplete after initialization."""
+        # Compute full_name from first_name and last_name
+        if self.first_name or self.last_name:
+            self.full_name = f"{self.first_name or ''} {self.last_name or ''}".strip()
+        else:
+            self.full_name = None
+        # Set profile_incomplete if names are missing
+        self.profile_incomplete = not (self.first_name and self.last_name)
 
     @field_validator("avatar_url", mode="before")
     @classmethod
@@ -803,12 +844,39 @@ class UserUpdate(BaseModel):
 
 
 class UserSelfUpdate(BaseModel):
-    """User self-update for basic profile information."""
+    """User self-update for basic profile information.
+
+    Names cannot be cleared once set - they can only be updated to valid non-empty values.
+    """
 
     first_name: str | None = Field(None, min_length=1, max_length=100)
     last_name: str | None = Field(None, min_length=1, max_length=100)
     timezone: str | None = None
     currency: str | None = None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_name_if_provided(cls, value: str | None, info) -> str | None:
+        """Validate and normalize name fields if provided.
+
+        If a name is provided, it must be non-empty after trimming.
+        This prevents clearing names via update.
+        """
+        if value is None:
+            return None
+
+        # Normalize: trim whitespace
+        normalized = value.strip()
+
+        # Reject whitespace-only strings (prevents clearing via "   ")
+        if not normalized:
+            raise ValueError(f"{info.field_name.replace('_', ' ').title()} cannot be empty or whitespace only")
+
+        # Enforce length constraints after normalization
+        if len(normalized) > 100:
+            raise ValueError(f"{info.field_name.replace('_', ' ').title()} must not exceed 100 characters")
+
+        return normalized
 
 
 class ReportCreate(BaseModel):

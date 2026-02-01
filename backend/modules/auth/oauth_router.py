@@ -177,8 +177,9 @@ async def google_callback(
 
         email = StringUtils.normalize_email(email)
         google_id = oauth_user_data.get("sub")
-        first_name = oauth_user_data.get("given_name", "")
-        last_name = oauth_user_data.get("family_name", "")
+        # Get names from Google - these may be empty if user hasn't set them
+        first_name = (oauth_user_data.get("given_name") or "").strip()
+        last_name = (oauth_user_data.get("family_name") or "").strip()
         oauth_user_data.get("picture")
 
         # Find or create user - exclude soft-deleted users
@@ -187,6 +188,7 @@ async def google_callback(
             User.deleted_at.is_(None),
         ).first()
         is_new_user = False
+        profile_incomplete = False
 
         if user:
             # Update Google ID if not set
@@ -194,22 +196,28 @@ async def google_callback(
                 user.google_id = google_id
                 user.updated_at = datetime.now(UTC)
 
-            # Update name if empty
-            if not user.first_name:
+            # Update name if empty (use Google's name if available)
+            if not user.first_name and first_name:
                 user.first_name = first_name
-            if not user.last_name:
+            if not user.last_name and last_name:
                 user.last_name = last_name
+
+            # Check if profile is incomplete (missing names)
+            profile_incomplete = not (user.first_name and user.last_name)
 
         else:
             # Create new user with atomic transaction to prevent orphaned records
             # Both User and UserProfile are created together or not at all
             is_new_user = True
+            # Check if names are complete from Google
+            profile_incomplete = not (first_name and last_name)
+
             with atomic_operation(db):
                 user = User(
                     email=email,
                     hashed_password="",  # OAuth users don't have password
-                    first_name=first_name,
-                    last_name=last_name,
+                    first_name=first_name if first_name else None,
+                    last_name=last_name if last_name else None,
                     role="student",  # Default role for new OAuth users
                     is_active=True,
                     is_verified=True,  # Email verified by Google
@@ -225,7 +233,10 @@ async def google_callback(
                 db.add(profile)
                 # atomic_operation commits both on context exit
 
-            logger.info(f"Created new user via Google OAuth: {email}")
+            if profile_incomplete:
+                logger.info(f"Created OAuth user with incomplete profile (missing names): {email}")
+            else:
+                logger.info(f"Created new user via Google OAuth: {email}")
 
         if not is_new_user:
             db.commit()  # Commit updates for existing users
@@ -240,6 +251,7 @@ async def google_callback(
         params = {
             "token": access_token,
             "new_user": "true" if is_new_user else "false",
+            "profile_incomplete": "true" if profile_incomplete else "false",
         }
 
         return RedirectResponse(

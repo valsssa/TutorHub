@@ -23,11 +23,13 @@ stages:
 
 default:
   interruptible: true
+  timeout: 15 minutes
   retry:
     max: 2
     when:
       - runner_system_failure
       - stuck_or_timeout_failure
+      - job_execution_timeout
 
 .node_cache: &node_cache
   cache:
@@ -161,6 +163,7 @@ test:frontend:
 test:backend:
   stage: test
   image: python:3.12-slim
+  timeout: 20 minutes
   <<: *pip_cache
   needs:
     - job: lint:backend
@@ -177,10 +180,26 @@ test:backend:
     DATABASE_URL: postgresql://test_user:test_password@postgres:5432/test_db
     REDIS_URL: redis://redis:6379/0
     TESTING: "true"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends postgresql-client
+    - |
+      echo "Waiting for PostgreSQL..."
+      for i in $(seq 1 30); do
+        pg_isready -h postgres -U test_user && break
+        echo "Attempt $i/30: PostgreSQL not ready, waiting..."
+        sleep 2
+      done
+    - |
+      echo "Waiting for Redis..."
+      for i in $(seq 1 30); do
+        timeout 1 bash -c "cat < /dev/null > /dev/tcp/redis/6379" 2>/dev/null && break
+        echo "Attempt $i/30: Redis not ready, waiting..."
+        sleep 2
+      done
   script:
     - cd backend
     - pip install --quiet -r requirements.txt -r requirements-dev.txt
-    - pytest --cov=. --cov-report=term -v
+    - pytest --cov=. --cov-report=term -v --timeout=120
   coverage: /TOTAL.*\s+(\d+%)/
   rules:
     - changes:
@@ -276,14 +295,26 @@ security:secrets:scan:
 docker:build:frontend:
   stage: docker
   image: docker:24-dind
+  timeout: 30 minutes
   services:
-    - docker:24-dind
+    - name: docker:24-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   <<: *docker_login
   needs:
     - job: build:frontend
     - job: security:frontend:dependencies
       optional: true
   script:
+    - |
+      echo "Waiting for Docker daemon..."
+      for i in $(seq 1 30); do
+        docker info && break
+        echo "Attempt $i/30: Docker not ready, waiting..."
+        sleep 2
+      done
     - docker build
         --cache-from $FRONTEND_IMAGE:latest
         --build-arg BUILDKIT_INLINE_CACHE=1
@@ -304,14 +335,26 @@ docker:build:frontend:
 docker:build:backend:
   stage: docker
   image: docker:24-dind
+  timeout: 30 minutes
   services:
-    - docker:24-dind
+    - name: docker:24-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   <<: *docker_login
   needs:
     - job: build:backend
     - job: security:backend:dependencies
       optional: true
   script:
+    - |
+      echo "Waiting for Docker daemon..."
+      for i in $(seq 1 30); do
+        docker info && break
+        echo "Attempt $i/30: Docker not ready, waiting..."
+        sleep 2
+      done
     - docker build
         --cache-from $BACKEND_IMAGE:latest
         --build-arg BUILDKIT_INLINE_CACHE=1
@@ -332,12 +375,23 @@ docker:build:backend:
 docker:scan:frontend:
   stage: docker
   image: docker:24-dind
+  timeout: 20 minutes
   services:
-    - docker:24-dind
+    - name: docker:24-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   <<: *docker_login
   needs:
     - job: docker:build:frontend
   script:
+    - |
+      echo "Waiting for Docker daemon..."
+      for i in $(seq 1 30); do
+        docker info && break
+        sleep 2
+      done
     - docker pull $FRONTEND_IMAGE:$IMAGE_TAG_SHA
     - apk add --no-cache curl
     - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
@@ -349,12 +403,23 @@ docker:scan:frontend:
 docker:scan:backend:
   stage: docker
   image: docker:24-dind
+  timeout: 20 minutes
   services:
-    - docker:24-dind
+    - name: docker:24-dind
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   <<: *docker_login
   needs:
     - job: docker:build:backend
   script:
+    - |
+      echo "Waiting for Docker daemon..."
+      for i in $(seq 1 30); do
+        docker info && break
+        sleep 2
+      done
     - docker pull $BACKEND_IMAGE:$IMAGE_TAG_SHA
     - apk add --no-cache curl
     - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin

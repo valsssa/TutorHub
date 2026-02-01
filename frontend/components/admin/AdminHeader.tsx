@@ -3,6 +3,7 @@
 import { type Dispatch, type SetStateAction } from 'react'
 import { Bell, ChevronDown, Globe, Menu } from 'lucide-react'
 import { useLocale } from '@/contexts/LocaleContext'
+import { getDisplayName, getInitials } from '@/lib/displayName'
 
 import type { UserData } from '@/types/admin'
 
@@ -66,19 +67,22 @@ export default function AdminHeader({
                 onClick={() => setIsMenuOpen((prev) => !prev)}
                 className="flex items-center space-x-2"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                  AD
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
+                  {user ? getInitials(user) : 'AD'}
                 </div>
-                <span className="text-sm font-medium hidden md:inline">Admin</span>
+                <span className="text-sm font-medium hidden md:inline">
+                  {user ? getDisplayName(user, 'Admin') : 'Admin'}
+                </span>
                 <ChevronDown
                   className={`w-4 h-4 text-gray-600 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}
                 />
               </button>
 
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-2 z-[10001]">
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border py-2 z-[10001]">
                   <div className="px-4 py-2 border-b">
-                    <p className="text-sm font-medium">Account Settings</p>
+                    <p className="text-sm font-medium">{user ? getDisplayName(user) : 'Admin'}</p>
+                    <p className="text-xs text-gray-500">{user?.email || 'admin@example.com'}</p>
                   </div>
                   <button className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">
                     Profile

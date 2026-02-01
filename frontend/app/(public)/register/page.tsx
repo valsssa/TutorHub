@@ -234,6 +234,7 @@ export default function RegisterPage() {
                 onChange={(e) => handleChange("firstName", e.target.value)}
                 onBlur={() => handleBlur("firstName")}
                 error={touched.firstName ? errors.firstName : undefined}
+                autoComplete="given-name"
               />
               <Input
                 type="text"
@@ -243,6 +244,7 @@ export default function RegisterPage() {
                 onChange={(e) => handleChange("lastName", e.target.value)}
                 onBlur={() => handleBlur("lastName")}
                 error={touched.lastName ? errors.lastName : undefined}
+                autoComplete="family-name"
               />
             </div>
 

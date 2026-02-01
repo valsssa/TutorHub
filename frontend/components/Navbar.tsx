@@ -27,6 +27,7 @@ import { authUtils } from '@/lib/auth'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { createLogger } from '@/lib/logger'
+import { getDisplayName, getGreetingName } from '@/lib/displayName'
 import Button from './Button'
 import NotificationBell from './NotificationBell'
 import Avatar from './Avatar'
@@ -119,10 +120,8 @@ export default function Navbar({ user }: NavbarProps) {
 
   const renderAvatar = (sizeVariant: 'xs' | 'sm' | 'md' = 'sm') => {
     const avatarUrl = user.avatarUrl ?? user.avatar_url
-    // Use first_name + last_name if available, fallback to email
-    const displayName = user.first_name && user.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user.email
+    // Use centralized display name utility for consistent formatting
+    const displayName = getDisplayName(user)
     return (
       <Avatar
         name={displayName}
@@ -232,7 +231,7 @@ export default function Navbar({ user }: NavbarProps) {
             >
               {renderAvatar()}
               <span className="hidden sm:block text-sm font-bold text-slate-900 dark:text-white max-w-[120px] truncate">
-                {user.email?.split('@')[0]}
+                {getGreetingName(user)}
               </span>
               <FiChevronDown className={`w-4 h-4 text-slate-400 hidden sm:block transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -252,8 +251,8 @@ export default function Navbar({ user }: NavbarProps) {
                   <div className="px-5 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
                     {renderAvatar('sm')}
                     <div className="overflow-hidden">
-                      <p className="font-bold text-slate-900 dark:text-white truncate">{user.email}</p>
-                      <p className="text-xs text-slate-500 capitalize">{user.role?.toLowerCase()}</p>
+                      <p className="font-bold text-slate-900 dark:text-white truncate">{getDisplayName(user)}</p>
+                      <p className="text-xs text-slate-500">{user.email}</p>
                     </div>
                   </div>
 
@@ -392,8 +391,8 @@ export default function Navbar({ user }: NavbarProps) {
                 <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
                   {renderAvatar()}
                   <div>
-                    <p className="font-bold text-slate-900 dark:text-white">{user.email}</p>
-                    <p className="text-xs text-slate-500 capitalize">{user.role}</p>
+                    <p className="font-bold text-slate-900 dark:text-white">{getDisplayName(user)}</p>
+                    <p className="text-xs text-slate-500">{user.email}</p>
                   </div>
                 </div>
 

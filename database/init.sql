@@ -565,8 +565,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     sent_at TIMESTAMPTZ,
     read_at TIMESTAMPTZ,
     dismissed_at TIMESTAMPTZ,
-    metadata JSONB DEFAULT '{}'::JSONB,
-    delivery_channels TEXT[] DEFAULT ARRAY['in_app']::TEXT[],
+    extra_data JSONB DEFAULT '{}'::JSONB,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 

@@ -8,6 +8,7 @@ import { auth } from "@/lib/api";
 import { User } from "@/types";
 import { useToast } from "@/components/ToastContainer";
 import { avatars } from "@/lib/api";
+import { getDisplayName } from "@/lib/displayName";
 import Input from "@/components/Input";
 import Button from "@/components/Button";
 import SettingsCard from "@/components/settings/SettingsCard";
@@ -30,15 +31,10 @@ export default function ProfileSettingsPage() {
       try {
         const currentUser = await auth.getCurrentUser();
         setUser(currentUser);
-        
-        if (currentUser.first_name) {
-          const nameParts = currentUser.first_name.split(" ");
-          setFirstName(nameParts[0] || "");
-          setLastName(nameParts.slice(1).join(" ") || "");
-        } else {
-          setFirstName("");
-          setLastName("");
-        }
+
+        // Use proper first_name and last_name fields from API
+        setFirstName(currentUser.first_name?.trim() || "");
+        setLastName(currentUser.last_name?.trim() || "");
       } catch (error) {
         showError("Failed to load profile");
       } finally {
@@ -87,8 +83,13 @@ export default function ProfileSettingsPage() {
   };
 
   const handleSave = async () => {
+    // Validate both names are required
     if (!firstName.trim()) {
       showError("First name is required");
+      return;
+    }
+    if (!lastName.trim()) {
+      showError("Last name is required");
       return;
     }
 
@@ -96,7 +97,7 @@ export default function ProfileSettingsPage() {
     try {
       const updatedUser = await auth.updateUser({
         first_name: firstName.trim(),
-        last_name: lastName.trim() || undefined,
+        last_name: lastName.trim(),
       });
       setUser(updatedUser);
       showSuccess("Profile updated successfully");
@@ -119,7 +120,8 @@ export default function ProfileSettingsPage() {
     return null;
   }
 
-  const displayName = firstName || user.email.split('@')[0];
+  // Use centralized display name utility
+  const displayName = getDisplayName(user);
   const avatarUrl = user.avatarUrl ?? user.avatar_url;
 
   return (
@@ -214,14 +216,9 @@ export default function ProfileSettingsPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                if (user.first_name) {
-                  const nameParts = user.first_name.split(" ");
-                  setFirstName(nameParts[0] || "");
-                  setLastName(nameParts.slice(1).join(" ") || "");
-                } else {
-                  setFirstName("");
-                  setLastName("");
-                }
+                // Reset to original values from user object
+                setFirstName(user.first_name?.trim() || "");
+                setLastName(user.last_name?.trim() || "");
               }}
               disabled={saving}
             >
@@ -246,13 +243,16 @@ export default function ProfileSettingsPage() {
             placeholder="Enter your first name"
             required
             disabled={saving}
+            autoComplete="given-name"
           />
           <Input
             label="Last name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             placeholder="Enter your last name"
+            required
             disabled={saving}
+            autoComplete="family-name"
           />
           <div className="pt-2">
             <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">

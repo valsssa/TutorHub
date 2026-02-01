@@ -19,7 +19,17 @@ from .base import Base
 
 
 class User(Base):
-    """User authentication model."""
+    """User authentication model.
+
+    User Identity Contract:
+    - first_name: Required for complete profile, max 100 chars
+    - last_name: Required for complete profile, max 100 chars
+    - profile_incomplete: TRUE if user needs to complete profile (missing names)
+
+    All registered users must have both first_name and last_name.
+    OAuth users may be created with profile_incomplete=TRUE and must
+    complete their profile on first login.
+    """
 
     __tablename__ = "users"
 
@@ -28,6 +38,8 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
+    # Profile completion flag - TRUE if user needs to provide missing names
+    profile_incomplete = Column(Boolean, default=False, nullable=False)
     role = Column(String(20), nullable=False, default="student")
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)

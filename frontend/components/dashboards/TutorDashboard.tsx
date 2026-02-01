@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { User, TutorProfile } from "@/types";
 import { BookingDTO } from "@/types/booking";
+import { getDisplayName } from "@/lib/displayName";
 import Avatar from "@/components/Avatar";
 import AppShell from "@/components/AppShell";
 import Badge from "@/components/Badge";
@@ -228,7 +229,7 @@ export default function TutorDashboard({
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome, {[user.first_name, user.last_name].filter(Boolean).join(' ') || profile?.title || user.email}</h1>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome, {getDisplayName(user, profile?.title)}</h1>
 
               {actualVerificationStatus === 'verified' && <Badge variant="verified">Verified Tutor</Badge>}
               {actualVerificationStatus === 'pending' && <Badge variant="pending">Verification Pending</Badge>}

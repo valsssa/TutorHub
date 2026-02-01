@@ -62,6 +62,7 @@ export default function MessagingSection({
                           size="sm"
                           showOnline={conversation.status === 'online'}
                         />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="font-medium text-gray-800 truncate">{conversation.participant}</p>
@@ -96,6 +97,7 @@ export default function MessagingSection({
                       size="sm"
                       showOnline={selectedConversation.status === 'online'}
                     />
+                  </div>
                   <div>
                     <p className="font-medium text-gray-800">{selectedConversation.participant}</p>
                     <p className="text-sm text-gray-600">{selectedConversation.role}</p>

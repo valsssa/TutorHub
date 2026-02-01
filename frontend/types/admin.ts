@@ -8,6 +8,13 @@ export interface UserData {
   updated_at?: string
   currency: string
   timezone: string
+  // User identity fields
+  first_name?: string | null
+  last_name?: string | null
+  /** Computed by backend: "{first_name} {last_name}" */
+  full_name?: string | null
+  /** True if user needs to complete profile (missing first_name or last_name) */
+  profile_incomplete?: boolean
 }
 
 export interface Stats {

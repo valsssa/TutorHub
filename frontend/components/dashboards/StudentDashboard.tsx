@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { User, TutorPublicSummary, StudentProfile } from "@/types";
 import { BookingDTO } from "@/types/booking";
 import { favorites, tutors, students } from "@/lib/api";
+import { getGreetingName } from "@/lib/displayName";
 import { useToast } from "@/components/ToastContainer";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -114,8 +115,8 @@ export default function StudentDashboard({ user, bookings, onAvatarChange: _onAv
     ? (studentProfile.credit_balance_cents / 100).toFixed(2)
     : "0.00";
 
-  const getUserDisplayName = (): string =>
-    user.first_name ? user.first_name : user.email.split("@")[0];
+  // Use centralized display name utility for consistent greeting
+  const getUserDisplayName = (): string => getGreetingName(user);
 
   const isJoinable = (startAt: string): boolean => {
     const now = new Date().getTime();
