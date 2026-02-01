@@ -1,15 +1,18 @@
 variables:
   DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: "/certs"
-  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: tcp://docker:2375
   DOCKER_BUILDKIT: "1"
   COMPOSE_DOCKER_CLI_BUILD: "1"
   FF_USE_FASTZIP: "true"
   CACHE_COMPRESSION_LEVEL: "fast"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
-  FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend
-  BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend
+  # Docker Hub image names
+  DOCKERHUB_USER: va2mne
+  DOCKERHUB_REPO: tutorhub
+  FRONTEND_IMAGE: va2mne/tutorhub-frontend
+  BACKEND_IMAGE: va2mne/tutorhub-backend
   IMAGE_TAG_SHA: $CI_COMMIT_SHORT_SHA
   IMAGE_TAG_BRANCH: $CI_COMMIT_REF_SLUG
 
@@ -57,7 +60,7 @@ default:
 
 .docker_login: &docker_login
   before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
 
 validate:frontend:syntax:
   stage: validate
@@ -104,7 +107,7 @@ validate:env:
   image: alpine:latest
   script:
     - |
-      REQUIRED_VARS="CI_REGISTRY CI_REGISTRY_USER CI_REGISTRY_PASSWORD"
+      REQUIRED_VARS="DOCKERHUB_USER DOCKERHUB_TOKEN"
       for var in $REQUIRED_VARS; do
         if [ -z "$(eval echo \$$var)" ]; then
           echo "ERROR: Required variable $var is not set"
