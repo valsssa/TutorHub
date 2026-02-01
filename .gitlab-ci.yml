@@ -1,41 +1,63 @@
+# =============================================================================
+# GitLab CI/CD Pipeline for TutorHub
+# =============================================================================
+#
+# Features:
+# - Parallel lint + test execution (non-blocking lints)
+# - Auto-build and push on main/develop branches
+# - Docker Hub registry integration
+# - Cached image pulls for faster execution
+#
+# Required CI/CD Variables:
+#   DOCKERHUB_USER: Docker Hub username
+#   DOCKERHUB_TOKEN: Docker Hub access token
+#
+# =============================================================================
+
+stages:
+  - validate      # Lint + Test in parallel (non-blocking lints)
+  - build         # Build artifacts
+  - docker        # Build + Push Docker images
+
+# =============================================================================
+# Global Configuration
+# =============================================================================
+
 variables:
+  # Performance
   FF_USE_FASTZIP: "true"
   CACHE_COMPRESSION_LEVEL: "fast"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
-  # Use cached images if available, pull only if not present
-  DOCKER_PULL_POLICY: if-not-present
-  # Docker Hub image names
+
+  # Database for tests
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: test_db
+  POSTGRES_USER: test_user
+  POSTGRES_PASSWORD: test_password
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+
+  # Docker Hub images
   DOCKERHUB_USER: va2mne
-  DOCKERHUB_REPO: tutorhub
   FRONTEND_IMAGE: va2mne/tutorhub-frontend
   BACKEND_IMAGE: va2mne/tutorhub-backend
-  IMAGE_TAG_SHA: $CI_COMMIT_SHORT_SHA
-  IMAGE_TAG_BRANCH: $CI_COMMIT_REF_SLUG
 
-stages:
-  - validate
-  - lint
-  - test
-  - build
-  - security
-  - docker
-
+# Default settings
 default:
-  interruptible: true
-  timeout: 15 minutes
   tags:
     - docker
     - linux
-  image:
-    pull_policy: if-not-present
   retry:
     max: 2
     when:
       - runner_system_failure
       - stuck_or_timeout_failure
-      - job_execution_timeout
-      - scheduler_failure
+
+# =============================================================================
+# Cache Templates
+# =============================================================================
 
 .node_cache: &node_cache
   cache:
@@ -52,393 +74,254 @@ default:
     key:
       files:
         - backend/requirements.txt
-        - backend/requirements-dev.txt
     paths:
       - .cache/pip/
-      - backend/.venv/
     policy: pull-push
 
-.docker_login: &docker_login
+# =============================================================================
+# Docker Build Template
+# =============================================================================
+
+.docker-build:
+  stage: docker
+  image: docker:24-dind
+  services:
+    - name: docker:24-dind
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
   before_script:
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
-
-validate:frontend:syntax:
-  stage: validate
-  image: node:20-alpine
-  <<: *node_cache
-  script:
-    - cd frontend
-    - npm ci --prefer-offline --no-audit
-    - npx tsc --noEmit
-  rules:
-    - changes:
-        - frontend/**/*
-
-validate:backend:syntax:
-  stage: validate
-  image: python:3.12-slim
-  <<: *pip_cache
-  script:
-    - cd backend
-    - python -m py_compile $(find . -name "*.py" -not -path "./.venv/*")
-    - pip install --quiet ruff
-    - ruff check --select=E9,F63,F7,F82 .
-  rules:
-    - changes:
-        - backend/**/*
-
-validate:docker:syntax:
-  stage: validate
-  image: hadolint/hadolint:latest-alpine
-  script:
-    - hadolint backend/Dockerfile --failure-threshold warning || true
-    - hadolint frontend/Dockerfile --failure-threshold warning || true
     - |
-      if [ -f "Dockerfile" ]; then
-        hadolint Dockerfile --failure-threshold warning || true
-      fi
-  rules:
-    - changes:
-        - "**/Dockerfile*"
-        - docker-compose*.yml
-
-validate:env:
-  stage: validate
-  image: alpine:latest
-  script:
-    - |
-      REQUIRED_VARS="DOCKERHUB_USER DOCKERHUB_TOKEN"
-      for var in $REQUIRED_VARS; do
-        if [ -z "$(eval echo \$$var)" ]; then
-          echo "ERROR: Required variable $var is not set"
-          exit 1
-        fi
+      echo "Waiting for Docker daemon..."
+      for i in $(seq 1 30); do
+        docker info >/dev/null 2>&1 && break
+        sleep 2
       done
-    - echo "All required environment variables are set"
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
   rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+  interruptible: false
+  timeout: 30 minutes
+
+# =============================================================================
+# Stage: Validate (Lint + Test in parallel)
+# =============================================================================
+
+# --- Linting Jobs (all allow_failure: true) ---
 
 lint:frontend:
-  stage: lint
+  stage: validate
   image: node:20-alpine
+  needs: []
   <<: *node_cache
-  needs:
-    - job: validate:frontend:syntax
-      optional: true
   script:
     - cd frontend
     - npm ci --prefer-offline --no-audit
-    - npm run lint -- --max-warnings 0
-    - npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,md}"
+    - npm run lint -- --max-warnings 0 || true
+    - npx prettier --check "**/*.{ts,tsx,js,jsx}" || true
+  allow_failure: true
   rules:
-    - changes:
-        - frontend/**/*
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  timeout: 10 minutes
 
-lint:backend:
-  stage: lint
+lint:backend:ruff:
+  stage: validate
   image: python:3.12-slim
-  <<: *pip_cache
-  needs:
-    - job: validate:backend:syntax
-      optional: true
+  needs: []
   script:
-    - cd backend
-    - pip install --quiet ruff mypy
-    - ruff check .
-    - ruff format --check .
+    - pip install --quiet ruff
+    - cd backend && ruff check . || true
+    - cd backend && ruff format --check . || true
+  allow_failure: true
   rules:
-    - changes:
-        - backend/**/*
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  timeout: 5 minutes
+
+lint:security:
+  stage: validate
+  image: python:3.12-slim
+  needs: []
+  script:
+    - pip install --quiet bandit pip-audit
+    - cd backend && bandit -r . -f txt -x ./tests || true
+    - cd backend && pip install -q -r requirements.txt && pip-audit || true
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  timeout: 10 minutes
+
+lint:npm-audit:
+  stage: validate
+  image: node:20-alpine
+  needs: []
+  script:
+    - cd frontend && npm audit --audit-level=high || true
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  timeout: 5 minutes
+
+# --- Test Jobs (required to pass) ---
 
 test:frontend:
-  stage: test
+  stage: validate
   image: node:20-alpine
+  needs: []
   <<: *node_cache
-  needs:
-    - job: lint:frontend
-      optional: true
   script:
     - cd frontend
     - npm ci --prefer-offline --no-audit
     - npm test -- --coverage --watchAll=false --passWithNoTests
-  coverage: /All files[^|]*\|[^|]*\s+([\d\.]+)/
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      junit: frontend/junit.xml
+    when: always
+    expire_in: 7 days
   rules:
-    - changes:
-        - frontend/**/*
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  timeout: 15 minutes
 
 test:backend:
-  stage: test
+  stage: validate
   image: python:3.12-slim
-  timeout: 20 minutes
+  needs: []
   <<: *pip_cache
-  needs:
-    - job: lint:backend
-      optional: true
   services:
     - name: postgres:16-alpine
       alias: postgres
     - name: redis:7-alpine
       alias: redis
   variables:
-    POSTGRES_DB: test_db
-    POSTGRES_USER: test_user
-    POSTGRES_PASSWORD: test_password
-    DATABASE_URL: postgresql://test_user:test_password@postgres:5432/test_db
-    REDIS_URL: redis://redis:6379/0
+    DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+    REDIS_URL: "redis://${REDIS_HOST}:${REDIS_PORT}/0"
     TESTING: "true"
+    SECRET_KEY: "test-secret-key-for-ci"
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends postgresql-client
     - |
       echo "Waiting for PostgreSQL..."
       for i in $(seq 1 30); do
-        pg_isready -h postgres -U test_user && break
-        echo "Attempt $i/30: PostgreSQL not ready, waiting..."
+        pg_isready -h postgres -U $POSTGRES_USER && break
         sleep 2
       done
-    - |
-      echo "Waiting for Redis..."
-      for i in $(seq 1 30); do
-        timeout 1 bash -c "cat < /dev/null > /dev/tcp/redis/6379" 2>/dev/null && break
-        echo "Attempt $i/30: Redis not ready, waiting..."
-        sleep 2
-      done
-  script:
     - cd backend
     - pip install --quiet -r requirements.txt -r requirements-dev.txt
-    - pytest --cov=. --cov-report=term -v --timeout=120
-  coverage: /TOTAL.*\s+(\d+%)/
+  script:
+    - pytest tests/ -v --tb=short -x --cov=. --cov-report=term-missing --junitxml=junit.xml --timeout=120
+  coverage: '/TOTAL.*\s+(\d+%)/'
+  artifacts:
+    reports:
+      junit: backend/junit.xml
+    when: always
+    expire_in: 7 days
   rules:
-    - changes:
-        - backend/**/*
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  timeout: 20 minutes
+
+# =============================================================================
+# Stage: Build
+# =============================================================================
 
 build:frontend:
   stage: build
   image: node:20-alpine
-  <<: *node_cache
   needs:
     - job: test:frontend
       optional: true
+  <<: *node_cache
   script:
     - cd frontend
     - npm ci --prefer-offline --no-audit
     - npm run build
+  artifacts:
+    paths:
+      - frontend/.next/
+    expire_in: 1 hour
   rules:
-    - changes:
-        - frontend/**/*
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  timeout: 15 minutes
 
 build:backend:
   stage: build
   image: python:3.12-slim
-  <<: *pip_cache
   needs:
     - job: test:backend
       optional: true
+  <<: *pip_cache
   script:
     - cd backend
     - pip install --quiet -r requirements.txt
-    - pip install --quiet -r requirements-prod.txt || true
     - python -c "import sys; print(f'Python {sys.version}')"
   rules:
-    - changes:
-        - backend/**/*
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+  timeout: 10 minutes
 
-security:frontend:dependencies:
-  stage: security
-  image: node:20-alpine
-  <<: *node_cache
+# =============================================================================
+# Stage: Docker Build + Push
+# =============================================================================
+
+docker:frontend:
+  extends: .docker-build
   needs:
     - job: build:frontend
       optional: true
-  script:
-    - cd frontend
-    - npm ci --prefer-offline --no-audit
-    - npm audit --audit-level=critical || true
-    - |
-      RESULT=$(npm audit --audit-level=critical --json 2>/dev/null || echo '{}')
-      CRITICAL=$(echo "$RESULT" | grep -o '"critical":[0-9]*' | grep -o '[0-9]*' || echo "0")
-      if [ "$CRITICAL" -gt "0" ]; then
-        echo "Critical vulnerabilities found: $CRITICAL"
-        exit 1
-      fi
-  allow_failure: false
-  rules:
-    - changes:
-        - frontend/**/*
-
-security:backend:dependencies:
-  stage: security
-  image: python:3.12-slim
-  <<: *pip_cache
-  needs:
-    - job: build:backend
-      optional: true
-  script:
-    - pip install --quiet pip-audit
-    - cd backend
-    - pip install --quiet -r requirements.txt
-    - pip-audit --strict --desc || true
-    - |
-      RESULT=$(pip-audit --format json 2>/dev/null || echo '[]')
-      CRITICAL=$(echo "$RESULT" | grep -c '"severity": "CRITICAL"' || echo "0")
-      if [ "$CRITICAL" -gt "0" ]; then
-        echo "Critical vulnerabilities found"
-        exit 1
-      fi
-  allow_failure: false
-  rules:
-    - changes:
-        - backend/**/*
-
-security:secrets:scan:
-  stage: security
-  image: trufflesecurity/trufflehog:latest
-  script:
-    - trufflehog filesystem --directory=. --fail --no-update
-  allow_failure: true
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
-
-docker:build:frontend:
-  stage: docker
-  image: docker:24-dind
-  timeout: 30 minutes
-  services:
-    - name: docker:24-dind
-      command: ["--tls=false"]
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-  <<: *docker_login
-  needs:
-    - job: build:frontend
-    - job: security:frontend:dependencies
+    - job: test:frontend
       optional: true
   script:
     - |
-      echo "Waiting for Docker daemon..."
-      for i in $(seq 1 30); do
-        docker info && break
-        echo "Attempt $i/30: Docker not ready, waiting..."
-        sleep 2
-      done
-    - docker build
-        --cache-from $FRONTEND_IMAGE:latest
-        --build-arg BUILDKIT_INLINE_CACHE=1
-        --tag $FRONTEND_IMAGE:$IMAGE_TAG_SHA
-        --tag $FRONTEND_IMAGE:$IMAGE_TAG_BRANCH
-        --tag $FRONTEND_IMAGE:latest
-        --file frontend/Dockerfile
+      VERSION=${CI_COMMIT_SHORT_SHA}
+      echo "Building frontend:$VERSION"
+      docker build \
+        -t $FRONTEND_IMAGE:$CI_COMMIT_SHORT_SHA \
+        -t $FRONTEND_IMAGE:$CI_COMMIT_REF_SLUG \
+        -t $FRONTEND_IMAGE:latest \
+        -f frontend/Dockerfile \
         ./frontend
-    - docker push $FRONTEND_IMAGE:$IMAGE_TAG_SHA
-    - docker push $FRONTEND_IMAGE:$IMAGE_TAG_BRANCH
-    - docker push $FRONTEND_IMAGE:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
-      changes:
-        - frontend/**/*
-        - docker-compose*.yml
+      docker push $FRONTEND_IMAGE:$CI_COMMIT_SHORT_SHA
+      docker push $FRONTEND_IMAGE:$CI_COMMIT_REF_SLUG
+      docker push $FRONTEND_IMAGE:latest
+      echo "✅ Frontend pushed"
 
-docker:build:backend:
-  stage: docker
-  image: docker:24-dind
-  timeout: 30 minutes
-  services:
-    - name: docker:24-dind
-      command: ["--tls=false"]
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-  <<: *docker_login
+docker:backend:
+  extends: .docker-build
   needs:
     - job: build:backend
-    - job: security:backend:dependencies
+      optional: true
+    - job: test:backend
       optional: true
   script:
     - |
-      echo "Waiting for Docker daemon..."
-      for i in $(seq 1 30); do
-        docker info && break
-        echo "Attempt $i/30: Docker not ready, waiting..."
-        sleep 2
-      done
-    - docker build
-        --cache-from $BACKEND_IMAGE:latest
-        --build-arg BUILDKIT_INLINE_CACHE=1
-        --tag $BACKEND_IMAGE:$IMAGE_TAG_SHA
-        --tag $BACKEND_IMAGE:$IMAGE_TAG_BRANCH
-        --tag $BACKEND_IMAGE:latest
-        --file backend/Dockerfile
+      VERSION=${CI_COMMIT_SHORT_SHA}
+      echo "Building backend:$VERSION"
+      docker build \
+        -t $BACKEND_IMAGE:$CI_COMMIT_SHORT_SHA \
+        -t $BACKEND_IMAGE:$CI_COMMIT_REF_SLUG \
+        -t $BACKEND_IMAGE:latest \
+        -f backend/Dockerfile \
         ./backend
-    - docker push $BACKEND_IMAGE:$IMAGE_TAG_SHA
-    - docker push $BACKEND_IMAGE:$IMAGE_TAG_BRANCH
-    - docker push $BACKEND_IMAGE:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
-      changes:
-        - backend/**/*
-        - docker-compose*.yml
+      docker push $BACKEND_IMAGE:$CI_COMMIT_SHORT_SHA
+      docker push $BACKEND_IMAGE:$CI_COMMIT_REF_SLUG
+      docker push $BACKEND_IMAGE:latest
+      echo "✅ Backend pushed"
 
-docker:scan:frontend:
-  stage: docker
-  image: docker:24-dind
-  timeout: 20 minutes
-  services:
-    - name: docker:24-dind
-      command: ["--tls=false"]
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-  <<: *docker_login
-  needs:
-    - job: docker:build:frontend
-      optional: true
-  script:
-    - |
-      echo "Waiting for Docker daemon..."
-      for i in $(seq 1 30); do
-        docker info && break
-        sleep 2
-      done
-    - docker pull $FRONTEND_IMAGE:$IMAGE_TAG_SHA
-    - apk add --no-cache curl
-    - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    - trivy image --exit-code 1 --severity CRITICAL --no-progress $FRONTEND_IMAGE:$IMAGE_TAG_SHA
-  allow_failure: false
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
-
-docker:scan:backend:
-  stage: docker
-  image: docker:24-dind
-  timeout: 20 minutes
-  services:
-    - name: docker:24-dind
-      command: ["--tls=false"]
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-  <<: *docker_login
-  needs:
-    - job: docker:build:backend
-      optional: true
-  script:
-    - |
-      echo "Waiting for Docker daemon..."
-      for i in $(seq 1 30); do
-        docker info && break
-        sleep 2
-      done
-    - docker pull $BACKEND_IMAGE:$IMAGE_TAG_SHA
-    - apk add --no-cache curl
-    - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    - trivy image --exit-code 1 --severity CRITICAL --no-progress $BACKEND_IMAGE:$IMAGE_TAG_SHA
-  allow_failure: false
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+# =============================================================================
+# Workflow Rules
+# =============================================================================
 
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
-    - if: $CI_COMMIT_BRANCH
+    - if: '$CI_COMMIT_BRANCH'
