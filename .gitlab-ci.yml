@@ -205,7 +205,7 @@ test:backend:
     DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
     REDIS_URL: "redis://${REDIS_HOST}:${REDIS_PORT}/0"
     TESTING: "true"
-    SECRET_KEY: "test-secret-key-for-ci"
+    SECRET_KEY: "test-secret-key-for-ci-pipeline-32chars"
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends postgresql-client
     - |
