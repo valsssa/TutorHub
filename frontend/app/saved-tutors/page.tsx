@@ -45,7 +45,6 @@ function SavedTutorsContent() {
         setFavoriteTutors([]);
       }
     } catch (error: any) {
-      console.error("Error loading favorites:", error);
       showError(error.response?.data?.detail || "Failed to load favorite tutors");
       setFavoriteTutors([]);
     } finally {
@@ -92,7 +91,6 @@ function SavedTutorsContent() {
 
       showSuccess("Tutor removed from favorites");
     } catch (error: any) {
-      console.error("Error removing favorite:", error);
       showError(error.response?.data?.detail || "Failed to remove from favorites");
     }
   };

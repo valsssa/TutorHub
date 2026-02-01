@@ -473,6 +473,7 @@ class TutorProfileResponse(BaseModel):
     is_approved: bool
     profile_status: str
     rejection_reason: str | None
+    approved_at: datetime | None = None
     average_rating: Decimal
     total_reviews: int
     total_sessions: int

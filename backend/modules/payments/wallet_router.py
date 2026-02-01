@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from core.rate_limiting import limiter
 from sqlalchemy.orm import Session
 
+from core.config import settings
 from core.dependencies import get_current_student_user
 from core.stripe_client import create_checkout_session
 from database import get_db
@@ -101,8 +102,8 @@ async def create_wallet_checkout(
         currency=checkout_request.currency.lower(),
         tutor_name=None,
         subject_name="Wallet Credit Top-Up",
-        success_url=f"{request.headers.get('origin', 'http://localhost:3000')}/wallet?payment=success",
-        cancel_url=f"{request.headers.get('origin', 'http://localhost:3000')}/wallet?payment=cancelled",
+        success_url=f"{request.headers.get('origin', settings.FRONTEND_URL)}/wallet?payment=success",
+        cancel_url=f"{request.headers.get('origin', settings.FRONTEND_URL)}/wallet?payment=cancelled",
         customer_email=current_user.email,
         metadata={
             "payment_type": "wallet_topup",
@@ -115,7 +116,7 @@ async def create_wallet_checkout(
     # Create payment record (status: pending)
     payment = Payment(
         booking_id=None,  # Wallet top-ups aren't tied to bookings
-        user_id=current_user.id,
+        student_id=current_user.id,
         amount_cents=checkout_request.amount_cents,
         currency=checkout_request.currency.lower(),
         status="pending",

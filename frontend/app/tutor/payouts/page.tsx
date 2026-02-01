@@ -140,8 +140,8 @@ function PayoutsContent() {
       ]);
       setCurrentUser(user);
       setBookings(data);
-    } catch (error) {
-      console.error("Failed to load payouts:", error);
+    } catch {
+      // Failed to load payouts data
     } finally {
       setLoading(false);
     }

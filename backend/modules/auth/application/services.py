@@ -87,7 +87,7 @@ class AuthService:
         if self.repository.exists_by_email(email):
             logger.warning(f"Registration attempt with existing email: {email}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Email already registered",
             )
 
@@ -153,6 +153,13 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account is inactive",
+            )
+
+        if not user.is_verified:
+            logger.warning(f"Login attempt for unverified account: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Email not verified. Please verify your email before logging in.",
             )
 
         # Create token data with role and password timestamp for security validation

@@ -58,7 +58,7 @@ def fake_avatar_storage(monkeypatch) -> FakeAvatarStorage:
     return storage
 
 
-def test_upload_avatar_success(client, student_token, db_session, fake_avatar_storage: FakeAvatarStorage):
+def test_upload_avatar_success(client, student_token, student_user, db_session, fake_avatar_storage: FakeAvatarStorage):
     image_bytes = _create_png_bytes()
 
     response = client.post(
@@ -74,7 +74,7 @@ def test_upload_avatar_success(client, student_token, db_session, fake_avatar_st
 
     # Ensure avatar stored and metadata persisted
     db_session.expire_all()
-    stored_user = db_session.query(User).filter_by(email="student@test.com").first()
+    stored_user = db_session.query(User).filter_by(email=student_user.email).first()
     assert stored_user and stored_user.avatar_key
     assert stored_user.avatar_key in fake_avatar_storage.objects
 
@@ -109,7 +109,7 @@ def test_upload_avatar_rejects_corrupt_image(client, student_token, fake_avatar_
 
 
 def test_delete_avatar_clears_metadata_and_storage(
-    client, student_token, db_session, fake_avatar_storage: FakeAvatarStorage
+    client, student_token, student_user, db_session, fake_avatar_storage: FakeAvatarStorage
 ):
     # Upload first
     image_bytes = _create_png_bytes()
@@ -129,7 +129,7 @@ def test_delete_avatar_clears_metadata_and_storage(
     assert delete_response.json()["detail"] == "Avatar removed successfully"
 
     db_session.expire_all()
-    stored_user = db_session.query(User).filter_by(email="student@test.com").first()
+    stored_user = db_session.query(User).filter_by(email=student_user.email).first()
     assert stored_user and stored_user.avatar_key is None
 
     # Ensure object removed from fake storage

@@ -178,7 +178,7 @@ function AnalyticsContent() {
       setCurrentUser(user);
       setBookings(data);
     } catch (error) {
-      console.error("Failed to load analytics:", error);
+      // Silently fail - analytics will show empty state
     } finally {
       setLoading(false);
     }

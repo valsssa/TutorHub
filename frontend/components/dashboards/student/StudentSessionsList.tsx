@@ -28,21 +28,27 @@ function getSubjectIcon(subjectName?: string | null): string {
   return "📚";
 }
 
-function getStatusMeta(status: string): { label: string; className: string } {
-  const normalized = status.toLowerCase();
-  if (normalized === "confirmed") {
-    return { label: "Confirmed", className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200" };
+/**
+ * Get status metadata based on session_state (four-field status system).
+ * Maps session states to display labels and CSS classes.
+ */
+function getStatusMeta(sessionState: string): { label: string; className: string } {
+  const normalized = sessionState.toUpperCase();
+  switch (normalized) {
+    case "SCHEDULED":
+      return { label: "Confirmed", className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200" };
+    case "REQUESTED":
+      return { label: "Pending", className: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200" };
+    case "CANCELLED":
+    case "EXPIRED":
+      return { label: normalized === "EXPIRED" ? "Expired" : "Cancelled", className: "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200" };
+    case "ENDED":
+      return { label: "Completed", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" };
+    case "ACTIVE":
+      return { label: "In Progress", className: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200" };
+    default:
+      return { label: sessionState, className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" };
   }
-  if (normalized === "pending") {
-    return { label: "Pending", className: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200" };
-  }
-  if (normalized.includes("cancelled") || normalized === "cancelled") {
-    return { label: "Cancelled", className: "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200" };
-  }
-  if (normalized === "completed") {
-    return { label: "Completed", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" };
-  }
-  return { label: status, className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" };
 }
 
 export default function StudentSessionsList({
@@ -91,10 +97,11 @@ export default function StudentSessionsList({
           </div>
         ) : (
           sessions.map((booking, idx) => {
-            const meta = getStatusMeta(booking.status);
-            const normalized = booking.status.toLowerCase();
+            const sessionState = booking.session_state || booking.status || "";
+            const meta = getStatusMeta(sessionState);
+            const normalizedState = sessionState.toUpperCase();
             const canJoin =
-              (normalized === "confirmed" || normalized === "pending") &&
+              (normalizedState === "SCHEDULED" || normalizedState === "REQUESTED" || normalizedState === "ACTIVE") &&
               isJoinable(booking.start_at) &&
               Boolean(booking.join_url);
 

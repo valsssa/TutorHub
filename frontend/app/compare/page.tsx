@@ -66,8 +66,8 @@ function CompareContent() {
         const selected = data.filter((t) => initialIds.includes(t.id));
         setSelectedTutors(selected.slice(0, MAX_COMPARE));
       }
-    } catch (error) {
-      console.error("Failed to load tutors:", error);
+    } catch {
+      // Failed to load tutors data
     } finally {
       setLoading(false);
     }
@@ -235,8 +235,8 @@ function CompareContent() {
                     <Avatar
                       name={`${tutor.first_name || ""} ${tutor.last_name || ""}`}
                       avatarUrl={tutor.avatar_url}
+                      userId={tutor.id}
                       size="lg"
-                      variant="gradient"
                     />
                     <h3 className="font-bold text-slate-900 dark:text-white mt-3">
                       {tutor.first_name} {tutor.last_name}
@@ -509,8 +509,8 @@ function CompareContent() {
                       <Avatar
                         name={`${tutor.first_name || ""} ${tutor.last_name || ""}`}
                         avatarUrl={tutor.avatar_url}
+                        userId={tutor.id}
                         size="md"
-                        variant="gradient"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-900 dark:text-white truncate">

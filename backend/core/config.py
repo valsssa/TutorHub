@@ -64,7 +64,9 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@db:5432/authapp"
 
-    # CORS
+    # CORS - allowed origins for cross-origin requests
+    # Production: Only HTTPS domains
+    # Development: Include localhost variants
     CORS_ORIGINS: list[str] | str = [
         "https://edustream.valsa.solutions",
         "http://edustream.valsa.solutions",
@@ -72,6 +74,8 @@ class Settings(BaseSettings):
         "http://api.valsa.solutions",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:8000",  # Backend dev server (Swagger UI)
+        "http://127.0.0.1:8000",
     ]
 
     # Rate Limiting

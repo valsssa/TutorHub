@@ -1,6 +1,9 @@
 """
 End-to-End tests for admin workflows.
-Tests complete user journeys using actual HTTP requests.
+Tests complete user journeys using actual HTTP requests against a live API.
+
+NOTE: These tests require a running production/staging environment.
+Set API_URL and RUN_E2E_TESTS=true to run these tests.
 """
 
 import os
@@ -12,6 +15,12 @@ import requests
 # Configuration
 API_URL = os.getenv("API_URL", "https://api.valsa.solutions")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://edustream.valsa.solutions")
+
+# Skip E2E tests unless explicitly enabled
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_E2E_TESTS", "").lower() != "true",
+    reason="E2E tests require RUN_E2E_TESTS=true and a live API"
+)
 
 
 class TestAdminWorkflows:

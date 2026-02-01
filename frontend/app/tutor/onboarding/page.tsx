@@ -187,7 +187,7 @@ function TutorOnboardingContent() {
         }
       }
     } catch (error) {
-      console.error("Failed to load draft:", error);
+      // Silently fail - use default form data
     }
     setLoading(false);
   }, []);
@@ -209,7 +209,7 @@ function TutorOnboardingContent() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
       setLastSaved(new Date());
     } catch (error) {
-      console.error("Failed to save draft:", error);
+      // Silently fail - auto-save is best effort
     }
     setIsSaving(false);
   }, [formData, currentStep]);
@@ -748,7 +748,7 @@ function TutorOnboardingContent() {
               width={128}
               height={128}
               className="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
-              unoptimized
+              loading="lazy"
             />
           ) : (
             <div className="w-32 h-32 bg-gray-200 rounded-full flex items-center justify-center border-2 border-dashed border-gray-400">

@@ -72,7 +72,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
     const token = Cookies.get("token");
     if (!token) {
-      console.warn("[useWebSocket] No token found, cannot connect");
       setState((prev) => ({
         ...prev,
         connectionState: "disconnected",
@@ -131,7 +130,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     // Connect if autoConnect is enabled
     if (autoConnect) {
       client.connect().catch((error) => {
-        console.error("[useWebSocket] Failed to connect:", error);
         if (mountedRef.current) {
           setState((prev) => ({
             ...prev,
@@ -156,7 +154,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     const checkToken = () => {
       const currentToken = Cookies.get("token");
       if (currentToken && currentToken !== tokenRef.current && clientRef.current) {
-        console.log("[useWebSocket] Token changed, updating client");
         tokenRef.current = currentToken;
         clientRef.current.updateToken(currentToken);
       }
@@ -173,7 +170,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     if (clientRef.current) {
       return clientRef.current.send(data);
     }
-    console.warn("[useWebSocket] Client not initialized");
     return false;
   }, []);
 
@@ -181,7 +177,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     if (clientRef.current) {
       return clientRef.current.sendWithAck(data);
     }
-    console.warn("[useWebSocket] Client not initialized");
     return null;
   }, []);
 
@@ -210,7 +205,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       if (token) {
         const client = createWebSocketClient(token);
         clientRef.current = client;
-        client.connect().catch(console.error);
+        client.connect().catch(() => {
+          // Connection error handled by error callback
+        });
       }
     }
   }, []);

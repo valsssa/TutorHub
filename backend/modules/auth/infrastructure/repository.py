@@ -33,8 +33,11 @@ class UserRepository:
             trial_restricted=getattr(user, "trial_restricted", False),
         )
 
-    def find_by_email(self, email: str) -> UserEntity | None:
+    def find_by_email(self, email: str | None) -> UserEntity | None:
         """Find user by email (case-insensitive), excluding soft-deleted users."""
+        if not email:
+            return None
+
         from sqlalchemy import func
 
         user = self.db.query(User).filter(

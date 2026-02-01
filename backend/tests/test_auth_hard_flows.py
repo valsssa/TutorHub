@@ -30,7 +30,7 @@ from models import RegistrationFraudSignal, User
 from modules.auth.password_router import _reset_tokens
 from modules.auth.services.fraud_detection import FraudDetectionService
 
-from conftest import create_test_user, STUDENT_PASSWORD
+from tests.conftest import create_test_user, STUDENT_PASSWORD
 
 
 # =============================================================================
@@ -98,11 +98,12 @@ class TestTokenEdgeCases:
     def test_token_expiration_exactly_at_request_time(
         self, client, db_session: Session, student_user: User
     ):
-        """Test token that expires exactly at the moment of request."""
-        # Create token that expires in 0 seconds (effectively expired)
+        """Test token that expires immediately before request (boundary test)."""
+        # Create token that expired 2 seconds ago (guaranteed to be expired)
+        # Using -2 seconds ensures we're well past any timing tolerance
         expired_token = TokenManager.create_access_token(
             data={"sub": student_user.email},
-            expires_delta=timedelta(seconds=0),
+            expires_delta=timedelta(seconds=-2),
         )
 
         response = client.get(
@@ -157,13 +158,18 @@ class TestTokenEdgeCases:
 
         # Change password (updates password_changed_at)
         student_user.hashed_password = PasswordHasher.hash("NewPassword123!")
-        student_user.password_changed_at = datetime.now(UTC)
+        password_change_time = datetime.now(UTC)
+        student_user.password_changed_at = password_change_time
         db_session.commit()
 
-        # Create new token after password change
-        new_token = TokenManager.create_access_token({"sub": student_user.email})
+        # Create new token after password change - include pwd_ts claim
+        # This simulates what the real login flow does
+        new_token = TokenManager.create_access_token({
+            "sub": student_user.email,
+            "pwd_ts": password_change_time.timestamp()
+        })
 
-        # New token should work
+        # New token should work because it includes pwd_ts >= password_changed_at
         response2 = client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {new_token}"},
@@ -542,7 +548,7 @@ class TestOAuthFlowComplexities:
         # Attempt to register via standard registration with same email
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "oauth_user@example.com", "password": "password123"},
+            json={"email": "oauth_user@example.com", "password": "Password123!"},
         )
 
         # Should fail with conflict (email already exists)
@@ -667,12 +673,12 @@ class TestSessionManagement:
         student_user.is_active = False
         db_session.commit()
 
-        # Session should now be invalid
+        # Session should now be invalid - returns 403 Forbidden for deactivated users
         response2 = client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert response2.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response2.status_code == status.HTTP_403_FORBIDDEN
 
     def test_session_invalidation_on_soft_delete(
         self, client, db_session: Session, student_user: User
@@ -960,7 +966,7 @@ class TestFraudDetectionScenarios:
         self, fraud_service: FraudDetectionService, db_session: Session
     ):
         """Test detection of bot-like registration patterns."""
-        test_ip = "bot_test_ip_192.168.99.99"
+        test_ip = "192.168.99.99"
 
         # Simulate rapid sequential registrations (bot pattern)
         for i in range(5):
@@ -1062,7 +1068,7 @@ class TestFraudDetectionScenarios:
 
         signals = [
             {"type": "email_pattern", "reason": "Suspicious pattern", "confidence": 0.7},
-            {"type": "behavior", "reason": "Bot-like behavior", "confidence": 0.8},
+            {"type": "behavioral", "reason": "Bot-like behavior", "confidence": 0.8},
         ]
 
         recorded = fraud_service.record_fraud_signals(
@@ -1181,15 +1187,20 @@ class TestIntegrationScenarios:
         # Create token before password change
         old_token = TokenManager.create_access_token({"sub": student_user.email})
 
-        # Simulate account compromise detection
-        student_user.password_changed_at = datetime.now(UTC)
+        # Simulate account compromise detection - change password
+        password_change_time = datetime.now(UTC)
+        student_user.password_changed_at = password_change_time
         student_user.hashed_password = PasswordHasher.hash("SecureNewPassword123!")
         db_session.commit()
 
-        # Create new token with fresh password
-        new_token = TokenManager.create_access_token({"sub": student_user.email})
+        # Create new token with fresh password - include pwd_ts claim
+        # This simulates what a real login would do
+        new_token = TokenManager.create_access_token({
+            "sub": student_user.email,
+            "pwd_ts": password_change_time.timestamp()
+        })
 
-        # New token should work
+        # New token should work because it includes pwd_ts >= password_changed_at
         response = client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {new_token}"},
@@ -1285,10 +1296,10 @@ class TestIntegrationScenarios:
         """Test that security events create proper audit trails."""
         fraud_service = FraudDetectionService(db_session)
 
-        # Record multiple security events
+        # Record multiple security events using valid signal types per database constraint
         signals = [
-            {"type": "login_anomaly", "reason": "Unusual location", "confidence": 0.6},
-            {"type": "device_change", "reason": "New device detected", "confidence": 0.5},
+            {"type": "behavioral", "reason": "Unusual location pattern", "confidence": 0.6},
+            {"type": "browser_fingerprint", "reason": "New browser detected", "confidence": 0.5},
         ]
 
         recorded = fraud_service.record_fraud_signals(

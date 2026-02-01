@@ -5,7 +5,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import cast, func, String
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models import RegistrationFraudSignal, User
@@ -78,7 +78,7 @@ class FraudDetectionService:
         recent_registrations_7d = (
             self.db.query(User)
             .filter(
-                cast(User.registration_ip, String) == client_ip,
+                func.host(User.registration_ip) == client_ip,
                 User.created_at > seven_days_ago,
                 User.deleted_at.is_(None),
             )
@@ -101,7 +101,7 @@ class FraudDetectionService:
         recent_registrations_24h = (
             self.db.query(User)
             .filter(
-                cast(User.registration_ip, String) == client_ip,
+                func.host(User.registration_ip) == client_ip,
                 User.created_at > one_day_ago,
                 User.deleted_at.is_(None),
             )

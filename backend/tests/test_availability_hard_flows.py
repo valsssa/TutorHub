@@ -251,13 +251,14 @@ class TestRecurringScheduleEdgeCases:
         local_start = datetime.combine(monday, dt_time(9, 0))
         local_aware = local_start.replace(tzinfo=tutor_tz)
 
-        # Convert to UTC: 9 AM JST = 12 AM UTC (midnight)
+        # Convert to UTC: 9 AM JST = 12 AM UTC (midnight) on the SAME day
+        # JST is UTC+9, so 9 AM - 9 hours = 0 AM (midnight) same calendar day
         utc_start = local_aware.astimezone(ZoneInfo("UTC"))
 
         assert utc_start.hour == 0, "9 AM JST should be midnight UTC"
-        # The UTC date might be different (Sunday in UTC)
-        assert utc_start.date() == monday - timedelta(days=1), (
-            "UTC date should be one day earlier"
+        # The UTC date is the SAME day (midnight Monday UTC = 9 AM Monday JST)
+        assert utc_start.date() == monday, (
+            "UTC date should be the same day (midnight UTC = 9 AM JST)"
         )
 
 
@@ -1128,32 +1129,40 @@ class TestConcurrentModification:
     def test_admin_override_during_tutor_edit(self, mock_db):
         """
         Test admin override taking precedence during tutor edit.
-        """
-        tutor_version = [1]
-        admin_version = [None]
 
-        def tutor_edit():
-            # Tutor reads version
-            current = tutor_version[0]
-            time.sleep(0.01)
-            # Try to update with old version
-            if admin_version[0] is not None and admin_version[0] > current:
-                return False  # Version conflict
-            tutor_version[0] = current + 1
-            return True
+        Simulates: Tutor reads version=1, then admin overrides to version=11,
+        then tutor tries to update with stale version=1 and should fail.
+        """
+        current_version = [1]
+        stale_tutor_read = [None]
+
+        def tutor_read_version():
+            # Tutor reads version before admin makes changes
+            stale_tutor_read[0] = current_version[0]
 
         def admin_override():
-            # Admin forcefully updates
-            admin_version[0] = tutor_version[0] + 10
-            tutor_version[0] = admin_version[0]
+            # Admin forcefully updates, jumping version
+            current_version[0] = current_version[0] + 10
             return True
 
-        # Admin override first
-        assert admin_override() is True
-        assert tutor_version[0] == 11
+        def tutor_write_with_stale_version():
+            # Tutor tries to update with stale version (optimistic locking)
+            expected = stale_tutor_read[0]
+            if current_version[0] != expected:
+                return False  # Version conflict
+            current_version[0] = expected + 1
+            return True
 
-        # Tutor's edit should fail due to version mismatch
-        assert tutor_edit() is False
+        # Tutor reads version first (gets version 1)
+        tutor_read_version()
+        assert stale_tutor_read[0] == 1
+
+        # Admin override happens (version becomes 11)
+        assert admin_override() is True
+        assert current_version[0] == 11
+
+        # Tutor's write should fail due to version mismatch (expected 1, actual 11)
+        assert tutor_write_with_stale_version() is False
 
     def test_availability_version_conflicts(self, mock_db):
         """

@@ -119,8 +119,6 @@ export default function AvatarUploader({
               height={96}
               className="h-full w-full object-cover"
               priority={false}
-              loading="lazy"
-              unoptimized
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-slate-500 dark:text-slate-400">

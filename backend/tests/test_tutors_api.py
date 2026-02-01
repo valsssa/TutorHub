@@ -8,7 +8,7 @@ from fastapi import status
 class TestTutorListing:
     """Test tutor listing endpoints."""
 
-    def test_list_tutors_returns_only_approved(self, client, test_db_session, student_token):
+    def test_list_tutors_returns_only_approved(self, client, db_session, student_token):
         """Test that only approved tutors are returned."""
         from models import TutorProfile, User
 
@@ -16,8 +16,8 @@ class TestTutorListing:
         tutor_approved = User(email="approved@test.com", hashed_password="hash", role="tutor")
         tutor_pending = User(email="pending@test.com", hashed_password="hash", role="tutor")
         tutor_rejected = User(email="rejected@test.com", hashed_password="hash", role="tutor")
-        test_db_session.add_all([tutor_approved, tutor_pending, tutor_rejected])
-        test_db_session.commit()
+        db_session.add_all([tutor_approved, tutor_pending, tutor_rejected])
+        db_session.commit()
 
         # Create profiles
         profile_approved = TutorProfile(
@@ -41,8 +41,8 @@ class TestTutorListing:
             is_approved=False,
             profile_status="rejected",
         )
-        test_db_session.add_all([profile_approved, profile_pending, profile_rejected])
-        test_db_session.commit()
+        db_session.add_all([profile_approved, profile_pending, profile_rejected])
+        db_session.commit()
 
         # List tutors as student
         response = client.get(
@@ -61,15 +61,15 @@ class TestTutorListing:
         assert "Pending Tutor" not in titles
         assert "Rejected Tutor" not in titles
 
-    def test_list_tutors_pagination(self, client, test_db_session, student_token):
+    def test_list_tutors_pagination(self, client, db_session, student_token):
         """Test tutor listing pagination."""
         from models import TutorProfile, User
 
         # Create multiple approved tutors
         for i in range(25):
             user = User(email=f"tutor{i}@test.com", hashed_password="hash", role="tutor")
-            test_db_session.add(user)
-            test_db_session.commit()
+            db_session.add(user)
+            db_session.commit()
 
             profile = TutorProfile(
                 user_id=user.id,
@@ -78,8 +78,8 @@ class TestTutorListing:
                 is_approved=True,
                 profile_status="approved",
             )
-            test_db_session.add(profile)
-        test_db_session.commit()
+            db_session.add(profile)
+        db_session.commit()
 
         # Test page 1
         response = client.get(
@@ -90,7 +90,7 @@ class TestTutorListing:
         data = response.json()
         assert len(data["items"]) == 10
         assert data["page"] == 1
-        assert data["pages"] >= 3  # At least 25 tutors / 10 per page
+        assert data["total_pages"] >= 3  # At least 25 tutors / 10 per page
 
         # Test page 2
         response = client.get(
@@ -102,21 +102,21 @@ class TestTutorListing:
         assert len(data["items"]) == 10
         assert data["page"] == 2
 
-    def test_list_tutors_filter_by_subject(self, client, test_db_session, student_token):
+    def test_list_tutors_filter_by_subject(self, client, db_session, student_token):
         """Test filtering tutors by subject."""
         from models import Subject, TutorProfile, TutorSubject, User
 
         # Create subjects
         math = Subject(name="Mathematics", is_active=True)
         english = Subject(name="English", is_active=True)
-        test_db_session.add_all([math, english])
-        test_db_session.commit()
+        db_session.add_all([math, english])
+        db_session.commit()
 
         # Create tutors
         tutor1 = User(email="math_tutor@test.com", hashed_password="hash", role="tutor")
         tutor2 = User(email="english_tutor@test.com", hashed_password="hash", role="tutor")
-        test_db_session.add_all([tutor1, tutor2])
-        test_db_session.commit()
+        db_session.add_all([tutor1, tutor2])
+        db_session.commit()
 
         profile1 = TutorProfile(
             user_id=tutor1.id,
@@ -132,24 +132,24 @@ class TestTutorListing:
             is_approved=True,
             profile_status="approved",
         )
-        test_db_session.add_all([profile1, profile2])
-        test_db_session.commit()
+        db_session.add_all([profile1, profile2])
+        db_session.commit()
 
         # Add subjects to tutors
         tutor_subject1 = TutorSubject(
             tutor_profile_id=profile1.id,
             subject_id=math.id,
-            proficiency_level="C2",
+            proficiency_level="c2",
             years_experience=5,
         )
         tutor_subject2 = TutorSubject(
             tutor_profile_id=profile2.id,
             subject_id=english.id,
-            proficiency_level="Native",
+            proficiency_level="native",
             years_experience=10,
         )
-        test_db_session.add_all([tutor_subject1, tutor_subject2])
-        test_db_session.commit()
+        db_session.add_all([tutor_subject1, tutor_subject2])
+        db_session.commit()
 
         # Filter by math subject
         response = client.get(
@@ -162,7 +162,7 @@ class TestTutorListing:
         assert "Math Tutor" in titles
         assert "English Tutor" not in titles
 
-    def test_list_tutors_filter_by_rate(self, client, test_db_session, student_token):
+    def test_list_tutors_filter_by_rate(self, client, db_session, student_token):
         """Test filtering tutors by hourly rate range."""
         from models import TutorProfile, User
 
@@ -170,8 +170,8 @@ class TestTutorListing:
         cheap_user = User(email="cheap@test.com", hashed_password="hash", role="tutor")
         medium_user = User(email="medium@test.com", hashed_password="hash", role="tutor")
         expensive_user = User(email="expensive@test.com", hashed_password="hash", role="tutor")
-        test_db_session.add_all([cheap_user, medium_user, expensive_user])
-        test_db_session.commit()
+        db_session.add_all([cheap_user, medium_user, expensive_user])
+        db_session.commit()
 
         cheap_profile = TutorProfile(
             user_id=cheap_user.id,
@@ -194,8 +194,8 @@ class TestTutorListing:
             is_approved=True,
             profile_status="approved",
         )
-        test_db_session.add_all([cheap_profile, medium_profile, expensive_profile])
-        test_db_session.commit()
+        db_session.add_all([cheap_profile, medium_profile, expensive_profile])
+        db_session.commit()
 
         # Filter by rate range (40-60)
         response = client.get(
@@ -209,15 +209,15 @@ class TestTutorListing:
         assert "Cheap Tutor" not in titles
         assert "Expensive Tutor" not in titles
 
-    def test_list_tutors_filter_by_rating(self, client, test_db_session, student_token):
+    def test_list_tutors_filter_by_rating(self, client, db_session, student_token):
         """Test filtering tutors by minimum rating."""
         from models import TutorProfile, User
 
         # Create tutors with different ratings
         low_rated = User(email="low@test.com", hashed_password="hash", role="tutor")
         high_rated = User(email="high@test.com", hashed_password="hash", role="tutor")
-        test_db_session.add_all([low_rated, high_rated])
-        test_db_session.commit()
+        db_session.add_all([low_rated, high_rated])
+        db_session.commit()
 
         low_profile = TutorProfile(
             user_id=low_rated.id,
@@ -235,8 +235,8 @@ class TestTutorListing:
             profile_status="approved",
             average_rating=Decimal("4.8"),
         )
-        test_db_session.add_all([low_profile, high_profile])
-        test_db_session.commit()
+        db_session.add_all([low_profile, high_profile])
+        db_session.commit()
 
         # Filter by min rating 4.0
         response = client.get(
@@ -249,15 +249,15 @@ class TestTutorListing:
         assert "High Rated Tutor" in titles
         assert "Low Rated Tutor" not in titles
 
-    def test_list_tutors_search_query(self, client, test_db_session, student_token):
+    def test_list_tutors_search_query(self, client, db_session, student_token):
         """Test searching tutors by query."""
         from models import TutorProfile, User
 
         # Create tutors
         math_tutor = User(email="math@test.com", hashed_password="hash", role="tutor")
         science_tutor = User(email="science@test.com", hashed_password="hash", role="tutor")
-        test_db_session.add_all([math_tutor, science_tutor])
-        test_db_session.commit()
+        db_session.add_all([math_tutor, science_tutor])
+        db_session.commit()
 
         math_profile = TutorProfile(
             user_id=math_tutor.id,
@@ -275,8 +275,8 @@ class TestTutorListing:
             is_approved=True,
             profile_status="approved",
         )
-        test_db_session.add_all([math_profile, science_profile])
-        test_db_session.commit()
+        db_session.add_all([math_profile, science_profile])
+        db_session.commit()
 
         # Search for "mathematics"
         response = client.get(
@@ -289,7 +289,7 @@ class TestTutorListing:
         assert len(titles) >= 1
         assert any("Mathematics" in title for title in titles)
 
-    def test_list_tutors_sorting(self, client, test_db_session, student_token):
+    def test_list_tutors_sorting(self, client, db_session, student_token):
         """Test sorting tutors by different criteria."""
         from models import TutorProfile, User
 
@@ -297,8 +297,8 @@ class TestTutorListing:
         users = []
         for i in range(3):
             user = User(email=f"tutor{i}@test.com", hashed_password="hash", role="tutor")
-            test_db_session.add(user)
-            test_db_session.commit()
+            db_session.add(user)
+            db_session.commit()
             users.append(user)
 
         # Different rates and ratings
@@ -326,8 +326,8 @@ class TestTutorListing:
             is_approved=True,
             profile_status="approved",
         )
-        test_db_session.add_all([profile1, profile2, profile3])
-        test_db_session.commit()
+        db_session.add_all([profile1, profile2, profile3])
+        db_session.commit()
 
         # Test sort by rating (default - should show B first)
         response = client.get(
@@ -349,18 +349,22 @@ class TestTutorListing:
         # Cheapest should be first
         assert data["items"][0]["title"] == "Tutor A"
 
-    def test_list_tutors_requires_auth(self, client):
-        """Test that tutor listing requires authentication."""
-        response = client.get("/api/v1/tutors")
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    def test_list_tutors_is_public(self, client):
+        """Test that tutor listing is publicly accessible (no auth required).
 
-    def test_get_tutor_by_id(self, client, test_db_session, student_token):
+        Tutor listing should be public to allow potential students to browse
+        tutors before signing up.
+        """
+        response = client.get("/api/v1/tutors")
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_get_tutor_by_id(self, client, db_session, student_token):
         """Test getting single tutor profile by ID."""
         from models import TutorProfile, User
 
         tutor = User(email="get_tutor@test.com", hashed_password="hash", role="tutor")
-        test_db_session.add(tutor)
-        test_db_session.commit()
+        db_session.add(tutor)
+        db_session.commit()
 
         profile = TutorProfile(
             user_id=tutor.id,
@@ -370,8 +374,8 @@ class TestTutorListing:
             is_approved=True,
             profile_status="approved",
         )
-        test_db_session.add(profile)
-        test_db_session.commit()
+        db_session.add(profile)
+        db_session.commit()
 
         response = client.get(
             f"/api/v1/tutors/{profile.id}",
@@ -382,13 +386,13 @@ class TestTutorListing:
         assert data["title"] == "Test Tutor"
         assert data["headline"] == "Great teacher"
 
-    def test_get_non_approved_tutor_returns_404(self, client, test_db_session, student_token):
+    def test_get_non_approved_tutor_returns_404(self, client, db_session, student_token):
         """Test that non-approved tutors return 404."""
         from models import TutorProfile, User
 
         tutor = User(email="pending@test.com", hashed_password="hash", role="tutor")
-        test_db_session.add(tutor)
-        test_db_session.commit()
+        db_session.add(tutor)
+        db_session.commit()
 
         profile = TutorProfile(
             user_id=tutor.id,
@@ -397,8 +401,8 @@ class TestTutorListing:
             is_approved=False,
             profile_status="pending_approval",
         )
-        test_db_session.add(profile)
-        test_db_session.commit()
+        db_session.add(profile)
+        db_session.commit()
 
         response = client.get(
             f"/api/v1/tutors/{profile.id}",

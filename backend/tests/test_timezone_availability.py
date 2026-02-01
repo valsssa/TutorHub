@@ -379,7 +379,7 @@ class TestTimezoneInBookingSnapshot:
             hourly_rate=50.00,
             total_amount=50.00,
             currency="USD",
-            status="PENDING",
+            session_state="REQUESTED",
             student_tz=student_user.timezone,
             tutor_tz=tutor_user.timezone,
             tutor_name="Test Tutor",
@@ -411,7 +411,7 @@ class TestTimezoneInBookingSnapshot:
             hourly_rate=50.00,
             total_amount=50.00,
             currency="USD",
-            status="CONFIRMED",
+            session_state="SCHEDULED",
             student_tz="America/Chicago",  # Snapshot at booking time
             tutor_tz="UTC",
             tutor_name="Test Tutor",

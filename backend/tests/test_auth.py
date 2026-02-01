@@ -27,7 +27,7 @@ class TestRegistration:
             "/api/v1/auth/register",
             json={"email": student_user.email, "password": TEST_PASSWORD},
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_409_CONFLICT
         assert "already registered" in response.json()["detail"].lower()
 
     def test_register_case_insensitive_email(self, client, student_user):
@@ -36,7 +36,7 @@ class TestRegistration:
             "/api/v1/auth/register",
             json={"email": student_user.email.upper(), "password": TEST_PASSWORD},
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_409_CONFLICT
 
     def test_register_invalid_email(self, client):
         """Test registration with invalid email."""
@@ -232,17 +232,11 @@ class TestRoleBasedAccess:
         response = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {admin_token}"})
         assert response.status_code == status.HTTP_200_OK
 
-    def test_student_cannot_create_tutor_profile(self, client, student_token):
-        """Test student cannot create tutor profile."""
-        response = client.post(
+    def test_student_cannot_access_tutor_profile(self, client, student_token):
+        """Test student cannot access tutor profile endpoint."""
+        # Tutor profile GET endpoint requires tutor role
+        response = client.get(
             "/api/v1/tutors/me/profile",
             headers={"Authorization": f"Bearer {student_token}"},
-            json={
-                "title": "Test Tutor",
-                "headline": "Test",
-                "bio": "Test bio",
-                "hourly_rate": 50,
-                "subjects": [],
-            },
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN

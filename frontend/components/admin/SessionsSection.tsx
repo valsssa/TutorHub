@@ -53,9 +53,14 @@ export default function SessionsSection({
                 <td className="py-4 text-gray-600">{session.duration}</td>
                 <td className="py-4">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    session.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    (session.status === 'SCHEDULED' || session.status === 'confirmed') ? 'bg-green-100 text-green-800' :
+                    (session.status === 'ACTIVE') ? 'bg-blue-100 text-blue-800' :
+                    'bg-yellow-100 text-yellow-800'
                   }`}>
-                    {session.status}
+                    {session.status === 'REQUESTED' ? 'Pending' :
+                     session.status === 'SCHEDULED' ? 'Confirmed' :
+                     session.status === 'ACTIVE' ? 'In Progress' :
+                     session.status}
                   </span>
                 </td>
               </tr>

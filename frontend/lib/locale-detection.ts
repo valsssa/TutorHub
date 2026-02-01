@@ -71,8 +71,8 @@ export function detectCurrency(): CurrencyCode {
     
     // Default to USD for international compatibility
     return "USD";
-  } catch (error) {
-    console.warn("Currency detection failed, using USD", error);
+  } catch {
+    // Currency detection failed, using USD
     return "USD";
   }
 }
@@ -84,8 +84,8 @@ export function detectTimezone(): string {
   try {
     const timezone = getBrowserTimezone();
     return isValidTimezone(timezone) ? timezone : "UTC";
-  } catch (error) {
-    console.warn("Timezone detection failed, using UTC", error);
+  } catch {
+    // Timezone detection failed, using UTC
     return "UTC";
   }
 }
@@ -113,8 +113,8 @@ export function detectLocalePreferences(): LocalePreferences {
 export function saveDetectedPreferences(preferences: LocalePreferences): void {
   try {
     localStorage.setItem("locale_preferences", JSON.stringify(preferences));
-  } catch (error) {
-    console.warn("Failed to save locale preferences", error);
+  } catch {
+    // Failed to save locale preferences - silently ignore
   }
 }
 
@@ -125,8 +125,8 @@ export function loadStoredPreferences(): LocalePreferences | null {
   try {
     const stored = localStorage.getItem("locale_preferences");
     return stored ? JSON.parse(stored) : null;
-  } catch (error) {
-    console.warn("Failed to load locale preferences", error);
+  } catch {
+    // Failed to load locale preferences - return null to trigger fresh detection
     return null;
   }
 }

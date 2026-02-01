@@ -33,13 +33,26 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-function getStatusColor(status: string): string {
-  const normalized = status.toLowerCase();
-  if (normalized === "confirmed") return "bg-emerald-500";
-  if (normalized === "pending") return "bg-amber-500";
-  if (normalized === "completed") return "bg-slate-400";
-  if (normalized.includes("cancelled")) return "bg-red-500";
-  return "bg-slate-400";
+/**
+ * Get status color based on session_state (four-field status system).
+ */
+function getStatusColor(sessionState: string): string {
+  const normalized = sessionState.toUpperCase();
+  switch (normalized) {
+    case "SCHEDULED":
+      return "bg-emerald-500";
+    case "REQUESTED":
+      return "bg-amber-500";
+    case "ENDED":
+      return "bg-slate-400";
+    case "CANCELLED":
+    case "EXPIRED":
+      return "bg-red-500";
+    case "ACTIVE":
+      return "bg-blue-500";
+    default:
+      return "bg-slate-400";
+  }
 }
 
 function getDaysInMonth(year: number, month: number): Date[] {
@@ -118,7 +131,7 @@ function CalendarContent() {
       setCurrentUser(user);
       setBookingsList(data);
     } catch (error) {
-      console.error("Failed to load bookings:", error);
+      // Silently fail - calendar will show empty state
     } finally {
       setLoading(false);
     }
@@ -346,7 +359,7 @@ function CalendarContent() {
                             key={booking.id}
                             className={clsx(
                               "text-xs px-1.5 py-0.5 rounded truncate text-white",
-                              getStatusColor(booking.status)
+                              getStatusColor(booking.session_state || booking.status)
                             )}
                             title={`${booking.subject_name || "Session"} - ${new Date(booking.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                           >

@@ -137,9 +137,11 @@ class TestDeleteUser:
         )
         assert response.status_code == status.HTTP_200_OK
 
-        # Verify user is deleted
-        deleted_user = db_session.query(User).filter(User.id == user_id).first()
-        assert deleted_user is None
+        # Verify user is soft-deleted (deactivated, not removed)
+        db_session.expire_all()  # Clear session cache
+        deactivated_user = db_session.query(User).filter(User.id == user_id).first()
+        assert deactivated_user is not None
+        assert deactivated_user.is_active is False
 
     def test_admin_cannot_delete_self(self, client, admin_token, admin_user):
         """Test admin cannot delete themselves."""

@@ -134,15 +134,19 @@ class FeatureFlagsClient {
 
       if (!response.ok) {
         // Feature doesn't exist or error - treat as disabled
-        console.warn(`Feature flag '${name}' check failed:`, response.status);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Feature flag '${name}' check failed:`, response.status);
+        }
         return false;
       }
 
       const data = await response.json();
       return data.enabled ?? false;
     } catch (error) {
-      console.error(`Error checking feature flag '${name}':`, error);
       // On error, default to disabled for safety
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(`Error checking feature flag '${name}':`, error);
+      }
       return false;
     }
   }

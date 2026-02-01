@@ -237,7 +237,7 @@ function TutorsContent(): JSX.Element {
                   alt="Students learning together"
                   fill
                   className="rounded-[20px] lg:rounded-[40px] shadow-2xl object-cover border-4 lg:border-8 border-white dark:border-slate-800 transform -rotate-1 lg:-rotate-2 hover:rotate-0 transition-transform duration-700"
-                  unoptimized
+                  loading="lazy"
                 />
               </div>
 

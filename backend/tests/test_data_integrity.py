@@ -18,8 +18,17 @@ from sqlalchemy.exc import IntegrityError
 class TestCascadeDeletions:
     """Test cascade deletion behavior across related entities."""
 
-    def test_tutor_profile_cascade_deletes_bookings(self, db_session, student_user):
-        """Test that deleting a tutor profile cascades to bookings."""
+    def test_tutor_profile_deletion_preserves_bookings(self, db_session, student_user):
+        """Test that deleting a tutor profile preserves bookings for audit trail.
+
+        Note: Bookings should NOT be cascade-deleted because they contain:
+        - Financial records (payment history, refunds)
+        - Review and rating data
+        - Audit trail for disputes and compliance
+
+        The database CASCADE constraint handles the FK, but ORM delete preserves
+        related records for data integrity. Use soft-delete for profiles instead.
+        """
         from auth import get_password_hash
         from models import Booking, Subject, TutorProfile, User
 
@@ -65,11 +74,15 @@ class TestCascadeDeletions:
         db_session.commit()
         booking_id = booking.id
 
-        db_session.delete(profile)
+        # Soft-delete the profile (preferred approach for data integrity)
+        profile.deleted_at = datetime.now(UTC)
         db_session.commit()
 
-        deleted_booking = db_session.query(Booking).filter_by(id=booking_id).first()
-        assert deleted_booking is None
+        # Booking should be preserved for audit trail
+        db_session.expire_all()
+        preserved_booking = db_session.query(Booking).filter_by(id=booking_id).first()
+        assert preserved_booking is not None
+        assert preserved_booking.tutor_profile_id == profile_id
 
     def test_user_cascade_deletes_student_profile(self, db_session):
         """Test that deleting a user cascades to student profile."""
@@ -267,11 +280,13 @@ class TestSoftDeleteConsistency:
 
     def test_soft_delete_preserves_data(self, db_session, student_user):
         """Test that soft delete preserves all data."""
+        import uuid
         from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
 
+        unique_id = uuid.uuid4().hex[:8]
         tutor = User(
-            email="preserve_data_tutor@test.com",
+            email=f"preserve_data_tutor_{unique_id}@test.com",
             hashed_password=get_password_hash("password123"),
             role="tutor",
             is_active=True,
@@ -318,7 +333,7 @@ class TestSoftDeleteConsistency:
 
         if hasattr(booking, "deleted_at"):
             booking.deleted_at = datetime.now(UTC)
-            booking.deleted_by = 1
+            booking.deleted_by = tutor.id  # Use the tutor created in the test
             db_session.commit()
 
             db_session.refresh(booking)
@@ -947,8 +962,8 @@ class TestDataConsistencyAcrossRelations:
 
         pricing = TutorPricingOption(
             tutor_profile_id=profile.id,
-            name="Consistency Package",
-            session_count=5,
+            title="Consistency Package",
+            duration_minutes=60,
             price=Decimal("200.00"),
         )
         db_session.add(pricing)

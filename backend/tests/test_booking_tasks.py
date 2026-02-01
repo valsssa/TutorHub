@@ -59,10 +59,10 @@ class TestExpireRequests:
         result.already_in_target_state = True
         return result
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_expires_old_requested_bookings(
         self,
         mock_state_machine,
@@ -90,7 +90,7 @@ class TestExpireRequests:
         # Create mock task instance
         mock_task = MagicMock()
 
-        result = expire_requests(mock_task)
+        result = expire_requests()
 
         assert result["expired"] == 1
         assert result["skipped"] == 0
@@ -98,10 +98,10 @@ class TestExpireRequests:
         mock_db.commit.assert_called()
         mock_db.close.assert_called_once()
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_skips_already_expired_bookings(
         self,
         mock_state_machine,
@@ -128,16 +128,16 @@ class TestExpireRequests:
 
         mock_task = MagicMock()
 
-        result = expire_requests(mock_task)
+        result = expire_requests()
 
         assert result["expired"] == 0
         assert result["skipped"] == 1
         assert result["errors"] == 0
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_handles_locked_booking(
         self,
         mock_state_machine,
@@ -160,7 +160,7 @@ class TestExpireRequests:
 
         mock_task = MagicMock()
 
-        result = expire_requests(mock_task)
+        result = expire_requests()
 
         # Booking should be skipped, no error reported
         assert result["expired"] == 0
@@ -168,10 +168,10 @@ class TestExpireRequests:
         assert result["errors"] == 0
         mock_db.rollback.assert_called()
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_handles_booking_not_found(
         self,
         mock_state_machine,
@@ -192,15 +192,15 @@ class TestExpireRequests:
 
         mock_task = MagicMock()
 
-        result = expire_requests(mock_task)
+        result = expire_requests()
 
         assert result["expired"] == 0
         assert result["skipped"] == 0
         assert result["errors"] == 0
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
     def test_retries_on_general_exception(
         self,
         mock_skew_monitor,
@@ -208,25 +208,23 @@ class TestExpireRequests:
         mock_session_local,
         mock_db,
     ):
-        """Test that task retries on general exceptions."""
+        """Test that exceptions are raised (Celery's autoretry handles the retry)."""
         mock_session_local.return_value = mock_db
         mock_get_db_time.side_effect = Exception("Database connection failed")
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
-        mock_task = MagicMock()
-        mock_task.retry.side_effect = Exception("Retry triggered")
-
+        # When an exception occurs, it propagates up
+        # Celery's autoretry_for=(Exception,) decorator handles retry in production
         with pytest.raises(Exception) as exc_info:
-            expire_requests(mock_task)
+            expire_requests()
 
-        assert "Retry triggered" in str(exc_info.value)
-        mock_task.retry.assert_called()
+        assert "Database connection failed" in str(exc_info.value)
         mock_db.rollback.assert_called()
         mock_db.close.assert_called()
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
     def test_uses_database_time_for_cutoff(
         self,
         mock_skew_monitor,
@@ -244,7 +242,7 @@ class TestExpireRequests:
 
         mock_task = MagicMock()
 
-        expire_requests(mock_task)
+        expire_requests()
 
         # Verify get_db_time was called with db session
         mock_get_db_time.assert_called_once_with(mock_db)
@@ -283,10 +281,10 @@ class TestStartSessions:
         result.already_in_target_state = False
         return result
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_starts_sessions_at_start_time(
         self,
         mock_state_machine,
@@ -311,7 +309,7 @@ class TestStartSessions:
 
         mock_task = MagicMock()
 
-        result = start_sessions(mock_task)
+        result = start_sessions()
 
         assert result["started"] == 1
         assert result["skipped"] == 0
@@ -319,10 +317,10 @@ class TestStartSessions:
         mock_db.commit.assert_called()
         mock_db.close.assert_called_once()
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_skips_already_started_sessions(
         self,
         mock_state_machine,
@@ -350,15 +348,15 @@ class TestStartSessions:
 
         mock_task = MagicMock()
 
-        task_result = start_sessions(mock_task)
+        task_result = start_sessions()
 
         assert task_result["started"] == 0
         assert task_result["skipped"] == 1
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_handles_transition_failure(
         self,
         mock_state_machine,
@@ -386,16 +384,16 @@ class TestStartSessions:
 
         mock_task = MagicMock()
 
-        task_result = start_sessions(mock_task)
+        task_result = start_sessions()
 
         assert task_result["started"] == 0
         assert task_result["errors"] == 1
         mock_db.rollback.assert_called()
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_handles_locked_booking(
         self,
         mock_state_machine,
@@ -417,7 +415,7 @@ class TestStartSessions:
 
         mock_task = MagicMock()
 
-        result = start_sessions(mock_task)
+        result = start_sessions()
 
         assert result["started"] == 0
         mock_db.rollback.assert_called()
@@ -452,11 +450,11 @@ class TestEndSessions:
         result.already_in_target_state = False
         return result
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
-    @patch("tasks.booking_tasks.SessionOutcome")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
+    @patch("modules.bookings.domain.status.SessionOutcome")
     def test_ends_sessions_after_grace_period(
         self,
         mock_session_outcome,
@@ -483,7 +481,7 @@ class TestEndSessions:
 
         mock_task = MagicMock()
 
-        result = end_sessions(mock_task)
+        result = end_sessions()
 
         assert result["ended"] == 1
         assert result["skipped"] == 0
@@ -491,11 +489,11 @@ class TestEndSessions:
         mock_db.commit.assert_called()
         mock_db.close.assert_called_once()
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
-    @patch("tasks.booking_tasks.SessionOutcome")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
+    @patch("modules.bookings.domain.status.SessionOutcome")
     def test_uses_completed_outcome_by_default(
         self,
         mock_session_outcome,
@@ -524,17 +522,17 @@ class TestEndSessions:
 
         mock_task = MagicMock()
 
-        end_sessions(mock_task)
+        end_sessions()
 
         mock_state_machine.end_session.assert_called_with(
             active_booking, completed_outcome
         )
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
-    @patch("tasks.booking_tasks.SessionOutcome")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
+    @patch("modules.bookings.domain.status.SessionOutcome")
     def test_skips_already_ended_sessions(
         self,
         mock_session_outcome,
@@ -564,16 +562,16 @@ class TestEndSessions:
 
         mock_task = MagicMock()
 
-        task_result = end_sessions(mock_task)
+        task_result = end_sessions()
 
         assert task_result["ended"] == 0
         assert task_result["skipped"] == 1
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
-    @patch("tasks.booking_tasks.SessionOutcome")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
+    @patch("modules.bookings.domain.status.SessionOutcome")
     def test_handles_transition_failure(
         self,
         mock_session_outcome,
@@ -603,7 +601,7 @@ class TestEndSessions:
 
         mock_task = MagicMock()
 
-        task_result = end_sessions(mock_task)
+        task_result = end_sessions()
 
         assert task_result["ended"] == 0
         assert task_result["errors"] == 1
@@ -641,9 +639,9 @@ class TestTaskConfiguration:
 class TestClockSkewHandling:
     """Tests for clock skew handling in booking tasks."""
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
     def test_clock_skew_checked_before_processing(
         self,
         mock_skew_monitor,
@@ -662,13 +660,13 @@ class TestClockSkewHandling:
 
         mock_task = MagicMock()
 
-        expire_requests(mock_task)
+        expire_requests()
 
         mock_monitor.check_and_warn.assert_called_once_with(mock_db)
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
     def test_uses_db_time_for_consistency(
         self,
         mock_skew_monitor,
@@ -688,7 +686,7 @@ class TestClockSkewHandling:
 
         mock_task = MagicMock()
 
-        expire_requests(mock_task)
+        expire_requests()
 
         # Verify database time was requested
         mock_get_db_time.assert_called_once_with(mock_db)
@@ -697,10 +695,10 @@ class TestClockSkewHandling:
 class TestRaceConditionPrevention:
     """Tests for race condition prevention mechanisms."""
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_uses_select_for_update_nowait(
         self,
         mock_state_machine,
@@ -719,17 +717,17 @@ class TestRaceConditionPrevention:
 
         mock_task = MagicMock()
 
-        expire_requests(mock_task)
+        expire_requests()
 
         # Verify nowait=True is passed
         mock_state_machine.get_booking_with_lock.assert_called_with(
             mock_db, 1, nowait=True
         )
 
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_each_booking_in_separate_transaction(
         self,
         mock_state_machine,
@@ -760,7 +758,7 @@ class TestRaceConditionPrevention:
 
         mock_task = MagicMock()
 
-        expire_requests(mock_task)
+        expire_requests()
 
         # Commit should be called once per booking
         assert mock_db.commit.call_count == 3
@@ -770,10 +768,10 @@ class TestTaskLogging:
     """Tests for task logging behavior."""
 
     @patch("tasks.booking_tasks.logger")
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
-    @patch("tasks.booking_tasks.BookingStateMachine")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
+    @patch("modules.bookings.domain.state_machine.BookingStateMachine")
     def test_logs_expired_count(
         self,
         mock_state_machine,
@@ -800,15 +798,15 @@ class TestTaskLogging:
 
         mock_task = MagicMock()
 
-        expire_requests(mock_task)
+        expire_requests()
 
         # Info log should be called when bookings are expired
         assert mock_logger.info.called or mock_logger.debug.called
 
     @patch("tasks.booking_tasks.logger")
-    @patch("tasks.booking_tasks.SessionLocal")
-    @patch("tasks.booking_tasks.get_db_time")
-    @patch("tasks.booking_tasks.get_job_skew_monitor")
+    @patch("database.SessionLocal")
+    @patch("core.clock_skew.get_db_time")
+    @patch("core.clock_skew.get_job_skew_monitor")
     def test_logs_errors(
         self,
         mock_skew_monitor,
@@ -826,7 +824,7 @@ class TestTaskLogging:
         mock_task.retry.return_value = None
 
         try:
-            expire_requests(mock_task)
+            expire_requests()
         except Exception:
             pass
 

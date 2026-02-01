@@ -185,11 +185,10 @@ async def send_message(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_message)
     except Exception as e:
         logger.error(f"Unexpected error sending message: {e}", exc_info=True)
-        # Return the actual error in development for debugging
-        error_detail = str(e) if hasattr(e, "__str__") else "Failed to send message"
+        # Return generic error message to avoid information disclosure
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=error_detail,
+            detail="Failed to send message",
         ) from e
 
 
@@ -554,9 +553,10 @@ async def send_message_with_attachment(
         if "attachment_data" in locals():
             with contextlib.suppress(Exception):
                 delete_message_attachment(attachment_data["file_key"])
+        # Return generic error message to avoid information disclosure
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to send message with attachment: {str(e)}",
+            detail="Failed to send message with attachment",
         )
 
 

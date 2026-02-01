@@ -443,8 +443,8 @@ class TestZoomMeetingCreation:
     def test_create_meeting_invalid_status(
         self, client, tutor_token, test_booking, db_session
     ):
-        """Test creating meeting for booking with invalid status."""
-        test_booking.status = "CANCELLED"
+        """Test creating meeting for booking with invalid session_state."""
+        test_booking.session_state = "CANCELLED"
         db_session.commit()
 
         response = client.post(
@@ -553,7 +553,7 @@ class TestZoomAutoCreateMeetings:
         self, mock_zoom_client, client, admin_token, test_booking, db_session
     ):
         """Test successful auto-creation of meetings."""
-        test_booking.status = "CONFIRMED"
+        test_booking.session_state = "SCHEDULED"
         test_booking.join_url = None
         test_booking.start_time = datetime.now(UTC) + timedelta(hours=12)
         db_session.commit()

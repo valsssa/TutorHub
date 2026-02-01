@@ -25,7 +25,7 @@ def _get_languages() -> list[dict[str, str]]:
 
 
 @cache_with_ttl(ttl_seconds=3600)
-def _get_proficiency_levels() -> list[str]:
+def _get_proficiency_levels() -> list[dict[str, str]]:
     """Get proficiency levels with caching."""
     return PROFICIENCY_LEVELS
 
@@ -60,14 +60,14 @@ def get_languages(request: Request):
     return _get_languages()
 
 
-@router.get("/proficiency-levels", response_model=list[str])
+@router.get("/proficiency-levels", response_model=list[dict[str, str]])
 @limiter.limit("60/minute")
 def get_proficiency_levels(request: Request):
     """
     Get list of language proficiency levels (CEFR framework + Native).
 
     Returns:
-        List of proficiency levels from Native to A1
+        List of proficiency levels with code, name, and description
     """
     return _get_proficiency_levels()
 

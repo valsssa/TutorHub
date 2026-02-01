@@ -17,7 +17,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=Fals
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    token: Annotated[str | None, Depends(oauth2_scheme)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
     """Get the current authenticated user from JWT token.
@@ -27,6 +27,14 @@ async def get_current_user(
     - Password change timestamp (invalidates tokens issued before password change)
     - Role match (invalidates tokens with outdated role after demotion/promotion)
     """
+    # Handle missing token (auto_error=False means token can be None)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = TokenManager.decode_token(token)
         email: str = payload.get("sub")
@@ -165,7 +173,7 @@ async def get_current_student_user(
 ) -> User:
     """Require student role."""
     if current_user.role != Roles.STUDENT:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Student access required")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access restricted to students only")
     return current_user
 
 

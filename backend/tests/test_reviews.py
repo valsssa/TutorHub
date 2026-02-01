@@ -2,6 +2,8 @@
 
 from fastapi import status
 
+from tests.conftest import STUDENT_PASSWORD
+
 
 class TestCreateReview:
     """Test review creation."""
@@ -9,7 +11,8 @@ class TestCreateReview:
     def test_student_create_review_success(self, client, student_token, test_booking, db_session):
         """Test student can create review for completed booking."""
         # Mark booking as completed
-        test_booking.status = "completed"
+        test_booking.session_state = "ENDED"
+        test_booking.session_outcome = "COMPLETED"
         db_session.commit()
 
         response = client.post(
@@ -44,8 +47,9 @@ class TestCreateReview:
         # Create another student
         another_student = User(
             email="student2@test.com",
-            hashed_password=get_password_hash("student123"),
+            hashed_password=get_password_hash(STUDENT_PASSWORD),
             role="student",
+            is_verified=True,
         )
         db_session.add(another_student)
         db_session.commit()
@@ -58,12 +62,13 @@ class TestCreateReview:
         client = TestClient(app)
         response = client.post(
             "/api/v1/auth/login",
-            data={"username": "student2@test.com", "password": "student123"},
+            data={"username": "student2@test.com", "password": STUDENT_PASSWORD},
         )
         token = response.json()["access_token"]
 
         # Mark booking as completed
-        test_booking.status = "completed"
+        test_booking.session_state = "ENDED"
+        test_booking.session_outcome = "COMPLETED"
         db_session.commit()
 
         # Try to review
@@ -79,7 +84,8 @@ class TestCreateReview:
         from models import Review  # noqa: F401
 
         # Mark booking as completed
-        test_booking.status = "completed"
+        test_booking.session_state = "ENDED"
+        test_booking.session_outcome = "COMPLETED"
         db_session.commit()
 
         # Create first review
@@ -105,7 +111,8 @@ class TestCreateReview:
 
     def test_tutor_cannot_create_review(self, client, tutor_token, test_booking, db_session):
         """Test tutor cannot create review."""
-        test_booking.status = "completed"
+        test_booking.session_state = "ENDED"
+        test_booking.session_outcome = "COMPLETED"
         db_session.commit()
 
         response = client.post(
@@ -128,7 +135,8 @@ class TestGetTutorReviews:
         from models import Review
 
         # Mark booking as completed and create review
-        test_booking.status = "completed"
+        test_booking.session_state = "ENDED"
+        test_booking.session_outcome = "COMPLETED"
         db_session.commit()
 
         review = Review(
@@ -152,9 +160,30 @@ class TestGetTutorReviews:
         assert data[0]["rating"] == 5
         assert data[0]["comment"] == "Excellent!"
 
-    def test_only_public_reviews_shown(self, client, student_token, tutor_user, test_booking, db_session):
+    def test_only_public_reviews_shown(self, client, student_token, tutor_user, test_booking, test_subject, db_session):
         """Test only public reviews are shown."""
-        from models import Review
+        from datetime import UTC, datetime, timedelta
+        from models import Review, Booking
+
+        # Create a second booking for the private review
+        booking2 = Booking(
+            tutor_profile_id=tutor_user.tutor_profile.id,
+            student_id=test_booking.student_id,
+            subject_id=test_subject.id,
+            start_time=datetime.now(UTC) + timedelta(days=2),
+            end_time=datetime.now(UTC) + timedelta(days=2, hours=1),
+            topic="Second booking",
+            hourly_rate=50.00,
+            total_amount=50.00,
+            currency="USD",
+            session_state="ENDED",
+            session_outcome="COMPLETED",
+            tutor_name=f"{tutor_user.first_name} {tutor_user.last_name}",
+            student_name="Test Student",
+            subject_name=test_subject.name,
+        )
+        db_session.add(booking2)
+        db_session.flush()
 
         # Create public review
         review1 = Review(
@@ -167,9 +196,9 @@ class TestGetTutorReviews:
         )
         db_session.add(review1)
 
-        # Create private review
+        # Create private review with the second booking
         review2 = Review(
-            booking_id=test_booking.id + 1,  # Different booking
+            booking_id=booking2.id,
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=test_booking.student_id,
             rating=3,

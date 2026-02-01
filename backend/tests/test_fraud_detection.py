@@ -270,7 +270,7 @@ class TestRegistrationWithFraudDetection:
         """Test that registration stores the client IP."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "iptest@example.com", "password": "password123"},
+            json={"email": "iptest@example.com", "password": "Password123!"},
         )
         assert response.status_code == 201
 
@@ -284,7 +284,7 @@ class TestRegistrationWithFraudDetection:
         """Test that registration accepts device fingerprint header."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "fptest@example.com", "password": "password123"},
+            json={"email": "fptest@example.com", "password": "Password123!"},
             headers={"X-Device-Fingerprint": "test-fingerprint-hash"},
         )
         assert response.status_code == 201
@@ -293,7 +293,7 @@ class TestRegistrationWithFraudDetection:
         """Test registration with suspicious email patterns."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "user@mailinator.com", "password": "password123"},
+            json={"email": "user@mailinator.com", "password": "Password123!"},
         )
         # Registration should still succeed but user might be trial-restricted
         assert response.status_code == 201

@@ -303,6 +303,9 @@ class BookingStateMachine:
 
         Idempotent: Returns success if already CANCELLED by tutor.
 
+        Note: This method is specifically for declining a booking REQUEST.
+        For cancelling an already-accepted (SCHEDULED) booking, use cancel_booking instead.
+
         Transaction Safety: Does NOT commit - caller must commit the transaction.
         """
         # Idempotent check: already cancelled by tutor
@@ -315,7 +318,9 @@ class BookingStateMachine:
                 already_in_target_state=True,
             )
 
-        if not cls.can_transition_session_state(booking.session_state, SessionState.CANCELLED):
+        # Decline is specifically for REQUESTED state only
+        # For SCHEDULED bookings, use cancel_booking instead
+        if booking.session_state != SessionState.REQUESTED.value:
             return TransitionResult(
                 success=False,
                 error_message=f"Cannot decline booking with state {booking.session_state}",
@@ -566,7 +571,7 @@ class BookingStateMachine:
         if reporter_role is None:
             reporter_role = "TUTOR" if who_was_absent == "STUDENT" else "STUDENT"
 
-        # Check if already ended with a no-show outcome
+        # Check if already ended
         if booking.session_state == SessionState.ENDED.value:
             if booking.session_outcome in {
                 SessionOutcome.NO_SHOW_STUDENT.value,
@@ -600,6 +605,22 @@ class BookingStateMachine:
                 )
                 booking.disputed_at = datetime.utcnow()
                 # Don't set disputed_by as this is a system-generated dispute
+                cls.increment_version(booking)
+
+                return TransitionResult(
+                    success=True,
+                    escalated_to_dispute=True,
+                )
+            elif booking.session_outcome == SessionOutcome.COMPLETED.value:
+                # Session was marked as completed, but someone is now claiming no-show
+                # This is a conflict - escalate to dispute for admin review
+                booking.dispute_state = DisputeState.OPEN.value
+                booking.dispute_reason = (
+                    f"No-show reported after session marked as completed: "
+                    f"{reporter_role} claims {who_was_absent.lower()} was absent. "
+                    f"Requires admin review."
+                )
+                booking.disputed_at = datetime.utcnow()
                 cls.increment_version(booking)
 
                 return TransitionResult(

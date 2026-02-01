@@ -96,11 +96,16 @@ class TestTokenInvalidationOnPasswordChange:
         )
         assert response.status_code == status.HTTP_200_OK
 
-        student_user.hashed_password = PasswordHasher.hash("newpassword123")
-        student_user.password_changed_at = datetime.now(UTC)
+        student_user.hashed_password = PasswordHasher.hash("NewPassword123!")
+        password_change_time = datetime.now(UTC)
+        student_user.password_changed_at = password_change_time
         db_session.commit()
 
-        new_token = TokenManager.create_access_token({"sub": student_user.email})
+        # New token must include pwd_ts claim (simulating real login flow)
+        new_token = TokenManager.create_access_token({
+            "sub": student_user.email,
+            "pwd_ts": password_change_time.timestamp()
+        })
         response = client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {new_token}"},
@@ -406,9 +411,14 @@ class TestLoginSecurity:
                 "/api/v1/auth/login",
                 data={"username": malicious, "password": "password"},
             )
+            # Any of these responses is valid - the key is that login is rejected:
+            # - 401: Invalid credentials
+            # - 422: Validation error
+            # - 429: Account locked due to too many failed attempts (rate limiting)
             assert response.status_code in [
                 status.HTTP_401_UNAUTHORIZED,
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_429_TOO_MANY_REQUESTS,
             ]
 
 
@@ -453,12 +463,14 @@ class TestAuthorizationHeader:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_case_insensitive_bearer(self, client, student_token):
-        """Test Bearer prefix is case-sensitive."""
+        """Test Bearer prefix is case-insensitive per RFC 6750."""
+        # Per OAuth2 spec (RFC 6750), token type in Authorization header is case-insensitive
         response = client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"BEARER {student_token}"},
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        # Should accept uppercase BEARER per RFC 6750
+        assert response.status_code == status.HTTP_200_OK
 
     def test_extra_whitespace_handled(self, client, student_token, student_user):
         """Test extra whitespace in Authorization header."""
@@ -495,7 +507,7 @@ class TestSessionManagement:
         assert response2.status_code == status.HTTP_200_OK
 
     def test_token_for_deleted_user(self, client, db_session, student_user):
-        """Test token for soft-deleted user is rejected."""
+        """Test token for deactivated user is rejected."""
         from core.security import TokenManager
 
         token = TokenManager.create_access_token({"sub": student_user.email})
@@ -506,4 +518,5 @@ class TestSessionManagement:
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        # 403 Forbidden is returned for inactive users (authenticated but not authorized)
+        assert response.status_code == status.HTTP_403_FORBIDDEN

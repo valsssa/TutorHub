@@ -13,14 +13,54 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _is_valid_sentry_dsn(dsn: str | None) -> bool:
+    """
+    Validate that a Sentry DSN has proper format.
+
+    Valid DSN format: https://<key>@<host>/<project_id>
+    """
+    if not dsn:
+        return False
+
+    dsn = dsn.strip()
+
+    # Check for placeholder values
+    if dsn.lower() in ("your_sentry_dsn", "your-sentry-dsn", "placeholder", "none", "null", ""):
+        return False
+
+    # Must start with https:// and contain @ and a numeric project ID
+    if not dsn.startswith("https://"):
+        return False
+
+    if "@" not in dsn:
+        return False
+
+    # Check for sentry.io or custom sentry hostname
+    if ".sentry.io/" not in dsn and ".ingest.sentry.io/" not in dsn:
+        # Could be self-hosted Sentry, still check basic format
+        parts = dsn.split("@")
+        if len(parts) != 2:
+            return False
+
+    return True
+
+
 def init_sentry() -> bool:
     """
     Initialize Sentry error tracking.
 
-    Returns True if Sentry was initialized, False if skipped (no DSN configured).
+    Returns True if Sentry was initialized, False if skipped (no DSN configured or invalid).
     """
     if not settings.SENTRY_DSN:
         logger.info("Sentry DSN not configured, error tracking disabled")
+        return False
+
+    if not _is_valid_sentry_dsn(settings.SENTRY_DSN):
+        logger.warning(
+            "Invalid Sentry DSN format detected: '%s'. Error tracking disabled. "
+            "Set a valid DSN (https://<key>@<host>/<project_id>) or remove SENTRY_DSN to disable.",
+            settings.SENTRY_DSN[:20] + "..." if len(settings.SENTRY_DSN) > 20 else settings.SENTRY_DSN,
+        )
         return False
 
     # Configure Sentry logging integration

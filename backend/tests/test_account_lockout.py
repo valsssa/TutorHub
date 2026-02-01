@@ -5,6 +5,7 @@ from fastapi import status
 from unittest.mock import AsyncMock, patch
 
 from core.account_lockout import AccountLockoutService
+from tests.conftest import STUDENT_PASSWORD
 
 
 class TestAccountLockoutService:
@@ -217,7 +218,7 @@ class TestLoginAccountLockout:
         ):
             response = client.post(
                 "/api/v1/auth/login",
-                data={"username": student_user.email, "password": "student123"},
+                data={"username": student_user.email, "password": STUDENT_PASSWORD},
             )
             assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
             assert "temporarily locked" in response.json()["detail"].lower()
@@ -257,7 +258,7 @@ class TestLoginAccountLockout:
         ) as mock_clear:
             response = client.post(
                 "/api/v1/auth/login",
-                data={"username": student_user.email, "password": "student123"},
+                data={"username": student_user.email, "password": STUDENT_PASSWORD},
             )
             assert response.status_code == status.HTTP_200_OK
             mock_clear.assert_called_once_with(student_user.email)
@@ -276,7 +277,7 @@ class TestLoginAccountLockout:
         ):
             response = client.post(
                 "/api/v1/auth/login",
-                data={"username": student_user.email, "password": "student123"},
+                data={"username": student_user.email, "password": STUDENT_PASSWORD},
             )
             assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
             detail = response.json()["detail"]
@@ -296,7 +297,7 @@ class TestLoginAccountLockout:
         ):
             response = client.post(
                 "/api/v1/auth/login",
-                data={"username": student_user.email, "password": "student123"},
+                data={"username": student_user.email, "password": STUDENT_PASSWORD},
             )
             assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
             detail = response.json()["detail"]

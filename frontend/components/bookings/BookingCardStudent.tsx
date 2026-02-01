@@ -12,10 +12,10 @@ import {
   FiVideo,
   FiX,
   FiStar,
-  FiUser,
 } from "react-icons/fi";
 import { BookingDTO } from "@/types/booking";
 import Button from "@/components/Button";
+import Avatar from "@/components/Avatar";
 import TimeDisplay from "@/components/TimeDisplay";
 import { useTimezone } from "@/contexts/TimezoneContext";
 import {
@@ -77,18 +77,12 @@ export default function BookingCardStudent({
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           {/* Tutor Avatar */}
-          <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
-            {booking.tutor.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={booking.tutor.avatar_url}
-                alt={booking.tutor.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <FiUser className="w-6 h-6 text-gray-400 dark:text-slate-500" />
-            )}
-          </div>
+          <Avatar
+            name={booking.tutor.name}
+            avatarUrl={booking.tutor.avatar_url}
+            userId={booking.tutor.id}
+            size="md"
+          />
 
           {/* Tutor Name and Title */}
           <div>

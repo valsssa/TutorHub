@@ -45,7 +45,13 @@ function BookingReviewContent() {
         return;
       }
 
-      if (bookingData.status !== "completed" && bookingData.status !== "COMPLETED") {
+      // Check if booking is completed using four-field system with fallback
+      const sessionState = (bookingData.session_state || "").toUpperCase();
+      const sessionOutcome = (bookingData.session_outcome || "").toUpperCase();
+      const isCompleted = (sessionState === "ENDED" && sessionOutcome === "COMPLETED") ||
+        bookingData.status === "completed" || bookingData.status === "COMPLETED";
+
+      if (!isCompleted) {
         showError("Can only review completed bookings");
         router.push("/bookings");
         return;

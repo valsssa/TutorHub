@@ -97,15 +97,19 @@ export default function TutorCard({
         onClick={() => (onViewProfile ? onViewProfile() : router.push(`/tutors/${tutor.id}`))}
       >
         <div className="flex items-start gap-4">
-          {tutor.profile_photo_url && (
+          {photoUrl ? (
             <Image
-              src={resolveAssetUrl(tutor.profile_photo_url)}
+              src={photoUrl}
               alt={displayName}
               width={64}
               height={64}
               className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700"
-              unoptimized
+              loading="lazy"
             />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg border-2 border-slate-200 dark:border-slate-700">
+              {initials}
+            </div>
           )}
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-slate-900 dark:text-white truncate">{displayName}</h3>
@@ -144,15 +148,19 @@ export default function TutorCard({
         <div className="p-6">
           {/* Tutor Header */}
           <div className="flex items-start gap-4 mb-4">
-            {tutor.profile_photo_url && (
+            {photoUrl ? (
               <Image
-                src={resolveAssetUrl(tutor.profile_photo_url)}
+                src={photoUrl}
                 alt={displayName}
                 width={80}
                 height={80}
                 className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-slate-800 shadow-md"
-                unoptimized
+                loading="lazy"
               />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-2xl border-4 border-white dark:border-slate-800 shadow-md">
+                {initials}
+              </div>
             )}
             <div className="flex-1">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
@@ -269,13 +277,12 @@ export default function TutorCard({
 
         {/* Header */}
         <div className="flex gap-4 mb-4">
-          {tutor.profile_photo_url && (
+          {photoUrl ? (
             <Image
-              src={resolveAssetUrl(tutor.profile_photo_url)}
+              src={photoUrl}
               alt={displayName}
               width={64}
               height={64}
-              loading="lazy"
               className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 hover:scale-105 transition-transform duration-200 cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
@@ -285,8 +292,21 @@ export default function TutorCard({
                   router.push(`/tutors/${tutor.id}`);
                 }
               }}
-              unoptimized
             />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg border-2 border-slate-200 dark:border-slate-700 shrink-0 hover:scale-105 transition-transform duration-200 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onViewProfile) {
+                  onViewProfile();
+                } else {
+                  router.push(`/tutors/${tutor.id}`);
+                }
+              }}
+            >
+              {initials}
+            </div>
           )}
           <div>
             <h3 className="font-bold text-lg text-slate-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
@@ -362,8 +382,11 @@ export default function TutorCard({
                       }
                     }}
                     className="text-[10px] whitespace-nowrap bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 px-2 py-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                    suppressHydrationWarning
                   >
-                    {slotDate.toLocaleDateString([], { weekday: 'short' })}, {slotDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    <span suppressHydrationWarning>
+                      {slotDate.toLocaleDateString([], { weekday: 'short' })}, {slotDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    </span>
                   </button>
                 );
               })}

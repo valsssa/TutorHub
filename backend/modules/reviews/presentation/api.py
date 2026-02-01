@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -55,7 +55,7 @@ async def create_review(
             raise HTTPException(status_code=404, detail="Booking not found")
         if booking.student_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized")
-        if booking.status != "completed":
+        if booking.session_state != "ENDED" or booking.session_outcome != "COMPLETED":
             raise HTTPException(status_code=400, detail="Can only review completed bookings")
 
         # Check if review already exists
@@ -81,84 +81,104 @@ async def create_review(
                 "hourly_rate": float(booking.hourly_rate),
                 "total_amount": float(booking.total_amount),
                 "pricing_type": booking.pricing_type,
-                "status": booking.status,
+                "session_state": booking.session_state,
+                "session_outcome": booking.session_outcome,
                 "topic": booking.topic,
             }
         )
 
-        # Use atomic transaction to ensure review + tutor stats update
-        # happen together (prevents orphaned review without updated stats)
-        with atomic_operation(db):
-            # Create review with decision tracking
-            review = Review(
-                booking_id=review_data.booking_id,
-                tutor_profile_id=booking.tutor_profile_id,
-                student_id=current_user.id,
-                rating=review_data.rating,
-                comment=sanitized_comment,
-                booking_snapshot=booking_snapshot,  # Immutable context
+        # Create review with decision tracking
+        review_created_at = datetime.now(UTC)
+        review = Review(
+            booking_id=review_data.booking_id,
+            tutor_profile_id=booking.tutor_profile_id,
+            student_id=current_user.id,
+            rating=review_data.rating,
+            comment=sanitized_comment,
+            booking_snapshot=booking_snapshot,
+            is_public=True,
+            created_at=review_created_at,
+        )
+
+        db.add(review)
+        db.flush()  # Get review ID for audit log
+
+        # Log the review decision in audit trail (immediate mode to avoid post-commit issues)
+        AuditLogger.log_action(
+            db=db,
+            table_name="reviews",
+            record_id=review.id,
+            action="INSERT",
+            new_data={
+                "booking_id": review_data.booking_id,
+                "tutor_profile_id": booking.tutor_profile_id,
+                "rating": review_data.rating,
+                "has_comment": bool(sanitized_comment),
+                "decision": "student_reviewed_session",
+                "snapshot_captured": True,
+            },
+            changed_by=current_user.id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            immediate=True,  # Write audit log immediately, not deferred
+        )
+
+        # Update tutor average rating and total reviews
+        tutor_profile = db.query(TutorProfile).filter(TutorProfile.id == booking.tutor_profile_id).first()
+
+        if tutor_profile:
+            # Calculate new average rating (includes the new review after flush)
+            avg_rating = (
+                db.query(func.avg(Review.rating)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
             )
 
-            db.add(review)
-            db.flush()  # Get review ID for audit log
-
-            # Log the review decision in audit trail
-            AuditLogger.log_action(
-                db=db,
-                table_name="reviews",
-                record_id=review.id,
-                action="INSERT",
-                new_data={
-                    "booking_id": review_data.booking_id,
-                    "tutor_profile_id": booking.tutor_profile_id,
-                    "rating": review_data.rating,
-                    "has_comment": bool(sanitized_comment),
-                    "decision": "student_reviewed_session",
-                    "snapshot_captured": True,
-                },
-                changed_by=current_user.id,
-                ip_address=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent"),
+            total_reviews = (
+                db.query(func.count(Review.id)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
             )
 
-            # Update tutor average rating and total reviews atomically
-            tutor_profile = db.query(TutorProfile).filter(TutorProfile.id == booking.tutor_profile_id).first()
+            tutor_profile.average_rating = Decimal(str(round(float(avg_rating), 2))) if avg_rating else Decimal("0.00")
+            tutor_profile.total_reviews = total_reviews or 0
+            tutor_profile.updated_at = datetime.now(UTC)
 
-            if tutor_profile:
-                # Calculate new average rating (includes the new review after flush)
-                avg_rating = (
-                    db.query(func.avg(Review.rating)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
-                )
+        # Capture values for response and logging
+        review_id = review.id
+        tutor_profile_id_for_cache = booking.tutor_profile_id
+        user_email_for_log = current_user.email
 
-                total_reviews = (
-                    db.query(func.count(Review.id)).filter(Review.tutor_profile_id == booking.tutor_profile_id).scalar()
-                )
+        # Commit all changes
+        db.commit()
 
-                tutor_profile.average_rating = Decimal(str(round(float(avg_rating), 2))) if avg_rating else Decimal("0.00")
-                tutor_profile.total_reviews = total_reviews or 0
-
-                # Update timestamp in application code (no DB triggers)
-                from datetime import datetime
-
-                tutor_profile.updated_at = datetime.now(UTC)
-            # atomic_operation commits all changes together
-
-        db.refresh(review)
+        # Build response after commit using local variables
+        response_data = ReviewResponse(
+            id=review_id,
+            booking_id=review_data.booking_id,
+            tutor_profile_id=tutor_profile_id_for_cache,
+            student_id=current_user.id,
+            rating=review_data.rating,
+            comment=sanitized_comment,
+            is_public=True,
+            booking_snapshot=booking_snapshot,
+            created_at=review_created_at,
+        )
 
         logger.info(
-            f"Review created: ID {review.id} for tutor {booking.tutor_profile_id} "
-            f"by student {current_user.email} with rating {review_data.rating}"
+            f"Review created: ID {response_data.id} for tutor {tutor_profile_id_for_cache} "
+            f"by student {user_email_for_log} with rating {review_data.rating}"
         )
 
         # Invalidate tutor reviews cache
-        invalidate_cache(pattern=f"_get_cached_tutor_reviews_{booking.tutor_profile_id}_")
+        invalidate_cache(pattern=f"_get_cached_tutor_reviews_{tutor_profile_id_for_cache}_")
 
-        return review
+        return response_data
 
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        # Safely attempt rollback - ignore if session already committed
+        try:
+            db.rollback()
+        except Exception:
+            pass  # Session already committed, no rollback needed
         logger.error(f"Error creating review: {e}")
         raise HTTPException(status_code=500, detail="Failed to create review")
 

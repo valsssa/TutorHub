@@ -121,8 +121,8 @@ function DashboardContent() {
             page_size: 20,
           });
           setUserBookings(bookingData.bookings || []);
-        } catch (error) {
-          console.error("Failed to load bookings:", error);
+        } catch {
+          // Bookings failed to load - show empty state
           setUserBookings([]);
         }
       } catch (error) {

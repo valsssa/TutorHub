@@ -37,7 +37,7 @@ from models import Booking, Message, MessageAttachment, User
 @pytest.fixture
 def second_tutor_user(db_session: Session) -> User:
     """Create a second tutor user for testing."""
-    from conftest import create_test_tutor_profile, create_test_user
+    from tests.conftest import create_test_tutor_profile, create_test_user
 
     user = create_test_user(
         db_session,
@@ -54,7 +54,7 @@ def second_tutor_user(db_session: Session) -> User:
 @pytest.fixture
 def second_student_user(db_session: Session) -> User:
     """Create a second student user for testing."""
-    from conftest import create_test_user
+    from tests.conftest import create_test_user
 
     return create_test_user(
         db_session,
@@ -89,7 +89,7 @@ def confirmed_booking(db_session: Session, tutor_user: User, student_user: User,
         hourly_rate=50.00,
         total_amount=50.00,
         currency="USD",
-        status="CONFIRMED",  # Confirmed status
+        session_state="SCHEDULED",  # Confirmed/scheduled status
         tutor_name=f"{tutor_user.first_name} {tutor_user.last_name}",
         student_name=f"{student_user.first_name} {student_user.last_name}",
         subject_name=test_subject.name,
@@ -281,7 +281,7 @@ class TestMessageThreads:
         self, client, student_token, tutor_user, second_tutor_user, db_session
     ):
         """Test threads limit parameter."""
-        from conftest import create_test_tutor_profile, create_test_user
+        from tests.conftest import create_test_tutor_profile, create_test_user
 
         # Create multiple tutors and send messages
         for i in range(3):
@@ -921,7 +921,7 @@ class TestFileAttachments:
     """Test file attachment functionality."""
 
     @patch("modules.messages.api.store_message_attachment")
-    @patch("modules.messages.api.manager.send_personal_message")
+    @patch("modules.messages.api.manager.send_personal_message", new_callable=AsyncMock)
     def test_send_message_with_attachment(
         self,
         mock_websocket,
@@ -942,7 +942,7 @@ class TestFileAttachments:
             "width": None,
             "height": None,
         }
-        mock_websocket.return_value = asyncio.coroutine(lambda: None)()
+        mock_websocket.return_value = None
 
         # Create file-like object
         file_content = b"PDF content here"

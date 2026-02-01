@@ -87,7 +87,7 @@ export default function ReferralPage() {
                     alt="Happy Student"
                     fill
                     className="object-cover rounded-2xl shadow-2xl border-4 border-white transform -rotate-3 hover:rotate-0 transition-transform duration-500"
-                    unoptimized
+                    loading="lazy"
                   />
                 </div>
                 <div className="absolute -top-4 -right-8 bg-white text-slate-900 px-3 py-1.5 rounded-lg shadow-lg text-sm font-bold animate-bounce" style={{animationDuration: '3s'}}>
@@ -106,7 +106,7 @@ export default function ReferralPage() {
                     alt="Friends Learning"
                     fill
                     className="object-cover rounded-2xl shadow-2xl border-4 border-white transform rotate-3 hover:rotate-0 transition-transform duration-500"
-                    unoptimized
+                    loading="lazy"
                   />
                 </div>
                 <div className="absolute -top-6 -left-4 bg-white text-slate-900 px-4 py-2 rounded-lg shadow-lg text-sm font-bold">

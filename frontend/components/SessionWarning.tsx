@@ -118,8 +118,8 @@ export default function SessionWarning({
       lastActivityRef.current = Date.now();
       setShowWarning(false);
       warningShownRef.current = false;
-    } catch (error) {
-      console.error("Failed to extend session:", error);
+    } catch {
+      // Extension failed - user will see modal again if session continues to expire
     } finally {
       setExtending(false);
     }

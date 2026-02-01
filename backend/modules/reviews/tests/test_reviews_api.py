@@ -39,7 +39,8 @@ class TestCreateReview:
         booking.id = 100
         booking.student_id = 1
         booking.tutor_profile_id = 10
-        booking.status = "completed"
+        booking.session_state = "ENDED"
+        booking.session_outcome = "COMPLETED"
         booking.tutor_name = "Test Tutor"
         booking.tutor_title = "Math Expert"
         booking.subject_name = "Math"

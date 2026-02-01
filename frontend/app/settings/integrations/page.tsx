@@ -69,7 +69,7 @@ export default function IntegrationsPage() {
       setZoomStatus(zoomRes);
       setCalendarStatus(calendarRes);
     } catch (error) {
-      console.error("Failed to load integration statuses:", error);
+      // Silently fail - integrations will show default state
     } finally {
       setLoading(false);
     }

@@ -69,8 +69,7 @@ export default function MessageAttachment({
         link.click();
         document.body.removeChild(link);
       }
-    } catch (err) {
-      console.error("Failed to get attachment URL:", err);
+    } catch {
       setError("Failed to load attachment");
     } finally {
       setIsLoading(false);

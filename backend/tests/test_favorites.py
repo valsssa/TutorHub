@@ -4,6 +4,8 @@ from fastapi import status
 
 import pytest
 
+from tests.conftest import STUDENT_PASSWORD
+
 
 class TestGetFavorites:
     """Test GET /api/favorites endpoint."""
@@ -260,7 +262,7 @@ class TestFavoritesIntegration:
         # Login and add favorite
         login_response = client.post(
             "/api/v1/auth/login",
-            data={"username": student_user.email, "password": "student123"},
+            data={"username": student_user.email, "password": STUDENT_PASSWORD},
         )
         token1 = login_response.json()["access_token"]
 
@@ -273,7 +275,7 @@ class TestFavoritesIntegration:
         # Login again
         login_response2 = client.post(
             "/api/v1/auth/login",
-            data={"username": student_user.email, "password": "student123"},
+            data={"username": student_user.email, "password": STUDENT_PASSWORD},
         )
         token2 = login_response2.json()["access_token"]
 

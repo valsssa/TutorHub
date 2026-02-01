@@ -126,8 +126,8 @@ function SearchContent() {
         sort: filters.sort,
       });
       setTutors(data);
-    } catch (error) {
-      console.error("Failed to search tutors:", error);
+    } catch {
+      // Search failed - show empty results
       setTutors([]);
     } finally {
       setLoading(false);

@@ -152,7 +152,7 @@ export default function ProfileSettingsPage() {
                   width={128}
                   height={128}
                   className="w-full h-full object-cover"
-                  unoptimized
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center text-white">

@@ -1,0 +1,371 @@
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_BUILDKIT: "1"
+  COMPOSE_DOCKER_CLI_BUILD: "1"
+  FF_USE_FASTZIP: "true"
+  CACHE_COMPRESSION_LEVEL: "fast"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
+  FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend
+  BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend
+  IMAGE_TAG_SHA: $CI_COMMIT_SHORT_SHA
+  IMAGE_TAG_BRANCH: $CI_COMMIT_REF_SLUG
+
+stages:
+  - validate
+  - lint
+  - test
+  - build
+  - security
+  - docker
+
+default:
+  interruptible: true
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+
+.node_cache: &node_cache
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/node_modules/
+      - .cache/npm/
+    policy: pull-push
+
+.pip_cache: &pip_cache
+  cache:
+    key:
+      files:
+        - backend/requirements.txt
+        - backend/requirements-dev.txt
+    paths:
+      - .cache/pip/
+      - backend/.venv/
+    policy: pull-push
+
+.docker_login: &docker_login
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+
+validate:frontend:syntax:
+  stage: validate
+  image: node:20-alpine
+  <<: *node_cache
+  script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+    - npx tsc --noEmit
+  rules:
+    - changes:
+        - frontend/**/*
+
+validate:backend:syntax:
+  stage: validate
+  image: python:3.12-slim
+  <<: *pip_cache
+  script:
+    - cd backend
+    - python -m py_compile $(find . -name "*.py" -not -path "./.venv/*")
+    - pip install --quiet ruff
+    - ruff check --select=E9,F63,F7,F82 .
+  rules:
+    - changes:
+        - backend/**/*
+
+validate:docker:syntax:
+  stage: validate
+  image: hadolint/hadolint:latest-alpine
+  script:
+    - hadolint backend/Dockerfile --failure-threshold warning || true
+    - hadolint frontend/Dockerfile --failure-threshold warning || true
+    - |
+      if [ -f "Dockerfile" ]; then
+        hadolint Dockerfile --failure-threshold warning || true
+      fi
+  rules:
+    - changes:
+        - "**/Dockerfile*"
+        - docker-compose*.yml
+
+validate:env:
+  stage: validate
+  image: alpine:latest
+  script:
+    - |
+      REQUIRED_VARS="CI_REGISTRY CI_REGISTRY_USER CI_REGISTRY_PASSWORD"
+      for var in $REQUIRED_VARS; do
+        if [ -z "$(eval echo \$$var)" ]; then
+          echo "ERROR: Required variable $var is not set"
+          exit 1
+        fi
+      done
+    - echo "All required environment variables are set"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+lint:frontend:
+  stage: lint
+  image: node:20-alpine
+  <<: *node_cache
+  needs:
+    - job: validate:frontend:syntax
+      optional: true
+  script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+    - npm run lint -- --max-warnings 0
+    - npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,md}"
+  rules:
+    - changes:
+        - frontend/**/*
+
+lint:backend:
+  stage: lint
+  image: python:3.12-slim
+  <<: *pip_cache
+  needs:
+    - job: validate:backend:syntax
+      optional: true
+  script:
+    - cd backend
+    - pip install --quiet ruff mypy
+    - ruff check .
+    - ruff format --check .
+  rules:
+    - changes:
+        - backend/**/*
+
+test:frontend:
+  stage: test
+  image: node:20-alpine
+  <<: *node_cache
+  needs:
+    - job: lint:frontend
+      optional: true
+  script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+    - npm test -- --coverage --watchAll=false --passWithNoTests
+  coverage: /All files[^|]*\|[^|]*\s+([\d\.]+)/
+  rules:
+    - changes:
+        - frontend/**/*
+
+test:backend:
+  stage: test
+  image: python:3.12-slim
+  <<: *pip_cache
+  needs:
+    - job: lint:backend
+      optional: true
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+    - name: redis:7-alpine
+      alias: redis
+  variables:
+    POSTGRES_DB: test_db
+    POSTGRES_USER: test_user
+    POSTGRES_PASSWORD: test_password
+    DATABASE_URL: postgresql://test_user:test_password@postgres:5432/test_db
+    REDIS_URL: redis://redis:6379/0
+    TESTING: "true"
+  script:
+    - cd backend
+    - pip install --quiet -r requirements.txt -r requirements-dev.txt
+    - pytest --cov=. --cov-report=term -v
+  coverage: /TOTAL.*\s+(\d+%)/
+  rules:
+    - changes:
+        - backend/**/*
+
+build:frontend:
+  stage: build
+  image: node:20-alpine
+  <<: *node_cache
+  needs:
+    - job: test:frontend
+      optional: true
+  script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+    - npm run build
+  rules:
+    - changes:
+        - frontend/**/*
+
+build:backend:
+  stage: build
+  image: python:3.12-slim
+  <<: *pip_cache
+  needs:
+    - job: test:backend
+      optional: true
+  script:
+    - cd backend
+    - pip install --quiet -r requirements.txt
+    - pip install --quiet -r requirements-prod.txt || true
+    - python -c "import sys; print(f'Python {sys.version}')"
+  rules:
+    - changes:
+        - backend/**/*
+
+security:frontend:dependencies:
+  stage: security
+  image: node:20-alpine
+  <<: *node_cache
+  needs:
+    - job: build:frontend
+      optional: true
+  script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit
+    - npm audit --audit-level=critical || true
+    - |
+      RESULT=$(npm audit --audit-level=critical --json 2>/dev/null || echo '{}')
+      CRITICAL=$(echo "$RESULT" | grep -o '"critical":[0-9]*' | grep -o '[0-9]*' || echo "0")
+      if [ "$CRITICAL" -gt "0" ]; then
+        echo "Critical vulnerabilities found: $CRITICAL"
+        exit 1
+      fi
+  allow_failure: false
+  rules:
+    - changes:
+        - frontend/**/*
+
+security:backend:dependencies:
+  stage: security
+  image: python:3.12-slim
+  <<: *pip_cache
+  needs:
+    - job: build:backend
+      optional: true
+  script:
+    - pip install --quiet pip-audit
+    - cd backend
+    - pip install --quiet -r requirements.txt
+    - pip-audit --strict --desc || true
+    - |
+      RESULT=$(pip-audit --format json 2>/dev/null || echo '[]')
+      CRITICAL=$(echo "$RESULT" | grep -c '"severity": "CRITICAL"' || echo "0")
+      if [ "$CRITICAL" -gt "0" ]; then
+        echo "Critical vulnerabilities found"
+        exit 1
+      fi
+  allow_failure: false
+  rules:
+    - changes:
+        - backend/**/*
+
+security:secrets:scan:
+  stage: security
+  image: trufflesecurity/trufflehog:latest
+  script:
+    - trufflehog filesystem --directory=. --fail --no-update
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+docker:build:frontend:
+  stage: docker
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  <<: *docker_login
+  needs:
+    - job: build:frontend
+    - job: security:frontend:dependencies
+      optional: true
+  script:
+    - docker build
+        --cache-from $FRONTEND_IMAGE:latest
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --tag $FRONTEND_IMAGE:$IMAGE_TAG_SHA
+        --tag $FRONTEND_IMAGE:$IMAGE_TAG_BRANCH
+        --tag $FRONTEND_IMAGE:latest
+        --file frontend/Dockerfile
+        ./frontend
+    - docker push $FRONTEND_IMAGE:$IMAGE_TAG_SHA
+    - docker push $FRONTEND_IMAGE:$IMAGE_TAG_BRANCH
+    - docker push $FRONTEND_IMAGE:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+      changes:
+        - frontend/**/*
+        - docker-compose*.yml
+
+docker:build:backend:
+  stage: docker
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  <<: *docker_login
+  needs:
+    - job: build:backend
+    - job: security:backend:dependencies
+      optional: true
+  script:
+    - docker build
+        --cache-from $BACKEND_IMAGE:latest
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --tag $BACKEND_IMAGE:$IMAGE_TAG_SHA
+        --tag $BACKEND_IMAGE:$IMAGE_TAG_BRANCH
+        --tag $BACKEND_IMAGE:latest
+        --file backend/Dockerfile
+        ./backend
+    - docker push $BACKEND_IMAGE:$IMAGE_TAG_SHA
+    - docker push $BACKEND_IMAGE:$IMAGE_TAG_BRANCH
+    - docker push $BACKEND_IMAGE:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+      changes:
+        - backend/**/*
+        - docker-compose*.yml
+
+docker:scan:frontend:
+  stage: docker
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  <<: *docker_login
+  needs:
+    - job: docker:build:frontend
+  script:
+    - docker pull $FRONTEND_IMAGE:$IMAGE_TAG_SHA
+    - apk add --no-cache curl
+    - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - trivy image --exit-code 1 --severity CRITICAL --no-progress $FRONTEND_IMAGE:$IMAGE_TAG_SHA
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+docker:scan:backend:
+  stage: docker
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  <<: *docker_login
+  needs:
+    - job: docker:build:backend
+  script:
+    - docker pull $BACKEND_IMAGE:$IMAGE_TAG_SHA
+    - apk add --no-cache curl
+    - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - trivy image --exit-code 1 --severity CRITICAL --no-progress $BACKEND_IMAGE:$IMAGE_TAG_SHA
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH

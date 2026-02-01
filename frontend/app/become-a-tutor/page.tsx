@@ -70,7 +70,7 @@ export default function BecomeTutorPage() {
                                         alt="Happy Tutor" 
                                         fill
                                         className="rounded-2xl object-cover object-top"
-                                        unoptimized
+                                        loading="lazy"
                                     />
                                 </div>
                                 <div className="absolute -bottom-6 -left-6 bg-white dark:bg-slate-700 p-4 rounded-xl shadow-xl flex items-center gap-4">

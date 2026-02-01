@@ -79,26 +79,32 @@ export default function TutorDashboard({
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleModalTab, setScheduleModalTab] = useState<"Lesson" | "Time off" | "Extra slots">("Lesson");
 
-  // Memoize filtered bookings
+  // Memoize filtered bookings (using four-field system with fallback to legacy status)
   const pendingBookings = useMemo(
     () =>
-      bookings.filter(
-        (b) => b.status === "PENDING" || b.status === "pending"
-      ),
+      bookings.filter((b) => {
+        const sessionState = (b.session_state || "").toUpperCase();
+        return sessionState === "REQUESTED" || b.status === "PENDING" || b.status === "pending";
+      }),
     [bookings]
   );
   const confirmedBookings = useMemo(
     () =>
-      bookings.filter(
-        (b) => b.status === "CONFIRMED" || b.status === "confirmed"
-      ),
+      bookings.filter((b) => {
+        const sessionState = (b.session_state || "").toUpperCase();
+        return sessionState === "SCHEDULED" || sessionState === "ACTIVE" ||
+          b.status === "CONFIRMED" || b.status === "confirmed";
+      }),
     [bookings]
   );
   const completedBookings = useMemo(
     () =>
-      bookings.filter(
-        (b) => b.status === "COMPLETED" || b.status === "completed"
-      ),
+      bookings.filter((b) => {
+        const sessionState = (b.session_state || "").toUpperCase();
+        const sessionOutcome = (b.session_outcome || "").toUpperCase();
+        return (sessionState === "ENDED" && sessionOutcome === "COMPLETED") ||
+          b.status === "COMPLETED" || b.status === "completed";
+      }),
     [bookings]
   );
 
@@ -378,7 +384,7 @@ export default function TutorDashboard({
                   return (
                     <div key={req.id} className="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <Avatar name={studentName} variant="gradient" size="md" />
+                        <Avatar name={studentName} userId={req.student?.id} size="md" />
                         <div>
                           <div className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{studentName}</div>
                           <div className="text-sm text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -440,7 +446,7 @@ export default function TutorDashboard({
                       <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl hover:shadow-md transition-all border border-transparent hover:border-emerald-100 dark:hover:border-emerald-900/30 group gap-4">
                         <div className="flex items-center gap-4">
                           {/* Avatar */}
-                          <Avatar name={studentName} variant="gradient" size="md" />
+                          <Avatar name={studentName} userId={session.student?.id} size="md" />
                           <div>
                             <h4 className="font-bold text-slate-900 dark:text-white text-base">
                               {studentName}

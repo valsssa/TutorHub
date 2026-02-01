@@ -183,11 +183,11 @@ async def create_checkout(
             detail="You can only pay for your own bookings",
         )
 
-    # Check booking status
-    if booking.status not in ["PENDING", "CONFIRMED"]:
+    # Check booking status - can only pay for bookings in REQUESTED or SCHEDULED state
+    if booking.session_state not in ["REQUESTED", "SCHEDULED"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot pay for booking with status {booking.status}",
+            detail=f"Cannot pay for booking with status {booking.session_state}",
         )
 
     # Check if already paid
@@ -730,9 +730,9 @@ async def _handle_checkout_completed(db: Session, session: dict):
         payment.stripe_payment_intent_id = session.get("payment_intent")
         payment.paid_at = datetime.now(UTC)
 
-    # Update booking status if pending
-    if booking.status == "PENDING":
-        booking.status = "CONFIRMED"
+    # Update booking state if requested (await tutor confirmation)
+    if booking.session_state == "REQUESTED":
+        booking.session_state = "SCHEDULED"
         booking.updated_at = datetime.now(UTC)
 
     db.commit()
@@ -817,9 +817,9 @@ async def _handle_charge_refunded(db: Session, charge: dict):
         payment.refunded_at = datetime.now(UTC)
         payment.refund_amount_cents = refund_amount
 
-        # Update booking status
+        # Update booking payment state
         if payment.booking:
-            payment.booking.status = "REFUNDED"
+            payment.booking.payment_state = "REFUNDED"
             payment.booking.updated_at = datetime.now(UTC)
 
         db.commit()
@@ -1020,9 +1020,9 @@ async def request_refund(
     payment.refunded_at = datetime.now(UTC)
     payment.refund_amount_cents = new_total_refunded
 
-    # Update booking status only for full refunds
+    # Update booking payment state only for full refunds
     if new_remaining_refundable == 0:
-        booking.status = "REFUNDED"
+        booking.payment_state = "REFUNDED"
         booking.updated_at = datetime.now(UTC)
 
         # Restore package credit if this was a package booking (only on full refund)
@@ -1230,9 +1230,9 @@ async def poll_payment_status(
                 payment.stripe_payment_intent_id = status_info.payment_intent_id
                 payment.paid_at = datetime.now(UTC)
 
-            # Update booking status if needed
-            if booking.status == "PENDING":
-                booking.status = "CONFIRMED"
+            # Update booking state if needed
+            if booking.session_state == "REQUESTED":
+                booking.session_state = "SCHEDULED"
                 booking.updated_at = datetime.now(UTC)
 
             db.commit()

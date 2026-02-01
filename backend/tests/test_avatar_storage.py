@@ -220,6 +220,7 @@ class TestAvatarStorageClient:
             Body=file_content,
             ContentType="image/jpeg",
             ACL="private",
+            CacheControl="max-age=31536000, immutable",
         )
 
     @pytest.mark.asyncio
@@ -294,10 +295,22 @@ class TestAvatarStorageClient:
 
     @pytest.mark.asyncio
     async def test_generate_presigned_url_success(self, storage_client):
-        """Test generate_presigned_url returns public URL."""
-        url = await storage_client.generate_presigned_url(key="avatars/user1.jpg")
+        """Test generate_presigned_url returns presigned URL from S3 client."""
+        mock_client = AsyncMock()
+        expected_url = "http://public.localhost:9000/test-bucket/avatars/user1.jpg?X-Amz-Signature=abc123"
+        mock_client.generate_presigned_url = AsyncMock(return_value=expected_url)
 
-        assert url == "http://public.localhost:9000/test-bucket/avatars/user1.jpg"
+        with patch.object(
+            storage_client, "_client", return_value=self._create_async_context(mock_client)
+        ):
+            url = await storage_client.generate_presigned_url(key="avatars/user1.jpg")
+
+        assert url == expected_url
+        mock_client.generate_presigned_url.assert_called_once_with(
+            "get_object",
+            Params={"Bucket": "test-bucket", "Key": "avatars/user1.jpg"},
+            ExpiresIn=300,
+        )
 
     @pytest.mark.asyncio
     async def test_generate_presigned_url_empty_key_raises(self, storage_client):
@@ -310,12 +323,20 @@ class TestAvatarStorageClient:
 
     @pytest.mark.asyncio
     async def test_generate_presigned_url_strips_trailing_slash(self, storage_client):
-        """Test generate_presigned_url strips trailing slash from endpoint."""
+        """Test generate_presigned_url works with trailing slash in endpoint."""
         storage_client._public_endpoint = "http://public.localhost:9000/"
 
-        url = await storage_client.generate_presigned_url(key="avatars/user1.jpg")
+        mock_client = AsyncMock()
+        expected_url = "http://public.localhost:9000/test-bucket/avatars/user1.jpg?X-Amz-Signature=abc123"
+        mock_client.generate_presigned_url = AsyncMock(return_value=expected_url)
 
-        assert url == "http://public.localhost:9000/test-bucket/avatars/user1.jpg"
+        with patch.object(
+            storage_client, "_client", return_value=self._create_async_context(mock_client)
+        ):
+            url = await storage_client.generate_presigned_url(key="avatars/user1.jpg")
+
+        # URL should be generated via S3 client, which handles endpoint formatting
+        assert url == expected_url
 
     def _create_async_context(self, mock_client):
         """Create an async context manager that yields mock_client."""

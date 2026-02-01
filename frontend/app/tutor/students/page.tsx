@@ -65,8 +65,8 @@ function TutorStudentsContent() {
       try {
         const ids = JSON.parse(stored);
         setArchivedStudentIds(new Set(ids));
-      } catch (e) {
-        console.error('Failed to parse archived students:', e);
+      } catch {
+        // Invalid stored data, ignore
       }
     }
 
@@ -82,8 +82,7 @@ function TutorStudentsContent() {
           page_size: 1000,
         });
         setBookingsData(bookingResponse.bookings || []);
-      } catch (error) {
-        console.error("Failed to load students data:", error);
+      } catch {
         showError("Failed to load students data");
         router.replace("/dashboard");
       } finally {
@@ -117,29 +116,21 @@ function TutorStudentsContent() {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
+      // Helper to check if booking is cancelled (using four-field system with fallback)
+      const isCancelled = (b: typeof bookings[0]) => {
+        const sessionState = (b.session_state || "").toUpperCase();
+        return sessionState === "CANCELLED" || sessionState === "EXPIRED" ||
+          b.status === "CANCELLED_BY_STUDENT" || b.status === "CANCELLED_BY_TUTOR" || b.status === "cancelled";
+      };
+
       // Check for cancelled status first
-      const hasCancelled = bookings.some(
-        (b) =>
-          b.status === "CANCELLED_BY_STUDENT" ||
-          b.status === "CANCELLED_BY_TUTOR" ||
-          b.status === "cancelled"
-      );
-      
-      if (hasCancelled && bookings.every(
-        (b) =>
-          b.status === "CANCELLED_BY_STUDENT" ||
-          b.status === "CANCELLED_BY_TUTOR" ||
-          b.status === "cancelled"
-      )) {
+      const hasCancelled = bookings.some(isCancelled);
+
+      if (hasCancelled && bookings.every(isCancelled)) {
         type = "Cancelled";
       } else {
         // Use most recent booking's lesson type
-        const mostRecent = sortedBookings.find(
-          (b) =>
-            b.status !== "CANCELLED_BY_STUDENT" &&
-            b.status !== "CANCELLED_BY_TUTOR" &&
-            b.status !== "cancelled"
-        ) || sortedBookings[0];
+        const mostRecent = sortedBookings.find((b) => !isCancelled(b)) || sortedBookings[0];
         
         if (mostRecent?.lesson_type === "TRIAL") {
           type = "Trial";
@@ -162,14 +153,14 @@ function TutorStudentsContent() {
       const student = studentMap.get(studentId)!;
       student.lessonsTotal = bookings.length;
 
-      // Count completed lessons
-      const completedCount = bookings.filter(
-        (b) =>
-          b.status === "COMPLETED" ||
-          b.status === "completed" ||
-          b.status === "NO_SHOW_STUDENT" ||
-          b.status === "NO_SHOW_TUTOR"
-      ).length;
+      // Count completed lessons (using four-field system with fallback)
+      const completedCount = bookings.filter((b) => {
+        const sessionState = (b.session_state || "").toUpperCase();
+        const sessionOutcome = (b.session_outcome || "").toUpperCase();
+        return sessionState === "ENDED" ||
+          sessionOutcome === "COMPLETED" || sessionOutcome === "NO_SHOW_STUDENT" || sessionOutcome === "NO_SHOW_TUTOR" ||
+          b.status === "COMPLETED" || b.status === "completed" || b.status === "NO_SHOW_STUDENT" || b.status === "NO_SHOW_TUTOR";
+      }).length;
       student.lessonsCompleted = completedCount;
 
       // Find next upcoming lesson (earliest future lesson)
@@ -177,12 +168,7 @@ function TutorStudentsContent() {
         .filter((b) => {
           const bookingStart = new Date(b.start_at);
           const now = new Date();
-          return (
-            bookingStart > now &&
-            b.status !== "CANCELLED_BY_STUDENT" &&
-            b.status !== "CANCELLED_BY_TUTOR" &&
-            b.status !== "cancelled"
-          );
+          return bookingStart > now && !isCancelled(b);
         })
         .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
 
@@ -190,10 +176,11 @@ function TutorStudentsContent() {
         student.nextLessonAt = upcomingBookings[0].start_at;
       }
 
-      // Set suggested action for pending bookings
-      const hasPending = bookings.some(
-        (b) => b.status === "PENDING" || b.status === "pending"
-      );
+      // Set suggested action for pending bookings (using four-field system with fallback)
+      const hasPending = bookings.some((b) => {
+        const sessionState = (b.session_state || "").toUpperCase();
+        return sessionState === "REQUESTED" || b.status === "PENDING" || b.status === "pending";
+      });
       if (hasPending) {
         student.suggestedAction = "Respond to request";
       }

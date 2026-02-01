@@ -43,8 +43,8 @@ export default function SettingsSidebar() {
       try {
         const user = await auth.getCurrentUser()
         setUserRole(user.role)
-      } catch (error) {
-        console.error('Failed to load user role:', error)
+      } catch {
+        // Silently fail - user role check is non-critical
       }
     }
     loadUserRole()

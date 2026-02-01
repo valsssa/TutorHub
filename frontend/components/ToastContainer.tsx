@@ -40,7 +40,6 @@ export function ToastProvider({ children }: ToastProviderProps) {
   const [screenReaderMessage, setScreenReaderMessage] = useState<string>("");
 
   const addToast = useCallback((message: string, type: ToastType) => {
-    console.info(`[toast:${type}] ${message}`);
     // keep state empty to suppress UI popups
     setToasts([]);
     setScreenReaderMessage(message);

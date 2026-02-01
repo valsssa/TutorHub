@@ -35,35 +35,22 @@ export default function GeneralSettings({ currentUser, onUserUpdated }: GeneralS
     setMessage(null)
 
     try {
-      console.log('[GeneralSettings] ===== SAVE STARTED =====')
-      console.log('[GeneralSettings] Current currency in context:', contextCurrency)
-      console.log('[GeneralSettings] Selected currency to save:', selectedCurrency)
-      console.log('[GeneralSettings] User current currency:', currentUser?.currency)
-
       // Update context FIRST to ensure immediate UI update
-      console.log('[GeneralSettings] Calling setCurrency with:', selectedCurrency)
       setCurrency(selectedCurrency)
-      console.log('[GeneralSettings] setCurrency called - context should now be:', selectedCurrency)
 
       // Force a small delay to ensure context propagates
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // Then update backend
-      console.log('[GeneralSettings] Calling backend API...')
       const updatedUser = await auth.updatePreferences(selectedCurrency, currentUser?.timezone || 'UTC')
-      console.log('[GeneralSettings] Backend updated successfully, response:', updatedUser)
 
       // Notify parent component with updated user data
-      console.log('[GeneralSettings] Calling onUserUpdated...')
       onUserUpdated(updatedUser)
 
       setMessage({ type: 'success', text: 'Settings saved successfully!' })
-      console.log('[GeneralSettings] ===== SAVE COMPLETED =====')
     } catch (error) {
-      console.error('[GeneralSettings] ERROR during save:', error)
       // Revert context on error
       if (currentUser?.currency) {
-        console.log('[GeneralSettings] Reverting currency to:', currentUser.currency)
         setCurrency(currentUser.currency)
       }
       setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' })

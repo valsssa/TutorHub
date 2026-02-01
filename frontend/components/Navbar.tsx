@@ -80,8 +80,9 @@ export default function Navbar({ user }: NavbarProps) {
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
-    // Poll for updates every 30 seconds
-    const interval = setInterval(loadUnreadCount, 30000)
+    // Reduced polling to 2 minutes since WebSocket handles real-time updates
+    // This is just a fallback for missed WebSocket messages
+    const interval = setInterval(loadUnreadCount, 120000)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -118,11 +119,15 @@ export default function Navbar({ user }: NavbarProps) {
 
   const renderAvatar = (sizeVariant: 'xs' | 'sm' | 'md' = 'sm') => {
     const avatarUrl = user.avatarUrl ?? user.avatar_url
+    // Use first_name + last_name if available, fallback to email
+    const displayName = user.first_name && user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user.email
     return (
-      <Avatar 
-        name={user.email} 
+      <Avatar
+        name={displayName}
         avatarUrl={avatarUrl}
-        variant="emerald"
+        userId={user.id}
         size={sizeVariant}
       />
     )

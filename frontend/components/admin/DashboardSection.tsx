@@ -121,9 +121,14 @@ export default function DashboardSection({
                 <div className="flex items-center justify-between mb-1">
                   <h4 className="font-semibold text-sm text-gray-800 truncate">{session.subject}</h4>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${
-                    session.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    (session.status === 'SCHEDULED' || session.status === 'confirmed') ? 'bg-green-100 text-green-800' :
+                    (session.status === 'ACTIVE') ? 'bg-blue-100 text-blue-800' :
+                    'bg-yellow-100 text-yellow-800'
                   }`}>
-                    {session.status}
+                    {session.status === 'REQUESTED' ? 'Pending' :
+                     session.status === 'SCHEDULED' ? 'Confirmed' :
+                     session.status === 'ACTIVE' ? 'In Progress' :
+                     session.status}
                   </span>
                 </div>
                 <p className="text-xs text-gray-600 mb-1 truncate">

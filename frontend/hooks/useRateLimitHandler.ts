@@ -20,11 +20,8 @@ export function useRateLimitHandler() {
     const rateLimitEvent = event as RateLimitEvent;
     const { message } = rateLimitEvent.detail;
 
-    // Show toast notification
+    // Show toast notification to user
     showError(message);
-
-    // Log to console for debugging
-    console.warn('Rate limit reached:', rateLimitEvent.detail);
   }, [showError]);
 
   useEffect(() => {

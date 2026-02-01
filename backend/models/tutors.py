@@ -75,6 +75,20 @@ class TutorProfile(Base):
     # Relationships
     user = relationship("User", back_populates="tutor_profile", foreign_keys=[user_id])
     subjects = relationship("TutorSubject", back_populates="tutor_profile", cascade="all, delete-orphan")
+
+    @property
+    def name(self) -> str:
+        """Get tutor's display name from related user."""
+        if self.user:
+            first = self.user.first_name or ""
+            last = self.user.last_name or ""
+            return f"{first} {last}".strip() or "Anonymous Tutor"
+        return "Anonymous Tutor"
+
+    @property
+    def profile_photo_url(self) -> str | None:
+        """Get tutor's profile photo URL."""
+        return None  # Placeholder - integrate with avatar storage if needed
     availabilities = relationship(
         "TutorAvailability",
         back_populates="tutor_profile",

@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { formatDualTimezone, formatTimeInTimezone, getTimezoneOffset } from '@/lib/timezone'
 import { useTimezone } from '@/contexts/TimezoneContext'
 
@@ -55,38 +55,57 @@ export default function TimeDisplay({
   const { userTimezone: contextTimezone, isLoaded } = useTimezone()
   const userTimezone = userTimezoneProp || contextTimezone
 
-  // Show loading state while timezone context loads
-  if (!isLoaded && !userTimezoneProp) {
+  // State to track client-side hydration and store formatted values
+  const [isMounted, setIsMounted] = useState(false)
+  const [formattedTime, setFormattedTime] = useState<string | null>(null)
+  const [formattedDate, setFormattedDate] = useState<string | null>(null)
+
+  // Only format dates on the client to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Format dates when mounted and timezone is loaded
+  useEffect(() => {
+    if (!isMounted) return
+    if (!isLoaded && !userTimezoneProp) return
+
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+
+    // Format the time portion
+    let timeString: string
+    if (otherTimezone && otherTimezone !== userTimezone) {
+      timeString = formatDualTimezone(dateObj, userTimezone, otherTimezone, otherLabel)
+    } else {
+      const time = formatTimeInTimezone(dateObj, userTimezone)
+      const abbr = getTimezoneOffset(userTimezone)
+      timeString = `${time} ${abbr}`
+    }
+    setFormattedTime(timeString)
+
+    // Format date if requested
+    if (showDate) {
+      const dateString = dateObj.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: userTimezone,
+      })
+      setFormattedDate(dateString)
+    } else {
+      setFormattedDate(null)
+    }
+  }, [isMounted, isLoaded, userTimezoneProp, date, otherTimezone, otherLabel, userTimezone, showDate])
+
+  // Show loading state during SSR and initial hydration
+  if (!isMounted || (!isLoaded && !userTimezoneProp) || formattedTime === null) {
     return <span className={`text-slate-400 ${className}`}>--:-- --</span>
-  }
-
-  const dateObj = typeof date === 'string' ? new Date(date) : date
-
-  // Format the time portion
-  let timeString: string
-  if (otherTimezone && otherTimezone !== userTimezone) {
-    timeString = formatDualTimezone(dateObj, userTimezone, otherTimezone, otherLabel)
-  } else {
-    const time = formatTimeInTimezone(dateObj, userTimezone)
-    const abbr = getTimezoneOffset(userTimezone)
-    timeString = `${time} ${abbr}`
-  }
-
-  // Format date if requested
-  let dateString = ''
-  if (showDate) {
-    dateString = dateObj.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      timeZone: userTimezone,
-    })
   }
 
   return (
     <span className={className}>
-      {showDate && <span className="font-medium">{dateString}, </span>}
-      {timeString}
+      {showDate && formattedDate && <span className="font-medium">{formattedDate}, </span>}
+      {formattedTime}
     </span>
   )
 }
@@ -109,17 +128,35 @@ export function TimeRangeDisplay({
   const { userTimezone: contextTimezone, isLoaded } = useTimezone()
   const userTimezone = userTimezoneProp || contextTimezone
 
-  if (!isLoaded && !userTimezoneProp) {
+  // State to track client-side hydration and store formatted value
+  const [isMounted, setIsMounted] = useState(false)
+  const [formattedRange, setFormattedRange] = useState<string | null>(null)
+
+  // Only format dates on the client to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Format time range when mounted and timezone is loaded
+  useEffect(() => {
+    if (!isMounted) return
+    if (!isLoaded && !userTimezoneProp) return
+
+    const startTime = formatTimeInTimezone(startDate, userTimezone)
+    const endTime = formatTimeInTimezone(endDate, userTimezone)
+    const abbr = getTimezoneOffset(userTimezone)
+
+    setFormattedRange(`${startTime} - ${endTime} ${abbr}`)
+  }, [isMounted, isLoaded, userTimezoneProp, startDate, endDate, userTimezone])
+
+  // Show loading state during SSR and initial hydration
+  if (!isMounted || (!isLoaded && !userTimezoneProp) || formattedRange === null) {
     return <span className={`text-slate-400 ${className}`}>--:-- - --:-- --</span>
   }
 
-  const startTime = formatTimeInTimezone(startDate, userTimezone)
-  const endTime = formatTimeInTimezone(endDate, userTimezone)
-  const abbr = getTimezoneOffset(userTimezone)
-
   return (
     <span className={className}>
-      {startTime} - {endTime} {abbr}
+      {formattedRange}
     </span>
   )
 }

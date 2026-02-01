@@ -71,7 +71,8 @@ class TestPaymentCheckout:
         self, client, student_token, db_session, test_booking
     ):
         """Test checkout fails for completed bookings."""
-        test_booking.status = "COMPLETED"
+        test_booking.session_state = "ENDED"
+        test_booking.session_outcome = "COMPLETED"
         db_session.commit()
 
         response = client.post(
@@ -473,6 +474,8 @@ class TestRefunds:
             mock_refund_obj = MagicMock()
             mock_refund_obj.id = "re_test_123"
             mock_refund_obj.amount = 5000
+            mock_refund_obj.was_existing = False
+            mock_refund_obj.status = "succeeded"
             mock_refund.return_value = mock_refund_obj
 
             response = client.post(

@@ -50,7 +50,6 @@ export default function StudentDashboard({ user, bookings, onAvatarChange: _onAv
           setSavedTutors(tutorProfiles);
         }
       } catch (error: any) {
-        console.error("Error loading dashboard data:", error);
         showError(error.response?.data?.detail || "Failed to load dashboard data");
         setSavedTutors([]);
       } finally {
@@ -78,10 +77,11 @@ export default function StudentDashboard({ user, bookings, onAvatarChange: _onAv
     () => {
       const now = new Date();
       return sortedSessions.filter((booking) => {
-        const normalized = booking.status.toLowerCase();
+        // Use session_state (four-field system) with fallback to legacy status
+        const sessionState = (booking.session_state || booking.status || "").toUpperCase();
         const start = new Date(booking.start_at).getTime();
         return (
-          (normalized === "pending" || normalized === "confirmed") &&
+          (sessionState === "REQUESTED" || sessionState === "SCHEDULED" || sessionState === "ACTIVE") &&
           start >= now.getTime() - 60 * 60 * 1000
         );
       });
@@ -146,7 +146,6 @@ export default function StudentDashboard({ user, bookings, onAvatarChange: _onAv
       await favorites.removeFavorite(tutorId);
       setSavedTutors((prev) => prev.filter((tutor) => tutor.id !== tutorId));
     } catch (error: any) {
-      console.error("Error removing favorite:", error);
       showError(error.response?.data?.detail || "Failed to remove from favorites");
     }
   };

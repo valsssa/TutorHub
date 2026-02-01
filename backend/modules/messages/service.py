@@ -140,9 +140,8 @@ class MessageService:
         except Exception as e:
             self.db.rollback()
             logger.error(f"Database error saving message: {e}", exc_info=True)
-            # Return more specific error message for debugging
-            error_type = type(e).__name__
-            raise ValidationError(f"Database error: {error_type} - {str(e)}") from e
+            # Return generic error message to avoid information disclosure
+            raise ValidationError("Failed to save message. Please try again.") from e
 
     def get_conversation_messages(
         self,
@@ -552,7 +551,7 @@ class MessageService:
         Determine if conversation requires PII protection.
 
         Pre-booking = no booking OR booking is still PENDING
-        Post-booking = CONFIRMED, COMPLETED, or later states
+        Post-booking = SCHEDULED, ACTIVE, or ENDED states
         """
         if not booking_id:
             return True
@@ -561,9 +560,9 @@ class MessageService:
         if not booking:
             return True
 
-        # Allow contact info only after booking is confirmed
-        safe_statuses = ["confirmed", "completed", "no_show_student", "no_show_tutor"]
-        return booking.status.lower() not in safe_statuses
+        # Allow contact info only after booking is confirmed (SCHEDULED or later)
+        safe_statuses = ["scheduled", "active", "ended"]
+        return booking.session_state.lower() not in safe_statuses
 
     def _mask_pii(self, content: str) -> str:
         """
@@ -581,10 +580,11 @@ class MessageService:
         content = re.sub(email_pattern, "***@***.***", content)
 
         # Phone patterns (international + various formats)
+        # Must have at least 7 digits total for US/international, or use separators
         phone_patterns = [
-            r"(\+?\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}",  # Standard
-            r"\d{10,}",  # Long digit sequences
-            r"(\+\d{1,3}[\s-]?)?\(?\d{1,4}\)?[\s-]?\d{1,4}[\s-]?\d{1,9}",  # International
+            r"(\+?\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}",  # Standard US format
+            r"\d{10,}",  # Long digit sequences (10+ digits)
+            r"\+\d{1,3}[\s-]?\d{2,4}[\s-]\d{2,4}[\s-]\d{2,9}",  # International with separators required
         ]
         for pattern in phone_patterns:
             content = re.sub(pattern, "***-***-****", content, flags=re.IGNORECASE)

@@ -251,9 +251,9 @@ export function useMessaging({ currentUserId, selectedThreadId }: UseMessagingPr
     }
   };
 
-  const handleThreadRead = (msg: ThreadReadPayload) => {
-    // Could update UI to show messages were read
-    console.log(`Thread read by user ${msg.reader_id}: ${msg.message_count} messages`);
+  const handleThreadRead = (_msg: ThreadReadPayload) => {
+    // Thread read events are handled silently
+    // Future enhancement: update UI to show messages were read
   };
 
   // Cleanup typing timeouts on unmount

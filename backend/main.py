@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from io import BytesIO
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 
 # Initialize Sentry early (before other imports that might error)
 from core.sentry import init_sentry
@@ -21,10 +21,17 @@ tracing_initialized = init_tracing()
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from core.rate_limiting import limiter
+from core.cors import (
+    CORSErrorMiddleware,
+    create_cors_rate_limit_handler,
+    create_cors_http_exception_handler,
+    create_cors_test_response,
+    get_cors_origins,
+)
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -384,15 +391,15 @@ async def lifespan(app: FastAPI):
     if tracing_initialized:
         try:
             shutdown_tracing()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Error during tracing shutdown: %s", e)
 
     # Close feature flags Redis connection
     try:
         from core.feature_flags import feature_flags
         await feature_flags.close()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Error closing feature flags Redis connection: %s", e)
 
 
 # OpenAPI Tags Metadata - Comprehensive API documentation structure
@@ -495,6 +502,44 @@ External service integrations including Zoom video conferencing for virtual tuto
     },
 ]
 
+def _get_openapi_servers() -> list[dict]:
+    """
+    Build OpenAPI server list based on environment configuration.
+
+    Uses BACKEND_URL environment variable if set, otherwise falls back to
+    environment-appropriate defaults.
+    """
+    servers = []
+    env = settings.ENVIRONMENT.lower()
+    backend_url = os.getenv("BACKEND_URL")
+
+    if backend_url:
+        # Use explicitly configured backend URL
+        servers.append({
+            "url": f"{backend_url.rstrip('/')}/api/v1",
+            "description": "API v1",
+        })
+    elif env == "production":
+        # Production only shows production server
+        servers.append({
+            "url": "https://api.valsa.solutions/api/v1",
+            "description": "Production API v1",
+        })
+    else:
+        # Development/staging shows both for flexibility
+        servers.append({
+            "url": "http://localhost:8000/api/v1",
+            "description": "Local development API v1",
+        })
+        # Also include production for reference in non-prod environments
+        servers.append({
+            "url": "https://api.valsa.solutions/api/v1",
+            "description": "Production API v1",
+        })
+
+    return servers
+
+
 # Create FastAPI app with lifespan and comprehensive OpenAPI metadata
 app = FastAPI(
     title="EduStream - Student-Tutor Booking Platform",
@@ -551,24 +596,21 @@ All endpoints are versioned under `/api/v1`. Future breaking changes will be int
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_tags=tags_metadata,
-    servers=[
-        {
-            "url": "https://api.valsa.solutions/api/v1",
-            "description": "Production API v1",
-        },
-        {
-            "url": "http://localhost:8000/api/v1",
-            "description": "Local development API v1",
-        },
-    ],
+    servers=_get_openapi_servers(),
     lifespan=lifespan,
 )
 
 # Add rate limiter to app state
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS-aware exception handlers
+# These ensure CORS headers are present on error responses (prevents "CORS error" for 429/500)
+app.add_exception_handler(RateLimitExceeded, create_cors_rate_limit_handler())
+app.add_exception_handler(HTTPException, create_cors_http_exception_handler())
 
 # CORS configuration - following OWASP and industry best practices
+ENV = os.getenv("ENVIRONMENT", os.getenv("ENV", "development")).lower()
+
 raw_cors_origins = os.getenv("CORS_ORIGINS")
 if raw_cors_origins:
     # Validate origin format before trusting
@@ -580,7 +622,12 @@ if raw_cors_origins:
 else:
     CORS_ORIGINS = [origin.rstrip("/") for origin in settings.CORS_ORIGINS]
 
-ENV = os.getenv("ENVIRONMENT", os.getenv("ENV", "development")).lower()
+# Always add development origins in non-production environments
+if ENV != "production":
+    dev_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    for dev_origin in dev_origins:
+        if dev_origin not in CORS_ORIGINS:
+            CORS_ORIGINS.append(dev_origin)
 logger.info("CORS allowed origins: %s", CORS_ORIGINS)
 logger.info("Runtime environment: %s", ENV)
 
@@ -615,6 +662,11 @@ app.add_middleware(
     expose_headers=EXPOSE_HEADERS,
     max_age=86400 if ENV == "production" else 600,  # 24h prod, 10min dev
 )
+
+# CORS Error Middleware - ensures CORS headers on ALL responses including errors
+# This catches responses from exception handlers that bypass CORSMiddleware
+# Must be added AFTER CORSMiddleware (so it runs before in the request chain)
+app.add_middleware(CORSErrorMiddleware)
 
 # Add tracing middleware (must be early to capture full request lifecycle)
 app.add_middleware(TracingMiddleware)
@@ -797,6 +849,59 @@ def health_check(db: Session = Depends(get_db)):
                 "database": "disconnected",
             },
         )
+
+
+@app.get(
+    "/api/v1/cors-test",
+    tags=["health"],
+    summary="CORS configuration test",
+    description="""
+**CORS Debugging Endpoint**
+
+Returns diagnostic information about CORS configuration and the current request.
+Useful for debugging CORS issues in development and staging.
+
+**Response includes**:
+- Request origin header
+- Whether the origin is allowed
+- What CORS headers would be sent
+- Current environment configuration
+
+**No Authentication Required** - Public endpoint for debugging.
+    """,
+)
+async def cors_test(request: Request):
+    """
+    CORS debugging endpoint.
+
+    Use this to verify CORS configuration is working correctly.
+    Make requests from different origins to see how the server responds.
+    """
+    return create_cors_test_response(request, CORS_ORIGINS)
+
+
+@app.options(
+    "/api/v1/cors-test",
+    tags=["health"],
+    summary="CORS preflight test",
+)
+async def cors_test_preflight(request: Request):
+    """
+    Explicit OPTIONS handler for CORS preflight testing.
+
+    This endpoint is explicitly defined to ensure preflight requests
+    are handled correctly even if middleware has issues.
+    """
+    from fastapi.responses import Response
+    from core.cors import get_cors_headers
+
+    origin = request.headers.get("origin")
+    cors_headers = get_cors_headers(origin, CORS_ORIGINS)
+
+    return Response(
+        status_code=204,
+        headers=cors_headers,
+    )
 
 
 @app.get(

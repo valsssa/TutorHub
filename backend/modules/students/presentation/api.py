@@ -142,7 +142,7 @@ async def get_favorite_tutors(
         )
 
 
-@favorites_router.post("", response_model=FavoriteTutorResponse)
+@favorites_router.post("", response_model=FavoriteTutorResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 async def add_favorite_tutor(
     request: Request,
@@ -170,7 +170,7 @@ async def add_favorite_tutor(
 
         if existing:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Tutor is already in favorites",
             )
 
@@ -200,7 +200,7 @@ async def add_favorite_tutor(
         )
 
 
-@favorites_router.delete("/{tutor_profile_id}", response_model=dict)
+@favorites_router.delete("/{tutor_profile_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("10/minute")
 async def remove_favorite_tutor(
     request: Request,
@@ -228,7 +228,7 @@ async def remove_favorite_tutor(
         db.commit()
 
         logger.info(f"Favorite tutor removed successfully for user: {current_user.id}")
-        return {"message": "Favorite tutor removed successfully"}
+        return None
 
     except HTTPException:
         raise

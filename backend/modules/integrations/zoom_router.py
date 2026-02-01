@@ -399,11 +399,11 @@ async def create_meeting_for_booking(
             detail="You can only create meetings for your own bookings",
         )
 
-    # Check booking status
-    if booking.status not in ("PENDING", "CONFIRMED"):
+    # Check booking status (using four-field state system)
+    if booking.session_state not in ("REQUESTED", "SCHEDULED"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot create meeting for booking with status {booking.status}",
+            detail=f"Cannot create meeting for booking with session_state {booking.session_state}",
         )
 
     # Build meeting topic

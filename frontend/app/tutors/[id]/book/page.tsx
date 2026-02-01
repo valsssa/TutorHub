@@ -308,7 +308,7 @@ function BookingPageContent() {
                     width={64}
                     height={64}
                     className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
-                    unoptimized
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">

@@ -12,10 +12,10 @@ import {
   FiCheck,
   FiX,
   FiAlertCircle,
-  FiUser,
 } from "react-icons/fi";
 import { BookingDTO } from "@/types/booking";
 import Button from "@/components/Button";
+import Avatar from "@/components/Avatar";
 import TimeDisplay from "@/components/TimeDisplay";
 import { useTimezone } from "@/contexts/TimezoneContext";
 import {
@@ -91,18 +91,12 @@ export default function BookingCardTutor({
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           {/* Student Avatar */}
-          <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
-            {booking.student.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={booking.student.avatar_url}
-                alt={booking.student.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <FiUser className="w-6 h-6 text-gray-400 dark:text-slate-500" />
-            )}
-          </div>
+          <Avatar
+            name={booking.student.name}
+            avatarUrl={booking.student.avatar_url}
+            userId={booking.student.id}
+            size="md"
+          />
 
           {/* Student Name and Level */}
           <div>

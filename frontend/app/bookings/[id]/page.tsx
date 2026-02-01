@@ -154,8 +154,7 @@ function BookingDetailContent() {
     try {
       await bookings.recordJoin(booking.id);
     } catch (err) {
-      // Don't block joining if recording fails - just log it
-      console.error("Failed to record session join:", err);
+      // Don't block joining if recording fails
     }
 
     // Open Zoom meeting in new tab
@@ -573,7 +572,7 @@ function BookingDetailContent() {
                     width={56}
                     height={56}
                     className="w-14 h-14 rounded-full object-cover"
-                    unoptimized
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">

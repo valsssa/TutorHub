@@ -105,6 +105,7 @@ export default function TutorProfileView({
   };
 
   const handleShare = async () => {
+    if (typeof window === "undefined") return;
     const url = window.location.href;
     const shareData = {
       title: `Check out ${tutor.title} on EduConnect`,
@@ -300,19 +301,19 @@ export default function TutorProfileView({
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
             <div className="flex flex-col sm:flex-row gap-6 items-start">
               <div className="relative">
-                {tutor.profile_photo_url ? (
+                {photoUrl ? (
                   <Image
-                    src={resolveAssetUrl(tutor.profile_photo_url)}
+                    src={photoUrl}
                     alt={tutor.title}
                     width={128}
                     height={128}
                     className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover border-4 border-slate-50 dark:border-slate-800 shadow-lg"
-                    unoptimized
+                    loading="lazy"
                   />
                 ) : (
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900 dark:to-emerald-800 flex items-center justify-center border-4 border-slate-50 dark:border-slate-800 shadow-lg">
-                    <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                      {tutor.title.charAt(0)}
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center border-4 border-slate-50 dark:border-slate-800 shadow-lg">
+                    <span className="text-3xl font-bold text-white">
+                      {initials}
                     </span>
                   </div>
                 )}
@@ -408,7 +409,11 @@ export default function TutorProfileView({
               return (
                 <div
                   className="bg-slate-900 rounded-3xl overflow-hidden aspect-video relative shadow-lg group cursor-pointer"
-                  onClick={() => window.open(tutor.video_url, "_blank")}
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      window.open(tutor.video_url, "_blank");
+                    }
+                  }}
                 >
                   <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -455,15 +460,17 @@ export default function TutorProfileView({
                     onClick={() => setIsVideoPlaying(true)}
                   >
                     {videoInfo.thumbnailUrl ? (
-                      <img
+                      <Image
                         src={videoInfo.thumbnailUrl}
                         alt={`${firstName}'s introduction video thumbnail`}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
                         onError={(e) => {
                           // Fallback to gradient if thumbnail fails to load
                           const target = e.target as HTMLImageElement;
                           target.style.display = "none";
                         }}
+                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900" />

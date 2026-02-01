@@ -6,12 +6,15 @@ Uses PostgreSQL for accurate testing with PostgreSQL-specific types.
 Uses transaction-based isolation for speed and consistency.
 """
 
+import logging
 import os
 import sys
 from pathlib import Path
 from typing import Generator
 
 import pytest
+
+logger = logging.getLogger(__name__)
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -108,9 +111,9 @@ def _initialize_schema():
     if _schema_initialized:
         return
 
-    # Drop all tables and recreate
-    Base.metadata.drop_all(bind=TEST_ENGINE)
-    Base.metadata.create_all(bind=TEST_ENGINE)
+    # Use create_all with checkfirst=True to avoid conflicts
+    # This doesn't drop existing tables, just creates missing ones
+    Base.metadata.create_all(bind=TEST_ENGINE, checkfirst=True)
     _schema_initialized = True
 
 
@@ -118,7 +121,7 @@ def _initialize_schema():
 try:
     _initialize_schema()
 except Exception as e:
-    print(f"Warning: Could not initialize test schema: {e}")
+    logger.warning("Could not initialize test schema: %s", e)
 
 
 # =============================================================================
@@ -137,6 +140,10 @@ def override_get_db() -> Generator[Session, None, None]:
 
 # Override the database dependency globally
 app.dependency_overrides[get_db] = override_get_db
+
+# Disable rate limiting for tests
+from core.rate_limiting import limiter
+limiter.enabled = False
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -246,7 +253,10 @@ def create_test_tutor_profile(
     user_id: int,
     hourly_rate: float = 50.00,
 ) -> TutorProfile:
-    """Create a minimal approved tutor profile for the given user."""
+    """Create a minimal approved tutor profile for the given user with availability."""
+    from datetime import time
+    from models import TutorAvailability
+
     profile = TutorProfile(
         user_id=user_id,
         title="Expert Test Tutor",
@@ -264,6 +274,21 @@ def create_test_tutor_profile(
     db.add(profile)
     db.commit()
     db.refresh(profile)
+
+    # Add availability for all days of the week (0=Sunday, 6=Saturday)
+    # Available from 8:00 to 22:00 every day
+    for day in range(7):
+        availability = TutorAvailability(
+            tutor_profile_id=profile.id,
+            day_of_week=day,
+            start_time=time(8, 0),
+            end_time=time(22, 0),
+            is_recurring=True,
+            timezone="UTC",
+        )
+        db.add(availability)
+    db.commit()
+
     return profile
 
 
@@ -271,13 +296,20 @@ def create_test_tutor_profile(
 # User Fixtures
 # =============================================================================
 
+import uuid
+
+
+def _unique_email(prefix: str) -> str:
+    """Generate a unique email to avoid conflicts with seeded users."""
+    return f"{prefix}-{uuid.uuid4().hex[:8]}@testfixture.example"
+
 
 @pytest.fixture
 def admin_user(db_session: Session) -> User:
     """Create admin user for testing."""
     return create_test_user(
         db_session,
-        email="admin@test.com",
+        email=_unique_email("admin"),
         password=ADMIN_PASSWORD,
         role="admin",
         first_name="Admin",
@@ -290,7 +322,7 @@ def tutor_user(db_session: Session) -> User:
     """Create tutor user with profile for testing."""
     user = create_test_user(
         db_session,
-        email="tutor@test.com",
+        email=_unique_email("tutor"),
         password=TUTOR_PASSWORD,
         role="tutor",
         first_name="Test",
@@ -310,7 +342,7 @@ def student_user(db_session: Session) -> User:
     """Create student user for testing."""
     return create_test_user(
         db_session,
-        email="student@test.com",
+        email=_unique_email("student"),
         password=STUDENT_PASSWORD,
         role="student",
         first_name="Test",
@@ -386,11 +418,13 @@ def student_token_direct(student_user: User) -> str:
 
 @pytest.fixture
 def test_subject(db_session: Session):
-    """Create test subject."""
+    """Create test subject with unique name."""
     from models import Subject
 
+    # Use unique name to avoid conflicts with seeded subjects
+    unique_name = f"TestMath-{uuid.uuid4().hex[:8]}"
     subject = Subject(
-        name="Mathematics",
+        name=unique_name,
         description="Math tutoring",
         category="STEM",
         is_active=True
@@ -418,7 +452,7 @@ def test_booking(db_session: Session, tutor_user: User, student_user: User, test
         hourly_rate=50.00,
         total_amount=50.00,
         currency="USD",
-        status="PENDING",
+        session_state="REQUESTED",
         tutor_name=f"{tutor_user.first_name} {tutor_user.last_name}",
         student_name=f"{student_user.first_name} {student_user.last_name}",
         subject_name=test_subject.name,

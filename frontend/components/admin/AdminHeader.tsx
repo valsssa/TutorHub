@@ -1,6 +1,6 @@
 'use client'
 
-import { type Dispatch, type SetStateAction, useEffect } from 'react'
+import { type Dispatch, type SetStateAction } from 'react'
 import { Bell, ChevronDown, Globe, Menu } from 'lucide-react'
 import { useLocale } from '@/contexts/LocaleContext'
 
@@ -30,13 +30,6 @@ export default function AdminHeader({
   const { currency } = useLocale()
   // Context currency is the source of truth for real-time updates
   const currencyCode = currency || user?.currency || 'USD'
-
-  // Debug logging to track currency changes
-  useEffect(() => {
-    console.log('[AdminHeader] Currency context updated:', currency)
-    console.log('[AdminHeader] User currency:', user?.currency)
-    console.log('[AdminHeader] Display currency:', currencyCode)
-  }, [currency, user?.currency, currencyCode])
 
   return (
     <header className="bg-white shadow-sm border-b relative z-[10000]">

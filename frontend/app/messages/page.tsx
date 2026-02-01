@@ -715,7 +715,7 @@ function MessagesContent() {
                       <Avatar
                         name={getThreadDisplayName(thread)}
                         avatarUrl={thread.other_user_avatar_url}
-                        variant="gradient"
+                        userId={thread.other_user_id}
                         size="sm"
                       />
                       <div className="flex-1 min-w-0">
@@ -779,7 +779,7 @@ function MessagesContent() {
                     <Avatar
                       name={getThreadDisplayName(selectedThread)}
                       avatarUrl={selectedThread.other_user_avatar_url}
-                      variant="gradient"
+                      userId={selectedThread.other_user_id}
                       size="sm"
                     />
                     <div className="min-w-0 flex-1">

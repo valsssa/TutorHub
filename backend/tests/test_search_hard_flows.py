@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from core.pagination import PaginatedResponse, PaginationParams
 from models import Subject, TutorAvailability, TutorProfile, TutorSubject, User
 
-from conftest import (
+from tests.conftest import (
     create_test_user,
     create_test_tutor_profile,
     STUDENT_PASSWORD,

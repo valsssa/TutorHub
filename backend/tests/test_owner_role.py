@@ -7,13 +7,17 @@ from sqlalchemy.orm import Session
 from auth import get_password_hash
 from models import User
 
+# Password that meets complexity requirements
+TEST_OWNER_PASSWORD = "OwnerPass123!"
+TEST_ADMIN_PASSWORD = "AdminPass123!"
+
 
 @pytest.fixture
 def owner_user(db: Session) -> User:
     """Create an owner user for testing."""
     owner = User(
         email="test_owner@example.com",
-        hashed_password=get_password_hash("ownerpass123"),
+        hashed_password=get_password_hash(TEST_OWNER_PASSWORD),
         role="owner",
         is_verified=True,
         first_name="Test",
@@ -30,7 +34,7 @@ def owner_token(client, owner_user) -> str:
     """Get JWT token for owner user."""
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "test_owner@example.com", "password": "ownerpass123"},
+        data={"username": "test_owner@example.com", "password": TEST_OWNER_PASSWORD},
     )
     assert response.status_code == status.HTTP_200_OK
     return response.json()["access_token"]
@@ -41,7 +45,7 @@ def admin_user(db: Session) -> User:
     """Create an admin user for testing."""
     admin = User(
         email="test_admin@example.com",
-        hashed_password=get_password_hash("adminpass123"),
+        hashed_password=get_password_hash(TEST_ADMIN_PASSWORD),
         role="admin",
         is_verified=True,
         first_name="Test",
@@ -58,7 +62,7 @@ def admin_token(client, admin_user) -> str:
     """Get JWT token for admin user."""
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "test_admin@example.com", "password": "adminpass123"},
+        data={"username": "test_admin@example.com", "password": TEST_ADMIN_PASSWORD},
     )
     assert response.status_code == status.HTTP_200_OK
     return response.json()["access_token"]
@@ -67,9 +71,12 @@ def admin_token(client, admin_user) -> str:
 class TestOwnerUserCreation:
     """Test owner user creation and authentication."""
 
-    def test_owner_user_exists_from_startup(self, db: Session):
-        """Test that default owner user is created on application startup."""
-        # Check if default owner exists
+    def test_owner_user_exists_from_startup(self, client, db: Session):
+        """Test that default owner user is created on application startup.
+
+        Note: The client fixture triggers app startup which creates default users.
+        """
+        # Check if default owner exists (created by app startup)
         owner = db.query(User).filter(User.role == "owner").first()
         assert owner is not None, "Owner user should be created on startup"
         assert owner.role == "owner"
@@ -79,7 +86,7 @@ class TestOwnerUserCreation:
         """Test that owner user can authenticate."""
         response = client.post(
             "/api/v1/auth/login",
-            json={"email": "test_owner@example.com", "password": "ownerpass123"},
+            data={"username": "test_owner@example.com", "password": TEST_OWNER_PASSWORD},
         )
         assert response.status_code == status.HTTP_200_OK
         assert "access_token" in response.json()
@@ -88,7 +95,7 @@ class TestOwnerUserCreation:
         """Test that database accepts owner role."""
         owner = User(
             email="another_owner@example.com",
-            hashed_password=get_password_hash("password123"),
+            hashed_password=get_password_hash(TEST_OWNER_PASSWORD),
             role="owner",
             is_verified=True,
         )
@@ -209,7 +216,7 @@ class TestOwnerRoleAssignment:
         # Create a student user
         student = User(
             email="upgrade_to_owner@example.com",
-            hashed_password=get_password_hash("test123"),
+            hashed_password=get_password_hash(TEST_ADMIN_PASSWORD),
             role="student",
             is_verified=True,
         )
@@ -233,17 +240,11 @@ class TestOwnerRoleHierarchy:
 
     def test_role_hierarchy_level(self):
         """Test that owner role has highest hierarchy level."""
-        from core.config import settings
+        from core.config import Roles
 
         # Owner should have hierarchy level 3 (highest)
-        owner_level = next(
-            (r["level"] for r in settings.ROLE_HIERARCHY if r["role"] == "owner"),
-            None,
-        )
-        admin_level = next(
-            (r["level"] for r in settings.ROLE_HIERARCHY if r["role"] == "admin"),
-            None,
-        )
+        owner_level = Roles.HIERARCHY.get("owner")
+        admin_level = Roles.HIERARCHY.get("admin")
 
         assert owner_level is not None, "Owner role should be in hierarchy"
         assert admin_level is not None, "Admin role should be in hierarchy"
@@ -251,10 +252,10 @@ class TestOwnerRoleHierarchy:
 
     def test_has_admin_access_for_owner(self):
         """Test that owner role is included in has_admin_access."""
-        from core.config import settings
+        from core.config import Roles
 
         # Owner should have admin access
-        assert "owner" in settings.ROLES_WITH_ADMIN_ACCESS
+        assert Roles.has_admin_access("owner")
 
     def test_owner_permissions_in_endpoints(self, client, owner_token):
         """Test that owner can access all protected endpoints."""

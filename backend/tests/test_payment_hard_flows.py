@@ -400,7 +400,8 @@ class TestPaymentCapturedButBookingCancelled:
         Should trigger refund process.
         """
         # Mark booking as confirmed (payment captured)
-        test_booking.status = "CONFIRMED"
+        test_booking.session_state = "SCHEDULED"
+        test_booking.payment_state = "CAPTURED"
         db_session.commit()
 
         # Attempt to cancel
@@ -426,7 +427,7 @@ class TestPaymentCapturedButBookingCancelled:
         This can happen if booking expires during checkout.
         """
         # Set booking to expired state
-        test_booking.status = "EXPIRED"
+        test_booking.session_state = "EXPIRED"
         db_session.commit()
 
         with patch("modules.payments.router.verify_webhook_signature") as mock_verify:

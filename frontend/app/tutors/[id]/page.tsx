@@ -58,12 +58,9 @@ function TutorDetailContent() {
             try {
               const favorite = await favorites.checkFavorite(tutorId);
               setIsSaved(Boolean(favorite));
-            } catch (favoriteError: any) {
+            } catch {
               // If 404, tutor is not favorited (normal case)
               // If 403, user is not a student (also normal)
-              if (favoriteError.response?.status !== 404 && favoriteError.response?.status !== 403) {
-                console.error("Error checking favorite:", favoriteError);
-              }
               setIsSaved(false);
             }
           } else {
@@ -115,10 +112,9 @@ function TutorDetailContent() {
         showSuccess("Tutor saved to favorites");
       }
     } catch (error: any) {
-      console.error("Error toggling favorite:", error);
       const errorMessage = error.response?.data?.detail || "Failed to update favorites";
       showError(errorMessage);
-      
+
       // If error is 403, user might not be a student
       if (error.response?.status === 403) {
         setIsSaved(false);

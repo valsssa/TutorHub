@@ -81,8 +81,8 @@ export default function HomePage() {
           }));
           setTestimonials(convertedTestimonials);
         }
-      } catch (error) {
-        console.error("Error loading homepage data:", error);
+      } catch {
+        // Errors are handled gracefully - page still renders with empty data
       } finally {
         setLoading(false);
       }
@@ -128,8 +128,7 @@ export default function HomePage() {
       const response = await tutors.list(params);
       setFilteredTutors(response.items);
       setResultsCount(response.total || response.items.length);
-    } catch (error) {
-      console.error("Error fetching filtered tutors:", error);
+    } catch {
       // Fallback to featured tutors if filtering fails
       setFilteredTutors(featuredTutors);
       setResultsCount(featuredTutors.length);
@@ -300,7 +299,7 @@ export default function HomePage() {
                   alt="Students learning together"
                   fill
                   className="rounded-[20px] lg:rounded-[40px] shadow-2xl object-cover border-4 lg:border-8 border-white dark:border-slate-800 transform -rotate-1 lg:-rotate-2 hover:rotate-0 transition-transform duration-700"
-                  unoptimized
+                  loading="lazy"
                 />
               </div>
               

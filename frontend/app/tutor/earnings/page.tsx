@@ -12,7 +12,6 @@ import {
   HelpCircle,
   Edit,
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { auth, bookings } from "@/lib/api";
 import { authUtils } from "@/lib/auth";
@@ -21,6 +20,7 @@ import { BookingDTO } from "@/types/booking";
 import { useToast } from "@/components/ToastContainer";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import AppShell from "@/components/AppShell";
+import { LazyEarningsChart } from "@/components/charts";
 
 export default function TutorEarningsPage() {
   return (
@@ -59,7 +59,6 @@ function TutorEarningsContent() {
         });
         setBookingsData(bookingData.bookings || []);
       } catch (error) {
-        console.error("Failed to load earnings data:", error);
         showError("Failed to load earnings data");
       } finally {
         setLoading(false);
@@ -69,12 +68,15 @@ function TutorEarningsContent() {
     loadEarningsData();
   }, [router, showError]);
 
-  // Calculate earnings from completed bookings
+  // Calculate earnings from completed bookings (using four-field system with fallback)
   const completedBookings = useMemo(
     () =>
-      bookingsData.filter(
-        (b) => b.status === "COMPLETED" || b.status === "completed"
-      ),
+      bookingsData.filter((b) => {
+        const sessionState = (b.session_state || "").toUpperCase();
+        const sessionOutcome = (b.session_outcome || "").toUpperCase();
+        return sessionState === "ENDED" && sessionOutcome === "COMPLETED" ||
+          b.status === "COMPLETED" || b.status === "completed";
+      }),
     [bookingsData]
   );
 
@@ -103,9 +105,8 @@ function TutorEarningsContent() {
   const chartData = useMemo(() => {
     const now = new Date();
     const data: { name: string; earnings: number }[] = [];
-    const completed = completedBookings.filter(
-      (b) => b.status === "COMPLETED" || b.status === "completed"
-    );
+    // Use completedBookings which already filters for completed sessions
+    const completed = completedBookings;
 
     if (timeseriesPeriod === "month") {
       for (let i = timeseriesMonths - 1; i >= 0; i--) {
@@ -295,49 +296,8 @@ function TutorEarningsContent() {
                   <div className="h-full flex items-center justify-center text-slate-400">
                     Loading earnings data...
                   </div>
-                ) : chartData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-slate-400">
-                    No earnings data available
-                  </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#94a3b8"
-                        strokeOpacity={0.1}
-                        vertical={false}
-                      />
-                      <XAxis
-                        dataKey="name"
-                        stroke="#64748b"
-                        axisLine={false}
-                        tickLine={false}
-                        dy={10}
-                        fontSize={12}
-                      />
-                      <YAxis
-                        stroke="#64748b"
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(value) => `$${value}`}
-                        fontSize={12}
-                      />
-                      <RechartsTooltip
-                        cursor={{ fill: "rgba(148, 163, 184, 0.1)" }}
-                        formatter={(value: number) => [`$${Number(value).toFixed(2)}`, "Earnings"]}
-                        labelFormatter={(label) => label}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          borderColor: "hsl(var(--border))",
-                          borderRadius: "0.5rem",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                          color: "hsl(var(--foreground))",
-                        }}
-                      />
-                      <Bar dataKey="earnings" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <LazyEarningsChart data={chartData} />
                 )}
               </div>
             </div>

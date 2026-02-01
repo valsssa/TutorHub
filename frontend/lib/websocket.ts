@@ -150,8 +150,6 @@ export class WebSocketClient {
 
     // Set up multi-tab coordination
     this.setupBroadcastChannel();
-
-    console.log(`[WebSocket] Initialized with URL: ${this.url}`);
   }
 
   private setupBrowserListeners(): void {
@@ -162,17 +160,14 @@ export class WebSocketClient {
       const wasOnline = this.isOnline;
       this.isOnline = navigator.onLine;
 
-      console.log(`[WebSocket] Network status: ${this.isOnline ? "online" : "offline"}`);
-
       if (!wasOnline && this.isOnline && this.state === "failed") {
         // Network came back online after being failed - try to reconnect
-        console.log("[WebSocket] Network restored, attempting reconnection");
         this.reconnectAttempts = 0;
         this.reconnectDelay = this.config.initialReconnectDelayMs;
         this.scheduleReconnect();
       } else if (this.isOnline && this.state === "disconnected" && !this.isManuallyDisconnected) {
         // We're online but disconnected - try to connect
-        this.connect().catch((err) => console.error("[WebSocket] Reconnect failed:", err));
+        this.connect().catch(() => {});
       }
     };
 
@@ -185,8 +180,6 @@ export class WebSocketClient {
       const wasVisible = this.isVisible;
       this.isVisible = document.visibilityState === "visible";
 
-      console.log(`[WebSocket] Visibility: ${this.isVisible ? "visible" : "hidden"}`);
-
       if (!wasVisible && this.isVisible) {
         // Tab became visible
         if (this.state === "connected") {
@@ -198,10 +191,9 @@ export class WebSocketClient {
           this.isOnline
         ) {
           // Try to reconnect
-          console.log("[WebSocket] Tab visible, attempting reconnection");
           this.reconnectAttempts = 0;
           this.reconnectDelay = this.config.initialReconnectDelayMs;
-          this.connect().catch((err) => console.error("[WebSocket] Reconnect failed:", err));
+          this.connect().catch(() => {});
         }
       }
     };
@@ -219,22 +211,18 @@ export class WebSocketClient {
         const { type, data } = event.data;
         if (type === "token_refreshed" && data.token) {
           // Token was refreshed in another tab
-          console.log("[WebSocket] Token refreshed from another tab");
           this.updateToken(data.token);
         }
       };
-    } catch (error) {
-      console.warn("[WebSocket] BroadcastChannel not available:", error);
+    } catch {
+      // BroadcastChannel not available
     }
   }
 
   private setState(newState: ConnectionState): void {
     if (this.state === newState) return;
 
-    const oldState = this.state;
     this.state = newState;
-
-    console.log(`[WebSocket] State: ${oldState} -> ${newState}`);
 
     // Update timestamps
     if (newState === "connected") {
@@ -248,8 +236,8 @@ export class WebSocketClient {
     this.connectionHandlers.forEach((handler) => {
       try {
         handler(newState, details);
-      } catch (error) {
-        console.error("[WebSocket] Connection handler error:", error);
+      } catch {
+        // Silently ignore handler errors in production
       }
     });
   }
@@ -257,23 +245,17 @@ export class WebSocketClient {
   async connect(): Promise<void> {
     // Prevent duplicate connection attempts
     if (this.state === "connecting" || this.state === "connected") {
-      console.log("[WebSocket] Already connecting or connected");
       return;
     }
 
     // Check network status
     if (!this.isOnline) {
-      console.log("[WebSocket] Cannot connect: offline");
       this.setState("disconnected");
       return;
     }
 
     this.setState("connecting");
     this.isManuallyDisconnected = false;
-
-    console.log(
-      `[WebSocket] Connecting (attempt ${this.reconnectAttempts + 1}/${this.config.maxReconnectAttempts})`
-    );
 
     return new Promise((resolve, reject) => {
       try {
@@ -286,7 +268,6 @@ export class WebSocketClient {
 
         const connectionTimeout = setTimeout(() => {
           if (this.state === "connecting") {
-            console.error("[WebSocket] Connection timeout");
             this.ws?.close();
             reject(new Error("Connection timeout"));
           }
@@ -295,14 +276,12 @@ export class WebSocketClient {
         // Connection opened
         this.ws.onopen = () => {
           clearTimeout(connectionTimeout);
-          console.log("[WebSocket] Connection opened");
           // Authentication is handled via token in query parameter
           // Server will send 'connection' message on successful auth
         };
 
         // Handle auth success
         const onAuthSuccess = () => {
-          console.log("[WebSocket] Authenticated successfully");
           this.isAuthenticated = true;
           this.reconnectAttempts = 0;
           this.reconnectDelay = this.config.initialReconnectDelayMs;
@@ -322,15 +301,14 @@ export class WebSocketClient {
           try {
             const message: WebSocketMessage = JSON.parse(event.data);
             this.handleMessage(message, resolve, reject);
-          } catch (error) {
-            console.error("[WebSocket] Failed to parse message:", error);
+          } catch {
+            // Failed to parse message - ignore malformed messages
           }
         };
 
         // Connection error
-        this.ws.onerror = (event) => {
+        this.ws.onerror = () => {
           clearTimeout(connectionTimeout);
-          console.error("[WebSocket] Connection error:", event);
 
           const error = new Error("WebSocket connection error");
           this.notifyError(error);
@@ -347,7 +325,6 @@ export class WebSocketClient {
           this.handleClose(event);
         };
       } catch (error) {
-        console.error("[WebSocket] Connection setup failed:", error);
         this.setState("disconnected");
         reject(error);
       }
@@ -370,7 +347,6 @@ export class WebSocketClient {
     }
 
     if (message.type === "auth_error" || message.type === "auth_failed") {
-      console.error("[WebSocket] Authentication failed:", message.error || message.message);
       this.isAuthenticated = false;
       const errorMessage = (message.error || message.message || "Authentication failed") as string;
       reject(new Error(errorMessage));
@@ -396,7 +372,6 @@ export class WebSocketClient {
 
     // Handle token expiration
     if (message.type === "token_expired" || message.type === "token_invalid") {
-      console.warn("[WebSocket] Token expired or invalid");
       this.notifyError(new Error("Token expired"));
       // Don't auto-reconnect for token issues - let the app refresh the token
       this.isManuallyDisconnected = true;
@@ -404,25 +379,17 @@ export class WebSocketClient {
       return;
     }
 
-    // Log non-heartbeat messages
-    if (message.type !== "ping") {
-      console.log(`[WebSocket] Received: ${message.type}`, message);
-    }
-
     // Notify message handlers
     this.messageHandlers.forEach((handler) => {
       try {
         handler(message);
-      } catch (error) {
-        console.error("[WebSocket] Handler error:", error);
+      } catch {
+        // Silently ignore handler errors in production
       }
     });
   }
 
   private handleClose(event: CloseEvent): void {
-    const reason = event.reason || "Unknown reason";
-    console.log(`[WebSocket] Disconnected: code=${event.code}, reason=${reason}`);
-
     this.isAuthenticated = false;
     this.stopPingInterval();
 
@@ -434,14 +401,12 @@ export class WebSocketClient {
 
     // Token-related close codes - don't auto-reconnect
     if (event.code === 1008 || event.code === 4001 || event.code === 4003) {
-      console.log("[WebSocket] Authentication/authorization failure, not reconnecting");
       this.setState("failed");
       return;
     }
 
     // Check reconnection limits
     if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-      console.error("[WebSocket] Max reconnection attempts reached");
       this.setState("failed");
       return;
     }
@@ -457,7 +422,6 @@ export class WebSocketClient {
     }
 
     if (!this.isOnline) {
-      console.log("[WebSocket] Offline, waiting for network");
       return;
     }
 
@@ -470,15 +434,8 @@ export class WebSocketClient {
       this.config.maxReconnectDelayMs
     );
 
-    console.log(
-      `[WebSocket] Reconnecting in ${Math.round(delay)}ms ` +
-        `(attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`
-    );
-
     this.reconnectTimeout = setTimeout(() => {
-      this.connect().catch((error) => {
-        console.error("[WebSocket] Reconnection failed:", error);
-      });
+      this.connect().catch(() => {});
     }, delay);
 
     // Exponential backoff
@@ -493,8 +450,8 @@ export class WebSocketClient {
     this.connectionHandlers.forEach((handler) => {
       try {
         handler(this.state, details);
-      } catch (error) {
-        console.error("[WebSocket] Connection handler error:", error);
+      } catch {
+        // Silently ignore handler errors in production
       }
     });
   }
@@ -507,14 +464,11 @@ export class WebSocketClient {
         this.sendPing();
       }
     }, this.config.pingIntervalMs);
-
-    console.log(`[WebSocket] Heartbeat started (${this.config.pingIntervalMs}ms interval)`);
   }
 
   private sendPing(): void {
     if (this.awaitingPong) {
       // Already waiting for pong - connection may be dead
-      console.warn("[WebSocket] Still awaiting pong, connection may be stale");
       return;
     }
 
@@ -524,7 +478,6 @@ export class WebSocketClient {
     // Set timeout for pong response
     this.pongTimeout = setTimeout(() => {
       if (this.awaitingPong) {
-        console.warn("[WebSocket] Pong timeout, closing connection");
         this.ws?.close(4000, "Pong timeout");
       }
     }, this.config.pongTimeoutMs);
@@ -548,8 +501,6 @@ export class WebSocketClient {
       return;
     }
 
-    console.log(`[WebSocket] Processing ${this.messageQueue.length} queued messages`);
-
     const messages = [...this.messageQueue];
     this.messageQueue = [];
 
@@ -561,7 +512,6 @@ export class WebSocketClient {
   private handleAck(messageId: string): void {
     const pending = this.pendingAcks.get(messageId);
     if (pending) {
-      console.log(`[WebSocket] Message acknowledged: ${messageId}`);
       this.pendingAcks.delete(messageId);
 
       const timeout = this.ackTimeouts.get(messageId);
@@ -578,15 +528,13 @@ export class WebSocketClient {
       try {
         this.ws.send(JSON.stringify(data));
         return true;
-      } catch (error) {
-        console.error("[WebSocket] Send failed:", error);
+      } catch {
         return false;
       }
     }
 
     // Connection not open - queue message if not a ping
     if (data.type !== "ping") {
-      console.log(`[WebSocket] Queueing message (state: ${this.state})`);
       this.queueMessage(data);
     }
     return false;
@@ -633,13 +581,8 @@ export class WebSocketClient {
     this.ackTimeouts.delete(messageId);
 
     if (pending.retries < pending.maxRetries) {
-      console.log(
-        `[WebSocket] Message ${messageId} not acknowledged, retrying ` +
-          `(${pending.retries + 1}/${pending.maxRetries})`
-      );
       this.sendWithAck(pending.data, pending.id, pending.retries + 1);
     } else {
-      console.error(`[WebSocket] Message ${messageId} failed after ${pending.maxRetries} retries`);
       this.notifyError(new Error(`Message delivery failed: ${messageId}`));
     }
   }
@@ -648,7 +591,6 @@ export class WebSocketClient {
     if (this.messageQueue.length >= this.config.maxQueueSize) {
       // Remove oldest message
       this.messageQueue.shift();
-      console.warn("[WebSocket] Queue full, dropped oldest message");
     }
 
     this.messageQueue.push({
@@ -698,10 +640,9 @@ export class WebSocketClient {
 
     if (tokenChanged && this.state === "connected") {
       // Reconnect with new token
-      console.log("[WebSocket] Token updated, reconnecting");
       this.disconnect();
       this.isManuallyDisconnected = false;
-      this.connect().catch((err) => console.error("[WebSocket] Reconnect failed:", err));
+      this.connect().catch(() => {});
     }
 
     // Notify other tabs
@@ -732,15 +673,14 @@ export class WebSocketClient {
     this.errorHandlers.forEach((handler) => {
       try {
         handler(error);
-      } catch (e) {
-        console.error("[WebSocket] Error handler error:", e);
+      } catch {
+        // Silently ignore handler errors in production
       }
     });
   }
 
   // Manual reconnection
   reconnect(): void {
-    console.log("[WebSocket] Manual reconnection requested");
     this.isManuallyDisconnected = false;
     this.reconnectAttempts = 0;
     this.reconnectDelay = this.config.initialReconnectDelayMs;
@@ -750,15 +690,11 @@ export class WebSocketClient {
       this.ws = null;
     }
 
-    this.connect().catch((error) => {
-      console.error("[WebSocket] Manual reconnection failed:", error);
-    });
+    this.connect().catch(() => {});
   }
 
   // Disconnect
   disconnect(): void {
-    console.log("[WebSocket] Disconnect requested");
-
     this.isManuallyDisconnected = true;
     this.stopPingInterval();
 
@@ -775,8 +711,8 @@ export class WebSocketClient {
     if (this.ws) {
       try {
         this.ws.close(1000, "Client disconnecting");
-      } catch (error) {
-        console.error("[WebSocket] Error closing connection:", error);
+      } catch {
+        // Ignore close errors
       }
       this.ws = null;
     }
@@ -786,8 +722,6 @@ export class WebSocketClient {
 
   // Cleanup
   destroy(): void {
-    console.log("[WebSocket] Destroying client");
-
     this.disconnect();
 
     // Remove browser listeners

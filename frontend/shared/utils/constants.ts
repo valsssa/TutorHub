@@ -20,7 +20,54 @@ export const ROLES = {
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
-// Booking Status
+// Session State (Four-field booking status system)
+// Primary lifecycle state for bookings
+export const SESSION_STATE = {
+  REQUESTED: "REQUESTED",   // Waiting for tutor response
+  SCHEDULED: "SCHEDULED",   // Confirmed, session upcoming
+  ACTIVE: "ACTIVE",         // Session happening now
+  ENDED: "ENDED",           // Session lifecycle complete
+  EXPIRED: "EXPIRED",       // Request timed out (24h)
+  CANCELLED: "CANCELLED",   // Explicitly cancelled
+} as const;
+
+export type SessionState = (typeof SESSION_STATE)[keyof typeof SESSION_STATE];
+
+// Session Outcome (How the session ended - only for terminal states)
+export const SESSION_OUTCOME = {
+  COMPLETED: "COMPLETED",       // Session happened successfully
+  NOT_HELD: "NOT_HELD",         // Session didn't happen
+  NO_SHOW_STUDENT: "NO_SHOW_STUDENT",
+  NO_SHOW_TUTOR: "NO_SHOW_TUTOR",
+} as const;
+
+export type SessionOutcome = (typeof SESSION_OUTCOME)[keyof typeof SESSION_OUTCOME];
+
+// Payment State
+export const PAYMENT_STATE = {
+  PENDING: "PENDING",
+  AUTHORIZED: "AUTHORIZED",
+  CAPTURED: "CAPTURED",
+  VOIDED: "VOIDED",
+  REFUNDED: "REFUNDED",
+  PARTIALLY_REFUNDED: "PARTIALLY_REFUNDED",
+} as const;
+
+export type PaymentState = (typeof PAYMENT_STATE)[keyof typeof PAYMENT_STATE];
+
+// Dispute State
+export const DISPUTE_STATE = {
+  NONE: "NONE",
+  OPEN: "OPEN",
+  RESOLVED_UPHELD: "RESOLVED_UPHELD",
+  RESOLVED_REFUNDED: "RESOLVED_REFUNDED",
+} as const;
+
+export type DisputeState = (typeof DISPUTE_STATE)[keyof typeof DISPUTE_STATE];
+
+/**
+ * @deprecated Use SESSION_STATE instead. Kept for backward compatibility.
+ */
 export const BOOKING_STATUS = {
   PENDING: "pending",
   CONFIRMED: "confirmed",
@@ -28,6 +75,9 @@ export const BOOKING_STATUS = {
   COMPLETED: "completed",
 } as const;
 
+/**
+ * @deprecated Use SessionState instead.
+ */
 export type BookingStatus =
   (typeof BOOKING_STATUS)[keyof typeof BOOKING_STATUS];
 
@@ -77,7 +127,43 @@ export const ROLE_COLORS = {
   },
 } as const;
 
-// Status Colors
+// Session State Colors (Four-field system)
+export const SESSION_STATE_COLORS = {
+  [SESSION_STATE.REQUESTED]: {
+    bg: "bg-yellow-100",
+    text: "text-yellow-800",
+    border: "border-yellow-200",
+  },
+  [SESSION_STATE.SCHEDULED]: {
+    bg: "bg-green-100",
+    text: "text-green-800",
+    border: "border-green-200",
+  },
+  [SESSION_STATE.ACTIVE]: {
+    bg: "bg-blue-100",
+    text: "text-blue-800",
+    border: "border-blue-200",
+  },
+  [SESSION_STATE.ENDED]: {
+    bg: "bg-slate-100",
+    text: "text-slate-800",
+    border: "border-slate-200",
+  },
+  [SESSION_STATE.CANCELLED]: {
+    bg: "bg-gray-100",
+    text: "text-gray-800",
+    border: "border-gray-200",
+  },
+  [SESSION_STATE.EXPIRED]: {
+    bg: "bg-orange-100",
+    text: "text-orange-800",
+    border: "border-orange-200",
+  },
+} as const;
+
+/**
+ * @deprecated Use SESSION_STATE_COLORS instead. Kept for backward compatibility.
+ */
 export const STATUS_COLORS = {
   [BOOKING_STATUS.PENDING]: {
     bg: "bg-yellow-100",

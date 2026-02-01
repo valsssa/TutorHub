@@ -6,7 +6,19 @@ import * as Sentry from "@sentry/nextjs";
 
 const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
-if (SENTRY_DSN) {
+// Validate DSN format - must be https://<key>@<host>/<project_id>
+const isValidDsn = (dsn: string | undefined): boolean => {
+  if (!dsn) return false;
+  const trimmed = dsn.trim().toLowerCase();
+  // Check for placeholder values
+  if (["your_sentry_dsn", "your-sentry-dsn", "placeholder", "none", "null", ""].includes(trimmed)) {
+    return false;
+  }
+  // Must start with https:// and contain @
+  return dsn.startsWith("https://") && dsn.includes("@");
+};
+
+if (isValidDsn(SENTRY_DSN)) {
   Sentry.init({
     dsn: SENTRY_DSN,
 

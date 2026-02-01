@@ -16,6 +16,7 @@ Tests cover:
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch, AsyncMock
 import asyncio
+import sys
 
 import pytest
 
@@ -53,14 +54,18 @@ def mock_settings():
 @pytest.fixture
 def mock_brevo_api():
     """Mock Brevo SDK API."""
-    with patch("core.email_service.sib_api_v3_sdk") as mock_sdk:
-        mock_api = MagicMock()
-        mock_sdk.ApiClient.return_value = MagicMock()
-        mock_sdk.TransactionalEmailsApi.return_value = mock_api
-        mock_sdk.Configuration.return_value = MagicMock()
-        mock_sdk.SendSmtpEmail.return_value = MagicMock()
-        mock_sdk.SendSmtpEmailSender.return_value = MagicMock()
-        mock_sdk.SendSmtpEmailTo.return_value = MagicMock()
+    # Create a mock SDK module
+    mock_sdk = MagicMock()
+    mock_api = MagicMock()
+    mock_sdk.ApiClient.return_value = MagicMock()
+    mock_sdk.TransactionalEmailsApi.return_value = mock_api
+    mock_sdk.Configuration.return_value = MagicMock()
+    mock_sdk.SendSmtpEmail.return_value = MagicMock()
+    mock_sdk.SendSmtpEmailSender.return_value = MagicMock()
+    mock_sdk.SendSmtpEmailTo.return_value = MagicMock()
+
+    # Patch where Python looks for the module when using local import
+    with patch.dict(sys.modules, {"sib_api_v3_sdk": mock_sdk}):
         yield mock_sdk, mock_api
 
 

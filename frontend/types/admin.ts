@@ -34,7 +34,8 @@ export interface Session {
   subject: string
   time: string
   duration: string
-  status: 'confirmed' | 'pending'
+  // Session state from four-field system (with legacy values for backward compatibility)
+  status: 'REQUESTED' | 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED' | 'EXPIRED' | 'confirmed' | 'pending'
 }
 
 export interface Tutor {

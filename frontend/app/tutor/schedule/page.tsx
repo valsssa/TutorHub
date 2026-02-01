@@ -234,7 +234,8 @@ function ScheduleContent() {
             start: startTime,
             end: endTime,
             type: eventType,
-            status: booking.status.toLowerCase(),
+            // Use session_state (four-field system) with fallback to legacy status
+            status: (booking.session_state || booking.status || "").toLowerCase(),
             subject: booking.subject_name || undefined,
             studentName: booking.student?.name,
             booking,
@@ -243,7 +244,7 @@ function ScheduleContent() {
 
       setCalendarEvents(events);
     } catch (error) {
-      console.error("Failed to load bookings:", error);
+      // Silently fail - bookings will show empty calendar
     }
   }, [currentDate]);
 
@@ -1254,7 +1255,7 @@ function ScheduleContent() {
               </div>
 
               <div className="flex gap-3">
-                {selectedEvent.booking && selectedEvent.booking.status === "pending" && (
+                {selectedEvent.booking && (selectedEvent.booking.session_state === "REQUESTED" || selectedEvent.booking.status === "pending") && (
                   <>
                     <button
                       onClick={async () => {

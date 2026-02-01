@@ -69,7 +69,6 @@ export default function VideoSettingsPage() {
       setSelectedProvider(settingsData.preferred_video_provider);
       setCustomUrl(settingsData.custom_meeting_url_template || "");
     } catch (error) {
-      console.error("Failed to load video settings:", error);
       showError("Failed to load video settings");
     } finally {
       setLoading(false);

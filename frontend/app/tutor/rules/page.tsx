@@ -27,8 +27,7 @@ function TutorRulesContent() {
       try {
         const currentUser = await auth.getCurrentUser();
         setUser(currentUser);
-      } catch (error) {
-        console.error("Failed to load user:", error);
+      } catch {
         router.replace("/login");
       } finally {
         setLoading(false);
