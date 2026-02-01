@@ -7,7 +7,7 @@ and payment status polling functionality.
 
 import time
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -138,9 +138,8 @@ class TestCircuitBreaker:
         """Context manager records failure on exception."""
         breaker = CircuitBreaker("test_ctx_failure")
 
-        with pytest.raises(ValueError):
-            with breaker.call():
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), breaker.call():
+            raise ValueError("Test error")
 
         assert breaker._state.failure_count == 1
 
@@ -151,9 +150,8 @@ class TestCircuitBreaker:
 
         breaker.record_failure(Exception("Error"))
 
-        with pytest.raises(CircuitOpenError):
-            with breaker.call():
-                pass
+        with pytest.raises(CircuitOpenError), breaker.call():
+            pass
 
     def test_decorator_protects_function(self):
         """Decorator protects function with circuit breaker."""

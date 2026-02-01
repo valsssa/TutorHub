@@ -30,7 +30,6 @@ from sqlalchemy.orm import Session
 
 from models import Booking, Review, TutorProfile, User
 
-
 # =============================================================================
 # Mock Services for Testing
 # =============================================================================
@@ -485,7 +484,7 @@ class TestReviewSubmissionEdgeCases:
                     timeout=0.05,  # Very short timeout to trigger
                 )
                 return review
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 return None
 
         result = asyncio.get_event_loop().run_until_complete(run_with_timeout())
@@ -697,7 +696,6 @@ class TestRatingCalculationComplexities:
         tutor_user: User,
     ):
         """Test weighted average calculation with few reviews (Bayesian)."""
-        tutor_profile = tutor_user.tutor_profile
 
         # Bayesian average formula:
         # (C * m + sum(ratings)) / (C + n)
@@ -741,7 +739,6 @@ class TestRatingCalculationComplexities:
 
     def test_rating_precision_and_rounding(self, db_session: Session, tutor_user: User):
         """Test rating precision and proper rounding."""
-        tutor_profile = tutor_user.tutor_profile
 
         # Test various rating combinations that produce non-integer averages
         test_cases = [
@@ -1980,7 +1977,7 @@ class TestAggregateStatistics:
         test_subject,
     ):
         """Test accuracy of comparison statistics between tutors."""
-        from tests.conftest import create_test_user, create_test_tutor_profile
+        from tests.conftest import create_test_tutor_profile, create_test_user
 
         # Create multiple tutors with different ratings
         tutors_data = [
@@ -2103,7 +2100,7 @@ class TestReviewFlowIntegration:
     ):
         """Test complete flow from submission to rating update."""
         tutor_profile = tutor_user.tutor_profile
-        initial_rating = float(tutor_profile.average_rating)
+        float(tutor_profile.average_rating)
         initial_reviews = tutor_profile.total_reviews
 
         # Step 1: Content moderation
@@ -2123,7 +2120,7 @@ class TestReviewFlowIntegration:
         is_rapid = bombing_detector.check_rapid_submission("192.168.1.50")
         assert is_rapid is False
 
-        meets_age = bombing_detector.check_account_age_requirement(
+        bombing_detector.check_account_age_requirement(
             student_user.created_at,
             min_age_days=1
         )

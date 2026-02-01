@@ -14,31 +14,30 @@ Tests cover:
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 import stripe
 from fastapi import HTTPException
 
+from core.payment_reliability import CircuitOpenError, stripe_circuit_breaker
 from core.stripe_client import (
+    RefundResult,
     _ensure_stripe_configured,
-    get_stripe_client,
+    _find_existing_refund,
     create_checkout_session,
-    retrieve_checkout_session,
     create_connect_account,
     create_connect_account_link,
-    get_connect_account,
-    update_connect_account_payout_settings,
-    is_connect_account_ready,
-    create_transfer_to_tutor,
     create_refund,
-    RefundResult,
-    _find_existing_refund,
-    verify_webhook_signature,
+    create_transfer_to_tutor,
     format_amount_for_display,
+    get_connect_account,
+    get_stripe_client,
+    is_connect_account_ready,
+    retrieve_checkout_session,
+    update_connect_account_payout_settings,
+    verify_webhook_signature,
 )
-from core.payment_reliability import CircuitOpenError, stripe_circuit_breaker
-
 
 # =============================================================================
 # Fixtures
@@ -157,7 +156,7 @@ class TestCreateCheckoutSession:
             mock_breaker.call.return_value.__enter__ = MagicMock()
             mock_breaker.call.return_value.__exit__ = MagicMock(return_value=False)
 
-            result = create_checkout_session(
+            create_checkout_session(
                 booking_id=1,
                 amount_cents=5000,
                 currency="usd",
@@ -182,7 +181,7 @@ class TestCreateCheckoutSession:
             mock_breaker.call.return_value.__enter__ = MagicMock()
             mock_breaker.call.return_value.__exit__ = MagicMock(return_value=False)
 
-            result = create_checkout_session(
+            create_checkout_session(
                 booking_id=None,
                 amount_cents=10000,
                 currency="usd",
@@ -354,7 +353,7 @@ class TestStripeConnect:
             mock_breaker.call.return_value.__enter__ = MagicMock()
             mock_breaker.call.return_value.__exit__ = MagicMock(return_value=False)
 
-            result = create_connect_account(
+            create_connect_account(
                 tutor_user_id=456,
                 tutor_email="tutor@uk.com",
                 country="GB",
@@ -422,7 +421,7 @@ class TestStripeConnect:
             mock_breaker.call.return_value.__enter__ = MagicMock()
             mock_breaker.call.return_value.__exit__ = MagicMock(return_value=False)
 
-            result = update_connect_account_payout_settings(
+            update_connect_account_payout_settings(
                 "acct_update",
                 delay_days=14,
                 interval="daily",
@@ -632,7 +631,7 @@ class TestCreateRefund:
             mock_breaker.call.return_value.__enter__ = MagicMock()
             mock_breaker.call.return_value.__exit__ = MagicMock(return_value=False)
 
-            result = create_refund(
+            create_refund(
                 payment_intent_id="pi_test_partial",
                 booking_id=2,
                 amount_cents=2500,

@@ -16,7 +16,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 # WCAG AA compliant color palette for avatar backgrounds.
 # Each color has a contrast ratio of at least 4.5:1 with its text color.
 AVATAR_COLORS: list[tuple[str, str]] = [
@@ -62,10 +61,7 @@ def get_avatar_color_index(identifier: str | int) -> int:
     Returns:
         Index into AVATAR_COLORS array
     """
-    if isinstance(identifier, int):
-        hash_value = identifier
-    else:
-        hash_value = hash_string(str(identifier).lower())
+    hash_value = identifier if isinstance(identifier, int) else hash_string(str(identifier).lower())
     return hash_value % len(AVATAR_COLORS)
 
 
@@ -259,7 +255,6 @@ def generate_avatar_data_uri(
     Returns:
         Data URI string
     """
-    import base64
     import urllib.parse
 
     svg = generate_avatar_svg(name, identifier, size)

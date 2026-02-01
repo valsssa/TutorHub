@@ -64,6 +64,7 @@ class TestTokenExpiration:
     def test_token_missing_sub_claim(self, client):
         """Test token without sub claim is rejected."""
         from jose import jwt
+
         from core.config import settings
 
         token_without_sub = jwt.encode(
@@ -86,7 +87,7 @@ class TestTokenInvalidationOnPasswordChange:
         self, client, db_session, student_user
     ):
         """Test old token becomes invalid after password change."""
-        from core.security import TokenManager, PasswordHasher
+        from core.security import PasswordHasher, TokenManager
 
         old_token = TokenManager.create_access_token({"sub": student_user.email})
 
@@ -427,8 +428,8 @@ class TestUserVerification:
 
     def test_unverified_user_cannot_login(self, client, db_session):
         """Test unverified users cannot log in."""
-        from models import User
         from auth import get_password_hash
+        from models import User
 
         unverified_user = User(
             email="unverified@test.com",

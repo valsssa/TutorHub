@@ -1,7 +1,7 @@
 """Tests for avatar storage module (MinIO/S3 storage client)."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 from botocore.exceptions import ClientError
@@ -169,9 +169,8 @@ class TestAvatarStorageClient:
 
         with patch.object(
             storage_client, "_client", return_value=self._create_async_context(mock_client)
-        ):
-            with pytest.raises(HTTPException) as exc_info:
-                await storage_client.ensure_bucket()
+        ), pytest.raises(HTTPException) as exc_info:
+            await storage_client.ensure_bucket()
 
         assert exc_info.value.status_code == 500
         assert "Unable to prepare avatar storage" in exc_info.value.detail
@@ -187,9 +186,8 @@ class TestAvatarStorageClient:
 
         with patch.object(
             storage_client, "_client", return_value=self._create_async_context(mock_client)
-        ):
-            with pytest.raises(HTTPException) as exc_info:
-                await storage_client.ensure_bucket()
+        ), pytest.raises(HTTPException) as exc_info:
+            await storage_client.ensure_bucket()
 
         assert exc_info.value.status_code == 500
         assert "Unable to access avatar storage" in exc_info.value.detail
@@ -206,13 +204,12 @@ class TestAvatarStorageClient:
 
         with patch.object(
             storage_client, "_client", return_value=self._create_async_context(mock_client)
-        ):
-            with patch("aiofiles.open", return_value=self._create_async_file_context(file_content)):
-                await storage_client.upload_file(
-                    key="avatars/user1.jpg",
-                    file_path="/tmp/test.jpg",
-                    content_type="image/jpeg",
-                )
+        ), patch("aiofiles.open", return_value=self._create_async_file_context(file_content)):
+            await storage_client.upload_file(
+                key="avatars/user1.jpg",
+                file_path="/tmp/test.jpg",
+                content_type="image/jpeg",
+            )
 
         mock_client.put_object.assert_called_once_with(
             Bucket="test-bucket",
@@ -238,14 +235,13 @@ class TestAvatarStorageClient:
 
         with patch.object(
             storage_client, "_client", return_value=self._create_async_context(mock_client)
-        ):
-            with patch("aiofiles.open", return_value=self._create_async_file_context(file_content)):
-                with pytest.raises(HTTPException) as exc_info:
-                    await storage_client.upload_file(
-                        key="avatars/user1.jpg",
-                        file_path="/tmp/test.jpg",
-                        content_type="image/jpeg",
-                    )
+        ), patch("aiofiles.open", return_value=self._create_async_file_context(file_content)):
+            with pytest.raises(HTTPException) as exc_info:
+                await storage_client.upload_file(
+                    key="avatars/user1.jpg",
+                    file_path="/tmp/test.jpg",
+                    content_type="image/jpeg",
+                )
 
         assert exc_info.value.status_code == 500
         assert "Unable to store avatar" in exc_info.value.detail
@@ -371,7 +367,7 @@ class TestGetAvatarStorage:
 
     def test_get_avatar_storage_returns_client(self):
         """Test get_avatar_storage returns AvatarStorageClient."""
-        from core.avatar_storage import get_avatar_storage, AvatarStorageClient
+        from core.avatar_storage import AvatarStorageClient, get_avatar_storage
 
         # Clear the cache to ensure fresh instance
         get_avatar_storage.cache_clear()

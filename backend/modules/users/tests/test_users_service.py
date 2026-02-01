@@ -12,7 +12,7 @@ Tests cover:
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException, UploadFile, status
@@ -20,7 +20,6 @@ from PIL import Image
 from sqlalchemy.orm import Session
 
 from models import Booking, TutorProfile, User
-
 
 # =============================================================================
 # Avatar Service Tests

@@ -1,6 +1,5 @@
 """Tests for the notification service."""
 
-from datetime import UTC, datetime, time, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -110,7 +109,7 @@ class TestGetOrCreatePreferences:
         """Test creates new preferences when none exist."""
         mock_db.query.return_value.filter.return_value.first.return_value = None
 
-        result = service._get_or_create_preferences(mock_db, user_id=1)
+        service._get_or_create_preferences(mock_db, user_id=1)
 
         mock_db.add.assert_called_once()
         mock_db.flush.assert_called_once()
@@ -251,7 +250,7 @@ class TestCreateNotification:
         with patch.object(service, "_get_or_create_preferences", return_value=mock_prefs):
             with patch.object(service, "_send_email_notification"):
                 with patch.object(service, "_track_analytics"):
-                    result = service.create_notification(
+                    service.create_notification(
                         db=mock_db,
                         user_id=1,
                         notification_type=NotificationType.BOOKING_CONFIRMED,
@@ -414,7 +413,7 @@ class TestUpdatePreferences:
     def test_updates_valid_fields(self, service, mock_db, mock_prefs):
         """Test updates valid preference fields."""
         with patch.object(service, "_get_or_create_preferences", return_value=mock_prefs):
-            result = service.update_preferences(
+            service.update_preferences(
                 mock_db,
                 user_id=1,
                 email_enabled=False,
@@ -427,7 +426,7 @@ class TestUpdatePreferences:
     def test_ignores_invalid_fields(self, service, mock_db, mock_prefs):
         """Test ignores invalid preference fields."""
         with patch.object(service, "_get_or_create_preferences", return_value=mock_prefs):
-            result = service.update_preferences(
+            service.update_preferences(
                 mock_db,
                 user_id=1,
                 invalid_field="value",
@@ -440,7 +439,7 @@ class TestUpdatePreferences:
         mock_prefs.email_enabled = True
 
         with patch.object(service, "_get_or_create_preferences", return_value=mock_prefs):
-            result = service.update_preferences(
+            service.update_preferences(
                 mock_db,
                 user_id=1,
                 email_enabled=None,

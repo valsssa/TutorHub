@@ -17,7 +17,7 @@ import pytest
 from fastapi import status
 from pydantic import ValidationError
 
-from schemas import UserCreate, UserSelfUpdate, UserResponse
+from schemas import UserCreate, UserResponse, UserSelfUpdate
 
 
 class TestUserCreateValidation:

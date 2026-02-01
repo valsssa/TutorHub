@@ -8,10 +8,7 @@ Tests the profiles module including:
 - Error handling
 """
 
-from datetime import datetime, UTC
-from unittest.mock import MagicMock, patch
 
-import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session

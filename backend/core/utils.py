@@ -2,8 +2,9 @@
 
 import functools
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from fastapi import HTTPException, status
 from pydantic import BaseModel

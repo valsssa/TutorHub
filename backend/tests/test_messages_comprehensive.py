@@ -28,7 +28,6 @@ from sqlalchemy.orm import Session
 
 from models import Booking, Message, MessageAttachment, User
 
-
 # =============================================================================
 # Test Fixtures
 # =============================================================================

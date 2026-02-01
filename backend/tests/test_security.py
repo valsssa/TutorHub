@@ -252,7 +252,12 @@ class TestInputSanitization:
         """Test that email is sanitized (lowercase, stripped)."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "  Test.User@EXAMPLE.COM  ", "password": "password123"},
+            json={
+                "email": "  Test.User@EXAMPLE.COM  ",
+                "password": "Password123!",
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -264,7 +269,9 @@ class TestInputSanitization:
             "/api/v1/auth/register",
             json={
                 "email": "test@example.com'; DROP TABLE users; --",
-                "password": "password123",
+                "password": "Password123!",
+                "first_name": "Test",
+                "last_name": "User",
             },
         )
         # Should either reject invalid email or safely handle it
@@ -281,6 +288,8 @@ class TestInputSanitization:
             json={
                 "email": "test@example.com",
                 "password": "<script>alert('xss')</script>",
+                "first_name": "Test",
+                "last_name": "User",
             },
         )
         # Should accept (password is hashed) but never execute

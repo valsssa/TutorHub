@@ -1,6 +1,7 @@
 """Tests for timezone handling in availability system."""
 
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import UTC, date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 
 import pytest
 from fastapi import status
@@ -374,8 +375,8 @@ class TestTimezoneInBookingSnapshot:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
             subject_id=test_subject.id,
-            start_time=datetime.now(dt_timezone.utc) + timedelta(days=2),
-            end_time=datetime.now(dt_timezone.utc) + timedelta(days=2, hours=1),
+            start_time=datetime.now(UTC) + timedelta(days=2),
+            end_time=datetime.now(UTC) + timedelta(days=2, hours=1),
             hourly_rate=50.00,
             total_amount=50.00,
             currency="USD",
@@ -406,8 +407,8 @@ class TestTimezoneInBookingSnapshot:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
             subject_id=test_subject.id,
-            start_time=datetime.now(dt_timezone.utc) + timedelta(days=3),
-            end_time=datetime.now(dt_timezone.utc) + timedelta(days=3, hours=1),
+            start_time=datetime.now(UTC) + timedelta(days=3),
+            end_time=datetime.now(UTC) + timedelta(days=3, hours=1),
             hourly_rate=50.00,
             total_amount=50.00,
             currency="USD",
@@ -512,6 +513,7 @@ class TestDSTHandling:
     def test_dst_spring_forward(self, db_session, tutor_user):
         """Test availability during DST spring forward."""
         from zoneinfo import ZoneInfo
+
         from models import TutorAvailability
 
         tutor_profile = tutor_user.tutor_profile
@@ -541,6 +543,7 @@ class TestDSTHandling:
     def test_dst_fall_back(self, db_session, tutor_user):
         """Test availability during DST fall back."""
         from zoneinfo import ZoneInfo
+
         from models import TutorAvailability
 
         tutor_profile = tutor_user.tutor_profile

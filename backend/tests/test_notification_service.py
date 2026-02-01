@@ -26,7 +26,6 @@ from modules.notifications.service import (
     notification_service,
 )
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -1036,7 +1035,7 @@ class TestAnalyticsTracking:
         self, db_session: Session, notification_svc: NotificationService, student_user: User
     ):
         """Test that analytics entry is created with notification."""
-        notification = notification_svc.create_notification(
+        notification_svc.create_notification(
             db=db_session,
             user_id=student_user.id,
             notification_type=NotificationType.BOOKING_CONFIRMED,
@@ -1060,7 +1059,7 @@ class TestAnalyticsTracking:
         self, db_session: Session, notification_svc: NotificationService, student_user: User
     ):
         """Test that analytics tracks whether notification was actionable."""
-        notification = notification_svc.create_notification(
+        notification_svc.create_notification(
             db=db_session,
             user_id=student_user.id,
             notification_type=NotificationType.BOOKING_REQUEST,

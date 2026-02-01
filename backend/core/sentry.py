@@ -5,8 +5,8 @@ import logging
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from core.config import settings
 
@@ -113,9 +113,8 @@ def _before_send(event: dict, hint: dict) -> dict | None:
             if exception.get("type") == "HTTPException":
                 # Check if it's a 401 or 403 - these are expected
                 exc_value = hint.get("exc_info", [None, None, None])[1]
-                if exc_value and hasattr(exc_value, "status_code"):
-                    if exc_value.status_code in (401, 403, 404, 422):
-                        return None  # Don't send these to Sentry
+                if exc_value and hasattr(exc_value, "status_code") and exc_value.status_code in (401, 403, 404, 422):
+                    return None  # Don't send these to Sentry
 
     # Remove sensitive headers
     if "request" in event:

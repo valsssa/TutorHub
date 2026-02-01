@@ -7,13 +7,13 @@ Handles wallet credit top-ups via Stripe Checkout.
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
-from core.rate_limiting import limiter
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.dependencies import get_current_student_user
+from core.rate_limiting import limiter
 from core.stripe_client import create_checkout_session
 from database import get_db
 from models import Payment, StudentProfile, User

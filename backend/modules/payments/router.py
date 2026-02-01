@@ -51,7 +51,7 @@ from sqlalchemy.orm import Session
 
 from core.dependencies import CurrentUser, DatabaseSession
 from core.payment_reliability import (
-    PaymentServiceUnavailable,
+    PaymentServiceUnavailableError,
     get_payment_reliability_status,
     payment_status_poller,
     webhook_retry_tracker,
@@ -936,12 +936,8 @@ async def request_refund(
             detail="Payment has already been fully refunded",
         )
 
-    # Determine refund amount
-    if request.amount_cents is None:
-        # Full refund of remaining amount
-        refund_amount_cents = max_refundable
-    else:
-        refund_amount_cents = request.amount_cents
+    # Determine refund amount (full refund if not specified)
+    refund_amount_cents = max_refundable if request.amount_cents is None else request.amount_cents
 
     # Validate refund amount doesn't exceed remaining refundable amount
     if refund_amount_cents > max_refundable:
@@ -1195,7 +1191,7 @@ async def poll_payment_status(
     # Poll Stripe
     try:
         status_info = payment_status_poller.check_checkout_session(session_id)
-    except PaymentServiceUnavailable as e:
+    except PaymentServiceUnavailableError as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e),

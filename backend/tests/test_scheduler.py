@@ -1,6 +1,6 @@
 """Tests for APScheduler background jobs module."""
 
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -22,8 +22,9 @@ class TestGetScheduler:
 
     def test_get_scheduler_returns_existing_scheduler(self):
         """Test get_scheduler returns existing scheduler."""
-        from core import scheduler as scheduler_module
         from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+        from core import scheduler as scheduler_module
 
         # Set a mock scheduler
         mock_scheduler = AsyncIOScheduler()
@@ -69,8 +70,9 @@ class TestInitScheduler:
 
     def test_init_scheduler_returns_existing_if_running(self):
         """Test init_scheduler returns existing scheduler if running."""
-        from core import scheduler as scheduler_module
         from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+        from core import scheduler as scheduler_module
 
         mock_scheduler = MagicMock(spec=AsyncIOScheduler)
         mock_scheduler.running = True
@@ -447,10 +449,9 @@ class TestLifespanScheduler:
 
         mock_app = MagicMock()
 
-        with patch("core.scheduler.start_scheduler") as mock_start:
-            with patch("core.scheduler.stop_scheduler"):
-                async with lifespan_scheduler(mock_app):
-                    mock_start.assert_called_once()
+        with patch("core.scheduler.start_scheduler") as mock_start, patch("core.scheduler.stop_scheduler"):
+            async with lifespan_scheduler(mock_app):
+                mock_start.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_lifespan_scheduler_stops_on_exit(self):
@@ -459,10 +460,9 @@ class TestLifespanScheduler:
 
         mock_app = MagicMock()
 
-        with patch("core.scheduler.start_scheduler"):
-            with patch("core.scheduler.stop_scheduler") as mock_stop:
-                async with lifespan_scheduler(mock_app):
-                    pass
+        with patch("core.scheduler.start_scheduler"), patch("core.scheduler.stop_scheduler") as mock_stop:
+            async with lifespan_scheduler(mock_app):
+                pass
 
         mock_stop.assert_called_once()
 
@@ -473,13 +473,12 @@ class TestLifespanScheduler:
 
         mock_app = MagicMock()
 
-        with patch("core.scheduler.start_scheduler"):
-            with patch("core.scheduler.stop_scheduler") as mock_stop:
-                try:
-                    async with lifespan_scheduler(mock_app):
-                        raise RuntimeError("Test exception")
-                except RuntimeError:
-                    pass
+        with patch("core.scheduler.start_scheduler"), patch("core.scheduler.stop_scheduler") as mock_stop:
+            try:
+                async with lifespan_scheduler(mock_app):
+                    raise RuntimeError("Test exception")
+            except RuntimeError:
+                pass
 
         mock_stop.assert_called_once()
 

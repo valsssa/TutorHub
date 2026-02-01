@@ -4,11 +4,10 @@ import logging
 from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from core.rate_limiting import limiter
-
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_user
+from core.rate_limiting import limiter
 from core.sanitization import sanitize_text_input
 from database import get_db
 from models import User, UserProfile

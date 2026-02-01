@@ -1,6 +1,5 @@
 """Tests for the favorites API endpoints."""
 
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,7 +12,6 @@ from modules.favorites.api import (
     get_favorites,
     remove_favorite,
 )
-from modules.favorites.entities import FavoriteTutor
 from modules.favorites.schemas import FavoriteCreate
 
 
@@ -116,11 +114,11 @@ class TestAddFavorite:
         mock_favorite.student_id = 1
         mock_favorite.tutor_profile_id = 10
 
-        with patch("modules.favorites.api.FavoriteTutor") as MockFavoriteTutor:
-            MockFavoriteTutor.return_value = mock_favorite
+        with patch("modules.favorites.api.FavoriteTutor") as mock_favorite_tutor:
+            mock_favorite_tutor.return_value = mock_favorite
             mock_db.refresh.side_effect = lambda x: setattr(x, "id", 1)
 
-            result = await add_favorite(favorite_data, student_user, mock_db)
+            await add_favorite(favorite_data, student_user, mock_db)
 
             mock_db.add.assert_called_once()
             mock_db.commit.assert_called_once()

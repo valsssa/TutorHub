@@ -218,53 +218,49 @@ class TestDistributedLockContextManager:
         """Test context manager acquires and releases lock."""
         with patch.object(
             lock_service, "try_acquire", return_value=(True, "token123")
-        ) as mock_acquire:
-            with patch.object(lock_service, "release") as mock_release:
-                async with lock_service.acquire("test_lock") as acquired:
-                    assert acquired is True
+        ) as mock_acquire, patch.object(lock_service, "release") as mock_release:
+            async with lock_service.acquire("test_lock") as acquired:
+                assert acquired is True
 
-                mock_acquire.assert_called_once_with("test_lock", 60)
-                mock_release.assert_called_once_with("test_lock", "token123")
+            mock_acquire.assert_called_once_with("test_lock", 60)
+            mock_release.assert_called_once_with("test_lock", "token123")
 
     @pytest.mark.asyncio
     async def test_acquire_context_manager_not_acquired(self, lock_service):
         """Test context manager when lock not acquired."""
         with patch.object(
             lock_service, "try_acquire", return_value=(False, None)
-        ) as mock_acquire:
-            with patch.object(lock_service, "release") as mock_release:
-                async with lock_service.acquire("test_lock") as acquired:
-                    assert acquired is False
+        ) as mock_acquire, patch.object(lock_service, "release") as mock_release:
+            async with lock_service.acquire("test_lock") as acquired:
+                assert acquired is False
 
-                mock_acquire.assert_called_once()
-                mock_release.assert_not_called()
+            mock_acquire.assert_called_once()
+            mock_release.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_acquire_context_manager_with_timeout(self, lock_service):
         """Test context manager with custom timeout."""
         with patch.object(
             lock_service, "try_acquire", return_value=(True, "token")
-        ) as mock_acquire:
-            with patch.object(lock_service, "release"):
-                async with lock_service.acquire("test_lock", timeout=300) as acquired:
-                    assert acquired is True
+        ) as mock_acquire, patch.object(lock_service, "release"):
+            async with lock_service.acquire("test_lock", timeout=300) as acquired:
+                assert acquired is True
 
-                mock_acquire.assert_called_once_with("test_lock", 300)
+            mock_acquire.assert_called_once_with("test_lock", 300)
 
     @pytest.mark.asyncio
     async def test_acquire_releases_on_exception(self, lock_service):
         """Test context manager releases lock even on exception."""
         with patch.object(
             lock_service, "try_acquire", return_value=(True, "token123")
-        ):
-            with patch.object(lock_service, "release") as mock_release:
-                try:
-                    async with lock_service.acquire("test_lock"):
-                        raise ValueError("Test exception")
-                except ValueError:
-                    pass
+        ), patch.object(lock_service, "release") as mock_release:
+            try:
+                async with lock_service.acquire("test_lock"):
+                    raise ValueError("Test exception")
+            except ValueError:
+                pass
 
-                mock_release.assert_called_once_with("test_lock", "token123")
+            mock_release.assert_called_once_with("test_lock", "token123")
 
     @pytest.mark.asyncio
     async def test_close(self, lock_service):
@@ -339,16 +335,15 @@ class TestConcurrencyScenarios:
 
         with patch.object(
             lock_service, "try_acquire", return_value=(True, "token")
-        ) as mock_acquire:
-            with patch.object(lock_service, "release") as mock_release:
-                async with lock_service.acquire(
-                    "job:expire_requests", timeout=300
-                ) as acquired:
-                    if acquired:
-                        pass
+        ) as mock_acquire, patch.object(lock_service, "release") as mock_release:
+            async with lock_service.acquire(
+                "job:expire_requests", timeout=300
+            ) as acquired:
+                if acquired:
+                    pass
 
-                mock_acquire.assert_called_once_with("job:expire_requests", 300)
-                mock_release.assert_called_once()
+            mock_acquire.assert_called_once_with("job:expire_requests", 300)
+            mock_release.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_skip_execution_when_locked(self):

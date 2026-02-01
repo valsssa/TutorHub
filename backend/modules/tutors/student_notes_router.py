@@ -4,10 +4,10 @@ import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from core.rate_limiting import limiter
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_tutor_user
+from core.rate_limiting import limiter
 from database import get_db
 from models import StudentNote, User
 from schemas import StudentNoteResponse, StudentNoteUpdate

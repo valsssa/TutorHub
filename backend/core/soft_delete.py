@@ -34,7 +34,7 @@ class SoftDeleteMixin:
 T = TypeVar("T")
 
 
-def apply_soft_delete_filter(query: Query[T], include_deleted: bool = False) -> Query[T]:
+def apply_soft_delete_filter[T](query: Query[T], include_deleted: bool = False) -> Query[T]:
     """
     Apply soft delete filter to query.
 
@@ -51,7 +51,7 @@ def apply_soft_delete_filter(query: Query[T], include_deleted: bool = False) -> 
     return query
 
 
-def filter_active(query: Query[T], model: Any) -> Query[T]:
+def filter_active[T](query: Query[T], model: Any) -> Query[T]:
     """
     Filter out soft-deleted records if model has deleted_at column.
 
@@ -74,7 +74,7 @@ def filter_active(query: Query[T], model: Any) -> Query[T]:
     return query
 
 
-def filter_active_users(query: Query[T]) -> Query[T]:
+def filter_active_users[T](query: Query[T]) -> Query[T]:
     """
     Filter out soft-deleted users from a query that involves the User model.
 
@@ -92,7 +92,7 @@ def filter_active_users(query: Query[T]) -> Query[T]:
     return query.filter(User.deleted_at.is_(None))
 
 
-def filter_active_tutors(query: Query[T]) -> Query[T]:
+def filter_active_tutors[T](query: Query[T]) -> Query[T]:
     """
     Filter out soft-deleted tutor profiles from a query.
 
@@ -110,7 +110,7 @@ def filter_active_tutors(query: Query[T]) -> Query[T]:
     return query.filter(TutorProfile.deleted_at.is_(None))
 
 
-def exclude_deleted_related(
+def exclude_deleted_related[T](
     query: Query[T],
     *models: Any,
 ) -> Query[T]:

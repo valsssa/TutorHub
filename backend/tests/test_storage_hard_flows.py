@@ -23,53 +23,52 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from botocore.exceptions import ClientError, ConnectTimeoutError, ReadTimeoutError
 from fastapi import HTTPException, UploadFile
 from PIL import Image
 
-from core.storage import (
-    MAX_IMAGE_SIZE_BYTES,
-    MAX_DOCUMENT_SIZE_BYTES,
-    MIN_IMAGE_DIMENSION,
-    MAX_IMAGE_DIMENSION,
-    IMAGE_CONTENT_TYPES,
-    DOCUMENT_CONTENT_TYPES,
-    _s3_client,
-    _ensure_bucket_exists,
-    _generate_filename,
-    _build_object_key,
-    _validate_size,
-    _process_image,
-    _public_url_for_key,
-    _extract_key_from_url,
-    store_profile_photo,
-    store_supporting_document,
-    delete_file,
-    delete_files,
-)
 from core.avatar_storage import (
     AvatarStorageClient,
-    get_avatar_storage,
     build_avatar_url,
+    get_avatar_storage,
 )
 from core.message_storage import (
-    ALLOWED_IMAGE_TYPES,
     ALLOWED_DOCUMENT_TYPES,
+    ALLOWED_IMAGE_TYPES,
     ALLOWED_MIME_TYPES,
     MAX_FILE_SIZE,
     MAX_IMAGE_SIZE,
     _categorize_file,
     _extract_image_dimensions,
     _generate_secure_key,
-    store_message_attachment,
-    generate_presigned_url,
-    delete_message_attachment,
     check_file_exists,
+    delete_message_attachment,
+    generate_presigned_url,
+    store_message_attachment,
 )
-
+from core.storage import (
+    DOCUMENT_CONTENT_TYPES,
+    IMAGE_CONTENT_TYPES,
+    MAX_DOCUMENT_SIZE_BYTES,
+    MAX_IMAGE_DIMENSION,
+    MAX_IMAGE_SIZE_BYTES,
+    MIN_IMAGE_DIMENSION,
+    _build_object_key,
+    _ensure_bucket_exists,
+    _extract_key_from_url,
+    _generate_filename,
+    _process_image,
+    _public_url_for_key,
+    _s3_client,
+    _validate_size,
+    delete_file,
+    delete_files,
+    store_profile_photo,
+    store_supporting_document,
+)
 
 # =============================================================================
 # Test Utilities and Fixtures
@@ -288,7 +287,7 @@ class TestLargeFileUploadEdgeCases:
         """Test file size enforcement at exact boundary."""
         # Exact boundary - should pass
         exact_size_content = b"x" * MAX_FILE_SIZE
-        upload_exact = create_upload_file(
+        create_upload_file(
             exact_size_content, "exact.txt", "text/plain"
         )
 
@@ -471,7 +470,7 @@ class TestConcurrentUploadScenarios:
                 executor.submit(simulate_upload, 1, i)
                 for i in range(10)
             ]
-            results = [f.result() for f in as_completed(futures)]
+            [f.result() for f in as_completed(futures)]
 
         # Max concurrent should not exceed limit
         assert max_reached["value"] <= max_concurrent_uploads
@@ -610,7 +609,6 @@ class TestStorageBackendFailures:
 
         # Manual retry simulation
         max_retries = 3
-        last_error = None
 
         for attempt in range(max_retries):
             try:
@@ -618,8 +616,7 @@ class TestStorageBackendFailures:
                     Bucket="test", Key="key", Body=b"data"
                 )
                 break
-            except ClientError as e:
-                last_error = e
+            except ClientError:
                 time.sleep(0.01 * (2 ** attempt))  # Exponential backoff
 
         # Should succeed on third attempt
@@ -687,7 +684,7 @@ class TestFileTypeValidation:
         zip_content = b"PK\x03\x04"  # ZIP signature
         polyglot = gif_header + zip_content
 
-        upload = create_upload_file(polyglot, "image.gif", "image/gif")
+        create_upload_file(polyglot, "image.gif", "image/gif")
 
         # Image dimension extraction should fail for malformed content
         width, height = _extract_image_dimensions(polyglot)
@@ -819,7 +816,7 @@ class TestPresignedURLEdgeCases:
         )
 
         # Zero expiration - immediately invalid
-        url = generate_presigned_url("test-key", expiry_seconds=0)
+        generate_presigned_url("test-key", expiry_seconds=0)
         mock_message_s3_client.generate_presigned_url.assert_called_once()
 
     def test_url_expiration_max_allowed(self, mock_message_s3_client, mock_settings):
@@ -829,7 +826,7 @@ class TestPresignedURLEdgeCases:
             f"https://minio:9000/bucket/key?X-Amz-Expires={max_expiry}"
         )
 
-        url = generate_presigned_url("test-key", expiry_seconds=max_expiry)
+        generate_presigned_url("test-key", expiry_seconds=max_expiry)
 
         call_args = mock_message_s3_client.generate_presigned_url.call_args
         assert call_args[1]["ExpiresIn"] == max_expiry
@@ -1138,7 +1135,7 @@ class TestFileDeletionAndCleanup:
             task["status"] = "completed"
             return True
 
-        results = [run_cleanup(task) for task in cleanup_tasks]
+        [run_cleanup(task) for task in cleanup_tasks]
 
         # One failed
         failed = [t for t in cleanup_tasks if t["status"] == "failed"]
@@ -1214,7 +1211,6 @@ class TestAvatarProfileImageSpecific:
         operations = []
 
         original_put = mock_s3_client.put_object
-        original_delete = mock_s3_client.delete_object
 
         def track_put(*args, **kwargs):
             operations.append("put")

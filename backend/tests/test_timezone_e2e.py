@@ -1,6 +1,7 @@
 """End-to-end tests for timezone functionality across the application."""
 
-from datetime import datetime, timedelta, timezone as dt_timezone
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -19,6 +20,8 @@ class TestTimezoneRegistrationToLoginFlow:
                 "email": "tz_flow_test@test.com",
                 "password": "Password123!",
                 "timezone": "America/New_York",
+                "first_name": "TZ",
+                "last_name": "Flow",
             },
         )
         assert register_response.status_code == status.HTTP_201_CREATED
@@ -48,6 +51,8 @@ class TestTimezoneRegistrationToLoginFlow:
             json={
                 "email": "tz_default_test@test.com",
                 "password": "Password123!",
+                "first_name": "TZ",
+                "last_name": "Default",
             },
         )
         assert register_response.status_code == status.HTTP_201_CREATED

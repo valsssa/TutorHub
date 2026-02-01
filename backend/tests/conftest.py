@@ -9,15 +9,15 @@ Uses transaction-based isolation for speed and consistency.
 import logging
 import os
 import sys
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 
 logger = logging.getLogger(__name__)
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session, sessionmaker
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
+from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 
 # =============================================================================
 # Path Setup - Ensure backend modules are importable
@@ -142,7 +142,8 @@ def override_get_db() -> Generator[Session, None, None]:
 app.dependency_overrides[get_db] = override_get_db
 
 # Disable rate limiting for tests
-from core.rate_limiting import limiter
+from core.rate_limiting import limiter  # noqa: E402
+
 limiter.enabled = False
 
 
@@ -255,6 +256,7 @@ def create_test_tutor_profile(
 ) -> TutorProfile:
     """Create a minimal approved tutor profile for the given user with availability."""
     from datetime import time
+
     from models import TutorAvailability
 
     profile = TutorProfile(
@@ -296,7 +298,7 @@ def create_test_tutor_profile(
 # User Fixtures
 # =============================================================================
 
-import uuid
+import uuid  # noqa: E402
 
 
 def _unique_email(prefix: str) -> str:

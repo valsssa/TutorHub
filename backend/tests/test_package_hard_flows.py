@@ -14,12 +14,12 @@ and correct business logic under edge conditions.
 """
 
 import asyncio
+import calendar
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
-import calendar
 
 import pytest
 from fastapi import status
@@ -27,9 +27,8 @@ from sqlalchemy import text, update
 from sqlalchemy.orm import Session
 
 from models import Booking, StudentPackage, TutorPricingOption, TutorProfile, User
-from modules.bookings.domain.status import SessionState, PaymentState
+from modules.bookings.domain.status import PaymentState, SessionState
 from modules.packages.services.expiration_service import PackageExpirationService
-
 
 # =============================================================================
 # Test Fixtures
@@ -225,7 +224,7 @@ class TestPackageExpirationEdgeCases:
         time.sleep(1.5)
 
         # Run expiration service
-        count = PackageExpirationService.mark_expired_packages(db_session)
+        PackageExpirationService.mark_expired_packages(db_session)
 
         # Package should be expired
         db_session.refresh(package)
@@ -438,11 +437,11 @@ class TestSessionDeductionComplexities:
         token = TokenManager.create_access_token({"sub": student_user.email})
 
         results = []
-        errors = []
 
         def try_use_credit():
             """Make API request to use credit."""
             from fastapi.testclient import TestClient
+
             from main import app
 
             with TestClient(app) as test_client:
@@ -917,7 +916,7 @@ class TestBackgroundJobEdgeCases:
         )
 
         # Run expiration job
-        count = PackageExpirationService.mark_expired_packages(db_session)
+        PackageExpirationService.mark_expired_packages(db_session)
 
         # Package should be marked expired
         db_session.refresh(expired_package)

@@ -11,16 +11,16 @@ Tests cover:
 import pytest
 
 from core.avatar_utils import (
+    AVATAR_COLORS,
+    generate_avatar,
+    generate_avatar_data_uri,
+    generate_avatar_svg,
+    get_avatar_alt_text,
+    get_avatar_color,
+    get_avatar_color_index,
     get_initials,
     hash_string,
-    get_avatar_color_index,
-    get_avatar_color,
     is_placeholder_url,
-    get_avatar_alt_text,
-    generate_avatar,
-    generate_avatar_svg,
-    generate_avatar_data_uri,
-    AVATAR_COLORS,
 )
 
 

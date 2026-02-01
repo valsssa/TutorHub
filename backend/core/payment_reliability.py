@@ -29,6 +29,12 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+class PaymentServiceUnavailableError(Exception):
+    """Raised when payment service is unavailable."""
+
+    pass
+
+
 class CircuitState(Enum):
     """Circuit breaker states."""
 
@@ -441,7 +447,7 @@ class PaymentStatusPoller:
         # Fetch from Stripe
         try:
             if not settings.STRIPE_SECRET_KEY:
-                raise PaymentServiceUnavailable("Stripe not configured")
+                raise PaymentServiceUnavailableError("Stripe not configured")
 
             stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -479,7 +485,7 @@ class PaymentStatusPoller:
             )
         except CircuitOpenError:
             logger.warning(f"Circuit breaker open, cannot check session {session_id}")
-            raise PaymentServiceUnavailable("Payment service temporarily unavailable")
+            raise PaymentServiceUnavailableError("Payment service temporarily unavailable")
 
     def check_payment_intent(self, payment_intent_id: str) -> PaymentStatusInfo:
         """Check the status of a payment intent."""
@@ -498,7 +504,7 @@ class PaymentStatusPoller:
 
         try:
             if not settings.STRIPE_SECRET_KEY:
-                raise PaymentServiceUnavailable("Stripe not configured")
+                raise PaymentServiceUnavailableError("Stripe not configured")
 
             stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -542,17 +548,11 @@ class PaymentStatusPoller:
             )
         except CircuitOpenError:
             logger.warning(f"Circuit breaker open, cannot check intent {payment_intent_id}")
-            raise PaymentServiceUnavailable("Payment service temporarily unavailable")
+            raise PaymentServiceUnavailableError("Payment service temporarily unavailable")
 
 
 # Global payment status poller
 payment_status_poller = PaymentStatusPoller()
-
-
-class PaymentServiceUnavailable(Exception):
-    """Raised when payment service is unavailable."""
-
-    pass
 
 
 def handle_stripe_error(error: Exception) -> HTTPException:
@@ -586,7 +586,7 @@ def handle_stripe_error(error: Exception) -> HTTPException:
             detail="Payment service temporarily unavailable. Please try again later.",
         )
 
-    if isinstance(error, PaymentServiceUnavailable):
+    if isinstance(error, PaymentServiceUnavailableError):
         return HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(error) or "Payment service unavailable",

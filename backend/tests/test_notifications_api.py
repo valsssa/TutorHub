@@ -1,10 +1,10 @@
 """Tests for notifications API endpoints."""
 
-from datetime import datetime, timezone as dt_timezone
-
-from fastapi import status
+from datetime import datetime
+from datetime import timezone as dt_timezone
 
 import pytest
+from fastapi import status
 
 
 @pytest.fixture

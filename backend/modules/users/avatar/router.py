@@ -3,12 +3,11 @@
 import logging
 
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
-from core.rate_limiting import limiter
-
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.dependencies import get_current_user
+from core.rate_limiting import limiter
 from database import get_db
 from models import User
 from modules.users.avatar.schemas import AvatarDeleteResponse, AvatarResponse

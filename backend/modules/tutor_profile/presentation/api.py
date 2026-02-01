@@ -5,12 +5,11 @@ from io import BytesIO
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
-from core.rate_limiting import limiter
-
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_tutor_user, get_current_user
 from core.pagination import PaginatedResponse, PaginationParams
+from core.rate_limiting import limiter
 from core.storage import _extract_key_from_url, _s3_client
 from database import get_db
 from models import User

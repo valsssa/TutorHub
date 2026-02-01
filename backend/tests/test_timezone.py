@@ -1,6 +1,7 @@
 """Tests for timezone utilities module."""
 
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from zoneinfo import ZoneInfo
 
 import pytest

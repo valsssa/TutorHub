@@ -1,8 +1,7 @@
 """Tests for favorites API endpoints."""
 
-from fastapi import status
-
 import pytest
+from fastapi import status
 
 from tests.conftest import STUDENT_PASSWORD
 

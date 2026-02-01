@@ -49,11 +49,12 @@ import threading
 import time
 import uuid
 from collections import defaultdict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime, timedelta
 from queue import Empty, Queue
-from typing import Any, Callable
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
@@ -61,7 +62,6 @@ from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
 from core.distributed_lock import DistributedLockService
 from core.transactions import TransactionError, atomic_operation, transaction
-
 
 # =============================================================================
 # Test Utilities and Fixtures
@@ -305,8 +305,6 @@ class TestDistributedLockEdgeCases:
         lock_service = DistributedLockService()
         mock_redis = MockRedisWithLatency()
 
-        work_completed = False
-        lock_expired_during_work = False
 
         with patch.object(lock_service, "_get_redis", return_value=mock_redis):
             # Acquire lock with very short TTL
@@ -317,7 +315,7 @@ class TestDistributedLockEdgeCases:
             await asyncio.sleep(1.5)
 
             # Try to release - should fail because lock expired
-            result = await lock_service.release("test_lock", token)
+            await lock_service.release("test_lock", token)
 
             # Lock should have expired, release returns False (token mismatch)
             # because another process could have acquired it
@@ -529,7 +527,7 @@ class TestCacheConsistencyEdgeCases:
         def reader_thread():
             nonlocal stale_reads
             for _ in range(100):
-                value = read_cache("shared_key")
+                read_cache("shared_key")
                 # In a race condition, we might read stale or None
                 time.sleep(0.001)
 
@@ -877,7 +875,6 @@ class TestEventOrderingProblems:
 
     def test_event_replay_scenario(self, event_store):
         """Test replaying events for state reconstruction."""
-        state = {"balance": 0, "transactions": []}
 
         def apply_event(event: dict, state: dict):
             """Apply event to state (event sourcing pattern)."""
@@ -1016,7 +1013,6 @@ class TestDatabaseTransactionEdgeCases:
         mock_db.begin_nested.return_value = mock_savepoint
 
         outer_committed = False
-        inner_rolled_back = False
 
         try:
             with transaction(mock_db):
@@ -1030,7 +1026,6 @@ class TestDatabaseTransactionEdgeCases:
                     raise ValueError("Inner transaction failed")
                 except ValueError:
                     mock_savepoint.rollback()
-                    inner_rolled_back = True
 
                 # Outer transaction should continue
                 mock_db.add(MagicMock())
@@ -1104,7 +1099,7 @@ class TestDatabaseTransactionEdgeCases:
 
         def worker(worker_id: int):
             try:
-                with get_connection(timeout=0.5) as conn:
+                with get_connection(timeout=0.5):
                     acquired.append(worker_id)
                     time.sleep(0.2)  # Hold connection
             except TimeoutError:
@@ -1157,10 +1152,7 @@ class TestDatabaseTransactionEdgeCases:
                 path.remove(node)
                 return False
 
-            for start in lock_graph:
-                if has_cycle(start, set()):
-                    return True
-            return False
+            return any(has_cycle(start, set()) for start in lock_graph)
 
         # Operations that would deadlock
         operations = [
@@ -1191,7 +1183,6 @@ class TestBackgroundTaskFailures:
 
     def test_task_timeout_handling(self):
         """Test handling of task that exceeds timeout."""
-        task_result = {"completed": False, "timed_out": False}
 
         def run_with_timeout(task: Callable, timeout: float) -> dict:
             """Run task with timeout."""
@@ -1235,7 +1226,6 @@ class TestBackgroundTaskFailures:
 
     def test_task_retry_exhaustion(self):
         """Test behavior when task exhausts all retries."""
-        max_retries = 3
         attempt_log = []
 
         class RetryExhaustedError(Exception):
@@ -1333,7 +1323,7 @@ class TestBackgroundTaskFailures:
                 result_3 = step_3(result_2)
 
                 return result_3
-            except Exception as e:
+            except Exception:
                 # Execute compensations in reverse order
                 for compensate in reversed(compensations):
                     try:
@@ -1393,13 +1383,12 @@ class TestBackgroundTaskFailures:
 
             with lock:
                 for task_id, state in task_states.items():
-                    if state["status"] == "running":
-                        if current_time - state["last_heartbeat"] > timeout:
-                            task_states[task_id] = {
-                                "status": "pending",
-                                "recovered_at": current_time,
-                            }
-                            recovered.append(task_id)
+                    if state["status"] == "running" and current_time - state["last_heartbeat"] > timeout:
+                        task_states[task_id] = {
+                            "status": "pending",
+                            "recovered_at": current_time,
+                        }
+                        recovered.append(task_id)
             return recovered
 
         # Start a task
@@ -1562,7 +1551,6 @@ class TestServiceCommunication:
             "service_b": "unhealthy",
             "service_c": "healthy",
         }
-        operation_results = {}
 
         def call_service(service_name: str) -> dict:
             """Call individual service."""
@@ -1713,13 +1701,11 @@ class TestComplexDistributedScenarios:
                 await step_ship_order(order_id)
 
                 saga_state["final_status"] = "completed"
-            except Exception as e:
+            except Exception:
                 # Execute compensations in reverse
                 for compensate in reversed(compensations):
-                    try:
+                    with suppress(Exception):
                         await compensate()
-                    except Exception:
-                        pass
                 saga_state["final_status"] = "rolled_back"
                 raise
 
@@ -1734,7 +1720,6 @@ class TestComplexDistributedScenarios:
     async def test_concurrent_booking_conflict_resolution(self):
         """Test resolving conflicts when multiple users book same slot."""
         available_slots = {"slot_1": True}
-        booking_results = []
         slot_lock = asyncio.Lock()
 
         async def try_book_slot(user_id: str, slot_id: str) -> dict:

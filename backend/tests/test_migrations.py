@@ -2,7 +2,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 from sqlalchemy import text
@@ -433,9 +433,8 @@ class TestMigrationDescription:
             # Find the INSERT call and check description
             for call in mock_db.execute.call_args_list:
                 args = call[0]
-                if len(args) > 1 and isinstance(args[1], dict):
-                    if "description" in args[1]:
-                        # Description should be title-cased filename without version
-                        desc = args[1]["description"]
-                        assert "Add User Avatars" in desc or "add user avatars" in desc.lower()
-                        break
+                if len(args) > 1 and isinstance(args[1], dict) and "description" in args[1]:
+                    # Description should be title-cased filename without version
+                    desc = args[1]["description"]
+                    assert "Add User Avatars" in desc or "add user avatars" in desc.lower()
+                    break

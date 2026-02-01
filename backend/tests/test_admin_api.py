@@ -120,7 +120,7 @@ class TestAdminUserManagement:
     def test_cannot_deactivate_last_admin_via_update(self, client, admin_token, admin_user, db_session):
         """Test that the last active admin cannot be deactivated via update endpoint."""
         from models import User
-        from tests.conftest import create_test_user, ADMIN_PASSWORD
+        from tests.conftest import ADMIN_PASSWORD, create_test_user
 
         # Create a second admin who will be the one making the request
         second_admin = create_test_user(
@@ -158,7 +158,7 @@ class TestAdminUserManagement:
     def test_cannot_delete_last_admin(self, client, admin_token, admin_user, db_session):
         """Test that the last active admin cannot be deleted."""
         from models import User
-        from tests.conftest import create_test_user, ADMIN_PASSWORD
+        from tests.conftest import ADMIN_PASSWORD, create_test_user
 
         # Create a second admin who will try to delete themselves
         second_admin = create_test_user(

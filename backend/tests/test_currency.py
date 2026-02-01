@@ -298,6 +298,6 @@ class TestCurrencyEdgeCases:
     def test_all_tiers_decrease_fees(self):
         """Test that higher tiers have lower fees."""
         previous_fee = Decimal("100.0")  # Start high
-        for threshold, fee_pct in COMMISSION_TIERS:
+        for _threshold, fee_pct in COMMISSION_TIERS:
             assert fee_pct <= previous_fee
             previous_fee = fee_pct

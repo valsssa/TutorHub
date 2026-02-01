@@ -33,8 +33,8 @@ class TestListPendingTutors:
 
     def test_list_pending_tutors_with_results(self, client, admin_token, db_session):
         """Test listing pending tutors returns correct results."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email="pending_tutor@test.com",
@@ -69,8 +69,8 @@ class TestListPendingTutors:
 
     def test_list_pending_excludes_approved(self, client, admin_token, db_session):
         """Test that approved tutors are not in pending list."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email="approved_tutor@test.com",
@@ -102,8 +102,8 @@ class TestListPendingTutors:
 
     def test_list_pending_includes_under_review(self, client, admin_token, db_session):
         """Test that under_review status tutors are included."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email="under_review@test.com",
@@ -144,8 +144,8 @@ class TestListPendingTutors:
 
     def test_list_pending_pagination(self, client, admin_token, db_session):
         """Test pagination of pending tutors list."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         for i in range(5):
             user = User(
@@ -185,8 +185,8 @@ class TestApproveTutor:
 
     def _create_pending_tutor(self, db_session, email="approve_test@test.com"):
         """Helper to create a pending tutor."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email=email,
@@ -331,8 +331,8 @@ class TestRejectTutor:
 
     def _create_pending_tutor(self, db_session, email="reject_test@test.com"):
         """Helper to create a pending tutor."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email=email,
@@ -511,8 +511,8 @@ class TestListApprovedTutors:
 
     def test_list_approved_tutors(self, client, admin_token, db_session):
         """Test listing approved tutors."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email="list_approved@test.com",
@@ -545,8 +545,8 @@ class TestListApprovedTutors:
 
     def test_list_approved_excludes_pending(self, client, admin_token, db_session):
         """Test that pending tutors are not in approved list."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email="pending_not_approved@test.com",
@@ -582,8 +582,8 @@ class TestTutorApprovalStateTransitions:
 
     def _create_tutor_with_status(self, db_session, email, profile_status):
         """Helper to create tutor with specific status."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email=email,
@@ -670,8 +670,8 @@ class TestTutorVisibilityAfterApproval:
 
     def test_approved_tutor_visible_in_user_list(self, client, admin_token, db_session):
         """Test approved tutors appear in admin user list."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email="visible_tutor@test.com",
@@ -704,8 +704,8 @@ class TestTutorVisibilityAfterApproval:
 
     def test_pending_tutor_hidden_in_user_list(self, client, admin_token, db_session):
         """Test pending tutors do not appear in admin user list."""
-        from models import TutorProfile, User
         from auth import get_password_hash
+        from models import TutorProfile, User
 
         user = User(
             email="hidden_tutor@test.com",

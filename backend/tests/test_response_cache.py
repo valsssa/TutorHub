@@ -297,7 +297,7 @@ class TestCacheRuleMatching:
 
         response = await middleware.dispatch(mock_request, call_next)
 
-        assert "public, max-age=600" == response.headers.get("Cache-Control")
+        assert response.headers.get("Cache-Control") == "public, max-age=600"
 
     @pytest.mark.asyncio
     async def test_first_matching_rule_wins(self, middleware):
@@ -314,7 +314,7 @@ class TestCacheRuleMatching:
 
         response = await middleware.dispatch(mock_request, call_next)
 
-        assert "private, max-age=60" == response.headers.get("Cache-Control")
+        assert response.headers.get("Cache-Control") == "private, max-age=60"
 
 
 class TestEdgeCases:

@@ -24,14 +24,12 @@ from sqlalchemy.orm import Session
 
 from core.account_lockout import AccountLockoutService
 from core.config import settings
-from core.oauth_state import OAuthStateStore, OAUTH_STATE_TTL_SECONDS
+from core.oauth_state import OAUTH_STATE_TTL_SECONDS, OAuthStateStore
 from core.security import PasswordHasher, TokenManager
 from models import RegistrationFraudSignal, User
 from modules.auth.password_router import _reset_tokens
 from modules.auth.services.fraud_detection import FraudDetectionService
-
-from tests.conftest import create_test_user, STUDENT_PASSWORD
-
+from tests.conftest import STUDENT_PASSWORD, create_test_user
 
 # =============================================================================
 # Mock Utilities
@@ -227,7 +225,7 @@ class TestTokenEdgeCases:
 
         # Using refresh token as access token should fail
         # The API expects access tokens, refresh tokens have type="refresh"
-        response = client.get(
+        client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {refresh_token}"},
         )
@@ -518,7 +516,7 @@ class TestOAuthFlowComplexities:
                     # Simulate timeout during token exchange
                     mock_client = MagicMock()
                     mock_client.authorize_access_token = AsyncMock(
-                        side_effect=asyncio.TimeoutError("Connection timeout")
+                        side_effect=TimeoutError("Connection timeout")
                     )
                     mock_oauth.create_client.return_value = mock_client
 
@@ -548,7 +546,12 @@ class TestOAuthFlowComplexities:
         # Attempt to register via standard registration with same email
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "oauth_user@example.com", "password": "Password123!"},
+            json={
+                "email": "oauth_user@example.com",
+                "password": "Password123!",
+                "first_name": "OAuth",
+                "last_name": "User",
+            },
         )
 
         # Should fail with conflict (email already exists)
@@ -1185,7 +1188,7 @@ class TestIntegrationScenarios:
     ):
         """Test that password change helps recover from suspected account compromise."""
         # Create token before password change
-        old_token = TokenManager.create_access_token({"sub": student_user.email})
+        TokenManager.create_access_token({"sub": student_user.email})
 
         # Simulate account compromise detection - change password
         password_change_time = datetime.now(UTC)
@@ -1274,6 +1277,8 @@ class TestIntegrationScenarios:
             json={
                 "email": "suspicious_user@tempmail.org",
                 "password": "Password123!",
+                "first_name": "Suspicious",
+                "last_name": "User",
             },
             headers={"X-Device-Fingerprint": "test_fingerprint_xyz"},
         )
@@ -1302,7 +1307,7 @@ class TestIntegrationScenarios:
             {"type": "browser_fingerprint", "reason": "New browser detected", "confidence": 0.5},
         ]
 
-        recorded = fraud_service.record_fraud_signals(
+        fraud_service.record_fraud_signals(
             user_id=student_user.id,
             signals=signals,
             client_ip="192.168.1.200",

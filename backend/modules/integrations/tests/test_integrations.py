@@ -7,16 +7,11 @@ Tests cover:
 - Error handling and edge cases
 """
 
-import asyncio
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException, status
-from httpx import ConnectError, TimeoutException
-
-from models import Booking, User
-
 
 # =============================================================================
 # Calendar Router Tests
@@ -422,7 +417,7 @@ class TestZoomMeetingCreation:
         self, client, tutor_user, test_booking, db_session
     ):
         """Test that tutors can only create meetings for their own bookings."""
-        from tests.conftest import create_test_user, create_test_tutor_profile
+        from tests.conftest import create_test_tutor_profile, create_test_user
 
         other_tutor = create_test_user(
             db_session, "other_tutor@test.com", "OtherPass123!", "tutor"
@@ -516,7 +511,7 @@ class TestZoomMeetingDeletion:
         self, client, tutor_user, test_booking, db_session
     ):
         """Test that tutors can only delete their own meetings."""
-        from tests.conftest import create_test_user, create_test_tutor_profile
+        from tests.conftest import create_test_tutor_profile, create_test_user
 
         other_tutor = create_test_user(
             db_session, "other_tutor@test.com", "OtherPass123!", "tutor"

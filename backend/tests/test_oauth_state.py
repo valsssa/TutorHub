@@ -47,7 +47,7 @@ class TestOAuthStateStore:
             assert len(state) > 0
             mock_redis.setex.assert_called_once()
             call_args = mock_redis.setex.call_args[0]
-            assert OAUTH_STATE_TTL_SECONDS == call_args[1]
+            assert call_args[1] == OAUTH_STATE_TTL_SECONDS
 
     @pytest.mark.asyncio
     async def test_generate_state_with_user_id(self, store):
@@ -55,7 +55,7 @@ class TestOAuthStateStore:
         mock_redis = AsyncMock()
 
         with patch.object(store, "_get_redis", return_value=mock_redis):
-            state = await store.generate_state(action="link", user_id=123)
+            await store.generate_state(action="link", user_id=123)
 
             call_args = mock_redis.setex.call_args[0]
             stored_data = json.loads(call_args[2])
@@ -68,7 +68,7 @@ class TestOAuthStateStore:
         mock_redis = AsyncMock()
 
         with patch.object(store, "_get_redis", return_value=mock_redis):
-            state = await store.generate_state(
+            await store.generate_state(
                 action="login", extra_data={"redirect_uri": "/dashboard"}
             )
 

@@ -14,29 +14,28 @@ Uses pytest with mock search index, database queries, and caching layer.
 """
 
 import asyncio
+import concurrent.futures
 import hashlib
 import threading
 import time
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-import concurrent.futures
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from fastapi import status
-from sqlalchemy.exc import OperationalError, TimeoutError as SQLTimeoutError
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import TimeoutError as SQLTimeoutError
 from sqlalchemy.orm import Session
 
 from core.pagination import PaginatedResponse, PaginationParams
 from models import Subject, TutorAvailability, TutorProfile, TutorSubject, User
-
 from tests.conftest import (
-    create_test_user,
-    create_test_tutor_profile,
     STUDENT_PASSWORD,
     TUTOR_PASSWORD,
+    create_test_tutor_profile,
+    create_test_user,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -122,7 +121,7 @@ def create_tutors(db_session):
             profile = TutorProfile(
                 user_id=user.id,
                 title=defaults.get("title", f"Tutor {i} Title"),
-                headline=defaults.get("headline", f"Expert in Teaching"),
+                headline=defaults.get("headline", "Expert in Teaching"),
                 bio=defaults.get("bio", "Experienced educator"),
                 hourly_rate=defaults.get("hourly_rate", Decimal("50.00") + Decimal(i)),
                 experience_years=defaults.get("experience_years", i + 1),
@@ -159,10 +158,8 @@ class TestSearchIndexConsistency:
         mock_search_index.add_document({"id": 1, "title": "Math Tutor", "rating": 4.5})
         mock_search_index.add_document({"id": 2, "title": "Science Tutor", "rating": 4.8})
 
-        initial_version = mock_search_index.version
 
         # Simulate search starting
-        search_snapshot_version = initial_version
 
         # Concurrent update happens
         mock_search_index.add_document({"id": 3, "title": "Math Expert", "rating": 4.9})
@@ -746,7 +743,7 @@ class TestPaginationEdgeCases:
 
         # Should get all items without duplicates
         assert len(all_fetched) == len(items)
-        assert len(set(item["id"] for item in all_fetched)) == len(items)
+        assert len({item["id"] for item in all_fetched}) == len(items)
 
     def test_large_offset_performance(
         self, client, db_session, create_tutors, student_token
@@ -785,7 +782,7 @@ class TestPaginationEdgeCases:
         assert response1.status_code == status.HTTP_200_OK
 
         # Soft-delete some tutors in the middle
-        for user, profile in tutors[10:20]:
+        for _user, profile in tutors[10:20]:
             profile.is_approved = False
             profile.profile_status = "rejected"
         db_session.commit()
@@ -967,7 +964,7 @@ class TestRealTimeAvailability:
         # Convert to student's timezone (Tokyo)
         student_tz = ZoneInfo("Asia/Tokyo")
         start_student = start_utc.astimezone(student_tz)
-        end_student = end_utc.astimezone(student_tz)
+        end_utc.astimezone(student_tz)
 
         # Verify the times are correctly offset
         # Pacific is UTC-8, Tokyo is UTC+9, so 17 hour difference
@@ -983,7 +980,7 @@ class TestRealTimeAvailability:
         from zoneinfo import ZoneInfo
 
         # March 10, 2024 - DST starts in US (2 AM -> 3 AM)
-        dst_date = datetime(2024, 3, 10, tzinfo=ZoneInfo("America/New_York"))
+        datetime(2024, 3, 10, tzinfo=ZoneInfo("America/New_York"))
 
         # Slot at 2:30 AM on DST day (this time doesn't exist)
         # Should be handled gracefully
@@ -1343,7 +1340,7 @@ class TestPerformanceUnderLoad:
         mock_search_index.version = 0
 
         # Search should still work, possibly with stale data
-        results = mock_search_index.search("Tutor")
+        mock_search_index.search("Tutor")
 
         # When index catches up
         mock_search_index.add_document(primary_data)

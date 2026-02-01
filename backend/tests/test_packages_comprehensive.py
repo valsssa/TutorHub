@@ -107,8 +107,8 @@ class TestPackagePurchase:
         self, client, student_token, db_session
     ):
         """Test purchase fails when tutor is not approved."""
-        from models import TutorProfile, TutorPricingOption, User
         from auth import get_password_hash
+        from models import TutorPricingOption, TutorProfile, User
 
         user = User(
             email="unapproved_tutor@test.com",
@@ -170,8 +170,8 @@ class TestPackagePurchase:
         self, client, student_token, db_session, tutor_user
     ):
         """Test purchase fails when pricing option belongs to different tutor."""
-        from models import TutorProfile, TutorPricingOption, User
         from auth import get_password_hash
+        from models import TutorPricingOption, TutorProfile, User
 
         other_user = User(
             email="other_tutor@test.com",
@@ -341,7 +341,7 @@ class TestPackageCreditUsage:
             db_session, student_user.id, tutor_user.tutor_profile.id
         )
 
-        for i in range(3):
+        for _i in range(3):
             response = client.patch(
                 f"/api/v1/packages/{package.id}/use-credit",
                 headers={"Authorization": f"Bearer {student_token}"},
@@ -400,9 +400,9 @@ class TestPackageCreditUsage:
         self, client, db_session, tutor_user
     ):
         """Test error when user doesn't own the package."""
-        from models import StudentPackage, TutorPricingOption, User
         from auth import get_password_hash
         from core.security import TokenManager
+        from models import StudentPackage, TutorPricingOption, User
 
         other_student = User(
             email="other_student@test.com",
@@ -768,9 +768,9 @@ class TestPackageListing:
         self, client, db_session, tutor_user
     ):
         """Test that students only see their own packages."""
-        from models import StudentPackage, TutorPricingOption, User
         from auth import get_password_hash
         from core.security import TokenManager
+        from models import StudentPackage, TutorPricingOption, User
 
         student1 = User(
             email="student1@test.com",

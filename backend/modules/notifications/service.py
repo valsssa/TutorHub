@@ -9,7 +9,7 @@ Handles business logic for notifications including:
 """
 
 import logging
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -129,10 +129,9 @@ class NotificationService:
         elif type_str == "achievement_unlocked":
             if not prefs.achievements_enabled:
                 return False, False
-        elif type_str == "system_announcement":
-            # Marketing/promotional
-            if type_str == "marketing" and not prefs.marketing_enabled:
-                return False, False
+        elif type_str in ("system_announcement", "marketing") and not prefs.marketing_enabled:
+            # Marketing/promotional not enabled
+            return False, False
 
         # Check quiet hours for email
         should_email = prefs.email_enabled

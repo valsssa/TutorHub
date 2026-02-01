@@ -12,6 +12,7 @@ Tests complex edge cases including:
 """
 
 import asyncio
+import contextlib
 import time
 import uuid
 from collections import defaultdict
@@ -28,9 +29,10 @@ from modules.messages.websocket import (
     WebSocketManager,
     authenticate_websocket,
     check_token_expiration,
+)
+from modules.messages.websocket import (
     manager as global_manager,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -124,7 +126,7 @@ class TestConnectionManagementEdgeCases:
         user_id = 1
         flap_count = 20
 
-        for i in range(flap_count):
+        for _i in range(flap_count):
             ws = mock_websocket_factory()
             await ws_manager.connect(ws, user_id)
             assert ws_manager.is_user_online(user_id)
@@ -187,10 +189,8 @@ class TestConnectionManagementEdgeCases:
         # Simulate server restart - force disconnect all
         for uid, ws in connections.items():
             await ws_manager.disconnect(ws, uid)
-            try:
+            with contextlib.suppress(Exception):
                 await ws.close(code=1012, reason="Server restart")
-            except Exception:
-                pass
 
         assert ws_manager.get_online_count() == 0
 
@@ -211,7 +211,7 @@ class TestConnectionManagementEdgeCases:
         max_connections = 50  # Simulate user with many devices/tabs
         connections = []
 
-        for i in range(max_connections):
+        for _i in range(max_connections):
             ws = mock_websocket_factory()
             await ws_manager.connect(ws, user_id)
             connections.append(ws)
@@ -236,7 +236,7 @@ class TestConnectionManagementEdgeCases:
         ws = mock_websocket_factory()
 
         # Simulate accept timing out
-        ws.accept.side_effect = asyncio.TimeoutError("Handshake timeout")
+        ws.accept.side_effect = TimeoutError("Handshake timeout")
 
         with pytest.raises(asyncio.TimeoutError):
             await ws_manager.connect(ws, user_id=1)
@@ -332,7 +332,6 @@ class TestMessageDeliveryGuarantees:
         await ws_manager.connect(mock_websocket, user_id)
 
         ack_id = "msg-123"
-        message = {"type": "message", "content": "Test"}
 
         # Track pending ack
         ws_manager.track_pending_ack(mock_websocket, ack_id)
@@ -661,7 +660,7 @@ class TestRealtimeEventSynchronization:
         await ws_manager.connect(ws_observer, observer_id)
 
         # Simulate connection instability
-        for i in range(5):
+        for _i in range(5):
             # Connect
             ws = mock_websocket_factory()
             await ws_manager.connect(ws, user_id)
@@ -738,7 +737,7 @@ class TestMultiDeviceScenarios:
         devices = []
 
         # Connect 5 devices
-        for i in range(5):
+        for _i in range(5):
             ws = mock_websocket_factory()
             await ws_manager.connect(ws, user_id)
             devices.append(ws)
@@ -763,7 +762,7 @@ class TestMultiDeviceScenarios:
         devices = []
 
         # Connect 3 devices
-        for i in range(3):
+        for _i in range(3):
             ws = mock_websocket_factory()
             await ws_manager.connect(ws, user_id)
             devices.append(ws)
@@ -806,9 +805,8 @@ class TestMultiDeviceScenarios:
 
         should_notify = []
         for ws, info in ws_manager.connection_metadata.items():
-            if info.user_id == user_id:
-                if now - info.last_ping > active_threshold:
-                    should_notify.append(ws)
+            if info.user_id == user_id and now - info.last_ping > active_threshold:
+                should_notify.append(ws)
 
         # Only inactive device should need push notification
         assert ws_inactive in should_notify
@@ -874,7 +872,6 @@ class TestRateLimitingAbusePrevention:
         """
         Test prevention of message flooding from a single user.
         """
-        user_id = 1
         recipient_id = 2
 
         await ws_manager.connect(mock_websocket_factory(), recipient_id)
@@ -919,7 +916,7 @@ class TestRateLimitingAbusePrevention:
 
         blocked_connections = 0
 
-        for i in range(20):
+        for _i in range(20):
             now = time.time()
 
             # Clean old timestamps
@@ -1010,7 +1007,6 @@ class TestRateLimitingAbusePrevention:
         """
         Test spam detection for repeated similar messages.
         """
-        user_id = 1
         recipient_id = 2
 
         await ws_manager.connect(mock_websocket_factory(), recipient_id)
@@ -1022,7 +1018,7 @@ class TestRateLimitingAbusePrevention:
         spam_message = "Buy my product now!"
         blocked = 0
 
-        for i in range(10):
+        for _i in range(10):
             # Check for repeated messages
             duplicate_count = recent_messages.count(spam_message)
 
@@ -1075,7 +1071,6 @@ class TestConversationEdgeCases:
 
         if is_deleted:
             # Should not deliver to deleted conversation
-            error_msg = {"type": "error", "message": "Conversation not found"}
             # Would return this to sender instead of delivering
             assert is_deleted is True
         else:
@@ -1162,8 +1157,6 @@ class TestConversationEdgeCases:
         """
         Test race condition between archive and unarchive operations.
         """
-        user_id = 1
-        conversation_id = "conv_123"
 
         # Simulate archive state
         archive_state = {"archived": False, "version": 1}
@@ -1204,7 +1197,6 @@ class TestConversationEdgeCases:
         """
         Test message handling when recipient is deactivated.
         """
-        sender_id = 1
         deactivated_user_id = 2
 
         # Simulate user status check
@@ -1221,7 +1213,7 @@ class TestConversationEdgeCases:
 
         # Message should be rejected
         if not is_active:
-            error = {"type": "error", "message": "Recipient unavailable"}
+            pass
             # Would return error to sender
 
     @pytest.mark.asyncio
@@ -1315,10 +1307,6 @@ class TestJWTAuthenticationEdgeCases:
 
         # Simulate token refresh message
         new_token = "new.valid.token"
-        refresh_message = {
-            "type": "refresh_token",
-            "token": new_token
-        }
 
         with patch("modules.messages.websocket.check_token_expiration") as mock_check:
             mock_check.return_value = True
@@ -1390,7 +1378,7 @@ class TestConnectionMetadata:
         assert stats_after_connect["online_users"] == 5
 
         # Disconnect some
-        for i in range(3):
+        for _i in range(3):
             # We need to track the websockets to disconnect them
             pass  # In real test, we'd track and disconnect
 

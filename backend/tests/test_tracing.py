@@ -153,13 +153,12 @@ class TestInitTracing:
 
     def test_init_tracing_import_error(self):
         """Test init_tracing handles import error."""
-        with patch.object(TracingConfig, "ENABLED", True):
-            with patch.dict("sys.modules", {"opentelemetry": None}):
-                with patch(
-                    "core.tracing.init_tracing.__globals__",
-                    {"__builtins__": {"__import__": MagicMock(side_effect=ImportError)}},
-                ):
-                    result = init_tracing()
+        with patch.object(TracingConfig, "ENABLED", True), patch.dict("sys.modules", {"opentelemetry": None}):
+            with patch(
+                "core.tracing.init_tracing.__globals__",
+                {"__builtins__": {"__import__": MagicMock(side_effect=ImportError)}},
+            ):
+                init_tracing()
 
 
 class TestShutdownTracing:
@@ -167,9 +166,8 @@ class TestShutdownTracing:
 
     def test_shutdown_when_not_initialized(self):
         """Test shutdown when tracing not initialized."""
-        with patch("core.tracing._tracer_provider", None):
-            with patch("core.tracing._tracing_enabled", False):
-                shutdown_tracing()
+        with patch("core.tracing._tracer_provider", None), patch("core.tracing._tracing_enabled", False):
+            shutdown_tracing()
 
 
 class TestInstrumentation:

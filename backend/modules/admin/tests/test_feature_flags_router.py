@@ -80,7 +80,7 @@ class TestEnableFeatureFlag:
 
             from modules.admin.feature_flags_router import enable_feature_flag
 
-            result = await enable_feature_flag("test_flag", mock_admin_user)
+            await enable_feature_flag("test_flag", mock_admin_user)
 
             mock_ff.enable.assert_called_once_with("test_flag")
 
@@ -108,7 +108,7 @@ class TestDisableFeatureFlag:
 
             from modules.admin.feature_flags_router import disable_feature_flag
 
-            result = await disable_feature_flag("test_flag", mock_admin_user)
+            await disable_feature_flag("test_flag", mock_admin_user)
 
             mock_ff.disable.assert_called_once_with("test_flag")
 
@@ -140,7 +140,7 @@ class TestSetPercentage:
 
             from modules.admin.feature_flags_router import set_percentage
 
-            result = await set_percentage("test_flag", 50, mock_admin_user)
+            await set_percentage("test_flag", 50, mock_admin_user)
 
             mock_ff.set_percentage.assert_called_once_with("test_flag", 50)
 
@@ -213,7 +213,7 @@ class TestAddToAllowlist:
 
             from modules.admin.feature_flags_router import add_to_allowlist
 
-            result = await add_to_allowlist(
+            await add_to_allowlist(
                 "test_flag", ["user1", "user2"], mock_admin_user
             )
 
@@ -230,7 +230,7 @@ class TestFeatureFlagSecurity:
         for route in router.routes:
             if hasattr(route, "dependant"):
                 dependencies = route.dependant.dependencies
-                has_admin_dep = any(
+                any(
                     "admin" in str(dep.call).lower() for dep in dependencies
                 )
 

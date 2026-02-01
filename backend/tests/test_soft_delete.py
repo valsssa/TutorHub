@@ -1,6 +1,7 @@
 """Tests for soft delete utilities."""
 
-from datetime import datetime, timezone as dt_timezone
+from datetime import UTC, datetime
+from datetime import timezone as dt_timezone
 
 import pytest
 
@@ -64,7 +65,7 @@ class TestSoftDeleteMixin:
         assert model.is_deleted is False
 
         # Set deleted_at manually
-        model.deleted_at = datetime.now(dt_timezone.utc)
+        model.deleted_at = datetime.now(UTC)
         assert model.is_deleted is True
 
         # Clear deleted_at
@@ -77,7 +78,6 @@ class TestSoftDeleteMixin:
 
         model.soft_delete(deleted_by_id=100)
         first_deleted_at = model.deleted_at
-        first_deleted_by = model.deleted_by
 
         # Delete again with different user
         model.soft_delete(deleted_by_id=200)
@@ -139,7 +139,7 @@ class TestSoftDeleteWithDatabase:
 
         # Soft delete (if user model supports it)
         if hasattr(student_user, "deleted_at"):
-            student_user.deleted_at = datetime.now(dt_timezone.utc)
+            student_user.deleted_at = datetime.now(UTC)
             student_user.deleted_by = 1
             db_session.commit()
 

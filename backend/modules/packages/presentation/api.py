@@ -9,10 +9,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlalchemy.orm import Session, joinedload
 
-from core.rate_limiting import limiter
-
 from core.audit import AuditLogger
 from core.dependencies import get_current_student_user, get_current_user
+from core.rate_limiting import limiter
 from core.transactions import atomic_operation
 from database import get_db
 from models import Booking, StudentPackage, TutorPricingOption, TutorProfile, User

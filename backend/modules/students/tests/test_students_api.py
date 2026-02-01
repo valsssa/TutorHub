@@ -8,15 +8,13 @@ Tests the students module including:
 - Error handling
 """
 
-from datetime import datetime, UTC
 from unittest.mock import MagicMock, patch
 
-import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from models import FavoriteTutor, StudentProfile, TutorProfile, User
+from models import FavoriteTutor, StudentProfile, User
 
 
 class TestGetStudentProfile:
@@ -623,7 +621,7 @@ class TestFavoritesTutorOrdering:
         self, client: TestClient, student_token: str, student_user: User, db_session: Session
     ):
         """Test that favorites are returned in descending order by created_at."""
-        from tests.conftest import create_test_user, create_test_tutor_profile
+        from tests.conftest import create_test_tutor_profile, create_test_user
 
         # Create multiple tutors
         tutor1 = create_test_user(

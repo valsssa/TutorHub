@@ -13,8 +13,35 @@ jest.mock("@/lib/logger", () => ({
   }),
 }));
 
+// Mock BroadcastChannel
+class MockBroadcastChannel {
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  postMessage() {}
+  close() {}
+}
+global.BroadcastChannel = MockBroadcastChannel as any;
+
+// Mock navigator.onLine
+Object.defineProperty(navigator, "onLine", {
+  value: true,
+  writable: true,
+});
+
+// Mock the URL utility
+jest.mock("@/shared/utils/url", () => ({
+  getWebSocketBaseUrl: () => "ws://localhost:8000",
+}));
+
+// Track WebSocket instances for testing
+const mockWebSocketInstances: MockWebSocket[] = [];
+
 // Mock WebSocket
 class MockWebSocket {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
+
   onopen: ((event: Event) => void) | null = null;
   onclose: ((event: CloseEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
@@ -26,9 +53,18 @@ class MockWebSocket {
   CLOSED = 3;
 
   constructor(public url: string) {
+    mockWebSocketInstances.push(this);
     setTimeout(() => {
       this.readyState = 1;
       this.onopen?.(new Event("open"));
+      // Send auth success message to trigger connected state in WebSocketClient
+      setTimeout(() => {
+        this.onmessage?.(
+          new MessageEvent("message", {
+            data: JSON.stringify({ type: "connection", status: "authenticated" }),
+          })
+        );
+      }, 5);
     }, 10);
   }
 
@@ -42,11 +78,18 @@ class MockWebSocket {
   }
 }
 
+// Add static properties to global
+(MockWebSocket as any).CONNECTING = 0;
+(MockWebSocket as any).OPEN = 1;
+(MockWebSocket as any).CLOSING = 2;
+(MockWebSocket as any).CLOSED = 3;
+
 global.WebSocket = MockWebSocket as any;
 
 describe("useWebSocket hook", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockWebSocketInstances.length = 0; // Clear tracked instances
     (Cookies.get as jest.Mock).mockReturnValue("mock-token");
   });
 
@@ -88,7 +131,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(mockMessage),
@@ -148,7 +191,7 @@ describe("useWebSocket hook", () => {
 
     // Simulate connection loss
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onclose(new CloseEvent("close"));
     });
 
@@ -174,7 +217,7 @@ describe("useWebSocket hook", () => {
     });
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onerror(new Event("error"));
     });
 
@@ -232,7 +275,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(deliveryMessage),
@@ -260,7 +303,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(readMessage),
@@ -287,7 +330,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(deletedMessage),
@@ -315,7 +358,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(editedMessage),
@@ -344,7 +387,7 @@ describe("useWebSocket hook", () => {
     });
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onerror(new Event("error"));
     });
 
@@ -479,7 +522,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(notificationMessage),
@@ -506,7 +549,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(bookingUpdate),
@@ -579,7 +622,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(presenceResponse),
@@ -606,7 +649,7 @@ describe("useWebSocket hook", () => {
     };
 
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: JSON.stringify(typingMessage),
@@ -638,6 +681,7 @@ describe("useWebSocket hook", () => {
 describe("useWebSocket edge cases", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockWebSocketInstances.length = 0; // Clear tracked instances
   });
 
   it("handles undefined token cookie", () => {
@@ -695,7 +739,7 @@ describe("useWebSocket edge cases", () => {
 
     messages.forEach((msg) => {
       act(() => {
-        const ws = (global.WebSocket as any).mock.instances[0];
+        const ws = mockWebSocketInstances[0];
         ws.onmessage(
           new MessageEvent("message", {
             data: JSON.stringify(msg),
@@ -720,7 +764,7 @@ describe("useWebSocket edge cases", () => {
 
     // Send malformed JSON
     act(() => {
-      const ws = (global.WebSocket as any).mock.instances[0];
+      const ws = mockWebSocketInstances[0];
       ws.onmessage(
         new MessageEvent("message", {
           data: "invalid json{",

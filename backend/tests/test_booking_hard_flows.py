@@ -10,16 +10,19 @@ Tests complex edge cases including:
 """
 
 import asyncio
+import contextlib
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
-import threading
-import time
 
 import pytest
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
+from core.distributed_lock import DistributedLockService
+from core.transactions import TransactionError, atomic_operation
 from modules.bookings.domain.state_machine import (
     BookingStateMachine,
     OptimisticLockError,
@@ -33,9 +36,6 @@ from modules.bookings.domain.status import (
     SessionOutcome,
     SessionState,
 )
-from core.distributed_lock import DistributedLockService
-from core.transactions import TransactionError, atomic_operation
-
 
 # =============================================================================
 # Test Fixtures
@@ -684,9 +684,8 @@ class TestRecoveryScenarios:
         """
         mock_db.commit.side_effect = IntegrityError("duplicate key", None, None)
 
-        with pytest.raises(TransactionError):
-            with atomic_operation(mock_db):
-                mock_db.add(MagicMock())
+        with pytest.raises(TransactionError), atomic_operation(mock_db):
+            mock_db.add(MagicMock())
                 # Commit will fail, triggering rollback
 
         mock_db.rollback.assert_called_once()
@@ -697,9 +696,8 @@ class TestRecoveryScenarios:
         """
         mock_db.commit.side_effect = OperationalError("connection lost", None, None)
 
-        with pytest.raises(TransactionError) as exc_info:
-            with atomic_operation(mock_db):
-                mock_db.add(MagicMock())
+        with pytest.raises(TransactionError) as exc_info, atomic_operation(mock_db):
+            mock_db.add(MagicMock())
 
         assert "operation failed" in exc_info.value.message.lower()
         mock_db.rollback.assert_called_once()
@@ -728,10 +726,8 @@ class TestRecoveryScenarios:
         assert mock_booking.session_state == SessionState.SCHEDULED.value
 
         # Webhook can fail independently
-        try:
+        with contextlib.suppress(Exception):
             await failing_webhook()
-        except Exception:
-            pass
 
         assert webhook_failed[0] is True
 

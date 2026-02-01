@@ -5,11 +5,10 @@ from datetime import UTC
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, field_validator
-from core.rate_limiting import limiter
-
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_user
+from core.rate_limiting import limiter
 from core.timezone import is_valid_timezone
 from database import get_db
 from models import User

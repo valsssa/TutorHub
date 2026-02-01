@@ -205,10 +205,8 @@ class WebSocketManager:
         for ws, user_id in stale_connections:
             logger.warning(f"Cleaning up stale connection for user {user_id}")
             await self.disconnect(ws, user_id)
-            try:
+            with suppress(Exception):
                 await ws.close(code=4000, reason="Connection timeout")
-            except Exception:
-                pass
 
     async def connect(self, websocket: WebSocket, user_id: int) -> None:
         """
@@ -309,11 +307,10 @@ class WebSocketManager:
         Returns:
             True if ack was expected and processed, False otherwise
         """
-        if websocket in self.connection_metadata:
-            if ack_id in self.connection_metadata[websocket].pending_acks:
-                del self.connection_metadata[websocket].pending_acks[ack_id]
-                self._stats["acks_sent"] += 1
-                return True
+        if websocket in self.connection_metadata and ack_id in self.connection_metadata[websocket].pending_acks:
+            del self.connection_metadata[websocket].pending_acks[ack_id]
+            self._stats["acks_sent"] += 1
+            return True
         return False
 
     async def send_personal_message(
@@ -737,7 +734,6 @@ async def websocket_endpoint(
 
     # Connect user
     await manager.connect(websocket, user.id)
-    stored_token = token
 
     try:
         # Send connection confirmation
@@ -840,7 +836,6 @@ async def websocket_endpoint(
                     if new_token:
                         # Verify the new token is valid
                         if await check_token_expiration(new_token):
-                            stored_token = new_token
                             await websocket.send_json(
                                 {"type": "token_refreshed", "status": "success"}
                             )

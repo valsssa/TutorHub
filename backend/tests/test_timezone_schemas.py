@@ -4,11 +4,11 @@ import pytest
 from pydantic import ValidationError
 
 from schemas import (
+    TutorAvailabilityBulkUpdate,
     UserCreate,
     UserPreferencesUpdate,
     UserProfileUpdate,
     UserSelfUpdate,
-    TutorAvailabilityBulkUpdate,
 )
 
 

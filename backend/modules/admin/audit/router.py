@@ -5,12 +5,11 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from core.rate_limiting import limiter
-
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_admin_user
+from core.rate_limiting import limiter
 from core.soft_delete import purge_old_soft_deletes, restore_user, soft_delete_user
 from database import get_db
 from models import User

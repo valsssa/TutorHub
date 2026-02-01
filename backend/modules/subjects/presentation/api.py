@@ -3,12 +3,11 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from core.rate_limiting import limiter
-
 from sqlalchemy.orm import Session
 
 from core.cache import cache_with_ttl, invalidate_cache
 from core.dependencies import get_current_admin_user
+from core.rate_limiting import limiter
 from core.sanitization import sanitize_text_input
 from database import get_db
 from models import Subject, User

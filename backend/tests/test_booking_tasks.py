@@ -7,6 +7,7 @@ Comprehensive tests for Celery tasks that handle booking state transitions:
 - end_sessions: ACTIVE -> ENDED (at end_time + grace)
 """
 
+import contextlib
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -88,7 +89,7 @@ class TestExpireRequests:
         mock_state_machine.expire_booking.return_value = mock_transition_result_success
 
         # Create mock task instance
-        mock_task = MagicMock()
+        MagicMock()
 
         result = expire_requests()
 
@@ -126,7 +127,7 @@ class TestExpireRequests:
             mock_transition_result_already_expired
         )
 
-        mock_task = MagicMock()
+        MagicMock()
 
         result = expire_requests()
 
@@ -158,7 +159,7 @@ class TestExpireRequests:
             "could not obtain lock", None, None
         )
 
-        mock_task = MagicMock()
+        MagicMock()
 
         result = expire_requests()
 
@@ -190,7 +191,7 @@ class TestExpireRequests:
         # Booking not found (deleted between query and lock)
         mock_state_machine.get_booking_with_lock.return_value = None
 
-        mock_task = MagicMock()
+        MagicMock()
 
         result = expire_requests()
 
@@ -240,7 +241,7 @@ class TestExpireRequests:
 
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
-        mock_task = MagicMock()
+        MagicMock()
 
         expire_requests()
 
@@ -307,7 +308,7 @@ class TestStartSessions:
         mock_state_machine.get_booking_with_lock.return_value = scheduled_booking
         mock_state_machine.start_session.return_value = mock_transition_result_success
 
-        mock_task = MagicMock()
+        MagicMock()
 
         result = start_sessions()
 
@@ -346,7 +347,7 @@ class TestStartSessions:
         mock_state_machine.get_booking_with_lock.return_value = scheduled_booking
         mock_state_machine.start_session.return_value = result
 
-        mock_task = MagicMock()
+        MagicMock()
 
         task_result = start_sessions()
 
@@ -382,7 +383,7 @@ class TestStartSessions:
         mock_state_machine.get_booking_with_lock.return_value = scheduled_booking
         mock_state_machine.start_session.return_value = result
 
-        mock_task = MagicMock()
+        MagicMock()
 
         task_result = start_sessions()
 
@@ -413,7 +414,7 @@ class TestStartSessions:
             "lock error", None, None
         )
 
-        mock_task = MagicMock()
+        MagicMock()
 
         result = start_sessions()
 
@@ -479,7 +480,7 @@ class TestEndSessions:
         mock_state_machine.get_booking_with_lock.return_value = active_booking
         mock_state_machine.end_session.return_value = mock_transition_result_success
 
-        mock_task = MagicMock()
+        MagicMock()
 
         result = end_sessions()
 
@@ -520,7 +521,7 @@ class TestEndSessions:
         mock_state_machine.get_booking_with_lock.return_value = active_booking
         mock_state_machine.end_session.return_value = mock_transition_result_success
 
-        mock_task = MagicMock()
+        MagicMock()
 
         end_sessions()
 
@@ -560,7 +561,7 @@ class TestEndSessions:
         mock_state_machine.get_booking_with_lock.return_value = active_booking
         mock_state_machine.end_session.return_value = result
 
-        mock_task = MagicMock()
+        MagicMock()
 
         task_result = end_sessions()
 
@@ -599,7 +600,7 @@ class TestEndSessions:
         mock_state_machine.get_booking_with_lock.return_value = active_booking
         mock_state_machine.end_session.return_value = result
 
-        mock_task = MagicMock()
+        MagicMock()
 
         task_result = end_sessions()
 
@@ -658,7 +659,7 @@ class TestClockSkewHandling:
 
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
-        mock_task = MagicMock()
+        MagicMock()
 
         expire_requests()
 
@@ -684,7 +685,7 @@ class TestClockSkewHandling:
 
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
-        mock_task = MagicMock()
+        MagicMock()
 
         expire_requests()
 
@@ -715,7 +716,7 @@ class TestRaceConditionPrevention:
         mock_db.query.return_value.filter.return_value.all.return_value = [(1,)]
         mock_state_machine.get_booking_with_lock.return_value = None
 
-        mock_task = MagicMock()
+        MagicMock()
 
         expire_requests()
 
@@ -756,7 +757,7 @@ class TestRaceConditionPrevention:
         mock_state_machine.get_booking_with_lock.return_value = booking
         mock_state_machine.expire_booking.return_value = result
 
-        mock_task = MagicMock()
+        MagicMock()
 
         expire_requests()
 
@@ -796,7 +797,7 @@ class TestTaskLogging:
         mock_state_machine.get_booking_with_lock.return_value = booking
         mock_state_machine.expire_booking.return_value = result
 
-        mock_task = MagicMock()
+        MagicMock()
 
         expire_requests()
 
@@ -823,10 +824,8 @@ class TestTaskLogging:
         mock_task = MagicMock()
         mock_task.retry.return_value = None
 
-        try:
+        with contextlib.suppress(Exception):
             expire_requests()
-        except Exception:
-            pass
 
         mock_logger.error.assert_called()
 

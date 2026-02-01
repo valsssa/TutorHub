@@ -14,9 +14,9 @@ from core.dependencies import get_current_tutor_profile, get_current_user
 from core.transactions import atomic_operation
 from database import get_db
 from models import Booking, TutorProfile, User
-from modules.bookings.policy_engine import ReschedulePolicy
 from modules.bookings.domain.state_machine import BookingStateMachine
 from modules.bookings.domain.status import DisputeState, SessionState
+from modules.bookings.policy_engine import ReschedulePolicy
 from modules.bookings.schemas import (
     BookingCancelRequest,
     BookingConfirmRequest,
@@ -378,7 +378,7 @@ async def cancel_booking(
     - State machine updates are atomic with package credit restoration
     """
     # First, verify the booking exists and user has access (without lock)
-    booking = _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
+    _get_booking_or_404(booking_id, db, current_user=current_user, verify_ownership=True)
 
     try:
         # Use atomic_operation to ensure all state changes commit together

@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 from core.dependencies import get_current_admin_user
 from core.feature_flags import (
     FeatureFlag,
-    FeatureFlags,
     FeatureState,
     feature_flags,
 )

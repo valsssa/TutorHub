@@ -14,7 +14,7 @@ Tests cover:
 """
 
 import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
@@ -23,15 +23,14 @@ from sqlalchemy.orm import Session
 
 from core.transactions import (
     TransactionError,
-    transaction,
-    safe_commit,
+    atomic,
+    atomic_operation,
     commit_or_raise,
+    safe_commit,
+    transaction,
     transactional,
     with_savepoint,
-    atomic_operation,
-    atomic,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -118,9 +117,8 @@ class TestTransactionContextManager:
         """Test IntegrityError causes rollback and raises TransactionError."""
         mock_db.commit.side_effect = IntegrityError("stmt", {}, Exception())
 
-        with pytest.raises(TransactionError) as exc_info:
-            with transaction(mock_db):
-                pass
+        with pytest.raises(TransactionError) as exc_info, transaction(mock_db):
+            pass
 
         assert "integrity" in exc_info.value.message.lower()
         mock_db.rollback.assert_called_once()
@@ -129,9 +127,8 @@ class TestTransactionContextManager:
         """Test OperationalError causes rollback and raises TransactionError."""
         mock_db.commit.side_effect = OperationalError("stmt", {}, Exception())
 
-        with pytest.raises(TransactionError) as exc_info:
-            with transaction(mock_db):
-                pass
+        with pytest.raises(TransactionError) as exc_info, transaction(mock_db):
+            pass
 
         assert "operation failed" in exc_info.value.message.lower()
         mock_db.rollback.assert_called_once()
@@ -140,18 +137,16 @@ class TestTransactionContextManager:
         """Test generic SQLAlchemyError causes rollback and raises TransactionError."""
         mock_db.commit.side_effect = SQLAlchemyError("Generic error")
 
-        with pytest.raises(TransactionError) as exc_info:
-            with transaction(mock_db):
-                pass
+        with pytest.raises(TransactionError) as exc_info, transaction(mock_db):
+            pass
 
         assert "database error" in exc_info.value.message.lower()
         mock_db.rollback.assert_called_once()
 
     def test_transaction_exception_in_body_rollback(self, mock_db):
         """Test exception in context body causes rollback."""
-        with pytest.raises(ValueError):
-            with transaction(mock_db):
-                raise ValueError("Test error in body")
+        with pytest.raises(ValueError), transaction(mock_db):
+            raise ValueError("Test error in body")
 
         mock_db.rollback.assert_called_once()
         mock_db.commit.assert_not_called()
@@ -161,9 +156,8 @@ class TestTransactionContextManager:
         original = IntegrityError("stmt", {}, Exception("unique constraint"))
         mock_db.commit.side_effect = original
 
-        with pytest.raises(TransactionError) as exc_info:
-            with transaction(mock_db):
-                pass
+        with pytest.raises(TransactionError) as exc_info, transaction(mock_db):
+            pass
 
         assert exc_info.value.original_error == original
 
@@ -415,9 +409,8 @@ class TestWithSavepoint:
         """Test savepoint rolls back on exception."""
         mock_db.begin_nested.return_value = mock_savepoint
 
-        with pytest.raises(ValueError):
-            with with_savepoint(mock_db) as session:
-                raise ValueError("Error in nested transaction")
+        with pytest.raises(ValueError), with_savepoint(mock_db):
+            raise ValueError("Error in nested transaction")
 
         mock_savepoint.rollback.assert_called_once()
         mock_savepoint.commit.assert_not_called()
@@ -426,9 +419,8 @@ class TestWithSavepoint:
         """Test that exceptions propagate after savepoint rollback."""
         mock_db.begin_nested.return_value = mock_savepoint
 
-        with pytest.raises(RuntimeError):
-            with with_savepoint(mock_db):
-                raise RuntimeError("Propagated error")
+        with pytest.raises(RuntimeError), with_savepoint(mock_db):
+            raise RuntimeError("Propagated error")
 
 
 # =============================================================================
@@ -456,9 +448,8 @@ class TestAtomicOperation:
         """Test IntegrityError in atomic operation raises TransactionError."""
         mock_db.commit.side_effect = IntegrityError("stmt", {}, Exception())
 
-        with pytest.raises(TransactionError) as exc_info:
-            with atomic_operation(mock_db):
-                pass
+        with pytest.raises(TransactionError) as exc_info, atomic_operation(mock_db):
+            pass
 
         assert "integrity" in exc_info.value.message.lower()
         mock_db.rollback.assert_called_once()
@@ -467,9 +458,8 @@ class TestAtomicOperation:
         """Test OperationalError in atomic operation raises TransactionError."""
         mock_db.commit.side_effect = OperationalError("stmt", {}, Exception())
 
-        with pytest.raises(TransactionError) as exc_info:
-            with atomic_operation(mock_db):
-                pass
+        with pytest.raises(TransactionError) as exc_info, atomic_operation(mock_db):
+            pass
 
         assert "operation failed" in exc_info.value.message.lower()
         mock_db.rollback.assert_called_once()
@@ -478,18 +468,16 @@ class TestAtomicOperation:
         """Test SQLAlchemyError in atomic operation raises TransactionError."""
         mock_db.commit.side_effect = SQLAlchemyError("Generic error")
 
-        with pytest.raises(TransactionError) as exc_info:
-            with atomic_operation(mock_db):
-                pass
+        with pytest.raises(TransactionError) as exc_info, atomic_operation(mock_db):
+            pass
 
         assert "database error" in exc_info.value.message.lower()
         mock_db.rollback.assert_called_once()
 
     def test_atomic_operation_general_exception(self, mock_db):
         """Test general exception in atomic operation body rolls back."""
-        with pytest.raises(RuntimeError):
-            with atomic_operation(mock_db):
-                raise RuntimeError("Unexpected error")
+        with pytest.raises(RuntimeError), atomic_operation(mock_db):
+            raise RuntimeError("Unexpected error")
 
         mock_db.rollback.assert_called_once()
         mock_db.commit.assert_not_called()
@@ -499,9 +487,8 @@ class TestAtomicOperation:
         original = IntegrityError("stmt", {}, Exception("fk violation"))
         mock_db.commit.side_effect = original
 
-        with pytest.raises(TransactionError) as exc_info:
-            with atomic_operation(mock_db):
-                pass
+        with pytest.raises(TransactionError) as exc_info, atomic_operation(mock_db):
+            pass
 
         assert exc_info.value.original_error == original
 

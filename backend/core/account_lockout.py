@@ -22,7 +22,6 @@ Usage:
 """
 
 import logging
-from typing import Optional
 
 import redis.asyncio as redis
 
@@ -43,7 +42,7 @@ class AccountLockoutService:
 
     def __init__(self) -> None:
         """Initialize the account lockout service."""
-        self._redis: Optional[redis.Redis] = None
+        self._redis: redis.Redis | None = None
 
     async def _get_redis(self) -> redis.Redis:
         """Get or create Redis connection."""

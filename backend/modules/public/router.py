@@ -6,16 +6,14 @@ Statistics are cached for performance and to prevent database load from unauthen
 """
 
 from datetime import UTC, datetime
-from typing import Optional
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from sqlalchemy import func
-from sqlalchemy.orm import Session
 
+from core.config import Roles
 from core.dependencies import DatabaseSession
 from models import Booking, Review, TutorProfile, User
-from core.config import Roles
 
 router = APIRouter(
     prefix="/public",
@@ -49,7 +47,7 @@ class FeaturedReview(BaseModel):
     role: str  # "Student" or context
     rating: int
     initials: str
-    tutor_name: Optional[str] = None
+    tutor_name: str | None = None
 
 
 class FeaturedReviewsResponse(BaseModel):

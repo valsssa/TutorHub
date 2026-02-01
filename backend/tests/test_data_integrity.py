@@ -97,7 +97,6 @@ class TestCascadeDeletions:
         )
         db_session.add(user)
         db_session.commit()
-        user_id = user.id
 
         student_profile = StudentProfile(
             user_id=user.id,
@@ -159,7 +158,6 @@ class TestCascadeDeletions:
         )
         db_session.add(booking)
         db_session.commit()
-        booking_id = booking.id
 
         review = Review(
             booking_id=booking.id,
@@ -222,7 +220,6 @@ class TestCascadeDeletions:
         )
         db_session.add(booking)
         db_session.commit()
-        booking_id = booking.id
 
         material = SessionMaterial(
             booking_id=booking.id,
@@ -257,7 +254,6 @@ class TestSoftDeleteConsistency:
         )
         db_session.add(user)
         db_session.commit()
-        user_id = user.id
 
         if hasattr(user, "deleted_at"):
             user.deleted_at = datetime.now(UTC)
@@ -281,8 +277,9 @@ class TestSoftDeleteConsistency:
     def test_soft_delete_preserves_data(self, db_session, student_user):
         """Test that soft delete preserves all data."""
         import uuid
-        from models import Booking, Subject, TutorProfile, User
+
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
 
         unique_id = uuid.uuid4().hex[:8]
         tutor = User(
@@ -343,8 +340,8 @@ class TestSoftDeleteConsistency:
 
     def test_soft_delete_with_deleted_by_tracking(self, db_session, student_user, admin_user):
         """Test that soft delete tracks who performed the deletion."""
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
 
         tutor = User(
             email="track_delete_tutor@test.com",

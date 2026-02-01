@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from modules.bookings.domain.state_machine import BookingStateMachine, TransitionResult
+from modules.bookings.domain.state_machine import BookingStateMachine
 from modules.bookings.domain.status import (
     CancelledByRole,
     DisputeState,
@@ -16,7 +16,6 @@ from modules.bookings.domain.status import (
     SessionOutcome,
     SessionState,
 )
-
 
 # ============================================================================
 # Fixtures

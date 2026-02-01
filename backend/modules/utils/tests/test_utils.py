@@ -9,11 +9,8 @@ Tests cover:
 """
 
 import time
-from unittest.mock import patch
 
-import pytest
 from fastapi import status
-
 
 # =============================================================================
 # Countries Endpoint Tests
@@ -145,7 +142,6 @@ class TestProficiencyLevelsEndpoint:
         levels = response.json()
 
         # CEFR levels should be present (as dictionaries with code field)
-        level_data = levels
         if isinstance(levels[0], dict):
             level_codes = {level.get("code", "").lower() for level in levels}
         else:

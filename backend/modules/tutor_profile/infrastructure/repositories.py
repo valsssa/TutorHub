@@ -433,7 +433,6 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         Returns:
             SQLAlchemy query with eager loading configured
         """
-        from core.soft_delete import exclude_deleted_related
 
         query = db.query(TutorProfile).options(
             joinedload(TutorProfile.subjects).joinedload(TutorSubject.subject),

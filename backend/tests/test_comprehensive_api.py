@@ -18,6 +18,8 @@ def test_auth_registration_flow(client):
             "role": "student",
             "timezone": "America/New_York",
             "currency": "USD",
+            "first_name": "New",
+            "last_name": "User",
         },
     )
 
@@ -122,7 +124,7 @@ def test_student_profile_update(client, student_token):
     assert profile["school_name"] == "Test High School"
 
 
-import pytest
+import pytest  # noqa: E402
 
 
 @pytest.mark.skip(reason="Requires tutor availability setup - tested in test_bookings.py")

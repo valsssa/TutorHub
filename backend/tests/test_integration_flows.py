@@ -80,10 +80,7 @@ class TestFullBookingFlow:
         )
         assert search_response.status_code == status.HTTP_200_OK
         tutors_data = search_response.json()
-        if isinstance(tutors_data, dict) and "items" in tutors_data:
-            tutors = tutors_data["items"]
-        else:
-            tutors = tutors_data
+        tutors = tutors_data["items"] if isinstance(tutors_data, dict) and "items" in tutors_data else tutors_data
         assert any(t["id"] == tutor_profile.id for t in tutors)
 
         profile_response = client.get(
@@ -152,7 +149,7 @@ class TestFullBookingFlow:
 
         from core.security import TokenManager
 
-        tutor_token = TokenManager.create_access_token({"sub": tutor_user.email})
+        TokenManager.create_access_token({"sub": tutor_user.email})
 
         now = datetime.now(UTC)
         start_time = (now + timedelta(days=3)).replace(hour=10, minute=0, second=0, microsecond=0)
@@ -465,8 +462,8 @@ class TestPackageFlow:
 
     def test_package_expiration(self, db_session, student_user):
         """Test package expiration handling."""
-        from models import StudentPackage, TutorPricingOption, TutorProfile, User
         from auth import get_password_hash
+        from models import StudentPackage, TutorPricingOption, TutorProfile, User
 
         tutor = User(
             email="expire_tutor@test.com",
@@ -615,9 +612,9 @@ class TestDisputeFlow:
 
     def test_dispute_within_time_window(self, db_session, student_user):
         """Test that disputes can only be filed within the allowed time window."""
-        from modules.bookings.domain.state_machine import BookingStateMachine
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
+        from modules.bookings.domain.state_machine import BookingStateMachine
 
         tutor = User(
             email="old_dispute_tutor@test.com",

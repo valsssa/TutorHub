@@ -1,8 +1,9 @@
 """Tests for account lockout (brute-force protection) functionality."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi import status
-from unittest.mock import AsyncMock, patch
 
 from core.account_lockout import AccountLockoutService
 from tests.conftest import STUDENT_PASSWORD

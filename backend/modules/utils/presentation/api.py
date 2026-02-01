@@ -1,11 +1,10 @@
 """Utilities API routes for constants and validators."""
 
 from fastapi import APIRouter, Request
-from core.rate_limiting import limiter
-
 
 from core.cache import cache_with_ttl
 from core.constants import COUNTRIES, LANGUAGES, PHONE_COUNTRY_CODES, PROFICIENCY_LEVELS
+from core.rate_limiting import limiter
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 

@@ -117,10 +117,9 @@ class TestCalendarConflictService:
 
         with patch.object(
             service, "_get_cached_busy_times", return_value=cached_busy
-        ):
-            with patch.object(service, "_fetch_busy_times") as mock_fetch:
-                await service.check_calendar_conflict(mock_tutor_user, start, end)
-                mock_fetch.assert_not_called()
+        ), patch.object(service, "_fetch_busy_times") as mock_fetch:
+            await service.check_calendar_conflict(mock_tutor_user, start, end)
+            mock_fetch.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_check_api_error_graceful_degradation(
@@ -134,11 +133,10 @@ class TestCalendarConflictService:
             service,
             "_fetch_busy_times",
             side_effect=CalendarAPIError("API failed"),
-        ):
-            with patch.object(service, "_get_cached_busy_times", return_value=None):
-                has_conflict, error = await service.check_calendar_conflict(
-                    mock_tutor_user, start, end
-                )
+        ), patch.object(service, "_get_cached_busy_times", return_value=None):
+            has_conflict, error = await service.check_calendar_conflict(
+                mock_tutor_user, start, end
+            )
 
         assert has_conflict is False
         assert error is None
@@ -616,23 +614,22 @@ class TestFetchBusyTimes:
 
         with patch.object(
             service, "_is_token_expired", return_value=True
-        ):
-            with patch.object(
-                service, "_refresh_token", new_callable=AsyncMock
-            ) as mock_refresh:
-                mock_refresh.return_value = "new_token"
-                with patch(
-                    "core.calendar_conflict.google_calendar.check_busy_times",
-                    new_callable=AsyncMock,
-                    return_value=[],
-                ):
-                    await service._fetch_busy_times(
-                        mock_user,
-                        datetime.now(UTC),
-                        datetime.now(UTC) + timedelta(hours=1),
-                    )
+        ), patch.object(
+            service, "_refresh_token", new_callable=AsyncMock
+        ) as mock_refresh:
+            mock_refresh.return_value = "new_token"
+            with patch(
+                "core.calendar_conflict.google_calendar.check_busy_times",
+                new_callable=AsyncMock,
+                return_value=[],
+            ):
+                await service._fetch_busy_times(
+                    mock_user,
+                    datetime.now(UTC),
+                    datetime.now(UTC) + timedelta(hours=1),
+                )
 
-                    mock_refresh.assert_called_once()
+                mock_refresh.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_fetch_busy_times_api_error(self, service, mock_user):
@@ -641,27 +638,24 @@ class TestFetchBusyTimes:
             "core.calendar_conflict.google_calendar.check_busy_times",
             new_callable=AsyncMock,
             side_effect=Exception("API Error"),
-        ):
-            with pytest.raises(CalendarAPIError):
-                await service._fetch_busy_times(
-                    mock_user,
-                    datetime.now(UTC),
-                    datetime.now(UTC) + timedelta(hours=1),
-                )
+        ), pytest.raises(CalendarAPIError):
+            await service._fetch_busy_times(
+                mock_user,
+                datetime.now(UTC),
+                datetime.now(UTC) + timedelta(hours=1),
+            )
 
     @pytest.mark.asyncio
     async def test_fetch_busy_times_token_refresh_error(self, service, mock_user):
         """Test CalendarAPIError on token refresh failure."""
-        with patch.object(service, "_is_token_expired", return_value=True):
-            with patch.object(
-                service,
-                "_refresh_token",
-                new_callable=AsyncMock,
-                side_effect=Exception("Refresh failed"),
-            ):
-                with pytest.raises(CalendarAPIError, match="Token refresh failed"):
-                    await service._fetch_busy_times(
-                        mock_user,
-                        datetime.now(UTC),
-                        datetime.now(UTC) + timedelta(hours=1),
-                    )
+        with patch.object(service, "_is_token_expired", return_value=True), patch.object(
+            service,
+            "_refresh_token",
+            new_callable=AsyncMock,
+            side_effect=Exception("Refresh failed"),
+        ), pytest.raises(CalendarAPIError, match="Token refresh failed"):
+            await service._fetch_busy_times(
+                mock_user,
+                datetime.now(UTC),
+                datetime.now(UTC) + timedelta(hours=1),
+            )

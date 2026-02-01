@@ -1,13 +1,12 @@
 """Tests for the fraud detection service."""
 
-from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from modules.auth.services.fraud_detection import (
-    MAX_REGISTRATIONS_PER_IP_24_HOURS,
     MAX_REGISTRATIONS_PER_IP_7_DAYS,
+    MAX_REGISTRATIONS_PER_IP_24_HOURS,
     SUSPICIOUS_EMAIL_PATTERNS,
     FraudDetectionService,
 )

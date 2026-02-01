@@ -511,11 +511,7 @@ class VideoMeetingService:
         if not self._is_valid_url(url):
             return False
 
-        for pattern in teams_patterns:
-            if re.search(pattern, url, re.IGNORECASE):
-                return True
-
-        return False
+        return any(re.search(pattern, url, re.IGNORECASE) for pattern in teams_patterns)
 
 
 # Convenience function for use in booking confirmation

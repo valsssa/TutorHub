@@ -22,7 +22,6 @@ from core.tracing import (
     generate_span_id,
     generate_trace_id,
     get_trace_id,
-    is_tracing_enabled,
     set_span_id,
     set_trace_id,
 )

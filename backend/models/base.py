@@ -3,7 +3,8 @@
 import json
 
 from sqlalchemy import Text, TypeDecorator
-from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY, JSONB as PG_JSONB
+from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
+from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
 from sqlalchemy.ext.declarative import declarative_base
 
 # Base class for all SQLAlchemy models

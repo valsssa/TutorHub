@@ -121,8 +121,8 @@ class TestConcurrentBookingConflicts:
 
     def test_overlapping_booking_partial_overlap(self, db_session, student_user):
         """Test partial time overlap detection."""
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
 
         tutor = User(
             email="overlap_tutor@test.com",
@@ -184,8 +184,8 @@ class TestConcurrentBookingConflicts:
 
     def test_back_to_back_bookings_allowed(self, db_session, student_user):
         """Test that back-to-back bookings (end time = start time) are allowed."""
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
 
         tutor = User(
             email="backtoback_tutor@test.com",
@@ -351,8 +351,8 @@ class TestTokenExpiration:
 
     def test_expired_token_rejected(self, client, db_session):
         """Test that expired tokens are rejected."""
-        from core.security import TokenManager
         from auth import get_password_hash
+        from core.security import TokenManager
         from models import User
 
         user = User(
@@ -466,8 +466,8 @@ class TestNetworkTimeouts:
 
     def test_booking_creation_with_timeout_simulation(self, db_session, student_user):
         """Test booking creation handles simulated delays."""
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
 
         tutor = User(
             email="timeout_tutor@test.com",
@@ -522,9 +522,9 @@ class TestStateTransitionEdgeCases:
 
     def test_idempotent_state_transitions(self, db_session, student_user):
         """Test that state transitions are idempotent."""
-        from modules.bookings.domain.state_machine import BookingStateMachine
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
+        from modules.bookings.domain.state_machine import BookingStateMachine
 
         tutor = User(
             email="idempotent_tutor@test.com",
@@ -576,9 +576,9 @@ class TestStateTransitionEdgeCases:
 
     def test_invalid_state_transition_rejected(self, db_session, student_user):
         """Test that invalid state transitions are rejected."""
-        from modules.bookings.domain.state_machine import BookingStateMachine
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
+        from modules.bookings.domain.state_machine import BookingStateMachine
 
         tutor = User(
             email="invalid_transition_tutor@test.com",
@@ -626,9 +626,9 @@ class TestStateTransitionEdgeCases:
 
     def test_conflicting_no_show_reports_escalate(self, db_session, student_user):
         """Test that conflicting no-show reports escalate to dispute."""
-        from modules.bookings.domain.state_machine import BookingStateMachine
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
+        from modules.bookings.domain.state_machine import BookingStateMachine
 
         tutor = User(
             email="no_show_tutor@test.com",
@@ -696,9 +696,9 @@ class TestOptimisticLocking:
 
     def test_version_increment_on_update(self, db_session, student_user):
         """Test that version is incremented on state changes."""
-        from modules.bookings.domain.state_machine import BookingStateMachine
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
+        from modules.bookings.domain.state_machine import BookingStateMachine
 
         tutor = User(
             email="version_tutor@test.com",
@@ -751,9 +751,9 @@ class TestOptimisticLocking:
 
     def test_version_verification(self, db_session, student_user):
         """Test version verification detects concurrent modifications."""
-        from modules.bookings.domain.state_machine import BookingStateMachine
-        from models import Booking, Subject, TutorProfile, User
         from auth import get_password_hash
+        from models import Booking, Subject, TutorProfile, User
+        from modules.bookings.domain.state_machine import BookingStateMachine
 
         tutor = User(
             email="verify_version_tutor@test.com",

@@ -11,7 +11,7 @@ Race Condition Prevention:
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from modules.bookings.domain.status import (
@@ -25,8 +25,9 @@ from modules.bookings.domain.status import (
 )
 
 if TYPE_CHECKING:
-    from models import Booking
     from sqlalchemy.orm import Session
+
+    from models import Booking
 
 
 class OptimisticLockError(Exception):
@@ -110,10 +111,7 @@ class BookingStateMachine:
 
         query = db.query(Booking).filter(Booking.id == booking_id)
 
-        if nowait:
-            query = query.with_for_update(nowait=True)
-        else:
-            query = query.with_for_update()
+        query = query.with_for_update(nowait=True) if nowait else query.with_for_update()
 
         return query.first()
 

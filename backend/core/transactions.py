@@ -6,9 +6,10 @@ error handling and automatic rollback on failures.
 """
 
 import logging
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any, Callable, Generator, TypeVar
+from typing import Any, TypeVar
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
@@ -265,7 +266,7 @@ def atomic_operation(db: Session) -> Generator[Session, None, None]:
         raise
 
 
-def atomic(func: Callable[..., T]) -> Callable[..., T]:
+def atomic[T](func: Callable[..., T]) -> Callable[..., T]:
     """
     Decorator for functions requiring atomic transaction handling.
 

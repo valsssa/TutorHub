@@ -10,20 +10,19 @@ Tests cover:
 - Error handling and edge cases
 """
 
-from datetime import datetime, timedelta, UTC
-from unittest.mock import MagicMock, patch, AsyncMock
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from googleapiclient.errors import HttpError
 
 from core.google_calendar import (
-    GoogleCalendarService,
-    google_calendar,
     CALENDAR_SCOPES,
     GOOGLE_AUTH_URL,
     GOOGLE_TOKEN_URL,
+    GoogleCalendarService,
+    google_calendar,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -1166,7 +1165,7 @@ class TestInternalMethods:
             mock_instance = MagicMock()
             mock_creds.return_value = mock_instance
 
-            result = calendar_service._get_credentials(
+            calendar_service._get_credentials(
                 access_token="test-access-token",
                 refresh_token="test-refresh-token",
             )
@@ -1202,6 +1201,6 @@ class TestInternalMethods:
         mock_build, mock_service = mock_calendar_build
         mock_credentials = MagicMock()
 
-        result = calendar_service._get_calendar_service(mock_credentials)
+        calendar_service._get_calendar_service(mock_credentials)
 
         mock_build.assert_called_once_with("calendar", "v3", credentials=mock_credentials)

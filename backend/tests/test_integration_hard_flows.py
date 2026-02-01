@@ -13,15 +13,21 @@ All external services (Stripe, Google, Zoom, Brevo) are mocked.
 Tests verify complete flows with failure injection at each step.
 """
 
+from __future__ import annotations
+
 import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
+import stripe
 from fastapi import status
 from sqlalchemy.exc import IntegrityError, OperationalError
-import stripe
+
+if TYPE_CHECKING:
+    from models import Booking
 
 from modules.bookings.domain.state_machine import (
     BookingStateMachine,
@@ -35,7 +41,6 @@ from modules.bookings.domain.status import (
     SessionOutcome,
     SessionState,
 )
-
 
 # =============================================================================
 # Test Fixtures and Helpers
@@ -78,7 +83,7 @@ def create_test_booking_with_states(
     payment_state: str = "PENDING",
     dispute_state: str = "NONE",
     hours_from_now: int = 24,
-) -> "Booking":
+) -> Booking:
     """Helper to create a booking with specific states for testing."""
     from models import Booking
 
@@ -472,11 +477,10 @@ class TestCalendarIntegrationFailures:
         # Mock Zoom API call with timeout
         async def mock_zoom_create(*args, **kwargs):
             await asyncio.sleep(0.1)  # Simulate delay
-            raise asyncio.TimeoutError("Zoom API timeout")
+            raise TimeoutError("Zoom API timeout")
 
-        with patch("asyncio.sleep", return_value=None):
-            with pytest.raises(asyncio.TimeoutError):
-                await mock_zoom_create()
+        with patch("asyncio.sleep", return_value=None), pytest.raises(asyncio.TimeoutError):
+            await mock_zoom_create()
 
     def test_meeting_url_update_after_creation(self, db_session, student_user):
         """Test updating meeting URL after booking creation."""
@@ -1128,7 +1132,7 @@ class TestRecoveryAndRollbackScenarios:
     def test_partial_booking_creation_recovery(self, db_session, student_user):
         """Test recovery from partial booking creation failure."""
         from auth import get_password_hash
-        from core.transactions import transaction, TransactionError
+        from core.transactions import TransactionError, transaction
         from models import Booking, Subject, TutorProfile, User
 
         tutor = User(

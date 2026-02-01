@@ -20,30 +20,32 @@ jest.mock('@/lib/logger', () => ({
   }),
 }));
 
-// Mock the cache module
-const mockCacheStore = {
-  get: jest.fn(),
-  getData: jest.fn(),
-  set: jest.fn(),
-  invalidate: jest.fn(),
-  invalidatePattern: jest.fn(),
-  invalidateResource: jest.fn(),
-  clear: jest.fn(),
-  subscribe: jest.fn(() => jest.fn()),
-  markRevalidating: jest.fn(),
-  isRevalidating: jest.fn(),
-  getRevalidationPromise: jest.fn(),
-  setRevalidationPromise: jest.fn(),
-  optimisticUpdate: jest.fn(),
-  getStats: jest.fn(),
-};
-
+// Mock the cache module - use jest.fn() directly in factory
 jest.mock('@/lib/cache', () => ({
-  cacheStore: mockCacheStore,
+  cacheStore: {
+    get: jest.fn(),
+    getData: jest.fn(),
+    set: jest.fn(),
+    invalidate: jest.fn(),
+    invalidatePattern: jest.fn(),
+    invalidateResource: jest.fn(),
+    clear: jest.fn(),
+    subscribe: jest.fn(() => jest.fn()),
+    markRevalidating: jest.fn(),
+    isRevalidating: jest.fn(),
+    getRevalidationPromise: jest.fn(),
+    setRevalidationPromise: jest.fn(),
+    optimisticUpdate: jest.fn(),
+    getStats: jest.fn(),
+  },
   ResourceType: {},
   CacheConfig: {},
   CacheEvent: {},
 }));
+
+// Get reference to mocked cacheStore for tests
+import { cacheStore } from '@/lib/cache';
+const mockCacheStore = cacheStore as jest.Mocked<typeof cacheStore>;
 
 import {
   useCachedData,

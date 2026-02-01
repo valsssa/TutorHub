@@ -363,7 +363,7 @@ class TestCaptureException:
                 mock_sentry.capture_exception.return_value = "event-id-123"
 
                 error = Exception("test error")
-                result = capture_exception(error, user_id=123)
+                capture_exception(error, user_id=123)
 
         mock_sentry.capture_exception.assert_called_once_with(error)
 
@@ -416,7 +416,7 @@ class TestCaptureMessage:
                 mock_sentry.push_scope.return_value.__exit__ = MagicMock()
                 mock_sentry.capture_message.return_value = "event-id-456"
 
-                result = capture_message("important event", level="warning")
+                capture_message("important event", level="warning")
 
         mock_sentry.capture_message.assert_called_once_with(
             "important event", level="warning"

@@ -13,75 +13,78 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 
 # Initialize Sentry early (before other imports that might error)
 from core.sentry import init_sentry
+
 sentry_initialized = init_sentry()
 
 # Initialize tracing early
-from core.tracing import init_tracing, is_tracing_enabled, shutdown_tracing
+from core.tracing import init_tracing, shutdown_tracing  # noqa: E402
+
 tracing_initialized = init_tracing()
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
-from slowapi import Limiter
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from core.rate_limiting import limiter
-from core.cors import (
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
+from fastapi.responses import JSONResponse, StreamingResponse  # noqa: E402
+from slowapi.errors import RateLimitExceeded  # noqa: E402
+from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
+from sqlalchemy import func  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
+
+from auth import get_password_hash  # noqa: E402
+from core.config import settings  # noqa: E402
+from core.cors import (  # noqa: E402
     CORSErrorMiddleware,
-    create_cors_rate_limit_handler,
     create_cors_http_exception_handler,
+    create_cors_rate_limit_handler,
     create_cors_test_response,
-    get_cors_origins,
 )
-from sqlalchemy import func
-from sqlalchemy.orm import Session
-
-from auth import get_password_hash
-from core.config import settings
-from core.dependencies import get_current_admin_user
-from core.middleware import SecurityHeadersMiddleware
-from core.response_cache import ResponseCacheMiddleware
-from core.tracing_middleware import TracingMiddleware
-from database import get_db
-from models import TutorProfile, User
-from modules.admin.audit.router import router as audit_router
-from modules.admin.owner.router import router as owner_router
-from modules.admin.presentation.api import router as admin_router
-from modules.auth.oauth_router import router as oauth_router
-from modules.auth.password_router import router as password_router
-
-# Import module routers
-from modules.auth.presentation.api import router as auth_router
-from modules.bookings.presentation.api import router as bookings_router
-from modules.integrations.calendar_router import router as calendar_router
-from modules.integrations.zoom_router import router as zoom_router
-from modules.messages.api import router as messages_router
-from modules.messages.websocket import router as websocket_router
-from modules.notifications.presentation.api import router as notifications_router
-from modules.packages.presentation.api import router as packages_router
-from modules.payments.connect_router import admin_connect_router, router as connect_router
-from modules.payments.router import router as payments_router
-from modules.payments.wallet_router import router as wallet_router
-from modules.profiles.presentation.api import router as profiles_router
-from modules.reviews.presentation.api import router as reviews_router
-from modules.students.presentation.api import favorites_router
-from modules.students.presentation.api import router as students_router
-from modules.subjects.presentation.api import router as subjects_router
-from modules.tutor_profile.presentation.api import router as tutor_profile_router
-from modules.tutor_profile.presentation.availability_api import (
-    router as availability_router,
-)
-from modules.tutors.student_notes_router import router as student_notes_router
-from modules.tutors.video_settings_router import router as video_settings_router
-from modules.admin.feature_flags_router import (
-    router as feature_flags_router,
+from core.dependencies import get_current_admin_user  # noqa: E402
+from core.middleware import SecurityHeadersMiddleware  # noqa: E402
+from core.rate_limiting import limiter  # noqa: E402
+from core.response_cache import ResponseCacheMiddleware  # noqa: E402
+from core.tracing_middleware import TracingMiddleware  # noqa: E402
+from core.transactions import atomic_operation  # noqa: E402
+from database import get_db  # noqa: E402
+from models import TutorProfile, User  # noqa: E402
+from modules.admin.audit.router import router as audit_router  # noqa: E402
+from modules.admin.feature_flags_router import (  # noqa: E402
     public_router as feature_flags_public_router,
 )
-from modules.users.avatar.router import router as avatar_router
-from modules.users.currency.router import router as currency_router
-from modules.users.preferences.router import router as preferences_router
-from modules.utils.presentation.api import router as utils_router
-from modules.public.router import router as public_router
-from core.transactions import atomic_operation
+from modules.admin.feature_flags_router import (  # noqa: E402
+    router as feature_flags_router,
+)
+from modules.admin.owner.router import router as owner_router  # noqa: E402
+from modules.admin.presentation.api import router as admin_router  # noqa: E402
+from modules.auth.oauth_router import router as oauth_router  # noqa: E402
+from modules.auth.password_router import router as password_router  # noqa: E402
+
+# Import module routers
+from modules.auth.presentation.api import router as auth_router  # noqa: E402
+from modules.bookings.presentation.api import router as bookings_router  # noqa: E402
+from modules.integrations.calendar_router import router as calendar_router  # noqa: E402
+from modules.integrations.zoom_router import router as zoom_router  # noqa: E402
+from modules.messages.api import router as messages_router  # noqa: E402
+from modules.messages.websocket import router as websocket_router  # noqa: E402
+from modules.notifications.presentation.api import router as notifications_router  # noqa: E402
+from modules.packages.presentation.api import router as packages_router  # noqa: E402
+from modules.payments.connect_router import admin_connect_router  # noqa: E402
+from modules.payments.connect_router import router as connect_router  # noqa: E402
+from modules.payments.router import router as payments_router  # noqa: E402
+from modules.payments.wallet_router import router as wallet_router  # noqa: E402
+from modules.profiles.presentation.api import router as profiles_router  # noqa: E402
+from modules.public.router import router as public_router  # noqa: E402
+from modules.reviews.presentation.api import router as reviews_router  # noqa: E402
+from modules.students.presentation.api import favorites_router  # noqa: E402
+from modules.students.presentation.api import router as students_router  # noqa: E402
+from modules.subjects.presentation.api import router as subjects_router  # noqa: E402
+from modules.tutor_profile.presentation.api import router as tutor_profile_router  # noqa: E402
+from modules.tutor_profile.presentation.availability_api import (  # noqa: E402
+    router as availability_router,
+)
+from modules.tutors.student_notes_router import router as student_notes_router  # noqa: E402
+from modules.tutors.video_settings_router import router as video_settings_router  # noqa: E402
+from modules.users.avatar.router import router as avatar_router  # noqa: E402
+from modules.users.currency.router import router as currency_router  # noqa: E402
+from modules.users.preferences.router import router as preferences_router  # noqa: E402
+from modules.utils.presentation.api import router as utils_router  # noqa: E402
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
@@ -893,6 +896,7 @@ async def cors_test_preflight(request: Request):
     are handled correctly even if middleware has issues.
     """
     from fastapi.responses import Response
+
     from core.cors import get_cors_headers
 
     origin = request.headers.get("origin")

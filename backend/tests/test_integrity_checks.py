@@ -197,12 +197,11 @@ class TestAutoRepairConsistency:
                 "is_consistent": False,
                 "total_issues": 1,
             },
-        ):
-            with patch("core.integrity_checks.logger") as mock_logger:
-                result = DataIntegrityChecker.auto_repair_consistency(mock_db)
+        ), patch("core.integrity_checks.logger") as mock_logger:
+            result = DataIntegrityChecker.auto_repair_consistency(mock_db)
 
-                assert result["profiles_created"] == 0
-                mock_logger.error.assert_called()
+            assert result["profiles_created"] == 0
+            mock_logger.error.assert_called()
 
     def test_handles_archive_error(self, mock_db):
         """Test handling profile archive error."""
@@ -219,12 +218,11 @@ class TestAutoRepairConsistency:
                 "is_consistent": False,
                 "total_issues": 1,
             },
-        ):
-            with patch("core.integrity_checks.logger") as mock_logger:
-                result = DataIntegrityChecker.auto_repair_consistency(mock_db)
+        ), patch("core.integrity_checks.logger") as mock_logger:
+            result = DataIntegrityChecker.auto_repair_consistency(mock_db)
 
-                assert result["profiles_archived"] == 0
-                mock_logger.error.assert_called()
+            assert result["profiles_archived"] == 0
+            mock_logger.error.assert_called()
 
     def test_includes_original_issues_in_details(self, mock_db):
         """Test that original issues are included in result details."""

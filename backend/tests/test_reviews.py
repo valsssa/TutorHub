@@ -163,7 +163,8 @@ class TestGetTutorReviews:
     def test_only_public_reviews_shown(self, client, student_token, tutor_user, test_booking, test_subject, db_session):
         """Test only public reviews are shown."""
         from datetime import UTC, datetime, timedelta
-        from models import Review, Booking
+
+        from models import Booking, Review
 
         # Create a second booking for the private review
         booking2 = Booking(

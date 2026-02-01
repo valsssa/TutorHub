@@ -189,7 +189,8 @@ describe('ProfileCompletionMeter Component', () => {
     it('shows check icons for completed steps', () => {
       render(<ProfileCompletionMeter profile={createCompleteProfile()} />);
       const checkCircles = screen.getAllByTestId('check-circle');
-      expect(checkCircles.length).toBe(6);
+      // 6 steps + 1 completion message icon = 7 total
+      expect(checkCircles.length).toBe(7);
     });
 
     it('shows circle icons for incomplete steps', () => {

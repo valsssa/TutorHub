@@ -13,20 +13,19 @@ Tests cover:
 - Error handling and edge cases
 """
 
-from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch, AsyncMock
 import asyncio
 import sys
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from core.email_service import (
-    EmailDeliveryStatus,
     EmailDeliveryResult,
+    EmailDeliveryStatus,
     EmailService,
     email_service,
 )
-
 
 # =============================================================================
 # Fixtures

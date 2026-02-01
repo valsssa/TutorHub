@@ -4,14 +4,14 @@ Tests for Video Meeting Service
 Tests the multi-provider video meeting creation functionality.
 """
 
-import pytest
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from modules.integrations.video_meeting_service import (
     VideoMeetingService,
     VideoProvider,
-    MeetingResult,
     create_meeting_for_booking,
 )
 

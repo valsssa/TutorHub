@@ -20,7 +20,7 @@ Usage:
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import NamedTuple
 
 from sqlalchemy import text

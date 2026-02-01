@@ -1,7 +1,7 @@
 """Tests for the reviews API endpoints."""
 
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -81,7 +81,7 @@ class TestGetTutorReviews:
 
         from modules.reviews.presentation.api import get_tutor_reviews
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(HTTPException):
             import asyncio
 
             asyncio.get_event_loop().run_until_complete(

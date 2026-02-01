@@ -6,13 +6,12 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from core.rate_limiting import limiter
-
 from sqlalchemy.orm import Session
 
 from core.account_lockout import account_lockout
 from core.config import settings
 from core.dependencies import get_current_user
+from core.rate_limiting import limiter
 from database import get_db
 from models import User
 from modules.auth.application.services import AuthService

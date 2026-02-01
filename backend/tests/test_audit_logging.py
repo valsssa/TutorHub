@@ -19,11 +19,11 @@ import pytest
 pytestmark = pytest.mark.skip(
     reason="Audit logging tests skipped due to SQLAlchemy event listener iteration issue"
 )
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session  # noqa: E402
 
-from core.audit import AuditLogger, DeferredAuditLog
-from models import AuditLog, User, StudentProfile
-from auth import get_password_hash
+from auth import get_password_hash  # noqa: E402
+from core.audit import AuditLogger, DeferredAuditLog  # noqa: E402
+from models import AuditLog, StudentProfile, User  # noqa: E402
 
 
 def create_test_user(db: Session, email: str, role: str) -> User:
@@ -110,7 +110,7 @@ class TestAuditLoggerDeferred:
 
         # Before commit, the audit log should NOT be in the database yet
         # (it's registered as a post-commit handler)
-        pre_commit_count = db_session.query(AuditLog).count()
+        db_session.query(AuditLog).count()
 
         # Now commit - this should trigger the deferred audit log
         db_session.commit()

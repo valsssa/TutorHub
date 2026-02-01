@@ -15,7 +15,7 @@ CORS Debugging Checklist:
 
 import logging
 import os
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -154,7 +154,7 @@ class CORSErrorMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
 
             # Check if CORS headers are missing
-            if "access-control-allow-origin" not in [h.lower() for h in response.headers.keys()]:
+            if "access-control-allow-origin" not in [h.lower() for h in response.headers]:
                 cors_headers = get_cors_headers(origin, self.allowed_origins)
                 if cors_headers:
                     # Return a proper preflight response
@@ -178,7 +178,7 @@ class CORSErrorMiddleware(BaseHTTPMiddleware):
             )
 
         # Check if response is missing CORS headers (common with exception handlers)
-        existing_headers = {h.lower() for h in response.headers.keys()}
+        existing_headers = {h.lower() for h in response.headers}
         if "access-control-allow-origin" not in existing_headers:
             cors_headers = get_cors_headers(origin, self.allowed_origins)
             for key, value in cors_headers.items():

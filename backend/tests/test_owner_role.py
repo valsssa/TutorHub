@@ -195,8 +195,10 @@ class TestOwnerRoleAssignment:
             "/api/v1/auth/register",
             json={
                 "email": "hacker@example.com",
-                "password": "password123",
+                "password": "Password123!",
                 "role": "owner",  # Should be rejected
+                "first_name": "Hacker",
+                "last_name": "User",
             },
         )
         # Registration should either fail or default to student role

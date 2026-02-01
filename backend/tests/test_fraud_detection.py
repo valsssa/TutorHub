@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from models import RegistrationFraudSignal, User
 from modules.auth.services.fraud_detection import (
-    FraudDetectionService,
     MAX_REGISTRATIONS_PER_IP_7_DAYS,
+    FraudDetectionService,
 )
 
 
@@ -270,7 +270,12 @@ class TestRegistrationWithFraudDetection:
         """Test that registration stores the client IP."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "iptest@example.com", "password": "Password123!"},
+            json={
+                "email": "iptest@example.com",
+                "password": "Password123!",
+                "first_name": "IP",
+                "last_name": "Test",
+            },
         )
         assert response.status_code == 201
 
@@ -284,7 +289,12 @@ class TestRegistrationWithFraudDetection:
         """Test that registration accepts device fingerprint header."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "fptest@example.com", "password": "Password123!"},
+            json={
+                "email": "fptest@example.com",
+                "password": "Password123!",
+                "first_name": "FP",
+                "last_name": "Test",
+            },
             headers={"X-Device-Fingerprint": "test-fingerprint-hash"},
         )
         assert response.status_code == 201
@@ -293,7 +303,12 @@ class TestRegistrationWithFraudDetection:
         """Test registration with suspicious email patterns."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "user@mailinator.com", "password": "Password123!"},
+            json={
+                "email": "user@mailinator.com",
+                "password": "Password123!",
+                "first_name": "Suspicious",
+                "last_name": "User",
+            },
         )
         # Registration should still succeed but user might be trial-restricted
         assert response.status_code == 201

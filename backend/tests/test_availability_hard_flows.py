@@ -14,7 +14,8 @@ Tests complex edge cases including:
 import asyncio
 import threading
 import time
-from datetime import UTC, date, datetime, time as dt_time, timedelta
+from datetime import UTC, date, datetime, timedelta
+from datetime import time as dt_time
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
@@ -27,7 +28,6 @@ from core.calendar_conflict import CalendarAPIError, CalendarConflictService
 from core.distributed_lock import DistributedLockService
 from core.transactions import TransactionError, atomic_operation
 from models import Booking, TutorAvailability, TutorBlackout, TutorProfile, User
-
 
 # =============================================================================
 # Test Fixtures
@@ -207,7 +207,6 @@ class TestRecurringScheduleEdgeCases:
         modification_time = datetime(2024, 6, 5, 12, 0, tzinfo=UTC)  # A Wednesday
 
         # New schedule: Tuesday-Thursday only
-        new_days = [2, 3, 4]
 
         # Slots generated before modification should be preserved
         # Only future slots should reflect new schedule
@@ -303,9 +302,8 @@ class TestOverlapDetectionComplexities:
             """Check for overlaps within the provided slot list."""
             for i, s1 in enumerate(slots):
                 for s2 in slots[i + 1:]:
-                    if s1["day_of_week"] == s2["day_of_week"]:
-                        if s1["start_time"] < s2["end_time"] and s1["end_time"] > s2["start_time"]:
-                            return True
+                    if s1["day_of_week"] == s2["day_of_week"] and s1["start_time"] < s2["end_time"] and s1["end_time"] > s2["start_time"]:
+                        return True
             return False
 
         assert check_internal_overlaps(new_slots) is True, (
@@ -423,7 +421,6 @@ class TestBulkUpdateScenarios:
         mock_db.query.return_value.filter.return_value.all.return_value = [mock_booking]
 
         # Attempt to delete Monday availability
-        availabilities_to_delete = [{"day_of_week": 1}]  # Monday
 
         # Check for conflicting bookings
         def has_conflicting_bookings(db, tutor_id, days_to_delete):
@@ -437,7 +434,7 @@ class TestBulkUpdateScenarios:
             return False
 
         # Monday in JS convention is 1
-        has_conflicts = has_conflicting_bookings(mock_db, 1, [1])
+        has_conflicting_bookings(mock_db, 1, [1])
         # This test verifies the logic; actual booking day check would need real data
 
     def test_bulk_update_transaction_atomicity(self, mock_db):
@@ -454,11 +451,10 @@ class TestBulkUpdateScenarios:
         # Simulate failure on second slot
         mock_db.add.side_effect = [None, IntegrityError("", {}, Exception()), None]
 
-        with pytest.raises(TransactionError):
-            with atomic_operation(mock_db):
-                for slot in slots:
-                    availability = MagicMock()
-                    mock_db.add(availability)
+        with pytest.raises(TransactionError), atomic_operation(mock_db):
+            for _slot in slots:
+                availability = MagicMock()
+                mock_db.add(availability)
 
         # Rollback should be called on failure
         mock_db.rollback.assert_called()
@@ -1024,10 +1020,7 @@ class TestAvailabilityWindowRules:
         def is_date_blocked(check_date, blackout_periods):
             """Check if a date falls within any blackout period."""
             check_dt = datetime.combine(check_date, dt_time(12, 0)).replace(tzinfo=UTC)
-            for blackout in blackout_periods:
-                if blackout["start"] <= check_dt <= blackout["end"]:
-                    return True
-            return False
+            return any(blackout["start"] <= check_dt <= blackout["end"] for blackout in blackout_periods)
 
         # December 25 should be blocked
         assert is_date_blocked(date(2024, 12, 25), blackouts) is True
@@ -1095,7 +1088,7 @@ class TestConcurrentModification:
         availability_updated = [False]
         conflict_detected = [False]
 
-        original_slot = {"day_of_week": 1, "start_time": dt_time(10, 0), "end_time": dt_time(11, 0)}
+        {"day_of_week": 1, "start_time": dt_time(10, 0), "end_time": dt_time(11, 0)}
 
         def student_books():
             with availability_lock:
@@ -1324,7 +1317,7 @@ class TestIntegrationScenarios:
         assert len(schedule) == 3
 
         # Step 2: Add blackout
-        blackout = {
+        {
             "start": datetime(2024, 12, 20, tzinfo=UTC),
             "end": datetime(2024, 12, 27, tzinfo=UTC),
         }
@@ -1337,7 +1330,7 @@ class TestIntegrationScenarios:
         }
 
         # Step 4: External calendar sync (adds dentist appointment)
-        external_event = {
+        {
             "start": datetime(2025, 1, 8, 14, 0, tzinfo=UTC),  # Wednesday
             "end": datetime(2025, 1, 8, 15, 0, tzinfo=UTC),
         }

@@ -8,14 +8,13 @@ Tests the subjects module including:
 - Authorization checks
 """
 
-from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from models import Subject, User
+from models import Subject
 
 
 class TestListSubjectsEndpoint:

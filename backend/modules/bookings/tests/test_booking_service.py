@@ -16,7 +16,6 @@ from models import Base, TutorProfile, User, UserProfile
 from modules.bookings.domain.state_machine import BookingStateMachine
 from modules.bookings.domain.status import (
     CancelledByRole,
-    DisputeState,
     PaymentState,
     SessionOutcome,
     SessionState,
@@ -368,7 +367,7 @@ class TestConflictChecking:
         """Verify check_conflicts supports row-level locking to prevent race conditions."""
         service = BookingService(db_session)
         start_at = datetime.utcnow() + timedelta(days=1)
-        end_at = start_at + timedelta(hours=1)
+        start_at + timedelta(hours=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         # Create first booking

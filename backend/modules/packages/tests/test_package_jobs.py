@@ -5,7 +5,6 @@ Comprehensive tests for background jobs that handle package expiration warnings
 and automatic package status updates.
 """
 
-from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

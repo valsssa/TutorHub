@@ -19,7 +19,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch, PropertyMock
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from fastapi import status
@@ -27,7 +27,6 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from models import Booking, Payment, Refund, StudentProfile, TutorProfile, User, WebhookEvent
-
 
 # =============================================================================
 # Fixtures
@@ -1068,7 +1067,7 @@ class TestTransferFailureRecovery:
 
     def test_transfer_with_circuit_breaker_open(self, db_session, tutor_with_connect, test_booking):
         """Test transfer handling when circuit breaker is open."""
-        from core.payment_reliability import stripe_circuit_breaker, CircuitState
+        from core.payment_reliability import CircuitState, stripe_circuit_breaker
 
         # Force circuit breaker open
         with stripe_circuit_breaker._state.lock:
@@ -1076,8 +1075,9 @@ class TestTransferFailureRecovery:
             stripe_circuit_breaker._state.last_failure_time = time.time()
 
         try:
-            from core.stripe_client import create_transfer_to_tutor
             from fastapi import HTTPException
+
+            from core.stripe_client import create_transfer_to_tutor
 
             with pytest.raises(HTTPException) as exc_info:
                 create_transfer_to_tutor(
@@ -1255,7 +1255,7 @@ class TestPaymentStatusPolling:
 
     def test_poll_returns_cached_result(self):
         """Test that polling returns cached results within TTL."""
-        from core.payment_reliability import PaymentStatusPoller, PaymentStatusInfo
+        from core.payment_reliability import PaymentStatusInfo, PaymentStatusPoller
 
         poller = PaymentStatusPoller()
         poller._cache_ttl = 60

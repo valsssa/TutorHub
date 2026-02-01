@@ -18,10 +18,9 @@ import pytest
 from core.cache import (
     _cache,
     cache_with_ttl,
-    invalidate_cache,
     get_cache_stats,
+    invalidate_cache,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -96,7 +95,7 @@ class TestCacheWithTTL:
 
         result1 = get_user(user_id=1, include_profile=True)
         result2 = get_user(user_id=1, include_profile=False)
-        result3 = get_user(user_id=1, include_profile=True)  # Cached
+        get_user(user_id=1, include_profile=True)  # Cached
 
         assert result1["has_profile"] is True
         assert result2["has_profile"] is False
@@ -222,7 +221,7 @@ class TestCacheWithTTL:
             return len(data_list) + len(config_dict)
 
         result1 = process_data([1, 2, 3], {"a": 1})
-        result2 = process_data([1, 2, 3], {"a": 1})
+        process_data([1, 2, 3], {"a": 1})
 
         assert result1 == 4
         assert call_count == 1
@@ -237,7 +236,7 @@ class TestCacheWithTTL:
             return db.query("subjects").all()
 
         result1 = get_subjects(mock_db)
-        result2 = get_subjects(mock_db)
+        get_subjects(mock_db)
 
         assert result1 == [{"id": 1}, {"id": 2}]
         # DB should only be queried once
@@ -492,7 +491,7 @@ class TestCacheEdgeCases:
 
         result1 = search("test query with spaces")
         result2 = search("query|with:special/chars")
-        result3 = search("test query with spaces")  # Cached
+        search("test query with spaces")  # Cached
 
         assert result1 == "results for: test query with spaces"
         assert result2 == "results for: query|with:special/chars"

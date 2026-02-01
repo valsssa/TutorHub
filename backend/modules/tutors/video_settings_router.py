@@ -347,8 +347,4 @@ def _is_valid_teams_url(url: str) -> bool:
         r'teams\.live\.com',
     ]
 
-    for pattern in teams_patterns:
-        if re.search(pattern, url, re.IGNORECASE):
-            return True
-
-    return False
+    return any(re.search(pattern, url, re.IGNORECASE) for pattern in teams_patterns)

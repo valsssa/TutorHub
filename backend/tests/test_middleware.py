@@ -329,7 +329,7 @@ class TestEnvironmentDetection:
 
     def test_fallback_env_variable(self):
         """Test ENV variable is used as fallback."""
-        app = MagicMock()
+        MagicMock()
         with patch.dict(os.environ, {"ENV": "production"}, clear=False):
             with patch.dict(os.environ, {"ENVIRONMENT": ""}, clear=False):
                 pass

@@ -9,9 +9,10 @@ These tests verify that CORS is properly configured and working for all scenario
 5. Rate limit responses include CORS headers
 """
 
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 
 
 @pytest.fixture
@@ -173,6 +174,7 @@ class TestCORSConfiguration:
     def test_get_cors_origins_from_env(self):
         """get_cors_origins should parse CORS_ORIGINS environment variable."""
         import os
+
         from core.cors import get_cors_origins
 
         os.environ["CORS_ORIGINS"] = "http://test1.com,http://test2.com,invalid"
@@ -214,11 +216,12 @@ class TestCORSExceptionHandlers:
 
     def test_http_exception_handler_includes_cors(self):
         """HTTPException handler should include CORS headers."""
-        from fastapi import HTTPException, Request
-        from core.cors import create_cors_http_exception_handler
-        from starlette.testclient import TestClient
-        from fastapi import FastAPI
         import asyncio
+
+        from fastapi import FastAPI, HTTPException, Request
+        from starlette.testclient import TestClient
+
+        from core.cors import create_cors_http_exception_handler
 
         app = FastAPI()
         handler = create_cors_http_exception_handler(["http://test.com"])
@@ -237,12 +240,14 @@ class TestCORSExceptionHandlers:
 
     def test_rate_limit_handler_includes_cors(self):
         """Rate limit handler should include CORS headers."""
-        from core.cors import create_cors_rate_limit_handler
+        from unittest.mock import MagicMock
+
         from fastapi import FastAPI, Request
-        from starlette.testclient import TestClient
         from slowapi.errors import RateLimitExceeded
         from slowapi.wrappers import Limit
-        from unittest.mock import MagicMock
+        from starlette.testclient import TestClient
+
+        from core.cors import create_cors_rate_limit_handler
 
         app = FastAPI()
         handler = create_cors_rate_limit_handler(["http://test.com"])
@@ -271,11 +276,13 @@ class TestCORSMiddleware:
 
     def test_cors_error_middleware_adds_missing_headers(self):
         """CORSErrorMiddleware should add CORS headers if missing."""
-        from core.cors import CORSErrorMiddleware
+        import os
+
         from fastapi import FastAPI
         from fastapi.responses import JSONResponse
         from starlette.testclient import TestClient
-        import os
+
+        from core.cors import CORSErrorMiddleware
 
         os.environ["CORS_ORIGINS"] = "http://test.com"
 

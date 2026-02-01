@@ -6,19 +6,14 @@ balance retrieval, and error handling.
 """
 
 from datetime import UTC, datetime
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
-from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from modules.payments.wallet_router import (
     WalletCheckoutRequest,
     WalletCheckoutResponse,
-    create_wallet_checkout,
-    get_wallet_balance,
 )
 
 

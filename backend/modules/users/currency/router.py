@@ -5,12 +5,11 @@ from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from core.rate_limiting import limiter
-
 from sqlalchemy.orm import Session
 
 from core.currency import CurrencyOption, load_supported_currencies
 from core.dependencies import get_current_user
+from core.rate_limiting import limiter
 from database import get_db
 from models import User
 from schemas import UserResponse

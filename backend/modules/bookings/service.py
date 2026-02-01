@@ -20,7 +20,6 @@ from modules.bookings.domain.state_machine import BookingStateMachine
 from modules.bookings.domain.status import (
     CancelledByRole,
     PaymentState,
-    SessionOutcome,
     SessionState,
 )
 from modules.bookings.policy_engine import CancellationPolicy, NoShowPolicy
@@ -377,10 +376,9 @@ class BookingService:
 
                 if not spans_midnight:
                     # Simple case: booking doesn't span midnight
-                    if avail_day == day_of_week:
-                        if avail_start_in_tutor_tz <= local_start_time and avail_end_in_tutor_tz >= local_end_time:
-                            is_within_availability = True
-                            break
+                    if avail_day == day_of_week and avail_start_in_tutor_tz <= local_start_time and avail_end_in_tutor_tz >= local_end_time:
+                        is_within_availability = True
+                        break
                 else:
                     # Complex case: booking spans midnight in tutor's timezone
                     # Need to check if both the start and end portions are covered
@@ -620,7 +618,7 @@ class BookingService:
 
         # Add notes based on outcome
         if result.escalated_to_dispute:
-            booking.notes = (booking.notes or "") + f"\n[Conflicting no-show reports - escalated to dispute]"
+            booking.notes = (booking.notes or "") + "\n[Conflicting no-show reports - escalated to dispute]"
             if notes:
                 booking.notes += f" Reporter ({reporter_role}) notes: {notes}"
         elif notes:
@@ -853,16 +851,13 @@ def _compute_legacy_status(booking: Booking) -> str:
     elif session_state == "EXPIRED":
         return "CANCELLED_BY_STUDENT"  # Expired treated as student cancel
     elif session_state == "ENDED":
-        if session_outcome == "COMPLETED":
-            return "COMPLETED"
-        elif session_outcome == "NO_SHOW_STUDENT":
-            return "NO_SHOW_STUDENT"
-        elif session_outcome == "NO_SHOW_TUTOR":
-            return "NO_SHOW_TUTOR"
-        elif session_outcome == "NOT_HELD":
-            return "COMPLETED"  # Shouldn't happen, fallback
-        else:
-            return "COMPLETED"
+        outcome_map = {
+            "COMPLETED": "COMPLETED",
+            "NO_SHOW_STUDENT": "NO_SHOW_STUDENT",
+            "NO_SHOW_TUTOR": "NO_SHOW_TUTOR",
+            "NOT_HELD": "COMPLETED",
+        }
+        return outcome_map.get(session_outcome, "COMPLETED")
 
     return "PENDING"  # Default fallback
 

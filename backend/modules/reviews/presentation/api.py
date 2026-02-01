@@ -1,21 +1,20 @@
 """Reviews API routes."""
 
+import contextlib
 import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from core.rate_limiting import limiter
-
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.audit import AuditLogger
 from core.cache import cache_with_ttl, invalidate_cache
 from core.dependencies import get_current_student_user
+from core.rate_limiting import limiter
 from core.sanitization import sanitize_text_input
-from core.transactions import atomic_operation
 from database import get_db
 from models import Booking, Review, TutorProfile, User
 from schemas import ReviewCreate, ReviewResponse
@@ -175,10 +174,8 @@ async def create_review(
         raise
     except Exception as e:
         # Safely attempt rollback - ignore if session already committed
-        try:
+        with contextlib.suppress(Exception):
             db.rollback()
-        except Exception:
-            pass  # Session already committed, no rollback needed
         logger.error(f"Error creating review: {e}")
         raise HTTPException(status_code=500, detail="Failed to create review")
 

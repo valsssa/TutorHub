@@ -178,9 +178,9 @@ class TestPaymentStatus:
         self, client, db_session, test_booking
     ):
         """Test access denied when not booking participant."""
-        from models import User
         from auth import get_password_hash
         from core.security import TokenManager
+        from models import User
 
         other_user = User(
             email="other@test.com",

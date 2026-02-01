@@ -10,7 +10,6 @@ Comprehensive tests for PackageExpirationService including:
 """
 
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest

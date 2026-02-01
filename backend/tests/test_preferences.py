@@ -1,8 +1,7 @@
 """Tests for user preferences API endpoints."""
 
-from fastapi import status
-
 import pytest
+from fastapi import status
 
 
 class TestUpdatePreferences:
@@ -490,6 +489,8 @@ class TestTimezoneValidationInRegistration:
                 "email": "timezone_user@test.com",
                 "password": "Password123!",
                 "timezone": "America/New_York",
+                "first_name": "Timezone",
+                "last_name": "User",
             },
         )
 
@@ -505,6 +506,8 @@ class TestTimezoneValidationInRegistration:
                 "email": "invalid_tz_user@test.com",
                 "password": "Password123!",
                 "timezone": "Invalid/Timezone",
+                "first_name": "Invalid",
+                "last_name": "TZ",
             },
         )
 
@@ -519,6 +522,8 @@ class TestTimezoneValidationInRegistration:
                 "email": "abbrev_tz_user@test.com",
                 "password": "Password123!",
                 "timezone": "EST",
+                "first_name": "Abbrev",
+                "last_name": "TZ",
             },
         )
 
@@ -531,6 +536,8 @@ class TestTimezoneValidationInRegistration:
             json={
                 "email": "no_tz_user@test.com",
                 "password": "Password123!",
+                "first_name": "No",
+                "last_name": "TZ",
             },
         )
 
@@ -546,6 +553,8 @@ class TestTimezoneValidationInRegistration:
                 "email": "null_tz_user@test.com",
                 "password": "Password123!",
                 "timezone": None,
+                "first_name": "Null",
+                "last_name": "TZ",
             },
         )
 
@@ -564,13 +573,15 @@ class TestTimezoneValidationInRegistration:
             ("tz_user_6@test.com", "Etc/GMT"),
         ]
 
-        for email, timezone in test_cases:
+        for i, (email, timezone) in enumerate(test_cases):
             response = client.post(
                 "/api/v1/auth/register",
                 json={
                     "email": email,
                     "password": "Password123!",
                     "timezone": timezone,
+                    "first_name": "TZ",
+                    "last_name": f"User{i}",
                 },
             )
             assert (

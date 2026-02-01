@@ -305,9 +305,8 @@ async def create_bulk_availability(
     # Check for overlaps within the new entries (same day)
     for i, slot1 in enumerate(valid_slots):
         for slot2 in valid_slots[i + 1 :]:
-            if slot1.day_of_week == slot2.day_of_week:
-                # Two time ranges overlap if: start1 < end2 AND end1 > start2
-                if slot1.start_time < slot2.end_time and slot1.end_time > slot2.start_time:
+            # Two time ranges overlap if: same day AND start1 < end2 AND end1 > start2
+            if slot1.day_of_week == slot2.day_of_week and slot1.start_time < slot2.end_time and slot1.end_time > slot2.start_time:
                     raise HTTPException(
                         status_code=400,
                         detail=f"Overlapping availability windows on day {slot1.day_of_week}: "

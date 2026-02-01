@@ -16,7 +16,7 @@ Tests cover:
 """
 
 from io import BytesIO
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
@@ -24,23 +24,22 @@ from fastapi import HTTPException, UploadFile
 from PIL import Image
 
 from core.message_storage import (
-    ALLOWED_IMAGE_TYPES,
     ALLOWED_DOCUMENT_TYPES,
+    ALLOWED_IMAGE_TYPES,
     ALLOWED_MIME_TYPES,
     MAX_FILE_SIZE,
     MAX_IMAGE_SIZE,
     PRESIGNED_URL_EXPIRY,
-    _s3_client,
-    _ensure_bucket_exists,
     _categorize_file,
+    _ensure_bucket_exists,
     _extract_image_dimensions,
     _generate_secure_key,
-    store_message_attachment,
-    generate_presigned_url,
-    delete_message_attachment,
+    _s3_client,
     check_file_exists,
+    delete_message_attachment,
+    generate_presigned_url,
+    store_message_attachment,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -94,7 +93,7 @@ def create_upload_file(
     content_type: str = "text/plain",
 ) -> UploadFile:
     """Helper to create mock UploadFile."""
-    file = BytesIO(content)
+    BytesIO(content)
     upload = MagicMock(spec=UploadFile)
     upload.filename = filename
     upload.content_type = content_type

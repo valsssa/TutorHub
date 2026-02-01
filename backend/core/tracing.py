@@ -22,9 +22,10 @@ Configuration:
 import logging
 import os
 import uuid
+from collections.abc import Callable
 from contextvars import ContextVar
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 

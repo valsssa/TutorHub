@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from core.dependencies import get_current_user
 from core.rate_limiting import limiter
 from database import get_db
-from models import Notification, NotificationPreferences, User
+from models import Notification, User
 
 from ..service import notification_service
 

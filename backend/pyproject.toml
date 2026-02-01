@@ -75,8 +75,13 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.ruff.lint.per-file-ignores]
 # Allow unused imports in __init__.py files
 "__init__.py" = ["F401"]
-# Allow print statements and unused imports in test files
-"tests/**/*" = ["T20", "F401", "B017"]
+# Allow print statements, unused imports, and test-specific patterns in test files
+# SIM117: nested with statements are common for mock contexts
+# N806: PascalCase Mock* variables are idiomatic
+# B017: asserting bare Exception is OK in tests
+# SIM105: try-except-pass vs contextlib.suppress is stylistic
+"tests/**/*" = ["T20", "F401", "B017", "SIM117", "N806", "SIM105"]
+"**/tests/**/*" = ["T20", "F401", "B017", "SIM117", "N806", "SIM105"]
 # Allow camelCase in Pydantic models for API compatibility
 "modules/admin/presentation/api.py" = ["N815"]
 # Allow AppException naming (it's a base exception class)
