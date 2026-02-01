@@ -67,7 +67,7 @@ const createEmptyProfile = (): TutorProfile => createBaseProfile({
   education: '',
 } as unknown as TutorProfile);
 
-// Helper to create a 50% complete profile
+// Helper to create a 50% complete profile (3 out of 6 steps)
 const createHalfCompleteProfile = (): TutorProfile => createBaseProfile({
   title: 'Math Tutor',
   bio: 'I am an experienced math tutor with over 10 years of teaching experience in calculus, algebra, and statistics.',
@@ -75,7 +75,7 @@ const createHalfCompleteProfile = (): TutorProfile => createBaseProfile({
     { id: 1, subject_id: 1, subject_name: 'Math', proficiency_level: 'Expert', years_experience: 10 },
   ],
   availability: [] as TutorProfile['availabilities'],
-  hourly_rate_cents: 0,
+  hourly_rate_cents: 5000, // Added to complete Pricing step (3/6 = 50%)
   avatar_url: '',
   education: '',
 } as unknown as TutorProfile);

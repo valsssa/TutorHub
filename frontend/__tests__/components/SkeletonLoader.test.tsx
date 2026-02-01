@@ -148,19 +148,20 @@ describe('SkeletonLoader Component', () => {
   describe('BookingListSkeleton', () => {
     it('renders default 3 cards', () => {
       const { container } = render(<BookingListSkeleton />);
-      const cards = container.querySelectorAll('.animate-pulse');
+      // Count direct children (BookingCardSkeleton components) of the container
+      const cards = container.querySelectorAll('.space-y-4 > div');
       expect(cards.length).toBe(3);
     });
 
     it('renders custom number of cards', () => {
       const { container } = render(<BookingListSkeleton count={5} />);
-      const cards = container.querySelectorAll('.animate-pulse');
+      const cards = container.querySelectorAll('.space-y-4 > div');
       expect(cards.length).toBe(5);
     });
 
     it('renders 1 card when count is 1', () => {
       const { container } = render(<BookingListSkeleton count={1} />);
-      const cards = container.querySelectorAll('.animate-pulse');
+      const cards = container.querySelectorAll('.space-y-4 > div');
       expect(cards.length).toBe(1);
     });
 
@@ -200,13 +201,14 @@ describe('SkeletonLoader Component', () => {
   describe('MessageListSkeleton', () => {
     it('renders default 5 threads', () => {
       const { container } = render(<MessageListSkeleton />);
-      const threads = container.querySelectorAll('.animate-pulse');
+      // Count direct children (MessageThreadSkeleton components) of the container
+      const threads = container.querySelectorAll('.divide-y > div');
       expect(threads.length).toBe(5);
     });
 
     it('renders custom number of threads', () => {
       const { container } = render(<MessageListSkeleton count={3} />);
-      const threads = container.querySelectorAll('.animate-pulse');
+      const threads = container.querySelectorAll('.divide-y > div');
       expect(threads.length).toBe(3);
     });
 
@@ -284,13 +286,14 @@ describe('SkeletonLoader Component', () => {
   describe('NotificationListSkeleton', () => {
     it('renders default 5 notifications', () => {
       const { container } = render(<NotificationListSkeleton />);
-      const notifications = container.querySelectorAll('.animate-pulse');
+      // Count direct children (NotificationSkeleton components) of the container
+      const notifications = container.querySelectorAll('.divide-y > div');
       expect(notifications.length).toBe(5);
     });
 
     it('renders custom number of notifications', () => {
       const { container } = render(<NotificationListSkeleton count={3} />);
-      const notifications = container.querySelectorAll('.animate-pulse');
+      const notifications = container.querySelectorAll('.divide-y > div');
       expect(notifications.length).toBe(3);
     });
 

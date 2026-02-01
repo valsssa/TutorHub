@@ -612,12 +612,14 @@ describe("useMessaging", () => {
   });
 
   describe("thread read handling", () => {
-    it("handles thread_read event", () => {
-      const consoleSpy = jest.spyOn(console, "log").mockImplementation();
-
-      const { rerender } = renderHook(() =>
+    it("handles thread_read event gracefully", () => {
+      // thread_read events are handled silently (no errors, no side effects)
+      const { result, rerender } = renderHook(() =>
         useMessaging({ currentUserId: 1, selectedThreadId: 2 })
       );
+
+      // Capture initial state
+      const initialMessages = result.current.messages.length;
 
       mockLastMessage = {
         type: "thread_read",
@@ -626,11 +628,8 @@ describe("useMessaging", () => {
       };
       rerender();
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Thread read by user 2")
-      );
-
-      consoleSpy.mockRestore();
+      // Verify hook doesn't crash and messages remain unchanged
+      expect(result.current.messages.length).toBe(initialMessages);
     });
   });
 

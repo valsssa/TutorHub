@@ -1,6 +1,11 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
 
+// Polyfill structuredClone for Node.js < 17 (JSDOM doesn't have it)
+if (typeof structuredClone === 'undefined') {
+  globalThis.structuredClone = (obj) => JSON.parse(JSON.stringify(obj))
+}
+
 // Set required environment variables for tests (only for unit tests)
 if (!process.env.NEXT_PUBLIC_API_URL) {
   process.env.NEXT_PUBLIC_API_URL = 'http://localhost:8000'

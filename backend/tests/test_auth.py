@@ -12,7 +12,12 @@ class TestRegistration:
         """Test successful registration."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "newuser@test.com", "password": TEST_PASSWORD},
+            json={
+                "email": "newuser@test.com",
+                "password": TEST_PASSWORD,
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -25,7 +30,12 @@ class TestRegistration:
         """Test registration with duplicate email."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": student_user.email, "password": TEST_PASSWORD},
+            json={
+                "email": student_user.email,
+                "password": TEST_PASSWORD,
+                "first_name": "Duplicate",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_409_CONFLICT
         assert "already registered" in response.json()["detail"].lower()
@@ -34,7 +44,12 @@ class TestRegistration:
         """Test that email is case-insensitive."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": student_user.email.upper(), "password": TEST_PASSWORD},
+            json={
+                "email": student_user.email.upper(),
+                "password": TEST_PASSWORD,
+                "first_name": "Case",
+                "last_name": "Insensitive",
+            },
         )
         assert response.status_code == status.HTTP_409_CONFLICT
 
@@ -42,7 +57,12 @@ class TestRegistration:
         """Test registration with invalid email."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "notanemail", "password": TEST_PASSWORD},
+            json={
+                "email": "notanemail",
+                "password": TEST_PASSWORD,
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -50,7 +70,12 @@ class TestRegistration:
         """Test registration with password shorter than 8 characters."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "test@example.com", "password": "Ab1!"},
+            json={
+                "email": "test@example.com",
+                "password": "Ab1!",
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -58,7 +83,12 @@ class TestRegistration:
         """Test registration with password longer than 128 characters."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "test@example.com", "password": "Aa1!" + "a" * 125},
+            json={
+                "email": "test@example.com",
+                "password": "Aa1!" + "a" * 125,
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -66,7 +96,12 @@ class TestRegistration:
         """Test registration with password missing uppercase."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "test@example.com", "password": "testpass123!"},
+            json={
+                "email": "test@example.com",
+                "password": "testpass123!",
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -74,7 +109,12 @@ class TestRegistration:
         """Test registration with password missing lowercase."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "test@example.com", "password": "TESTPASS123!"},
+            json={
+                "email": "test@example.com",
+                "password": "TESTPASS123!",
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -82,7 +122,12 @@ class TestRegistration:
         """Test registration with password missing digit."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "test@example.com", "password": "TestPass!"},
+            json={
+                "email": "test@example.com",
+                "password": "TestPass!",
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -90,7 +135,12 @@ class TestRegistration:
         """Test registration with password missing special character."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "test@example.com", "password": "TestPass123"},
+            json={
+                "email": "test@example.com",
+                "password": "TestPass123",
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -98,7 +148,12 @@ class TestRegistration:
         """Test that email is normalized to lowercase."""
         response = client.post(
             "/api/v1/auth/register",
-            json={"email": "Test.User@EXAMPLE.COM", "password": TEST_PASSWORD},
+            json={
+                "email": "Test.User@EXAMPLE.COM",
+                "password": TEST_PASSWORD,
+                "first_name": "Test",
+                "last_name": "User",
+            },
         )
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -107,12 +162,26 @@ class TestRegistration:
 
     def test_register_missing_email(self, client):
         """Test registration without email."""
-        response = client.post("/api/v1/auth/register", json={"password": TEST_PASSWORD})
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "password": TEST_PASSWORD,
+                "first_name": "Test",
+                "last_name": "User",
+            },
+        )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_register_missing_password(self, client):
         """Test registration without password."""
-        response = client.post("/api/v1/auth/register", json={"email": "test@example.com"})
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": "test@example.com",
+                "first_name": "Test",
+                "last_name": "User",
+            },
+        )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 

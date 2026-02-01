@@ -207,7 +207,12 @@ class TestRateLimiting:
         for i in range(6):
             response = client.post(
                 "/api/v1/auth/register",
-                json={"email": f"user{i}@test.com", "password": "password123"},
+                json={
+                    "email": f"user{i}@test.com",
+                    "password": "Password123!",
+                    "first_name": "Test",
+                    "last_name": f"User{i}",
+                },
             )
 
             if i < 5:

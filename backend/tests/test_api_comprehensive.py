@@ -147,6 +147,8 @@ def test_register_student(client):
             "email": "newstudent@test.com",
             "password": "Password123!",  # Must meet complexity requirements
             "role": "student",
+            "first_name": "New",
+            "last_name": "Student",
         },
     )
     assert response.status_code == 201
@@ -164,6 +166,8 @@ def test_register_duplicate_email(client, student_user):
             "email": student_user.email,
             "password": "Password123!",  # Must meet complexity requirements
             "role": "student",
+            "first_name": "Duplicate",
+            "last_name": "User",
         },
     )
     # API returns 409 Conflict for duplicate emails

@@ -138,11 +138,14 @@ class CacheStore {
    * Extract resource type from URL
    */
   getResourceTypeFromUrl(url: string): ResourceType | null {
+    // Order matters: more specific patterns must come before less specific ones
     const patterns: [RegExp, ResourceType][] = [
-      [/\/users|\/auth\/me|\/profile/i, "users"],
+      [/\/admin/i, "admin"], // Must come before /users to match /admin/users
+      [/\/owner/i, "owner"], // Must come before /users to match /owner/users
       [/\/profile\/student|\/profile\/tutor/i, "profile"],
       [/\/tutors\/me/i, "tutor-profile"],
       [/\/tutors/i, "tutors"],
+      [/\/users|\/auth\/me|\/profile/i, "users"],
       [/\/bookings/i, "bookings"],
       [/\/reviews/i, "reviews"],
       [/\/messages/i, "messages"],
@@ -150,8 +153,6 @@ class CacheStore {
       [/\/packages/i, "packages"],
       [/\/favorites/i, "favorites"],
       [/\/subjects/i, "subjects"],
-      [/\/admin/i, "admin"],
-      [/\/owner/i, "owner"],
       [/\/availability/i, "availability"],
     ];
 
