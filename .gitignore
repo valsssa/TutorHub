@@ -134,3 +134,4 @@ mypy-report/
 # Pre-commit
 .pre-commit-cache/
 
+.worktrees/
