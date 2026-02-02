@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import and_, func, update
 from sqlalchemy.orm import Session, joinedload
 
-from models import Booking, StudentPackage, TutorPricingOption, TutorProfile
+from models import Booking, StudentPackage, TutorPricingOption
 
 from modules.packages.domain.entities import PricingOptionEntity, StudentPackageEntity
 from modules.packages.domain.value_objects import (

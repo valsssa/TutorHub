@@ -22,7 +22,7 @@ from .admin import AuditLog, Report
 from .auth import RegistrationFraudSignal, User, UserProfile
 from .base import Base, JSONEncodedArray
 from .bookings import Booking, SessionMaterial
-from .messages import Message, MessageAttachment
+from .messages import Conversation, Message, MessageAttachment
 from .notifications import Notification, NotificationAnalytics, NotificationPreferences
 from .payments import (
     Payment,
@@ -78,6 +78,7 @@ __all__ = [
     # Reviews
     "Review",
     # Messages
+    "Conversation",
     "Message",
     "MessageAttachment",
     # Notifications

@@ -9,11 +9,90 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from .base import Base
+
+
+class Conversation(Base):
+    """
+    Conversation between a student and tutor.
+
+    Tracks conversation metadata including unread counts for both participants.
+    Each conversation is unique per student-tutor pair (optionally per booking).
+    """
+
+    __tablename__ = "conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tutor_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    booking_id = Column(
+        Integer,
+        ForeignKey("bookings.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Activity tracking
+    last_message_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+    student_unread_count = Column(Integer, default=0, nullable=False)
+    tutor_unread_count = Column(Integer, default=0, nullable=False)
+
+    # Timestamps
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    # Unique constraint: one conversation per student-tutor pair (per booking if specified)
+    __table_args__ = (
+        UniqueConstraint(
+            "student_id",
+            "tutor_id",
+            "booking_id",
+            name="uq_conversation_participants",
+        ),
+    )
+
+    # Relationships
+    student = relationship(
+        "User",
+        foreign_keys=[student_id],
+        backref="student_conversations",
+    )
+    tutor = relationship(
+        "User",
+        foreign_keys=[tutor_id],
+        backref="tutor_conversations",
+    )
+    booking = relationship("Booking", backref="conversation")
+    messages = relationship(
+        "Message",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at.desc()",
+        lazy="dynamic",
+    )
 
 
 class Message(Base):
@@ -22,39 +101,73 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    sender_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    conversation_id = Column(
+        Integer,
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    sender_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     recipient_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True)
+    booking_id = Column(
+        Integer,
+        ForeignKey("bookings.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     message = Column(Text, nullable=False)
+    is_system_message = Column(Boolean, default=False, nullable=False)
     is_read = Column(Boolean, default=False, nullable=False)
     read_at = Column(TIMESTAMP(timezone=True), nullable=True)
     is_edited = Column(Boolean, default=False, nullable=False)
     edited_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+    deleted_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    attachment_url = Column(String(500), nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
     updated_at = Column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
-        # No onupdate - updated_at is set in application code
         nullable=False,
     )
 
     # Relationships
-    sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
-    recipient = relationship("User", foreign_keys=[recipient_id], back_populates="received_messages")
+    conversation = relationship("Conversation", back_populates="messages")
+    sender = relationship(
+        "User",
+        foreign_keys=[sender_id],
+        back_populates="sent_messages",
+    )
+    recipient = relationship(
+        "User",
+        foreign_keys=[recipient_id],
+        back_populates="received_messages",
+    )
     booking = relationship("Booking", back_populates="messages")
     deleter = relationship("User", foreign_keys=[deleted_by])
     attachments = relationship(
         "MessageAttachment",
         back_populates="message",
         cascade="all, delete-orphan",
-        lazy="select",  # Load on access; use selectinload() at query time for eager loading
+        lazy="select",
     )
 
 
