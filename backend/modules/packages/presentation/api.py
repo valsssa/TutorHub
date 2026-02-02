@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from core.audit import AuditLogger
 from core.dependencies import get_current_student_user, get_current_user
+from core.query_helpers import get_or_404, get_with_options_or_404
 from core.rate_limiting import limiter
 from core.transactions import atomic_operation
 from database import get_db
@@ -88,22 +89,17 @@ async def purchase_package(
     - Agreement terms they consented to
     """
     # Verify tutor and pricing option exist
-    tutor = (
-        db.query(TutorProfile)
-        .filter(
-            TutorProfile.id == purchase_data.tutor_profile_id,
-            TutorProfile.is_approved.is_(True),
-        )
-        .first()
+    tutor = get_or_404(
+        db, TutorProfile,
+        {"id": purchase_data.tutor_profile_id, "is_approved": True},
+        detail="Tutor not found or not approved"
     )
-    if not tutor:
-        raise HTTPException(status_code=404, detail="Tutor not found or not approved")
 
-    pricing_option = (
-        db.query(TutorPricingOption).filter(TutorPricingOption.id == purchase_data.pricing_option_id).first()
+    pricing_option = get_or_404(
+        db, TutorPricingOption,
+        {"id": purchase_data.pricing_option_id},
+        detail="Pricing option not found"
     )
-    if not pricing_option:
-        raise HTTPException(status_code=404, detail="Pricing option not found")
 
     # Verify pricing option belongs to tutor
     if pricing_option.tutor_profile_id != purchase_data.tutor_profile_id:
@@ -260,7 +256,7 @@ async def use_package_credit(
     """
     # First, acquire a lock on the package row to prevent race conditions
     # Also eagerly load the pricing_option to check extend_on_use
-    package = (
+    package_query = (
         db.query(StudentPackage)
         .options(joinedload(StudentPackage.pricing_option))
         .filter(
@@ -268,11 +264,8 @@ async def use_package_credit(
             StudentPackage.student_id == current_user.id,
         )
         .with_for_update(nowait=False)
-        .first()
     )
-
-    if not package:
-        raise HTTPException(status_code=404, detail="Package not found")
+    package = get_with_options_or_404(package_query, detail="Package not found")
 
     # Check package validity (includes expiration check)
     is_valid, error_message = PackageExpirationService.check_package_validity(package)

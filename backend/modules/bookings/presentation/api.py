@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from core.dependencies import get_current_tutor_profile, get_current_user
+from core.dependencies import StudentUser, get_current_tutor_profile, get_current_user
+from core.query_helpers import get_or_404, get_with_options_or_404
 from core.transactions import atomic_operation
 from database import get_db
 from models import Booking, TutorProfile, User
@@ -128,13 +129,9 @@ def _get_booking_or_404(
     return booking
 
 
-def _require_role(current_user: User, role: str) -> None:
-    """Ensure user has specific role."""
-    if current_user.role != role:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Only {role}s can access this endpoint",
-        )
+# NOTE: The _require_role helper has been removed in favor of using
+# StudentUser/TutorUser/AdminUser type aliases from core.dependencies
+# which automatically enforce role requirements via FastAPI dependency injection.
 
 
 # ============================================================================
@@ -151,7 +148,7 @@ def _require_role(current_user: User, role: str) -> None:
 async def create_booking(
     request: BookingCreateRequest,
     response: Response,
-    current_user: User = Depends(get_current_user),
+    current_user: StudentUser,
     db: Session = Depends(get_db),
 ):
     """
@@ -163,7 +160,6 @@ async def create_booking(
     - Auto-confirms if tutor has auto_confirm enabled
     - Deducts package credit if package_id provided
     """
-    _require_role(current_user, "student")
 
     try:
         from core.soft_delete import filter_active
@@ -438,7 +434,7 @@ async def reschedule_booking(
     booking_id: int,
     request: BookingRescheduleRequest,
     response: Response,
-    current_user: User = Depends(get_current_user),
+    current_user: StudentUser,
     db: Session = Depends(get_db),
 ):
     """
@@ -447,22 +443,11 @@ async def reschedule_booking(
     - Must be >= 12h before original time
     - Checks new time for tutor availability conflicts
     """
-    _require_role(current_user, "student")
-
-    booking = (
-        db.query(Booking)
-        .filter(
-            Booking.id == booking_id,
-            Booking.student_id == current_user.id,
-        )
-        .first()
+    booking = get_or_404(
+        db, Booking,
+        {"id": booking_id, "student_id": current_user.id},
+        detail="Booking not found"
     )
-
-    if not booking:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Booking not found",
-        )
 
     try:
         service = BookingService(db)
@@ -817,7 +802,7 @@ async def mark_tutor_no_show(
     booking_id: int,
     request: MarkNoShowRequest,
     response: Response,
-    current_user: User = Depends(get_current_user),
+    current_user: StudentUser,
     db: Session = Depends(get_db),
 ):
     """
@@ -832,23 +817,12 @@ async def mark_tutor_no_show(
     - Uses atomic_operation to ensure all state changes commit together or rollback
     - State machine updates are atomic with package credit restoration if needed
     """
-    _require_role(current_user, "student")
-
     # First verify the booking exists and belongs to this student (without lock)
-    booking = (
-        db.query(Booking)
-        .filter(
-            Booking.id == booking_id,
-            Booking.student_id == current_user.id,
-        )
-        .first()
+    booking = get_or_404(
+        db, Booking,
+        {"id": booking_id, "student_id": current_user.id},
+        detail="Booking not found"
     )
-
-    if not booking:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Booking not found",
-        )
 
     try:
         # Use atomic_operation to ensure all state changes commit together

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_student_user
+from core.query_helpers import exists_or_409, get_by_id_or_404, get_or_404
 from core.rate_limiting import limiter
 from database import get_db
 from models import FavoriteTutor, StudentProfile, TutorProfile, User
@@ -154,24 +155,14 @@ async def add_favorite_tutor(
         logger.info(f"Adding favorite tutor {favorite_data.tutor_profile_id} for user: {current_user.id}")
 
         # Check if tutor profile exists
-        tutor_profile = db.query(TutorProfile).filter(TutorProfile.id == favorite_data.tutor_profile_id).first()
-        if not tutor_profile:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Tutor profile not found",
-            )
+        get_by_id_or_404(db, TutorProfile, favorite_data.tutor_profile_id, detail="Tutor profile not found")
 
         # Check if already favorited
-        existing = db.query(FavoriteTutor).filter(
-            FavoriteTutor.student_id == current_user.id,
-            FavoriteTutor.tutor_profile_id == favorite_data.tutor_profile_id
-        ).first()
-
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Tutor is already in favorites",
-            )
+        exists_or_409(
+            db, FavoriteTutor,
+            {"student_id": current_user.id, "tutor_profile_id": favorite_data.tutor_profile_id},
+            detail="Tutor is already in favorites"
+        )
 
         # Create favorite
         favorite = FavoriteTutor(
@@ -212,16 +203,11 @@ async def remove_favorite_tutor(
         logger.info(f"Removing favorite tutor {tutor_profile_id} for user: {current_user.id}")
 
         # Find and delete the favorite
-        favorite = db.query(FavoriteTutor).filter(
-            FavoriteTutor.student_id == current_user.id,
-            FavoriteTutor.tutor_profile_id == tutor_profile_id
-        ).first()
-
-        if not favorite:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Favorite tutor not found",
-            )
+        favorite = get_or_404(
+            db, FavoriteTutor,
+            {"student_id": current_user.id, "tutor_profile_id": tutor_profile_id},
+            detail="Favorite tutor not found"
+        )
 
         db.delete(favorite)
         db.commit()
@@ -255,16 +241,11 @@ async def check_favorite_status(
     try:
         logger.debug(f"Checking favorite status for tutor {tutor_profile_id}, user: {current_user.id}")
 
-        favorite = db.query(FavoriteTutor).filter(
-            FavoriteTutor.student_id == current_user.id,
-            FavoriteTutor.tutor_profile_id == tutor_profile_id
-        ).first()
-
-        if not favorite:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Tutor is not in favorites",
-            )
+        favorite = get_or_404(
+            db, FavoriteTutor,
+            {"student_id": current_user.id, "tutor_profile_id": tutor_profile_id},
+            detail="Tutor is not in favorites"
+        )
 
         return favorite
 

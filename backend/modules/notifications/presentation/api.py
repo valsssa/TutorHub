@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_user
+from core.query_helpers import get_or_404
 from core.rate_limiting import limiter
 from database import get_db
 from models import Notification, User
@@ -230,14 +231,11 @@ async def delete_notification(
     db: Session = Depends(get_db),
 ):
     """Permanently delete a notification."""
-    notification = (
-        db.query(Notification)
-        .filter(Notification.id == notification_id, Notification.user_id == current_user.id)
-        .first()
+    notification = get_or_404(
+        db, Notification,
+        {"id": notification_id, "user_id": current_user.id},
+        detail="Notification not found"
     )
-
-    if not notification:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
 
     db.delete(notification)
     db.commit()

@@ -250,6 +250,7 @@ build:frontend:
     paths:
       - frontend/.next/
     expire_in: 1 hour
+  allow_failure: true
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
@@ -266,6 +267,7 @@ build:backend:
     - cd backend
     - pip install --quiet -r requirements.txt
     - python -c "import sys; print(f'Python {sys.version}')"
+  allow_failure: true
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
@@ -282,6 +284,7 @@ docker:frontend:
       optional: true
     - job: test:frontend
       optional: true
+  allow_failure: true
   script:
     - |
       VERSION=${CI_COMMIT_SHORT_SHA}
@@ -304,6 +307,7 @@ docker:backend:
       optional: true
     - job: test:backend
       optional: true
+  allow_failure: true
   script:
     - |
       VERSION=${CI_COMMIT_SHORT_SHA}

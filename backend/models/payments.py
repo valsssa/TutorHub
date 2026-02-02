@@ -1,4 +1,4 @@
-"""Payment, refund, and payout models."""
+"""Payment, refund, payout, wallet and transaction models."""
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -7,9 +7,11 @@ from sqlalchemy import (
     Column,
     Date,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -151,4 +153,84 @@ class Payout(Base):
             name="valid_payout_status",
         ),
         CheckConstraint("period_start <= period_end", name="valid_payout_period"),
+    )
+
+
+class Wallet(Base):
+    """User wallet for storing credits and making payments.
+
+    Each user can have one wallet per currency. The wallet tracks
+    available balance and pending balance (funds in transit).
+    """
+
+    __tablename__ = "wallets"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    balance_cents = Column(Integer, default=0, nullable=False)
+    pending_cents = Column(Integer, default=0, nullable=False)
+    currency = Column(String(3), default="USD", nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    transactions = relationship(
+        "WalletTransaction",
+        back_populates="wallet",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "currency", name="unique_user_wallet_per_currency"),
+        CheckConstraint("balance_cents >= 0", name="non_negative_wallet_balance"),
+        CheckConstraint("pending_cents >= 0", name="non_negative_pending_balance"),
+        Index("ix_wallets_user_id", "user_id"),
+    )
+
+
+class WalletTransaction(Base):
+    """Transaction record for wallet operations.
+
+    Tracks all deposits, withdrawals, transfers, refunds, payouts,
+    payments, and fees applied to a wallet.
+    """
+
+    __tablename__ = "wallet_transactions"
+
+    id = Column(Integer, primary_key=True)
+    wallet_id = Column(
+        Integer,
+        ForeignKey("wallets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    type = Column(String(20), nullable=False)
+    amount_cents = Column(Integer, nullable=False)
+    currency = Column(String(3), default="USD", nullable=False)
+    status = Column(String(20), default="PENDING", nullable=False)
+    description = Column(Text, nullable=True)
+    reference_id = Column(String(255), nullable=True, unique=True)
+    transaction_metadata = Column(JSONType, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # Relationships
+    wallet = relationship("Wallet", back_populates="transactions")
+
+    __table_args__ = (
+        CheckConstraint(
+            "type IN ('DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'REFUND', 'PAYOUT', 'PAYMENT', 'FEE')",
+            name="valid_transaction_type",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING', 'COMPLETED', 'FAILED', 'CANCELLED')",
+            name="valid_transaction_status",
+        ),
+        Index("ix_wallet_transactions_wallet_id", "wallet_id"),
+        Index("ix_wallet_transactions_created_at", "created_at"),
+        Index("ix_wallet_transactions_reference_id", "reference_id"),
     )

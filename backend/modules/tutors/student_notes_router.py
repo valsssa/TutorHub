@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_tutor_user
+from core.query_helpers import get_or_404
 from core.rate_limiting import limiter
 from database import get_db
 from models import StudentNote, User
@@ -28,12 +29,7 @@ async def get_student_note(
     """Get notes for a specific student (tutor only)."""
     try:
         # Verify student exists
-        student = db.query(User).filter(User.id == student_id, User.role == "student").first()
-        if not student:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Student not found",
-            )
+        get_or_404(db, User, {"id": student_id, "role": "student"}, detail="Student not found")
 
         # Get or create note
         note = (
@@ -130,20 +126,11 @@ async def delete_student_note(
 ):
     """Delete notes for a specific student (tutor only)."""
     try:
-        note = (
-            db.query(StudentNote)
-            .filter(
-                StudentNote.tutor_id == current_user.id,
-                StudentNote.student_id == student_id,
-            )
-            .first()
+        note = get_or_404(
+            db, StudentNote,
+            {"tutor_id": current_user.id, "student_id": student_id},
+            detail="Student note not found"
         )
-
-        if not note:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Student note not found",
-            )
 
         db.delete(note)
         db.commit()

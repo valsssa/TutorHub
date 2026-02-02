@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from core.audit import AuditLogger
 from core.cache import cache_with_ttl, invalidate_cache
 from core.dependencies import get_current_student_user
+from core.query_helpers import get_by_id_or_404
 from core.rate_limiting import limiter
 from core.sanitization import sanitize_text_input
 from database import get_db
@@ -49,9 +50,7 @@ async def create_review(
     """Create review for completed booking."""
     try:
         # Verify booking exists and belongs to student
-        booking = db.query(Booking).filter(Booking.id == review_data.booking_id).first()
-        if not booking:
-            raise HTTPException(status_code=404, detail="Booking not found")
+        booking = get_by_id_or_404(db, Booking, review_data.booking_id, detail="Booking not found")
         if booking.student_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized")
         if booking.session_state != "ENDED" or booking.session_outcome != "COMPLETED":
@@ -191,9 +190,7 @@ async def get_tutor_reviews(
 ):
     """Get all reviews for a tutor with pagination and caching."""
     # Verify tutor exists
-    tutor = db.query(TutorProfile).filter(TutorProfile.id == tutor_id).first()
-    if not tutor:
-        raise HTTPException(status_code=404, detail="Tutor not found")
+    get_by_id_or_404(db, TutorProfile, tutor_id, detail="Tutor not found")
 
     try:
         reviews = _get_cached_tutor_reviews(db, tutor_id, page, page_size)

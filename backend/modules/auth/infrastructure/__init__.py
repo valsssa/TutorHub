@@ -1,5 +1,8 @@
-"""Auth infrastructure layer."""
+"""Auth infrastructure layer.
 
-from .repository import UserRepository
+Provides SQLAlchemy implementations of auth domain repository protocols.
+"""
 
-__all__ = ["UserRepository"]
+from .repository import UserRepository, UserRepositoryImpl
+
+__all__ = ["UserRepository", "UserRepositoryImpl"]

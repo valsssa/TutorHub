@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
 from core.config import settings
-from core.dependencies import CurrentUser, DatabaseSession, TutorUser
+from core.dependencies import AdminUser, CurrentUser, DatabaseSession, TutorUser
 from core.rate_limiting import limiter
 from models import Booking
 
@@ -489,19 +489,11 @@ async def delete_meeting(
 @limiter.limit("10/minute")
 async def auto_create_meetings(
     request: Request,
-    current_user: CurrentUser,
+    current_user: AdminUser,
     db: DatabaseSession,
     hours_ahead: Annotated[int, Query(ge=1, le=72)] = 24,
 ):
     """Auto-create meetings for upcoming confirmed bookings."""
-
-    from core.config import Roles
-
-    if not Roles.has_admin_access(current_user.role):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
 
     # Find confirmed bookings without meeting URL in the next X hours
     cutoff = datetime.now(UTC) + timedelta(hours=hours_ahead)

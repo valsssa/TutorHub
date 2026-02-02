@@ -49,7 +49,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
-from core.dependencies import CurrentUser, DatabaseSession
+from core.dependencies import AdminUser, CurrentUser, DatabaseSession
 from core.payment_reliability import (
     PaymentServiceUnavailableError,
     get_payment_reliability_status,
@@ -869,7 +869,7 @@ async def _handle_account_updated(db: Session, account: dict):
 )
 async def request_refund(
     request: RefundRequest,
-    current_user: CurrentUser,
+    current_user: AdminUser,
     db: DatabaseSession,
 ) -> RefundResponse:
     """
@@ -881,14 +881,6 @@ async def request_refund(
     Currently admin-only. In the future, may allow automatic refunds
     based on cancellation policy.
     """
-    from core.config import Roles
-
-    # Admin only for now
-    if not Roles.has_admin_access(current_user.role):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required for refunds",
-        )
 
     # Get booking
     booking = db.query(Booking).filter(Booking.id == request.booking_id).first()
@@ -1274,18 +1266,9 @@ Useful for monitoring and debugging payment issues.
     """,
 )
 async def get_reliability_status(
-    current_user: CurrentUser,
+    current_user: AdminUser,
 ) -> dict[str, Any]:
     """Get payment reliability status for monitoring."""
-    from core.config import Roles
-
-    # Admin only
-    if not Roles.has_admin_access(current_user.role):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
-
     return get_payment_reliability_status()
 
 
@@ -1300,19 +1283,10 @@ indicate processing failures or issues.
     """,
 )
 async def get_problematic_webhooks(
-    current_user: CurrentUser,
+    current_user: AdminUser,
     min_attempts: Annotated[int, Query(ge=2, le=10)] = 3,
 ) -> list[dict[str, Any]]:
     """Get webhooks that have been retried multiple times."""
-    from core.config import Roles
-
-    # Admin only
-    if not Roles.has_admin_access(current_user.role):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
-
     problematic = webhook_retry_tracker.get_problematic_events(min_attempts)
 
     return [

@@ -160,6 +160,77 @@ The legacy APScheduler implementation in `core/scheduler.py` and `modules/bookin
 
 Schema in `database/init.sql`. Migrations in `database/migrations/` (34+ SQL files). Uses soft delete with `deleted_at` timestamps on most tables.
 
+### Clean Architecture (Port/Adapter Pattern)
+
+All external services are accessed via ports (interfaces) and adapters (implementations):
+
+**Ports** (`core/ports/`): Protocol interfaces defining contracts
+- `PaymentPort` - Stripe operations (checkout, refunds, webhooks)
+- `EmailPort` - Email sending (Brevo/SendinBlue)
+- `StoragePort` - File storage (MinIO/S3)
+- `CachePort` - Caching and distributed locks (Redis)
+- `MeetingPort` - Video meetings (Zoom, Google Meet)
+- `CalendarPort` - Calendar operations (Google Calendar)
+
+**Adapters** (`core/adapters/`): Real implementations wrapping external SDKs
+- `StripeAdapter`, `BrevoAdapter`, `MinIOAdapter`, `RedisAdapter`, `ZoomAdapter`, `GoogleCalendarAdapter`
+
+**Fakes** (`core/fakes/`): In-memory implementations for testing
+- `FakePayment`, `FakeEmail`, `FakeStorage`, `FakeCache`, `FakeMeeting`, `FakeCalendar`
+
+**Usage in routes**:
+```python
+from core.dependencies import get_payment_port
+
+@router.post("/checkout")
+async def create_checkout(
+    payment: Annotated[PaymentPort, Depends(get_payment_port)]
+):
+    result = await payment.create_checkout_session(...)
+```
+
+### Domain Layer Structure
+
+Each module's `domain/` directory contains:
+- `entities.py` - Pure dataclasses (no SQLAlchemy)
+- `value_objects.py` - Immutable validated primitives
+- `repositories.py` - Protocol interfaces for data access
+- `exceptions.py` - Domain-specific exceptions
+
+**Example**:
+```python
+# domain/entities.py
+@dataclass
+class BookingEntity:
+    id: int | None
+    student_id: int
+    session_state: SessionState
+    # ... pure data, no ORM
+
+# domain/repositories.py
+class BookingRepository(Protocol):
+    def get_by_id(self, booking_id: int) -> BookingEntity | None: ...
+    def create(self, booking: BookingEntity) -> BookingEntity: ...
+```
+
+### Domain Events
+
+Centralized event dispatcher for cross-module communication:
+```python
+from core.events import event_dispatcher, BookingCreatedEvent
+
+# Publish event
+await event_dispatcher.publish(BookingCreatedEvent(
+    booking_id=123,
+    student_id=456,
+))
+
+# Register handler
+@event_dispatcher.on("BookingCreatedEvent")
+async def handle_booking_created(event: BookingCreatedEvent):
+    # Send notification, update stats, etc.
+```
+
 ## Key Patterns
 
 ### Protected Backend Endpoints
@@ -209,10 +280,26 @@ All API endpoints are versioned under `/api/v1`:
 - snake_case for variables/functions, PascalCase for classes
 - Run full test suite before committing
 
+## Architecture Verification
+
+Run the architecture verification script to check clean architecture compliance:
+```bash
+./backend/scripts/verify-architecture.sh
+```
+
+Checks performed:
+- No SQLAlchemy imports in domain layers
+- No FastAPI imports in domain layers
+- No ORM model imports in domain layers
+- External SDKs only imported in adapters
+
 ## Documentation
 
 - [Project spec](project_spec.md) - Full requirements, API specs, tech details
 - [Architecture](docs/architecture.md) - System design and data flow
+- [Clean Architecture Guide](docs/architecture/clean-architecture-guide.md) - Port/adapter, repository, testing patterns
+- [ADR: Clean Architecture](docs/architecture/decisions/011-clean-architecture.md) - Decision record
+- [Modules README](backend/modules/README.md) - Module structure templates
 - [Changelog](docs/changelog.md) - Version history
 - [Project status](docs/project_status.md) - Current progress
 - Update files in the docs folder after major milestones and major additions to the project

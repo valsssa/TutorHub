@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from core.config import Roles
 from core.dependencies import DatabaseSession, OwnerUser
+from core.soft_delete import filter_active
 from models import Booking, TutorProfile, User
 
 router = APIRouter(
@@ -231,36 +232,29 @@ def _calculate_growth_metrics(db: Session, period_start: datetime, period_days: 
     """Calculate growth metrics."""
 
     # User counts
-    total_users = db.query(User).filter(User.deleted_at.is_(None)).count()
+    total_users = filter_active(db.query(User), User).count()
     new_users = (
-        db.query(User)
-        .filter(
-            User.created_at >= period_start,
-            User.deleted_at.is_(None),
-        )
+        filter_active(db.query(User), User)
+        .filter(User.created_at >= period_start)
         .count()
     )
 
     # Role breakdown
-    total_tutors = db.query(User).filter(User.role == Roles.TUTOR, User.deleted_at.is_(None)).count()
+    total_tutors = filter_active(db.query(User), User).filter(User.role == Roles.TUTOR).count()
     approved_tutors = (
-        db.query(TutorProfile)
-        .filter(
-            TutorProfile.is_approved.is_(True),
-            TutorProfile.deleted_at.is_(None),
-        )
+        filter_active(db.query(TutorProfile), TutorProfile)
+        .filter(TutorProfile.is_approved.is_(True))
         .count()
     )
-    total_students = db.query(User).filter(User.role == Roles.STUDENT, User.deleted_at.is_(None)).count()
+    total_students = filter_active(db.query(User), User).filter(User.role == Roles.STUDENT).count()
 
     # Booking metrics
-    total_bookings = db.query(Booking).filter(Booking.deleted_at.is_(None)).count()
+    total_bookings = filter_active(db.query(Booking), Booking).count()
     completed_bookings = (
-        db.query(Booking)
+        filter_active(db.query(Booking), Booking)
         .filter(
             Booking.session_state == "ENDED",
             Booking.session_outcome == "COMPLETED",
-            Booking.deleted_at.is_(None),
         )
         .count()
     )
@@ -285,27 +279,20 @@ def _calculate_health_metrics(db: Session) -> MarketplaceHealth:
 
     # Average tutor rating
     avg_rating = (
-        db.query(func.avg(TutorProfile.average_rating))
-        .filter(
-            TutorProfile.is_approved.is_(True),
-            TutorProfile.deleted_at.is_(None),
-        )
+        filter_active(db.query(func.avg(TutorProfile.average_rating)), TutorProfile)
+        .filter(TutorProfile.is_approved.is_(True))
         .scalar()
     )
 
     # Tutors with bookings
     approved_tutors = (
-        db.query(TutorProfile)
-        .filter(
-            TutorProfile.is_approved.is_(True),
-            TutorProfile.deleted_at.is_(None),
-        )
+        filter_active(db.query(TutorProfile), TutorProfile)
+        .filter(TutorProfile.is_approved.is_(True))
         .count()
     )
 
     tutors_with_bookings = (
-        db.query(func.count(func.distinct(Booking.tutor_profile_id)))
-        .filter(Booking.deleted_at.is_(None))
+        filter_active(db.query(func.count(func.distinct(Booking.tutor_profile_id))), Booking)
         .scalar()
     )
 
@@ -315,14 +302,12 @@ def _calculate_health_metrics(db: Session) -> MarketplaceHealth:
 
     # Repeat booking rate
     total_students_with_bookings = (
-        db.query(func.count(func.distinct(Booking.student_id)))
-        .filter(Booking.deleted_at.is_(None))
+        filter_active(db.query(func.count(func.distinct(Booking.student_id))), Booking)
         .scalar()
     )
 
     repeat_students = (
-        db.query(Booking.student_id)
-        .filter(Booking.deleted_at.is_(None))
+        filter_active(db.query(Booking.student_id), Booking)
         .group_by(Booking.student_id)
         .having(func.count(Booking.id) > 1)
         .count()
@@ -335,23 +320,17 @@ def _calculate_health_metrics(db: Session) -> MarketplaceHealth:
     )
 
     # Cancellation and no-show rates
-    total_bookings = db.query(Booking).filter(Booking.deleted_at.is_(None)).count()
+    total_bookings = filter_active(db.query(Booking), Booking).count()
 
     cancelled = (
-        db.query(Booking)
-        .filter(
-            Booking.session_state == "CANCELLED",
-            Booking.deleted_at.is_(None),
-        )
+        filter_active(db.query(Booking), Booking)
+        .filter(Booking.session_state == "CANCELLED")
         .count()
     )
 
     no_shows = (
-        db.query(Booking)
-        .filter(
-            Booking.session_outcome.in_(["NO_SHOW_STUDENT", "NO_SHOW_TUTOR"]),
-            Booking.deleted_at.is_(None),
-        )
+        filter_active(db.query(Booking), Booking)
+        .filter(Booking.session_outcome.in_(["NO_SHOW_STUDENT", "NO_SHOW_TUTOR"]))
         .count()
     )
 

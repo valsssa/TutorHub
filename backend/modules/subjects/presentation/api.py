@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.cache import cache_with_ttl, invalidate_cache
 from core.dependencies import get_current_admin_user
+from core.query_helpers import get_by_id_or_404
 from core.rate_limiting import limiter
 from core.sanitization import sanitize_text_input
 from database import get_db
@@ -93,9 +94,7 @@ async def update_subject(
     db: Session = Depends(get_db),
 ):
     """Update subject (admin only)."""
-    subject = db.query(Subject).filter(Subject.id == subject_id).first()
-    if not subject:
-        raise HTTPException(status_code=404, detail="Subject not found")
+    subject = get_by_id_or_404(db, Subject, subject_id, detail="Subject not found")
 
     # Sanitize inputs
     if name is not None:
@@ -134,9 +133,7 @@ async def delete_subject(
     db: Session = Depends(get_db),
 ):
     """Soft delete subject (admin only) - sets is_active to False."""
-    subject = db.query(Subject).filter(Subject.id == subject_id).first()
-    if not subject:
-        raise HTTPException(status_code=404, detail="Subject not found")
+    subject = get_by_id_or_404(db, Subject, subject_id, detail="Subject not found")
 
     # Soft delete instead of hard delete
     subject.is_active = False

@@ -205,3 +205,93 @@ TutorUser = Annotated[User, Depends(get_current_tutor_user)]
 StudentUser = Annotated[User, Depends(get_current_student_user)]
 DatabaseSession = Annotated[Session, Depends(get_db)]
 CurrentTutorProfile = Annotated["TutorProfile", Depends(get_current_tutor_profile)]
+
+
+# =============================================================================
+# Port Factory Functions (Clean Architecture)
+# =============================================================================
+# These factory functions provide port implementations with environment-based
+# switching between real adapters and fakes for testing.
+
+_use_fakes = False  # Set to True in tests via set_use_fakes()
+
+
+def set_use_fakes(use_fakes: bool) -> None:
+    """Configure whether to use fake implementations (for testing)."""
+    global _use_fakes
+    _use_fakes = use_fakes
+
+
+def get_payment_port():
+    """Get the payment port implementation."""
+    if _use_fakes:
+        from core.fakes import FakePayment
+        return FakePayment()
+    from core.adapters import StripeAdapter
+    return StripeAdapter()
+
+
+def get_email_port():
+    """Get the email port implementation."""
+    if _use_fakes:
+        from core.fakes import FakeEmail
+        return FakeEmail()
+    from core.adapters import BrevoAdapter
+    return BrevoAdapter()
+
+
+def get_storage_port():
+    """Get the storage port implementation."""
+    if _use_fakes:
+        from core.fakes import FakeStorage
+        return FakeStorage()
+    from core.adapters import MinIOAdapter
+    return MinIOAdapter()
+
+
+def get_cache_port():
+    """Get the cache port implementation."""
+    if _use_fakes:
+        from core.fakes import FakeCache
+        return FakeCache()
+    from core.adapters import RedisAdapter
+    return RedisAdapter()
+
+
+def get_meeting_port(provider: str = "zoom"):
+    """Get the meeting port implementation.
+
+    Args:
+        provider: Meeting provider ("zoom" or "google_meet")
+    """
+    if _use_fakes:
+        from core.fakes import FakeMeeting
+        from core.ports.meeting import MeetingProvider
+        fake = FakeMeeting()
+        if provider == "google_meet":
+            fake.provider = MeetingProvider.GOOGLE_MEET
+        return fake
+    if provider == "zoom":
+        from core.adapters import ZoomAdapter
+        return ZoomAdapter()
+    # Future: add GoogleMeetAdapter when implemented
+    from core.adapters import ZoomAdapter
+    return ZoomAdapter()
+
+
+def get_calendar_port():
+    """Get the calendar port implementation."""
+    if _use_fakes:
+        from core.fakes import FakeCalendar
+        return FakeCalendar()
+    from core.adapters import GoogleCalendarAdapter
+    return GoogleCalendarAdapter()
+
+
+# Type aliases for port dependencies
+PaymentPort = Annotated["StripeAdapter", Depends(get_payment_port)]
+EmailPort = Annotated["BrevoAdapter", Depends(get_email_port)]
+StoragePort = Annotated["MinIOAdapter", Depends(get_storage_port)]
+CachePort = Annotated["RedisAdapter", Depends(get_cache_port)]
+MeetingPort = Annotated["ZoomAdapter", Depends(get_meeting_port)]
+CalendarPort = Annotated["GoogleCalendarAdapter", Depends(get_calendar_port)]

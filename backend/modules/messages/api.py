@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from core.avatar_storage import build_avatar_url
 from core.dependencies import CurrentUser
 from core.exceptions import ValidationError
+from core.query_helpers import get_by_id_or_404, get_or_404
 from core.message_storage import (
     delete_message_attachment,
     generate_presigned_url,
@@ -584,22 +585,14 @@ async def get_attachment_download_url(
     - Preview document
     """
     # 1. Get attachment with message context
-    attachment = (
-        db.query(MessageAttachment)
-        .filter(
-            MessageAttachment.id == attachment_id,
-            MessageAttachment.deleted_at.is_(None),
-        )
-        .first()
+    attachment = get_or_404(
+        db, MessageAttachment,
+        {"id": attachment_id},
+        detail="Attachment not found"
     )
 
-    if not attachment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
-
     # 2. Access control: only sender or recipient can download
-    message = db.query(Message).filter(Message.id == attachment.message_id).first()
-    if not message:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    message = get_by_id_or_404(db, Message, attachment.message_id, detail="Message not found")
 
     is_authorized = current_user.id in {message.sender_id, message.recipient_id}
     if not is_authorized:
@@ -699,13 +692,7 @@ async def get_user_basic_info(
     try:
         from models import User
 
-        user = db.query(User).filter(User.id == user_id, User.is_active).first()
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+        user = get_or_404(db, User, {"id": user_id, "is_active": True}, detail="User not found")
 
         avatar_key = getattr(user, "avatar_key", None)
         return UserBasicInfoResponse(

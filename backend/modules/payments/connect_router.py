@@ -17,7 +17,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
-from core.dependencies import CurrentUser, DatabaseSession, TutorUser
+from core.dependencies import AdminUser, CurrentUser, DatabaseSession, TutorUser
 from core.stripe_client import (
     create_connect_account,
     create_connect_account_link,
@@ -559,18 +559,11 @@ Use this to:
 )
 async def admin_update_payout_settings(
     request: PayoutSettingsUpdateRequest,
-    current_user: CurrentUser,
+    current_user: AdminUser,
     db: DatabaseSession,
 ) -> PayoutSettingsUpdateResponse:
     """Update payout settings for a specific tutor (admin only)."""
-    from core.config import Roles, settings
-
-    # Admin only
-    if not Roles.has_admin_access(current_user.role):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
+    from core.config import settings
 
     # Get tutor profile
     tutor_profile = (
@@ -642,19 +635,12 @@ large numbers of tutors. Consider running during low-traffic periods.
     """,
 )
 async def admin_batch_update_payout_settings(
-    current_user: CurrentUser,
+    current_user: AdminUser,
     db: DatabaseSession,
     delay_days: Annotated[int | None, Query(description="Override delay days (None uses system default)")] = None,
 ) -> BatchPayoutSettingsResponse:
     """Batch update payout settings for all tutors (admin only)."""
-    from core.config import Roles, settings
-
-    # Admin only
-    if not Roles.has_admin_access(current_user.role):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
+    from core.config import settings
 
     # Determine delay days
     effective_delay = delay_days if delay_days is not None else settings.STRIPE_PAYOUT_DELAY_DAYS
