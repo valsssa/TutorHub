@@ -1,0 +1,39 @@
+# =============================================================================
+# Frontend V2 Docker Compose
+# =============================================================================
+# Usage:
+#   docker compose up -d                    # Start frontend-v2 (dev mode)
+#   docker compose up -d --build            # Rebuild and start
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d  # Production mode
+#
+# Note: This assumes the backend services are running from the main project.
+#       Use the main project's docker-compose to start db, redis, and backend.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Next.js Frontend V2 - Development
+  # ---------------------------------------------------------------------------
+  frontend-v2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: edustream-frontend-v2
+    ports:
+      - "3001:3000"  # Use 3001 to avoid conflict with old frontend
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+      - /app/.next
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      WATCHPACK_POLLING: "true"  # Enable polling for file watching in Docker
+    restart: unless-stopped
+
+networks:
+  default:
+    name: edustream-network
+    # Set external: true if running with main project's docker-compose
+    # external: true
