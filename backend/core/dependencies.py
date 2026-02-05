@@ -41,6 +41,90 @@ def extract_token_from_request(request: Request) -> str | None:
     return None
 
 
+async def get_current_user_from_request(
+    request: Request,
+    db: Session,
+) -> User:
+    """Get the current authenticated user from request (cookie or header).
+
+    This function extracts the token from the request using cookie-first strategy:
+    1. HttpOnly cookie (preferred, more secure)
+    2. Authorization header (legacy, for gradual migration)
+
+    Validates:
+    - Token signature, expiry, and type (access)
+    - Password change timestamp (invalidates tokens issued before password change)
+    - Role match (invalidates tokens with outdated role after demotion/promotion)
+
+    Raises:
+        HTTPException 401: If not authenticated or token is invalid
+        HTTPException 403: If user is inactive
+    """
+    token = extract_token_from_request(request)
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        # Validate token type is "access"
+        payload = TokenManager.decode_token(token, expected_type="access")
+        email: str = payload.get("sub")
+        if email is None:
+            raise AuthenticationError("Invalid token payload")
+
+    except AuthenticationError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = db.query(User).filter(
+        User.email == StringUtils.normalize_email(email),
+        User.deleted_at.is_(None),
+    ).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
+
+    # Validate token was issued after any password change
+    if user.password_changed_at:
+        token_pwd_ts = payload.get("pwd_ts")
+        if token_pwd_ts:
+            if user.password_changed_at.timestamp() > token_pwd_ts:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token invalidated by password change, please re-login",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token invalidated by password change, please re-login",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    # Validate role hasn't changed
+    token_role = payload.get("role")
+    if token_role and token_role != user.role:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token role outdated, please re-login",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
 async def get_current_user(
     token: Annotated[str | None, Depends(oauth2_scheme)],
     db: Annotated[Session, Depends(get_db)],
