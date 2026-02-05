@@ -37,44 +37,11 @@ from models import User
 logger = logging.getLogger(__name__)
 
 
-def get_allowed_ws_origins() -> list[str]:
-    """
-    Get list of allowed WebSocket origins.
-
-    WebSocket doesn't use CORS headers - origin must be validated explicitly.
-    Returns normalized origins (lowercase, no trailing slash).
-    """
-    import os
-
-    raw_origins = os.getenv("CORS_ORIGINS")
-    if raw_origins:
-        origins = [
-            origin.strip().rstrip("/").lower()
-            for origin in raw_origins.split(",")
-            if origin.strip() and origin.strip().startswith(("http://", "https://"))
-        ]
-    else:
-        origins = [origin.rstrip("/").lower() for origin in settings.CORS_ORIGINS]
-
-    # Always allow localhost in development
-    env = os.getenv("ENVIRONMENT", "development").lower()
-    if env == "development":
-        dev_origins = [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:8000",
-            "http://127.0.0.1:8000",
-        ]
-        for dev_origin in dev_origins:
-            if dev_origin not in origins:
-                origins.append(dev_origin)
-
-    return origins
-
-
 def is_valid_ws_origin(origin: str | None) -> bool:
     """
     Validate WebSocket connection origin.
+
+    Uses shared CORS configuration from core.cors (single source of truth).
 
     Args:
         origin: Origin header from WebSocket request
@@ -86,9 +53,9 @@ def is_valid_ws_origin(origin: str | None) -> bool:
         # No origin header - could be non-browser client (allowed)
         return True
 
-    allowed = get_allowed_ws_origins()
-    normalized = origin.strip().rstrip("/").lower()
-    return normalized in allowed
+    from core.cors import is_origin_allowed
+
+    return is_origin_allowed(origin)
 
 router = APIRouter()
 

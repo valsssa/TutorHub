@@ -20,7 +20,7 @@ sentry_initialized = init_sentry()
 from core.tracing import init_tracing, shutdown_tracing  # noqa: E402
 
 tracing_initialized = init_tracing()
-from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+# CORSMiddleware imported via core.cors.setup_cors  # noqa: E402
 from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse, StreamingResponse  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
@@ -30,12 +30,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from auth import get_password_hash  # noqa: E402
 from core.config import settings  # noqa: E402
-from core.cors import (  # noqa: E402
-    CORSErrorMiddleware,
-    create_cors_http_exception_handler,
-    create_cors_rate_limit_handler,
-    create_cors_test_response,
-)
+from core.cors import setup_cors  # noqa: E402
 from core.dependencies import get_current_admin_user  # noqa: E402
 from core.csrf_middleware import CSRFMiddleware  # noqa: E402
 from core.middleware import SecurityHeadersMiddleware  # noqa: E402
@@ -608,71 +603,9 @@ All endpoints are versioned under `/api/v1`. Future breaking changes will be int
 # Add rate limiter to app state
 app.state.limiter = limiter
 
-# CORS-aware exception handlers
-# These ensure CORS headers are present on error responses (prevents "CORS error" for 429/500)
-app.add_exception_handler(RateLimitExceeded, create_cors_rate_limit_handler())
-app.add_exception_handler(HTTPException, create_cors_http_exception_handler())
-
-# CORS configuration - following OWASP and industry best practices
-ENV = os.getenv("ENVIRONMENT", os.getenv("ENV", "development")).lower()
-
-raw_cors_origins = os.getenv("CORS_ORIGINS")
-if raw_cors_origins:
-    # Validate origin format before trusting
-    CORS_ORIGINS = [
-        origin.strip().rstrip("/")
-        for origin in raw_cors_origins.split(",")
-        if origin.strip() and origin.strip().startswith(("http://", "https://"))
-    ]
-else:
-    CORS_ORIGINS = [origin.rstrip("/") for origin in settings.CORS_ORIGINS]
-
-# Always add development origins in non-production environments
-if ENV != "production":
-    dev_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
-    for dev_origin in dev_origins:
-        if dev_origin not in CORS_ORIGINS:
-            CORS_ORIGINS.append(dev_origin)
-logger.info("CORS allowed origins: %s", CORS_ORIGINS)
-logger.info("Runtime environment: %s", ENV)
-
-# Use consistent config across environments (OWASP recommendation)
-# Only the origin list and cache duration should differ, not the structure
-ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-ALLOWED_HEADERS = [
-    "Authorization",
-    "Content-Type",
-    "Accept",
-    "Origin",
-    "X-Requested-With",
-    "X-Request-ID",
-    "Cache-Control",
-    "Pragma",
-    "X-CSRF-Token",  # Required for CSRF protection with HttpOnly cookie auth
-]
-# Headers the frontend is allowed to read from responses
-EXPOSE_HEADERS = [
-    "X-Request-ID",           # For request tracing/debugging
-    "X-RateLimit-Limit",      # Rate limit info for client handling
-    "X-RateLimit-Remaining",
-    "X-RateLimit-Reset",
-    "Content-Disposition",    # For file downloads
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=ALLOWED_METHODS,
-    allow_headers=ALLOWED_HEADERS,
-    expose_headers=EXPOSE_HEADERS,
-    max_age=86400 if ENV == "production" else 600,  # 24h prod, 10min dev
-)
-
-# CORS Error Middleware - ensures CORS headers on ALL responses including errors
-# This catches responses from exception handlers that bypass CORSMiddleware
-# Must be added AFTER CORSMiddleware (so it runs before in the request chain)
-app.add_middleware(CORSErrorMiddleware)
+# CORS Configuration - Single Source of Truth (core/cors.py)
+# Sets up CORSMiddleware, CORSSafetyNetMiddleware, and exception handlers
+setup_cors(app)
 
 # Add tracing middleware (must be early to capture full request lifecycle)
 app.add_middleware(TracingMiddleware)
@@ -868,58 +801,8 @@ def health_check(db: Session = Depends(get_db)):
         )
 
 
-@app.get(
-    "/api/v1/cors-test",
-    tags=["health"],
-    summary="CORS configuration test",
-    description="""
-**CORS Debugging Endpoint**
-
-Returns diagnostic information about CORS configuration and the current request.
-Useful for debugging CORS issues in development and staging.
-
-**Response includes**:
-- Request origin header
-- Whether the origin is allowed
-- What CORS headers would be sent
-- Current environment configuration
-
-**No Authentication Required** - Public endpoint for debugging.
-    """,
-)
-async def cors_test(request: Request):
-    """
-    CORS debugging endpoint.
-
-    Use this to verify CORS configuration is working correctly.
-    Make requests from different origins to see how the server responds.
-    """
-    return create_cors_test_response(request, CORS_ORIGINS)
-
-
-@app.options(
-    "/api/v1/cors-test",
-    tags=["health"],
-    summary="CORS preflight test",
-)
-async def cors_test_preflight(request: Request):
-    """
-    Explicit OPTIONS handler for CORS preflight testing.
-
-    This endpoint is explicitly defined to ensure preflight requests
-    are handled correctly even if middleware has issues.
-    """
-    from fastapi.responses import Response
-
-    from core.cors import get_cors_headers
-
-    origin = request.headers.get("origin")
-    cors_headers = get_cors_headers(origin, CORS_ORIGINS)
-
-    return Response(
-        status_code=204,
-        headers=cors_headers,
-    )
+# CORS debug endpoints removed - use logs and browser DevTools for debugging
+# See docs/CORS_DEBUGGING.md for troubleshooting guide
 
 
 @app.get(

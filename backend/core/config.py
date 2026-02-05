@@ -64,19 +64,8 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@db:5432/authapp"
 
-    # CORS - allowed origins for cross-origin requests
-    # Production: Only HTTPS domains
-    # Development: Include localhost variants
-    CORS_ORIGINS: list[str] | str = [
-        "https://edustream.valsa.solutions",
-        "http://edustream.valsa.solutions",
-        "https://api.valsa.solutions",
-        "http://api.valsa.solutions",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",  # Backend dev server (Swagger UI)
-        "http://127.0.0.1:8000",
-    ]
+    # CORS configuration is now in core/cors.py (single source of truth)
+    # Set CORS_ORIGINS environment variable to override defaults
 
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
@@ -189,28 +178,6 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "https://edustream.valsa.solutions"
     FRONTEND_LOGIN_SUCCESS_URL: str = "https://edustream.valsa.solutions/dashboard"
     FRONTEND_LOGIN_ERROR_URL: str = "https://edustream.valsa.solutions/login?error=oauth_failed"
-
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, value):
-        if value is None:
-            return []
-
-        if isinstance(value, str):
-            cleaned = value.strip()
-            if not cleaned:
-                return []
-            if cleaned.startswith("[") and cleaned.endswith("]"):
-                parsed = _safe_json_loads(cleaned)
-                if isinstance(parsed, str):
-                    raise ValueError("Invalid JSON for CORS_ORIGINS")
-                return [item.strip().rstrip("/") for item in parsed if isinstance(item, str) and item.strip()]
-            return [item.strip().rstrip("/") for item in cleaned.split(",") if item.strip()]
-
-        if isinstance(value, list):
-            return [item.strip().rstrip("/") for item in value if isinstance(item, str)]
-
-        raise ValueError("CORS_ORIGINS must be a string or list of strings")
 
 
 # Global settings instance
