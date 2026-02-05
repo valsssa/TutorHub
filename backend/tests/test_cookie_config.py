@@ -1,8 +1,17 @@
 """Tests for the cookie configuration module."""
 
-import pytest
+from unittest.mock import MagicMock
 
-from core.cookie_config import CookieConfig, get_cookie_config
+from fastapi import Response
+
+from core.cookie_config import (
+    CookieConfig,
+    clear_auth_cookies,
+    get_cookie_config,
+    set_access_token_cookie,
+    set_csrf_cookie,
+    set_refresh_token_cookie,
+)
 
 
 class TestCookieConfigDefaults:
@@ -76,3 +85,146 @@ class TestGetCookieConfig:
         get_cookie_config.cache_clear()
         config = get_cookie_config()
         assert isinstance(config, CookieConfig)
+
+
+class TestSetAccessTokenCookie:
+    """Tests for set_access_token_cookie helper."""
+
+    def test_set_access_token_cookie_production(self):
+        """Access token cookie is set with correct security attributes."""
+        response = MagicMock(spec=Response)
+        config = CookieConfig(environment="production")
+        set_access_token_cookie(response, "test_token", config)
+        response.set_cookie.assert_called_once_with(
+            key="access_token",
+            value="test_token",
+            max_age=900,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            path="/",
+            domain=None,
+        )
+
+    def test_set_access_token_cookie_development(self):
+        """Access token cookie disables secure flag in development."""
+        response = MagicMock(spec=Response)
+        config = CookieConfig(environment="development")
+        set_access_token_cookie(response, "dev_token", config)
+        call_kwargs = response.set_cookie.call_args[1]
+        assert call_kwargs["secure"] is False
+        assert call_kwargs["httponly"] is True
+
+    def test_set_access_token_cookie_uses_default_config(self):
+        """Access token cookie uses default config when none provided."""
+        response = MagicMock(spec=Response)
+        get_cookie_config.cache_clear()
+        set_access_token_cookie(response, "token_value")
+        response.set_cookie.assert_called_once()
+        call_kwargs = response.set_cookie.call_args[1]
+        assert call_kwargs["key"] == "access_token"
+
+
+class TestSetRefreshTokenCookie:
+    """Tests for set_refresh_token_cookie helper."""
+
+    def test_set_refresh_token_cookie_production(self):
+        """Refresh token cookie is set with restricted path."""
+        response = MagicMock(spec=Response)
+        config = CookieConfig(environment="production")
+        set_refresh_token_cookie(response, "refresh_test", config)
+        response.set_cookie.assert_called_once_with(
+            key="refresh_token",
+            value="refresh_test",
+            max_age=604800,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            path="/api/v1/auth",
+            domain=None,
+        )
+
+    def test_set_refresh_token_cookie_restricted_path(self):
+        """Refresh token path is restricted to auth endpoints only."""
+        response = MagicMock(spec=Response)
+        config = CookieConfig(environment="production")
+        set_refresh_token_cookie(response, "refresh_value", config)
+        call_kwargs = response.set_cookie.call_args[1]
+        assert call_kwargs["path"] == "/api/v1/auth"
+
+    def test_set_refresh_token_cookie_uses_default_config(self):
+        """Refresh token cookie uses default config when none provided."""
+        response = MagicMock(spec=Response)
+        get_cookie_config.cache_clear()
+        set_refresh_token_cookie(response, "token_value")
+        response.set_cookie.assert_called_once()
+        call_kwargs = response.set_cookie.call_args[1]
+        assert call_kwargs["key"] == "refresh_token"
+
+
+class TestSetCsrfCookie:
+    """Tests for set_csrf_cookie helper."""
+
+    def test_set_csrf_cookie_production(self):
+        """CSRF cookie is NOT httponly so JS can read it."""
+        response = MagicMock(spec=Response)
+        config = CookieConfig(environment="production")
+        set_csrf_cookie(response, "csrf_value", config)
+        response.set_cookie.assert_called_once()
+        call_kwargs = response.set_cookie.call_args[1]
+        assert call_kwargs["httponly"] is False
+        assert call_kwargs["secure"] is True
+
+    def test_set_csrf_cookie_same_lifetime_as_access(self):
+        """CSRF cookie has same lifetime as access token."""
+        response = MagicMock(spec=Response)
+        config = CookieConfig(environment="production")
+        set_csrf_cookie(response, "csrf_value", config)
+        call_kwargs = response.set_cookie.call_args[1]
+        assert call_kwargs["max_age"] == config.access_token_max_age
+
+    def test_set_csrf_cookie_uses_default_config(self):
+        """CSRF cookie uses default config when none provided."""
+        response = MagicMock(spec=Response)
+        get_cookie_config.cache_clear()
+        set_csrf_cookie(response, "csrf_value")
+        response.set_cookie.assert_called_once()
+        call_kwargs = response.set_cookie.call_args[1]
+        assert call_kwargs["key"] == "csrf_token"
+
+
+class TestClearAuthCookies:
+    """Tests for clear_auth_cookies helper."""
+
+    def test_clear_auth_cookies_deletes_all_three(self):
+        """All three auth cookies are deleted on clear."""
+        response = MagicMock(spec=Response)
+        config = CookieConfig()
+        clear_auth_cookies(response, config)
+        assert response.delete_cookie.call_count == 3
+        deleted_cookies = [
+            call[1]["key"] for call in response.delete_cookie.call_args_list
+        ]
+        assert "access_token" in deleted_cookies
+        assert "refresh_token" in deleted_cookies
+        assert "csrf_token" in deleted_cookies
+
+    def test_clear_auth_cookies_correct_paths(self):
+        """Each cookie is deleted with its correct path."""
+        response = MagicMock(spec=Response)
+        config = CookieConfig()
+        clear_auth_cookies(response, config)
+
+        calls_by_key = {
+            call[1]["key"]: call[1] for call in response.delete_cookie.call_args_list
+        }
+        assert calls_by_key["access_token"]["path"] == "/"
+        assert calls_by_key["refresh_token"]["path"] == "/api/v1/auth"
+        assert calls_by_key["csrf_token"]["path"] == "/"
+
+    def test_clear_auth_cookies_uses_default_config(self):
+        """Clear cookies uses default config when none provided."""
+        response = MagicMock(spec=Response)
+        get_cookie_config.cache_clear()
+        clear_auth_cookies(response)
+        assert response.delete_cookie.call_count == 3

@@ -2,7 +2,10 @@
 
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from fastapi import Response
 
 from core.config import settings
 
@@ -50,4 +53,119 @@ def get_cookie_config() -> CookieConfig:
         environment=getattr(settings, "ENVIRONMENT", "development"),
         domain=getattr(settings, "COOKIE_DOMAIN", None),
         access_token_max_age=getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 15) * 60,
+    )
+
+
+def set_access_token_cookie(
+    response: "Response",
+    token: str,
+    config: CookieConfig | None = None,
+) -> None:
+    """Set the access token as an HttpOnly secure cookie.
+
+    Args:
+        response: FastAPI Response object to set the cookie on.
+        token: The JWT access token value.
+        config: Optional CookieConfig; uses default if not provided.
+    """
+    if config is None:
+        config = get_cookie_config()
+    response.set_cookie(
+        key=config.access_token_name,
+        value=token,
+        max_age=config.access_token_max_age,
+        httponly=config.httponly,
+        secure=config.secure,
+        samesite=config.samesite,
+        path=config.path,
+        domain=config.domain,
+    )
+
+
+def set_refresh_token_cookie(
+    response: "Response",
+    token: str,
+    config: CookieConfig | None = None,
+) -> None:
+    """Set the refresh token as an HttpOnly secure cookie.
+
+    The refresh token cookie is restricted to /api/v1/auth path
+    to minimize exposure. It is only sent to auth endpoints.
+
+    Args:
+        response: FastAPI Response object to set the cookie on.
+        token: The JWT refresh token value.
+        config: Optional CookieConfig; uses default if not provided.
+    """
+    if config is None:
+        config = get_cookie_config()
+    response.set_cookie(
+        key=config.refresh_token_name,
+        value=token,
+        max_age=config.refresh_token_max_age,
+        httponly=config.httponly,
+        secure=config.secure,
+        samesite=config.samesite,
+        path="/api/v1/auth",
+        domain=config.domain,
+    )
+
+
+def set_csrf_cookie(
+    response: "Response",
+    token: str,
+    config: CookieConfig | None = None,
+) -> None:
+    """Set the CSRF token cookie for double-submit protection.
+
+    Unlike the auth tokens, this cookie is NOT httponly because
+    JavaScript must read it to include in request headers.
+
+    Args:
+        response: FastAPI Response object to set the cookie on.
+        token: The CSRF token value.
+        config: Optional CookieConfig; uses default if not provided.
+    """
+    if config is None:
+        config = get_cookie_config()
+    response.set_cookie(
+        key=config.csrf_token_name,
+        value=token,
+        max_age=config.access_token_max_age,
+        httponly=False,
+        secure=config.secure,
+        samesite=config.samesite,
+        path=config.path,
+        domain=config.domain,
+    )
+
+
+def clear_auth_cookies(
+    response: "Response",
+    config: CookieConfig | None = None,
+) -> None:
+    """Clear all authentication cookies on logout.
+
+    Removes access_token, refresh_token, and csrf_token cookies.
+
+    Args:
+        response: FastAPI Response object to clear cookies on.
+        config: Optional CookieConfig; uses default if not provided.
+    """
+    if config is None:
+        config = get_cookie_config()
+    response.delete_cookie(
+        key=config.access_token_name,
+        path=config.path,
+        domain=config.domain,
+    )
+    response.delete_cookie(
+        key=config.refresh_token_name,
+        path="/api/v1/auth",
+        domain=config.domain,
+    )
+    response.delete_cookie(
+        key=config.csrf_token_name,
+        path=config.path,
+        domain=config.domain,
     )
