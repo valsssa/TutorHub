@@ -1,7 +1,7 @@
 -- ============================================================================
 -- EduStream Complete Database Schema
 -- Student-Tutor Booking Platform - Production Ready
--- Consolidated from all migrations (001-019)
+-- Consolidated from all migrations (001-045)
 -- ============================================================================
 
 -- Enable required extensions
@@ -33,9 +33,13 @@ CREATE TABLE IF NOT EXISTS users (
     deleted_at TIMESTAMPTZ,
     deleted_by INTEGER,
     password_changed_at TIMESTAMPTZ,
+    -- Fraud detection fields (migration 039)
+    registration_ip INET,
+    trial_restricted BOOLEAN DEFAULT FALSE NOT NULL,
+    fraud_flags JSONB DEFAULT '[]'::JSONB,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT valid_role CHECK (role IN ('student', 'tutor', 'admin')),
+    CONSTRAINT valid_role CHECK (role IN ('student', 'tutor', 'admin', 'owner')),
     CONSTRAINT valid_email_length CHECK (char_length(email) <= 254),
     CONSTRAINT valid_currency CHECK (currency ~ '^[A-Z]{3}$')
 );
@@ -54,6 +58,8 @@ CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at) WHERE delet
 CREATE INDEX IF NOT EXISTS idx_users_first_name ON users(first_name);
 CREATE INDEX IF NOT EXISTS idx_users_last_name ON users(last_name);
 CREATE INDEX IF NOT EXISTS idx_users_full_name ON users(first_name, last_name);
+CREATE INDEX IF NOT EXISTS idx_users_registration_ip ON users(registration_ip) WHERE registration_ip IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_trial_restricted ON users(trial_restricted) WHERE trial_restricted = TRUE;
 
 -- Extended user profiles (avatar_url removed - using users.avatar_key)
 -- NOTE: first_name/last_name removed in Migration 021 (Phase 1.2) - names now stored only in users table
@@ -140,11 +146,16 @@ CREATE TABLE IF NOT EXISTS tutor_profiles (
     deleted_at TIMESTAMPTZ,
     deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     version INTEGER NOT NULL DEFAULT 1,
+    -- Video provider preference (migration 041)
+    preferred_video_provider VARCHAR(20) DEFAULT 'zoom',
+    custom_meeting_url_template VARCHAR(500),
+    video_provider_configured BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT valid_profile_status CHECK (profile_status IN ('incomplete', 'pending_approval', 'under_review', 'approved', 'rejected', 'archived')),
     CONSTRAINT valid_tutor_currency CHECK (currency ~ '^[A-Z]{3}$'),
-    CONSTRAINT valid_pricing_model CHECK (pricing_model IN ('hourly', 'package', 'session', 'hybrid'))
+    CONSTRAINT valid_pricing_model CHECK (pricing_model IN ('hourly', 'package', 'session', 'hybrid')),
+    CONSTRAINT valid_video_provider CHECK (preferred_video_provider IN ('zoom', 'google_meet', 'teams', 'custom', 'manual'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_tutor_profiles_user_id ON tutor_profiles(user_id);
@@ -173,7 +184,7 @@ CREATE TABLE IF NOT EXISTS tutor_subjects (
     years_experience INTEGER CHECK (years_experience IS NULL OR years_experience >= 0),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT uq_tutor_subject UNIQUE (tutor_profile_id, subject_id),
-    CONSTRAINT valid_proficiency CHECK (proficiency_level IN ('Native', 'C2', 'C1', 'B2', 'B1', 'A2', 'A1'))
+    CONSTRAINT valid_proficiency CHECK (proficiency_level IN ('native', 'c2', 'c1', 'b2', 'b1', 'a2', 'a1'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_tutor_subjects_profile ON tutor_subjects(tutor_profile_id);
@@ -259,6 +270,8 @@ CREATE TABLE IF NOT EXISTS tutor_pricing_options (
     validity_days INTEGER,
     is_popular BOOLEAN DEFAULT FALSE NOT NULL,
     sort_order INTEGER DEFAULT 0 NOT NULL,
+    -- Rolling expiry behavior (migration 039)
+    extend_on_use BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT valid_pricing_type CHECK (pricing_type IN ('hourly', 'session', 'package', 'subscription'))
@@ -294,6 +307,23 @@ CREATE TABLE IF NOT EXISTS student_profiles (
 
 CREATE INDEX IF NOT EXISTS idx_student_profiles_user_id ON student_profiles(user_id);
 
+-- Student notes (migration 028) - Private notes tutors keep about students
+CREATE TABLE IF NOT EXISTS student_notes (
+    id SERIAL PRIMARY KEY,
+    tutor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT unique_tutor_student_note UNIQUE (tutor_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_student_notes_tutor ON student_notes(tutor_id);
+CREATE INDEX IF NOT EXISTS idx_student_notes_student ON student_notes(student_id);
+
+COMMENT ON TABLE student_notes IS 'Private notes that tutors can keep about their students';
+COMMENT ON COLUMN student_notes.notes IS 'Private notes visible only to the tutor';
+
 -- Student package credits/subscriptions
 CREATE TABLE IF NOT EXISTS student_packages (
     id SERIAL PRIMARY KEY,
@@ -308,6 +338,8 @@ CREATE TABLE IF NOT EXISTS student_packages (
     expires_at TIMESTAMPTZ,
     status VARCHAR(20) DEFAULT 'active' NOT NULL,
     payment_intent_id VARCHAR(255),
+    -- Expiry notification tracking (migration 039)
+    expiry_warning_sent BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT valid_package_status CHECK (status IN ('active', 'expired', 'exhausted', 'refunded'))
@@ -322,7 +354,7 @@ CREATE INDEX IF NOT EXISTS idx_student_packages_active ON student_packages(stude
 -- BOOKING & SESSION TABLES
 -- ============================================================================
 
--- Bookings between students and tutors (enhanced with migration 017)
+-- Bookings between students and tutors (enhanced with migrations 017, 034)
 CREATE TABLE IF NOT EXISTS bookings (
     id SERIAL PRIMARY KEY,
     tutor_profile_id INTEGER REFERENCES tutor_profiles(id) ON DELETE SET NULL,
@@ -330,7 +362,19 @@ CREATE TABLE IF NOT EXISTS bookings (
     subject_id INTEGER REFERENCES subjects(id) ON DELETE SET NULL,
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    -- Four-field status system (migration 034)
+    session_state VARCHAR(20) NOT NULL DEFAULT 'REQUESTED',
+    session_outcome VARCHAR(30),
+    payment_state VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    dispute_state VARCHAR(30) NOT NULL DEFAULT 'NONE',
+    -- Dispute tracking
+    dispute_reason TEXT,
+    disputed_at TIMESTAMPTZ,
+    disputed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    resolved_at TIMESTAMPTZ,
+    resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    resolution_notes TEXT,
+    cancelled_by_role VARCHAR(20),
     topic VARCHAR(255),
     notes TEXT,
     notes_student TEXT,
@@ -341,7 +385,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     total_amount NUMERIC(10,2) NOT NULL CHECK (total_amount >= 0),
     rate_cents INTEGER,
     currency CHAR(3) DEFAULT 'USD',
-    platform_fee_pct NUMERIC(5,2) DEFAULT 20.0,
+    platform_fee_pct NUMERIC(5,2) DEFAULT 20.00,
     platform_fee_cents INTEGER DEFAULT 0,
     tutor_earnings_cents INTEGER DEFAULT 0,
     pricing_option_id INTEGER REFERENCES tutor_pricing_options(id) ON DELETE SET NULL,
@@ -367,20 +411,30 @@ CREATE TABLE IF NOT EXISTS bookings (
     original_booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
     deleted_at TIMESTAMPTZ,
     deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    -- Session attendance tracking (migration 040)
+    tutor_joined_at TIMESTAMPTZ,
+    student_joined_at TIMESTAMPTZ,
+    -- Video provider tracking (migration 041)
+    video_provider VARCHAR(20),
+    google_meet_link VARCHAR(500),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT chk_booking_time_order CHECK (start_time < end_time),
-    CONSTRAINT valid_booking_status CHECK (
-        status IN (
-            'PENDING',
-            'CONFIRMED',
-            'CANCELLED_BY_STUDENT',
-            'CANCELLED_BY_TUTOR',
-            'NO_SHOW_STUDENT',
-            'NO_SHOW_TUTOR',
-            'COMPLETED',
-            'REFUNDED'
-        )
+    CONSTRAINT valid_session_state CHECK (
+        session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE', 'ENDED', 'CANCELLED', 'EXPIRED')
+    ),
+    CONSTRAINT valid_session_outcome CHECK (
+        session_outcome IS NULL OR session_outcome IN ('COMPLETED', 'NOT_HELD', 'NO_SHOW_STUDENT', 'NO_SHOW_TUTOR')
+    ),
+    CONSTRAINT valid_payment_state CHECK (
+        payment_state IN ('PENDING', 'AUTHORIZED', 'CAPTURED', 'VOIDED', 'REFUNDED', 'PARTIALLY_REFUNDED')
+    ),
+    CONSTRAINT valid_dispute_state CHECK (
+        dispute_state IN ('NONE', 'OPEN', 'RESOLVED_UPHELD', 'RESOLVED_REFUNDED')
+    ),
+    CONSTRAINT valid_cancelled_by_role CHECK (
+        cancelled_by_role IS NULL OR cancelled_by_role IN ('STUDENT', 'TUTOR', 'ADMIN', 'SYSTEM')
     ),
     CONSTRAINT valid_booking_pricing_type CHECK (pricing_type IN ('hourly', 'session', 'package', 'subscription')),
     CONSTRAINT valid_lesson_type CHECK (lesson_type IN ('TRIAL', 'REGULAR', 'PACKAGE')),
@@ -389,28 +443,36 @@ CREATE TABLE IF NOT EXISTS bookings (
 
 CREATE INDEX IF NOT EXISTS idx_bookings_tutor_time ON bookings(tutor_profile_id, start_time DESC);
 CREATE INDEX IF NOT EXISTS idx_bookings_student_time ON bookings(student_id, start_time DESC);
-CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+CREATE INDEX IF NOT EXISTS idx_bookings_session_state ON bookings(session_state);
 CREATE INDEX IF NOT EXISTS idx_bookings_subject ON bookings(subject_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_tutor_name ON bookings(tutor_name);
 CREATE INDEX IF NOT EXISTS idx_bookings_student_name ON bookings(student_name);
 CREATE INDEX IF NOT EXISTS idx_bookings_subject_name ON bookings(subject_name);
 CREATE INDEX IF NOT EXISTS idx_bookings_deleted_at ON bookings(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_bookings_pricing_option ON bookings(pricing_option_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_instant ON bookings(is_instant_booking, status);
+CREATE INDEX IF NOT EXISTS idx_bookings_instant ON bookings(is_instant_booking, session_state);
 CREATE INDEX IF NOT EXISTS idx_bookings_confirmed_at ON bookings(confirmed_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_rebooked ON bookings(is_rebooked, original_booking_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_tutor_status_time ON bookings(tutor_profile_id, status, start_time, end_time) WHERE status IN ('pending', 'confirmed');
+CREATE INDEX IF NOT EXISTS idx_bookings_tutor_state_time ON bookings(tutor_profile_id, session_state, start_time, end_time) WHERE session_state IN ('REQUESTED', 'SCHEDULED');
 CREATE INDEX IF NOT EXISTS idx_bookings_lesson_type ON bookings(lesson_type);
 CREATE INDEX IF NOT EXISTS idx_bookings_student_tz ON bookings(student_tz);
 CREATE INDEX IF NOT EXISTS idx_bookings_tutor_tz ON bookings(tutor_tz);
 CREATE INDEX IF NOT EXISTS idx_bookings_package ON bookings(package_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_created_by ON bookings(created_by);
 CREATE INDEX IF NOT EXISTS idx_bookings_join_url ON bookings(join_url) WHERE join_url IS NOT NULL;
+-- Migration 034 indexes
+CREATE INDEX IF NOT EXISTS idx_bookings_session_state_times ON bookings(session_state, start_time, end_time) WHERE session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE');
+CREATE INDEX IF NOT EXISTS idx_bookings_requested_created ON bookings(created_at) WHERE session_state = 'REQUESTED';
+CREATE INDEX IF NOT EXISTS idx_bookings_disputes_open ON bookings(dispute_state, disputed_at) WHERE dispute_state = 'OPEN';
+CREATE INDEX IF NOT EXISTS idx_bookings_payment_state ON bookings(payment_state) WHERE payment_state IN ('AUTHORIZED', 'PENDING');
+CREATE INDEX IF NOT EXISTS idx_bookings_version ON bookings(id, version);
+-- Migration 040 index
+CREATE INDEX IF NOT EXISTS idx_bookings_attendance_check ON bookings(session_state, tutor_joined_at, student_joined_at) WHERE session_state = 'ACTIVE';
 
 -- Prevent tutor double-booking
-CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_no_overlap 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_no_overlap
 ON bookings (tutor_profile_id, start_time, end_time)
-WHERE status IN ('pending', 'confirmed');
+WHERE session_state IN ('REQUESTED', 'SCHEDULED');
 
 -- Session materials
 CREATE TABLE IF NOT EXISTS session_materials (
@@ -473,6 +535,70 @@ CREATE INDEX IF NOT EXISTS idx_refunds_booking ON refunds(booking_id);
 CREATE INDEX IF NOT EXISTS idx_refunds_reason ON refunds(reason);
 CREATE INDEX IF NOT EXISTS idx_refunds_created ON refunds(created_at DESC);
 
+-- Webhook events for Stripe idempotency (migration 035)
+CREATE TABLE IF NOT EXISTS webhook_events (
+    id SERIAL PRIMARY KEY,
+    stripe_event_id VARCHAR(255) NOT NULL UNIQUE,
+    event_type VARCHAR(100) NOT NULL,
+    processed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_events_stripe_event_id ON webhook_events(stripe_event_id);
+
+COMMENT ON TABLE webhook_events IS 'Tracks processed Stripe webhook events for idempotency';
+COMMENT ON COLUMN webhook_events.stripe_event_id IS 'Unique Stripe event ID (e.g., evt_xxx)';
+COMMENT ON COLUMN webhook_events.event_type IS 'Stripe event type (e.g., checkout.session.completed)';
+COMMENT ON COLUMN webhook_events.processed_at IS 'Timestamp when the event was processed';
+
+-- Wallets table (migration 044)
+CREATE TABLE IF NOT EXISTS wallets (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    balance_cents INTEGER NOT NULL DEFAULT 0,
+    pending_cents INTEGER NOT NULL DEFAULT 0,
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_user_wallet_per_currency UNIQUE (user_id, currency),
+    CONSTRAINT non_negative_wallet_balance CHECK (balance_cents >= 0),
+    CONSTRAINT non_negative_pending_balance CHECK (pending_cents >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets(user_id);
+
+COMMENT ON TABLE wallets IS 'User wallets for storing credits and making payments';
+COMMENT ON COLUMN wallets.balance_cents IS 'Available balance in cents';
+COMMENT ON COLUMN wallets.pending_cents IS 'Balance pending release (e.g., in escrow)';
+
+-- Wallet transactions table (migration 044)
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id SERIAL PRIMARY KEY,
+    wallet_id INTEGER NOT NULL REFERENCES wallets(id) ON DELETE RESTRICT,
+    type VARCHAR(20) NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    description TEXT,
+    reference_id VARCHAR(255) UNIQUE,
+    transaction_metadata JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT valid_transaction_type CHECK (
+        type IN ('DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'REFUND', 'PAYOUT', 'PAYMENT', 'FEE')
+    ),
+    CONSTRAINT valid_transaction_status CHECK (
+        status IN ('PENDING', 'COMPLETED', 'FAILED', 'CANCELLED')
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_wallet_id ON wallet_transactions(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_created_at ON wallet_transactions(created_at);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_reference_id ON wallet_transactions(reference_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_status ON wallet_transactions(status);
+
+COMMENT ON TABLE wallet_transactions IS 'Transaction history for wallet operations';
+COMMENT ON COLUMN wallet_transactions.reference_id IS 'External reference for idempotency checks';
+
 -- Payouts
 CREATE TABLE IF NOT EXISTS payouts (
     id SERIAL PRIMARY KEY,
@@ -524,17 +650,39 @@ CREATE INDEX IF NOT EXISTS idx_reviews_deleted_at ON reviews(deleted_at) WHERE d
 -- COMMUNICATION TABLES
 -- ============================================================================
 
--- Messages between users (Enhanced with edit/delete tracking and read receipts)
+-- Conversations table (migration 045)
+CREATE TABLE IF NOT EXISTS conversations (
+    id SERIAL PRIMARY KEY,
+    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    tutor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
+    last_message_at TIMESTAMPTZ,
+    student_unread_count INTEGER NOT NULL DEFAULT 0,
+    tutor_unread_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT uq_conversation_participants UNIQUE (student_id, tutor_id, booking_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_student ON conversations(student_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_tutor ON conversations(tutor_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_booking ON conversations(booking_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at DESC NULLS LAST);
+
+-- Messages between users (Enhanced with edit/delete tracking, read receipts, and conversations)
 CREATE TABLE IF NOT EXISTS messages (
     id SERIAL PRIMARY KEY,
     sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     recipient_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
+    conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
     message TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE NOT NULL,
     read_at TIMESTAMPTZ,
     is_edited BOOLEAN DEFAULT FALSE NOT NULL,
     edited_at TIMESTAMPTZ,
+    is_system_message BOOLEAN NOT NULL DEFAULT FALSE,
+    attachment_url VARCHAR(500),
     deleted_at TIMESTAMPTZ,
     deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -544,9 +692,38 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_booking ON messages(booking_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(sender_id, recipient_id, booking_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(recipient_id, is_read) WHERE is_read = FALSE;
 CREATE INDEX IF NOT EXISTS idx_messages_edited ON messages(is_edited) WHERE is_edited = TRUE;
+
+-- Message attachments (secure file attachments)
+CREATE TABLE IF NOT EXISTS message_attachments (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    file_key VARCHAR(500) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    file_category VARCHAR(50) NOT NULL,
+    uploaded_by INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    is_scanned BOOLEAN DEFAULT FALSE NOT NULL,
+    scan_result VARCHAR(50),
+    is_public BOOLEAN DEFAULT FALSE NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    duration_seconds INTEGER,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    deleted_at TIMESTAMPTZ,
+    CONSTRAINT valid_file_category CHECK (file_category IN ('image', 'document', 'video', 'audio', 'other')),
+    CONSTRAINT valid_scan_result CHECK (scan_result IS NULL OR scan_result IN ('clean', 'infected', 'pending'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_attachments_message ON message_attachments(message_id);
+CREATE INDEX IF NOT EXISTS idx_message_attachments_file_key ON message_attachments(file_key);
+CREATE INDEX IF NOT EXISTS idx_message_attachments_uploaded_by ON message_attachments(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_message_attachments_created_at ON message_attachments(created_at DESC);
 
 -- Notifications
 CREATE TABLE IF NOT EXISTS notifications (
@@ -636,6 +813,35 @@ CREATE TABLE IF NOT EXISTS rebooking_metrics (
 
 CREATE INDEX IF NOT EXISTS idx_rebooking_metrics_tutor ON rebooking_metrics(tutor_profile_id);
 CREATE INDEX IF NOT EXISTS idx_rebooking_metrics_student ON rebooking_metrics(student_id);
+
+-- ============================================================================
+-- FRAUD DETECTION TABLES
+-- ============================================================================
+
+-- Registration fraud signals (migration 039)
+CREATE TABLE IF NOT EXISTS registration_fraud_signals (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    signal_type VARCHAR(50) NOT NULL,
+    signal_value TEXT NOT NULL,
+    confidence_score NUMERIC(3,2) DEFAULT 0.50 CHECK (confidence_score BETWEEN 0 AND 1),
+    detected_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    review_outcome VARCHAR(20),
+    review_notes TEXT,
+    CONSTRAINT valid_signal_type CHECK (signal_type IN ('ip_address', 'device_fingerprint', 'email_pattern', 'browser_fingerprint', 'behavioral')),
+    CONSTRAINT valid_review_outcome CHECK (review_outcome IS NULL OR review_outcome IN ('legitimate', 'fraudulent', 'suspicious'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_fraud_signals_user ON registration_fraud_signals(user_id, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_fraud_signals_value ON registration_fraud_signals(signal_type, signal_value, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_fraud_signals_pending_review ON registration_fraud_signals(reviewed_at, detected_at DESC) WHERE reviewed_at IS NULL;
+
+COMMENT ON TABLE registration_fraud_signals IS 'Tracks fraud signals detected during registration for trial abuse prevention';
+COMMENT ON COLUMN registration_fraud_signals.signal_type IS 'Type of signal: ip_address, device_fingerprint, email_pattern, browser_fingerprint, behavioral';
+COMMENT ON COLUMN registration_fraud_signals.signal_value IS 'The actual value (e.g., IP address, fingerprint hash)';
+COMMENT ON COLUMN registration_fraud_signals.confidence_score IS 'Confidence that this signal indicates fraud (0-1)';
 
 -- ============================================================================
 -- AUDIT & ANALYTICS TABLES
@@ -990,8 +1196,8 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 );
 
 -- Record initial schema version
-INSERT INTO schema_migrations (version, description) 
-VALUES ('001', 'Initial schema with all tables including enhanced messages')
+INSERT INTO schema_migrations (version, description)
+VALUES ('001', 'Initial consolidated schema with all tables (migrations 001-045)')
 ON CONFLICT (version) DO NOTHING;
 
 -- ============================================================================
@@ -1004,20 +1210,21 @@ BEGIN
     RAISE NOTICE '═══════════════════════════════════════════════════════════════';
     RAISE NOTICE '  EduStream Database Schema Initialized Successfully';
     RAISE NOTICE '═══════════════════════════════════════════════════════════════';
-    RAISE NOTICE '  Version: Consolidated (Migrations 001-019 + Enhanced Messages)';
+    RAISE NOTICE '  Version: Consolidated (Migrations 001-045)';
     RAISE NOTICE '  Architecture: Pure Data Storage (No DB Logic)';
-    RAISE NOTICE '  Tables: 45+';
-    RAISE NOTICE '  Indexes: 121+';
+    RAISE NOTICE '  Tables: 50+';
+    RAISE NOTICE '  Indexes: 140+';
     RAISE NOTICE '  Relations: Fully configured with CASCADE/SET NULL';
     RAISE NOTICE '  Views: 3 (read-only access patterns)';
     RAISE NOTICE '';
     RAISE NOTICE '   Core Tables:';
-    RAISE NOTICE '  • User Management (Students, Tutors, Admins)';
-    RAISE NOTICE '  • Booking System';
-    RAISE NOTICE '  • Enhanced Messaging (Edit, Delete, Read Receipts)';
+    RAISE NOTICE '  • User Management (Students, Tutors, Admins, Owners)';
+    RAISE NOTICE '  • Booking System (4-field state machine)';
+    RAISE NOTICE '  • Enhanced Messaging (Conversations, Attachments)';
     RAISE NOTICE '  • Reviews & Ratings';
-    RAISE NOTICE '  • Payments & Payouts';
-    RAISE NOTICE '  • File Storage';
+    RAISE NOTICE '  • Payments, Wallets & Payouts';
+    RAISE NOTICE '  • Webhook Idempotency';
+    RAISE NOTICE '  • Fraud Detection';
     RAISE NOTICE '  • Notifications';
     RAISE NOTICE '  • Audit Log';
     RAISE NOTICE '';
