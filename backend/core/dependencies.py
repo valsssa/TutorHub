@@ -2,11 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from core.config import Roles
+from core.cookie_config import get_cookie_config
 from core.exceptions import AuthenticationError
 from core.security import TokenManager
 from core.utils import StringUtils
@@ -14,6 +15,30 @@ from database import get_db
 from models import TutorProfile, User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+
+def extract_token_from_request(request: Request) -> str | None:
+    """Extract access token from request.
+
+    Priority:
+    1. HttpOnly cookie (new secure method)
+    2. Authorization header (legacy, for gradual migration)
+
+    Returns None if no valid token found.
+    """
+    config = get_cookie_config()
+
+    # Try cookie first (preferred)
+    token = request.cookies.get(config.access_token_name)
+    if token:
+        return token
+
+    # Fall back to Authorization header (legacy support)
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer ") and len(auth_header) > 7:
+        return auth_header[7:]  # Strip "Bearer " prefix
+
+    return None
 
 
 async def get_current_user(
