@@ -3,6 +3,11 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v
 // Unsafe HTTP methods that require CSRF protection
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
+// Extended RequestInit to track retry attempts
+interface ExtendedRequestInit extends RequestInit {
+  _isRetry?: boolean;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -40,7 +45,26 @@ export function getCsrfToken(): string | null {
 }
 
 class ApiClient {
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
+
+  /**
+   * Try to refresh the access token using the refresh token cookie.
+   * Returns true if refresh was successful, false otherwise.
+   */
+  private async tryRefresh(): Promise<boolean> {
+    try {
+      const response = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async request<T>(endpoint: string, options: ExtendedRequestInit = {}): Promise<T> {
     const method = options.method || 'GET';
     const isUnsafeMethod = UNSAFE_METHODS.includes(method.toUpperCase());
 
@@ -63,6 +87,24 @@ class ApiClient {
       headers,
       credentials: 'include', // Always include cookies for cross-origin requests
     });
+
+    // On 401, try to refresh tokens (unless this is already a retry)
+    if (response.status === 401 && !options._isRetry) {
+      // Ensure only one refresh happens at a time
+      if (!this.isRefreshing) {
+        this.isRefreshing = true;
+        this.refreshPromise = this.tryRefresh().finally(() => {
+          this.isRefreshing = false;
+          this.refreshPromise = null;
+        });
+      }
+
+      const refreshed = await this.refreshPromise;
+      if (refreshed) {
+        // Retry original request with _isRetry flag to prevent infinite loops
+        return this.request<T>(endpoint, { ...options, _isRetry: true });
+      }
+    }
 
     if (!response.ok) {
       let errorDetail = 'Request failed';

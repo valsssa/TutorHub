@@ -591,3 +591,239 @@ describe('getCsrfToken', () => {
     expect(getCsrfToken()).toBe('csrf_in_middle');
   });
 });
+
+describe('Automatic token refresh on 401', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    global.fetch = mockFetch;
+    mockFetch.mockReset();
+    Object.defineProperty(document, 'cookie', {
+      writable: true,
+      value: '',
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('retries request after 401 with automatic refresh', async () => {
+    const { api } = await import('@/lib/api/client');
+
+    // First call returns 401
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Token expired' }),
+      })
+      // Refresh call succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ access_token: 'new_token' }),
+      })
+      // Retry original request succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: 'success' }),
+      });
+
+    const result = await api.get('/protected-resource');
+
+    expect(result).toEqual({ data: 'success' });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+
+    // Verify the calls were made correctly
+    expect(mockFetch.mock.calls[0][0]).toContain('/protected-resource');
+    expect(mockFetch.mock.calls[1][0]).toContain('/auth/refresh');
+    expect(mockFetch.mock.calls[2][0]).toContain('/protected-resource');
+  });
+
+  it('throws on 401 if refresh also fails', async () => {
+    const { api, ApiError } = await import('@/lib/api/client');
+
+    mockFetch
+      // First call returns 401
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Token expired' }),
+      })
+      // Refresh call fails
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Refresh failed' }),
+      });
+
+    try {
+      await api.get('/protected');
+      // Should not reach here
+      expect.fail('Expected ApiError to be thrown');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(401);
+      expect((error as ApiError).detail).toBe('Token expired');
+    }
+  });
+
+  it('does not retry more than once after refresh', async () => {
+    const { api } = await import('@/lib/api/client');
+
+    mockFetch
+      // First call returns 401
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Token expired' }),
+      })
+      // Refresh call succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ access_token: 'new_token' }),
+      })
+      // Retry also returns 401 (token was already revoked for another reason)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Still unauthorized' }),
+      });
+
+    await expect(api.get('/protected')).rejects.toMatchObject({
+      status: 401,
+      detail: 'Still unauthorized',
+    });
+
+    // Should only call fetch 3 times (original, refresh, retry)
+    // NOT 4+ times in an infinite loop
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('handles refresh network error gracefully', async () => {
+    const { api } = await import('@/lib/api/client');
+
+    mockFetch
+      // First call returns 401
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Token expired' }),
+      })
+      // Refresh call throws network error
+      .mockRejectedValueOnce(new Error('Network error'));
+
+    await expect(api.get('/protected')).rejects.toMatchObject({
+      status: 401,
+    });
+  });
+
+  it('makes refresh request with correct parameters', async () => {
+    const { api } = await import('@/lib/api/client');
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Token expired' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: 'success' }),
+      });
+
+    await api.get('/protected');
+
+    // Verify refresh call has correct options
+    const refreshCall = mockFetch.mock.calls[1];
+    expect(refreshCall[0]).toContain('/auth/refresh');
+    expect(refreshCall[1]).toMatchObject({
+      method: 'POST',
+      credentials: 'include',
+    });
+  });
+
+  it('handles concurrent 401 responses with single refresh', async () => {
+    const { api } = await import('@/lib/api/client');
+
+    // Both initial requests return 401
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Token expired' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Token expired' }),
+      })
+      // Single refresh call
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+      // Both retries succeed
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: 'result1' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: 'result2' }),
+      });
+
+    // Make concurrent requests
+    const [result1, result2] = await Promise.all([
+      api.get('/endpoint1'),
+      api.get('/endpoint2'),
+    ]);
+
+    expect(result1).toEqual({ data: 'result1' });
+    expect(result2).toEqual({ data: 'result2' });
+
+    // Verify refresh was only called once
+    const refreshCalls = mockFetch.mock.calls.filter((call) =>
+      call[0].includes('/auth/refresh')
+    );
+    expect(refreshCalls.length).toBe(1);
+  });
+
+  it('works correctly for POST requests after refresh', async () => {
+    Object.defineProperty(document, 'cookie', {
+      writable: true,
+      value: 'csrf_token=test_csrf',
+    });
+
+    const { api } = await import('@/lib/api/client');
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ detail: 'Token expired' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ created: true }),
+      });
+
+    const result = await api.post('/resource', { name: 'test' });
+
+    expect(result).toEqual({ created: true });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+
+    // Verify retry has CSRF token
+    const retryCall = mockFetch.mock.calls[2];
+    expect(retryCall[1].headers).toMatchObject({
+      'X-CSRF-Token': 'test_csrf',
+    });
+  });
+});
