@@ -276,7 +276,7 @@ class TestLogoutCookies:
         assert logout_response.json() == {"message": "Successfully logged out"}
 
         # Verify cookies are cleared (set with max_age=0 or deleted)
-        set_cookie_headers = logout_response.headers.getlist("set-cookie")
+        set_cookie_headers = logout_response.headers.get_list("set-cookie")
         cookie_names_cleared = []
         for header in set_cookie_headers:
             header_lower = header.lower()
@@ -353,3 +353,186 @@ class TestLogoutCookies:
             headers={"Authorization": f"Bearer {access_token}"},
         )
         assert logout_response2.status_code == 200
+
+
+class TestRefreshCookies:
+    """Tests for cookie handling in refresh endpoint."""
+
+    @pytest.fixture
+    def test_user(self, db_session: Session):
+        """Create a test user for refresh tests."""
+        return create_test_user(
+            db_session,
+            email="refreshtest@example.com",
+            password=STUDENT_PASSWORD,
+            role="student",
+            first_name="Refresh",
+            last_name="Tester",
+        )
+
+    def test_refresh_reads_from_cookie(self, client: TestClient, test_user):
+        """Test that refresh endpoint reads refresh_token from cookie."""
+        # Login first to get tokens
+        login_response = client.post(
+            "/api/v1/auth/login",
+            data={"username": test_user.email, "password": STUDENT_PASSWORD},
+        )
+        assert login_response.status_code == 200
+
+        # Get the refresh token from login response
+        refresh_token = login_response.json()["refresh_token"]
+
+        # Refresh using cookie only (no body)
+        # TestClient uses cookie jar, so we need to set the cookie manually
+        refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            cookies={"refresh_token": refresh_token},
+        )
+
+        assert refresh_response.status_code == 200
+        data = refresh_response.json()
+        assert "access_token" in data
+        assert "token_type" in data
+        assert data["token_type"] == "bearer"
+
+    def test_refresh_updates_access_token_cookie(self, client: TestClient, test_user):
+        """Test that refresh endpoint sets new access_token cookie in response."""
+        # Login first to get tokens
+        login_response = client.post(
+            "/api/v1/auth/login",
+            data={"username": test_user.email, "password": STUDENT_PASSWORD},
+        )
+        assert login_response.status_code == 200
+
+        refresh_token = login_response.json()["refresh_token"]
+
+        # Refresh using cookie
+        refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            cookies={"refresh_token": refresh_token},
+        )
+
+        assert refresh_response.status_code == 200
+
+        # Check that access_token cookie is set in response
+        assert "access_token" in refresh_response.cookies
+        new_access_token = refresh_response.cookies.get("access_token")
+        assert new_access_token is not None
+        assert len(new_access_token) > 0
+
+        # Verify the cookie matches the response body
+        body_access_token = refresh_response.json()["access_token"]
+        assert new_access_token == body_access_token
+
+    def test_refresh_sets_csrf_cookie(self, client: TestClient, test_user):
+        """Test that refresh endpoint sets new csrf_token cookie in response."""
+        # Login first
+        login_response = client.post(
+            "/api/v1/auth/login",
+            data={"username": test_user.email, "password": STUDENT_PASSWORD},
+        )
+        assert login_response.status_code == 200
+
+        refresh_token = login_response.json()["refresh_token"]
+
+        # Refresh using cookie
+        refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            cookies={"refresh_token": refresh_token},
+        )
+
+        assert refresh_response.status_code == 200
+
+        # Check that csrf_token cookie is set
+        assert "csrf_token" in refresh_response.cookies
+        csrf_token = refresh_response.cookies.get("csrf_token")
+        assert csrf_token is not None
+        assert len(csrf_token) > 0
+
+    def test_refresh_body_fallback(self, client: TestClient, test_user):
+        """Test that refresh endpoint falls back to body if no cookie."""
+        # Login first to get tokens
+        login_response = client.post(
+            "/api/v1/auth/login",
+            data={"username": test_user.email, "password": STUDENT_PASSWORD},
+        )
+        assert login_response.status_code == 200
+
+        refresh_token = login_response.json()["refresh_token"]
+
+        # Refresh using body (no cookie)
+        refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+
+        assert refresh_response.status_code == 200
+        data = refresh_response.json()
+        assert "access_token" in data
+
+    def test_refresh_cookie_takes_priority_over_body(self, client: TestClient, test_user):
+        """Test that refresh_token from cookie takes priority over body."""
+        # Login to get valid refresh token
+        login_response = client.post(
+            "/api/v1/auth/login",
+            data={"username": test_user.email, "password": STUDENT_PASSWORD},
+        )
+        assert login_response.status_code == 200
+
+        valid_refresh_token = login_response.json()["refresh_token"]
+
+        # Send valid token in cookie but invalid in body
+        # The cookie token should be used, so refresh should succeed
+        refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            cookies={"refresh_token": valid_refresh_token},
+            json={"refresh_token": "invalid_token_in_body"},
+        )
+
+        assert refresh_response.status_code == 200
+        data = refresh_response.json()
+        assert "access_token" in data
+
+    def test_refresh_fails_without_token(self, client: TestClient):
+        """Test that refresh fails with no token provided."""
+        # No cookie, no body
+        refresh_response = client.post("/api/v1/auth/refresh")
+
+        assert refresh_response.status_code == 401
+        assert "refresh token" in refresh_response.json()["detail"].lower()
+
+    def test_refresh_fails_with_invalid_token(self, client: TestClient):
+        """Test that refresh fails with invalid token."""
+        refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            cookies={"refresh_token": "invalid_token"},
+        )
+
+        assert refresh_response.status_code == 401
+
+    def test_refresh_still_returns_tokens_in_body(self, client: TestClient, test_user):
+        """Test that refresh still returns tokens in JSON body for backwards compatibility."""
+        # Login first
+        login_response = client.post(
+            "/api/v1/auth/login",
+            data={"username": test_user.email, "password": STUDENT_PASSWORD},
+        )
+        assert login_response.status_code == 200
+
+        refresh_token = login_response.json()["refresh_token"]
+
+        # Refresh
+        refresh_response = client.post(
+            "/api/v1/auth/refresh",
+            cookies={"refresh_token": refresh_token},
+        )
+
+        assert refresh_response.status_code == 200
+        data = refresh_response.json()
+
+        # Check all expected fields in response body
+        assert "access_token" in data
+        assert "token_type" in data
+        assert "expires_in" in data
+        assert data["token_type"] == "bearer"
+        assert isinstance(data["expires_in"], int)

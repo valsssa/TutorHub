@@ -376,12 +376,17 @@ Exchanges a valid refresh token for a new access token.
 - Frontend should proactively refresh before expiry to avoid interruption
 - Recommended: Refresh when token has < 5 minutes remaining
 
+**Token Sources** (in order of priority):
+1. HttpOnly `refresh_token` cookie (preferred, automatic)
+2. Request body `refresh_token` field (backwards compatibility)
+
 **Security Features**:
 - Refresh token validated for expiry and signature
 - User account status re-verified (must still be active)
 - Password change timestamp checked (tokens invalidated on password change)
 - Role verified (tokens invalidated if role changed)
 - Rate limited to prevent abuse
+- Sets new access_token and csrf_token cookies on success
 
 **Token Lifecycle**:
 - Access token: 30 minutes
@@ -424,14 +429,36 @@ Exchanges a valid refresh token for a new access token.
 @limiter.limit("30/minute")
 async def refresh_token(
     request: Request,
-    token_request: TokenRefreshRequest,
+    response: Response,
+    token_request: TokenRefreshRequest | None = None,
     service: AuthService = Depends(get_auth_service),
 ):
-    """Refresh access token using a valid refresh token."""
+    """Refresh access token using a valid refresh token.
+
+    Token is read from cookie first, then falls back to request body.
+    On success, sets new access_token and csrf_token cookies.
+    """
     client_host = request.client.host if request.client else "unknown"
     logger.info(f"Token refresh attempt from {client_host}")
 
-    token_data = service.refresh_access_token(token_request.refresh_token)
+    # Get refresh token from cookie first, fallback to request body
+    refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value and token_request:
+        refresh_token_value = token_request.refresh_token
+
+    if not refresh_token_value:
+        logger.warning(f"Token refresh failed from {client_host}: No refresh token provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token required",
+        )
+
+    token_data = service.refresh_access_token(refresh_token_value)
+
+    # Set new access token and CSRF cookies
+    set_access_token_cookie(response, token_data["access_token"])
+    set_csrf_cookie(response, generate_csrf_token())
+
     logger.info(f"Token refreshed successfully from {client_host}")
     return token_data
 
