@@ -506,6 +506,149 @@ describe('useAuth', () => {
   });
 });
 
+describe('Cookie-based authentication', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPush.mockReset();
+  });
+
+  it('login does not store tokens in localStorage (cookies handled by browser)', async () => {
+    // Mock localStorage to verify it's not used
+    const localStorageSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+    mockMe.mockRejectedValueOnce(new Error('Not authenticated'));
+    mockLogin.mockResolvedValueOnce(mockTokens);
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.login({ email: 'test@example.com', password: 'password' });
+    });
+
+    // Verify localStorage was never called with any token-related keys
+    const tokenStorageCalls = localStorageSpy.mock.calls.filter(
+      ([key]) => key.includes('token') || key.includes('auth')
+    );
+    expect(tokenStorageCalls.length).toBe(0);
+
+    localStorageSpy.mockRestore();
+  });
+
+  it('login success invalidates user query to refetch from server (using new cookie)', async () => {
+    mockMe
+      .mockRejectedValueOnce(new Error('Not authenticated'))
+      .mockResolvedValueOnce(mockUser);
+    mockLogin.mockResolvedValueOnce(mockTokens);
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.isAuthenticated).toBe(false);
+
+    await act(async () => {
+      await result.current.login({ email: 'test@example.com', password: 'password' });
+    });
+
+    // After login, the user query should be refetched
+    // The second mockMe call should be made
+    await waitFor(() => {
+      expect(mockMe).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('logout calls backend API to clear HttpOnly cookies', async () => {
+    mockMe.mockResolvedValueOnce(mockUser);
+    mockLogout.mockResolvedValueOnce({ message: 'Logged out' });
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      result.current.logout();
+    });
+
+    // Verify logout API was called (backend clears cookies)
+    await waitFor(() => {
+      expect(mockLogout).toHaveBeenCalled();
+    });
+  });
+
+  it('logout clears all cached queries', async () => {
+    mockMe.mockResolvedValueOnce(mockUser);
+    mockLogout.mockResolvedValueOnce({ message: 'Logged out' });
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+
+    const clearSpy = vi.spyOn(queryClient, 'clear');
+
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      result.current.logout();
+    });
+
+    await waitFor(() => {
+      expect(clearSpy).toHaveBeenCalled();
+    });
+
+    clearSpy.mockRestore();
+  });
+
+  it('auth state is determined by /auth/me API response, not localStorage', async () => {
+    // First: user is not authenticated
+    mockMe.mockRejectedValueOnce(new Error('Not authenticated'));
+
+    const { result, rerender } = renderHook(() => useAuth(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.user).toBeUndefined();
+
+    // The hook relies on /auth/me to determine auth state
+    expect(mockMe).toHaveBeenCalled();
+  });
+});
+
 describe('useIsRole', () => {
   beforeEach(() => {
     vi.clearAllMocks();

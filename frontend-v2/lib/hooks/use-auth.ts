@@ -69,9 +69,11 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      authApi.logout();
+      // Call backend logout endpoint to clear HttpOnly cookies
+      await authApi.logout();
     },
     onSuccess: () => {
+      // Clear all cached queries since user is logged out
       queryClient.clear();
       router.push('/login');
     },
