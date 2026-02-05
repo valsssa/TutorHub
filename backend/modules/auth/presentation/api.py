@@ -4,12 +4,14 @@ import logging
 import os
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from core.account_lockout import account_lockout
 from core.config import settings
+from core.cookie_config import clear_auth_cookies, set_access_token_cookie, set_csrf_cookie, set_refresh_token_cookie
+from core.csrf import generate_csrf_token
 from core.dependencies import get_current_user
 from core.rate_limiting import limiter
 from database import get_db
@@ -264,6 +266,7 @@ Authenticates user credentials and returns JWT access and refresh tokens for API
 @limiter.limit("10/minute")
 async def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(get_auth_service),
 ):
@@ -294,6 +297,11 @@ async def login(
         # Clear failed attempts on successful login
         await account_lockout.clear_failed_attempts(email)
 
+        # Set HttpOnly cookies for secure token storage
+        set_access_token_cookie(response, token_data["access_token"])
+        set_refresh_token_cookie(response, token_data["refresh_token"])
+        set_csrf_cookie(response, generate_csrf_token())
+
         logger.info(f"User logged in successfully: {email}")
         return token_data
 
@@ -307,6 +315,51 @@ async def login(
                     f"Failed login for {email}: {remaining} attempts remaining"
                 )
         raise
+
+
+@router.post(
+    "/logout",
+    summary="Log out user",
+    description="""
+**User Logout**
+
+Logs out the current user by clearing all authentication cookies.
+
+**Security Features**:
+- Clears access_token cookie
+- Clears refresh_token cookie
+- Clears csrf_token cookie
+- Requires valid authentication to logout
+
+**Use Cases**:
+- User-initiated logout
+- Session termination
+- Security-conscious users ending sessions
+    """,
+    responses={
+        200: {
+            "description": "Logout successful",
+            "content": {
+                "application/json": {
+                    "example": {"message": "Successfully logged out"}
+                }
+            },
+        },
+        401: {
+            "description": "Not authenticated - missing or invalid JWT token",
+            "content": {"application/json": {"example": {"detail": "Not authenticated"}}},
+        },
+    },
+)
+async def logout(
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+):
+    """Log out user by clearing authentication cookies."""
+    logger.info(f"User logged out: {current_user.email}")
+    clear_auth_cookies(response)
+    return {"message": "Successfully logged out"}
 
 
 @router.post(
