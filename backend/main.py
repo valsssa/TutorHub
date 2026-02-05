@@ -37,6 +37,7 @@ from core.cors import (  # noqa: E402
     create_cors_test_response,
 )
 from core.dependencies import get_current_admin_user  # noqa: E402
+from core.csrf_middleware import CSRFMiddleware  # noqa: E402
 from core.middleware import SecurityHeadersMiddleware  # noqa: E402
 from core.rate_limiting import limiter  # noqa: E402
 from core.response_cache import ResponseCacheMiddleware  # noqa: E402
@@ -687,6 +688,16 @@ app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
 
 # Add SlowAPI middleware for rate limiting enforcement
 app.add_middleware(SlowAPIMiddleware)
+
+# Add CSRF protection middleware for HttpOnly cookie auth
+# Auth endpoints are exempt since they need to set the initial cookies
+app.add_middleware(
+    CSRFMiddleware,
+    exempt_paths=[
+        "/api/v1/auth/*",  # All auth endpoints (login, register, refresh, logout)
+        "/api/v1/webhooks/*",  # Webhook endpoints (Stripe, etc.) use their own verification
+    ],
+)
 
 # ============================================================================
 # Register Module Routers - API v1
