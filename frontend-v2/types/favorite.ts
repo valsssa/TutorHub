@@ -3,9 +3,9 @@ import type { TutorProfile } from './tutor';
 export interface Favorite {
   id: number;
   student_id: number;
-  tutor_id: number;
+  tutor_profile_id: number;
   created_at: string;
-  tutor: TutorProfile;
+  tutor?: TutorProfile;
 }
 
 export interface FavoriteStatus {

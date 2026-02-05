@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Save, Upload } from 'lucide-react';
-import { useAuth, useMyTutorProfile, useUpdateTutorProfile, useSubjects } from '@/lib/hooks';
+import { useAuth, useMyTutorProfile, useUpdateTutorAbout, useSubjects } from '@/lib/hooks';
 import {
   editProfileSchema,
   tutorProfileSchema,
@@ -167,7 +167,7 @@ function TutorEditForm() {
   const { user, updateProfile, isUpdatingProfile } = useAuth();
   const { data: tutorProfile, isLoading: profileLoading } = useMyTutorProfile();
   const { data: subjects = [], isLoading: subjectsLoading } = useSubjects();
-  const updateTutorProfile = useUpdateTutorProfile();
+  const updateTutorProfile = useUpdateTutorAbout();
   const router = useRouter();
 
   const {
@@ -211,8 +211,6 @@ function TutorEditForm() {
         updateTutorProfile.mutateAsync({
           bio: data.bio,
           headline: data.headline,
-          hourly_rate: data.hourly_rate,
-          subjects: data.subject_ids.map((id) => ({ id, name: '' })),
         }),
       ]);
       router.push('/profile');

@@ -48,6 +48,7 @@ const navItems: Record<string, NavItem[]> = {
   tutor: [
     { href: '/tutor', icon: Home, label: 'Dashboard' },
     { href: '/bookings', icon: Calendar, label: 'My Bookings' },
+    { href: '/tutor/students', icon: Users, label: 'My Students' },
     { href: '/messages', icon: MessageSquare, label: 'Messages' },
     { href: '/profile', icon: User, label: 'My Profile' },
     { href: '/wallet', icon: Wallet, label: 'Wallet' },

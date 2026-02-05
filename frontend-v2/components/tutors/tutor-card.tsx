@@ -51,7 +51,7 @@ export function TutorCard({ tutor, showFavorite = true }: TutorCardProps) {
           </div>
           <span className="text-slate-400">|</span>
           <span className="text-sm text-slate-500">
-            {tutor.review_count} {tutor.review_count === 1 ? 'review' : 'reviews'}
+            {tutor.total_reviews ?? 0} {(tutor.total_reviews ?? 0) === 1 ? 'review' : 'reviews'}
           </span>
         </div>
 

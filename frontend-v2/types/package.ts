@@ -2,40 +2,61 @@ import type { TutorProfile } from './tutor';
 
 export type PurchasedPackageStatus = 'active' | 'expired' | 'exhausted' | 'cancelled';
 
+// TutorPricingOption from backend (matches TutorPricingOptionResponse schema)
+export interface PricingOption {
+  id: number;
+  title: string;
+  description?: string;
+  duration_minutes: number;
+  price: number;
+  validity_days?: number;
+  extend_on_use?: boolean;
+}
+
+// Legacy Package type for compatibility
+// Can be constructed from PricingOption + tutor context
 export interface Package {
   id: number;
-  tutor_id: number;
-  name: string;
+  tutor_profile_id: number;
+  name?: string;
   description?: string;
-  sessions_count: number;
   price: number;
   currency: string;
-  discount_percent: number;
-  validity_days: number;
+  duration_minutes?: number;
+  sessions_count?: number;
+  validity_days?: number;
+  extend_on_use?: boolean;
   is_active: boolean;
   tutor?: TutorProfile;
   created_at: string;
   updated_at?: string;
 }
 
+// StudentPackage from backend
 export interface PurchasedPackage {
   id: number;
-  package_id: number;
   student_id: number;
+  tutor_profile_id: number;
+  pricing_option_id: number;
+  sessions_purchased: number;
   sessions_remaining: number;
   sessions_used: number;
-  expires_at: string;
-  status: PurchasedPackageStatus;
+  purchase_price: number;
   purchased_at: string;
-  package?: Package;
+  expires_at?: string;
+  status: PurchasedPackageStatus;
+  payment_intent_id?: string;
 }
 
 export interface PurchasePackageInput {
-  package_id: number;
+  tutor_profile_id: number;
+  pricing_option_id: number;
+  payment_intent_id?: string;
+  agreed_terms?: string;
 }
 
 export interface PackageFilters {
-  tutor_id?: number;
+  tutor_profile_id?: number;
   is_active?: boolean;
   page?: number;
   page_size?: number;
@@ -43,6 +64,4 @@ export interface PackageFilters {
 
 export interface MyPackageFilters {
   status?: PurchasedPackageStatus;
-  page?: number;
-  page_size?: number;
 }

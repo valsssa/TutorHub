@@ -90,11 +90,11 @@ export default function NewBookingPage() {
   const onSubmit = (data: CreateBookingFormData) => {
     createBooking.mutate(
       {
-        tutor_id: data.tutor_id,
+        tutor_profile_id: data.tutor_id,
         subject_id: data.subject_id,
-        start_time: data.start_time,
-        duration: data.duration,
-        message: data.message,
+        start_at: data.start_time,
+        duration_minutes: Number(data.duration),
+        notes_student: data.message,
       },
       {
         onSuccess: () => {
@@ -173,7 +173,7 @@ export default function NewBookingPage() {
                               {'*'.repeat(Math.round(tutor.average_rating))}
                             </span>
                             <span className="text-slate-500">
-                              ({tutor.review_count} reviews)
+                              ({tutor.total_reviews ?? 0} reviews)
                             </span>
                           </div>
                         </div>

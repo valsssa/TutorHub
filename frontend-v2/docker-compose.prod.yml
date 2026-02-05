@@ -1,17 +1,29 @@
 # =============================================================================
-# Frontend V2 Production Override
+# Frontend V2 Production Docker Compose (Standalone)
 # =============================================================================
 # Usage:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml up -d --build
 # =============================================================================
 
 services:
   frontend-v2:
     build:
+      context: .
+      dockerfile: Dockerfile
       target: production
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
-    volumes: []  # No volume mounts in production
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions/api/v1}
+    container_name: edustream-frontend-v2
+    ports:
+      - "3000:3000"
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions/api/v1}
+      NEXT_TELEMETRY_DISABLED: "1"
+    restart: unless-stopped
+    # No volumes - uses the built artifacts from the Docker image
+
+networks:
+  default:
+    name: edustream-network
+    external: true

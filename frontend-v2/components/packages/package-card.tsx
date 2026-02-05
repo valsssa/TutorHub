@@ -1,6 +1,6 @@
 'use client';
 
-import { Package as PackageIcon, Clock, Percent, AlertCircle } from 'lucide-react';
+import { Package as PackageIcon, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent, Button, Badge } from '@/components/ui';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import type { Package, PurchasedPackage } from '@/types';
@@ -12,8 +12,9 @@ interface PackageCardProps {
 }
 
 export function PackageCard({ pkg, onPurchase, isPurchasing }: PackageCardProps) {
-  const originalPrice = pkg.price / (1 - pkg.discount_percent / 100);
-  const pricePerSession = pkg.price / pkg.sessions_count;
+  const sessionsCount = pkg.sessions_count ?? 1;
+  const originalPrice = pkg.price;
+  const pricePerSession = sessionsCount > 0 ? pkg.price / sessionsCount : pkg.price;
 
   return (
     <Card className="h-full flex flex-col">
@@ -27,12 +28,7 @@ export function PackageCard({ pkg, onPurchase, isPurchasing }: PackageCardProps)
               <p className="text-sm text-slate-500">by {pkg.tutor.display_name}</p>
             )}
           </div>
-          {pkg.discount_percent > 0 && (
-            <Badge variant="success">
-              <Percent className="h-3 w-3 mr-1" />
-              {pkg.discount_percent}% off
-            </Badge>
-          )}
+          {/* Discount badges removed - not in current API */}
         </div>
 
         {pkg.description && (
@@ -42,18 +38,22 @@ export function PackageCard({ pkg, onPurchase, isPurchasing }: PackageCardProps)
         )}
 
         <div className="space-y-3 mb-6 flex-1">
-          <div className="flex items-center gap-2 text-sm">
-            <PackageIcon className="h-4 w-4 text-slate-400" />
-            <span className="text-slate-600 dark:text-slate-400">
-              {pkg.sessions_count} sessions
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 text-slate-400" />
-            <span className="text-slate-600 dark:text-slate-400">
-              Valid for {pkg.validity_days} days
-            </span>
-          </div>
+          {sessionsCount > 0 && (
+            <div className="flex items-center gap-2 text-sm">
+              <PackageIcon className="h-4 w-4 text-slate-400" />
+              <span className="text-slate-600 dark:text-slate-400">
+                {sessionsCount} session{sessionsCount !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+          {pkg.validity_days && (
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-slate-400" />
+              <span className="text-slate-600 dark:text-slate-400">
+                Valid for {pkg.validity_days} days
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -62,17 +62,14 @@ export function PackageCard({ pkg, onPurchase, isPurchasing }: PackageCardProps)
               <div className="text-2xl font-bold text-slate-900 dark:text-white">
                 {formatCurrency(pkg.price, pkg.currency)}
               </div>
-              {pkg.discount_percent > 0 && (
-                <div className="text-sm text-slate-500 line-through">
-                  {formatCurrency(originalPrice, pkg.currency)}
+            </div>
+            {sessionsCount > 1 && (
+              <div className="text-right">
+                <div className="text-sm text-slate-500">
+                  {formatCurrency(pricePerSession, pkg.currency)}/session
                 </div>
-              )}
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-slate-500">
-                {formatCurrency(pricePerSession, pkg.currency)}/session
               </div>
-            </div>
+            )}
           </div>
 
           {onPurchase && (
@@ -100,17 +97,16 @@ export function PurchasedPackageCard({
   purchasedPackage,
   onUse,
 }: PurchasedPackageCardProps) {
-  const pkg = purchasedPackage.package;
-  const totalSessions = purchasedPackage.sessions_remaining + purchasedPackage.sessions_used;
-  const usagePercent = (purchasedPackage.sessions_used / totalSessions) * 100;
+  const totalSessions = purchasedPackage.sessions_purchased;
+  const usagePercent = totalSessions > 0 ? (purchasedPackage.sessions_used / totalSessions) * 100 : 0;
 
-  const expiresAt = new Date(purchasedPackage.expires_at);
+  const expiresAt = purchasedPackage.expires_at ? new Date(purchasedPackage.expires_at) : null;
   const now = new Date();
-  const daysUntilExpiry = Math.ceil(
-    (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const isExpiringSoon = daysUntilExpiry <= 7 && daysUntilExpiry > 0;
-  const isExpired = purchasedPackage.status === 'expired' || daysUntilExpiry <= 0;
+  const daysUntilExpiry = expiresAt
+    ? Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
+  const isExpired = purchasedPackage.status === 'expired' || (daysUntilExpiry !== null && daysUntilExpiry <= 0);
   const isExhausted = purchasedPackage.status === 'exhausted';
 
   const getStatusBadge = () => {
@@ -134,11 +130,11 @@ export function PurchasedPackageCard({
         <div className="flex items-start justify-between gap-2 mb-4">
           <div>
             <h3 className="font-semibold text-lg text-slate-900 dark:text-white">
-              {pkg?.name ?? 'Session Package'}
+              Session Package
             </h3>
-            {pkg?.tutor && (
-              <p className="text-sm text-slate-500">by {pkg.tutor.display_name}</p>
-            )}
+            <p className="text-sm text-slate-500">
+              {purchasedPackage.sessions_purchased} sessions
+            </p>
           </div>
           {getStatusBadge()}
         </div>
@@ -166,24 +162,26 @@ export function PurchasedPackageCard({
             </span>
           </div>
 
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 text-slate-400" />
-            <span
-              className={
-                isExpired
-                  ? 'text-red-600 dark:text-red-400'
-                  : isExpiringSoon
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-slate-600 dark:text-slate-400'
-              }
-            >
-              {isExpired
-                ? 'Expired'
-                : `Expires ${formatDate(purchasedPackage.expires_at)}`}
-            </span>
-          </div>
+          {purchasedPackage.expires_at && (
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-slate-400" />
+              <span
+                className={
+                  isExpired
+                    ? 'text-red-600 dark:text-red-400'
+                    : isExpiringSoon
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-600 dark:text-slate-400'
+                }
+              >
+                {isExpired
+                  ? 'Expired'
+                  : `Expires ${formatDate(purchasedPackage.expires_at)}`}
+              </span>
+            </div>
+          )}
 
-          {isExpiringSoon && !isExpired && (
+          {isExpiringSoon && !isExpired && daysUntilExpiry !== null && (
             <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               <span className="text-sm text-amber-700 dark:text-amber-400">

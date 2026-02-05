@@ -21,19 +21,19 @@ services:
       target: development
     container_name: edustream-frontend-v2
     ports:
-      - "3001:3000"  # Use 3001 to avoid conflict with old frontend
+      - "3000:3000"  # Use 3001 to avoid conflict with old frontend
     volumes:
       - .:/app:cached
       - /app/node_modules
       - /app/.next
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions/api/v1}
+      NEXT_TELEMETRY_DISABLED: "1"
       WATCHPACK_POLLING: "true"  # Enable polling for file watching in Docker
     restart: unless-stopped
 
 networks:
   default:
     name: edustream-network
-    # Set external: true if running with main project's docker-compose
-    # external: true
+    external: true

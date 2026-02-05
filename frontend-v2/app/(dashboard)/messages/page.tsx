@@ -1,126 +1,17 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { MessageCircle, Search } from 'lucide-react';
+import { MessageCircle, Search, AlertCircle } from 'lucide-react';
 import { useConversations } from '@/lib/hooks';
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-  Input,
   Skeleton,
 } from '@/components/ui';
 import { ConversationListItem } from '@/components/messages';
-import type { Conversation, User } from '@/types';
-
-const mockConversations: Conversation[] = [
-  {
-    id: 1,
-    participants: [
-      {
-        id: 1,
-        email: 'student@example.com',
-        first_name: 'John',
-        last_name: 'Doe',
-        role: 'student',
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z',
-      },
-      {
-        id: 2,
-        email: 'tutor1@example.com',
-        first_name: 'Sarah',
-        last_name: 'Williams',
-        role: 'tutor',
-        avatar_url: undefined,
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z',
-      },
-    ],
-    last_message: {
-      id: 101,
-      conversation_id: 1,
-      sender_id: 2,
-      content: 'Great progress today! Keep practicing those problems.',
-      is_read: false,
-      created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    },
-    unread_count: 2,
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-  },
-  {
-    id: 2,
-    participants: [
-      {
-        id: 1,
-        email: 'student@example.com',
-        first_name: 'John',
-        last_name: 'Doe',
-        role: 'student',
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z',
-      },
-      {
-        id: 3,
-        email: 'tutor2@example.com',
-        first_name: 'Michael',
-        last_name: 'Chen',
-        role: 'tutor',
-        avatar_url: undefined,
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z',
-      },
-    ],
-    last_message: {
-      id: 102,
-      conversation_id: 2,
-      sender_id: 1,
-      content: 'Thank you for the session!',
-      is_read: true,
-      created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    unread_count: 0,
-    created_at: '2024-01-10T14:00:00Z',
-    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: 3,
-    participants: [
-      {
-        id: 1,
-        email: 'student@example.com',
-        first_name: 'John',
-        last_name: 'Doe',
-        role: 'student',
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z',
-      },
-      {
-        id: 4,
-        email: 'tutor3@example.com',
-        first_name: 'Emily',
-        last_name: 'Johnson',
-        role: 'tutor',
-        avatar_url: undefined,
-        is_active: true,
-        created_at: '2024-01-01T00:00:00Z',
-      },
-    ],
-    last_message: {
-      id: 103,
-      conversation_id: 3,
-      sender_id: 4,
-      content: 'Let me know if you have any questions about the homework.',
-      is_read: true,
-      created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-    unread_count: 0,
-    created_at: '2024-01-05T09:00:00Z',
-    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-  },
-];
+import type { Conversation } from '@/types';
 
 function ConversationSkeleton() {
   return (
@@ -136,23 +27,61 @@ function ConversationSkeleton() {
 
 export default function MessagesPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: apiConversations, isLoading } = useConversations();
+  const { data: conversations, isLoading, error } = useConversations();
 
-  const conversations = apiConversations || mockConversations;
+  // Transform MessageThread[] to Conversation[] if needed
+  const normalizedConversations = useMemo(() => {
+    if (!conversations) return [];
+    return conversations.map((thread) => {
+      // If it's already a Conversation type, return as-is
+      if ('participants' in thread && Array.isArray(thread.participants) && thread.participants.length > 0) {
+        return thread as Conversation;
+      }
+      // Transform MessageThread to Conversation
+      const conv: Conversation = {
+        id: thread.other_user_id ?? thread.id ?? 0,
+        participants: thread.participants ?? [
+          {
+            id: thread.other_user_id ?? 0,
+            email: thread.other_user_email ?? '',
+            first_name: thread.other_user_first_name ?? '',
+            last_name: thread.other_user_last_name ?? '',
+            role: (thread.other_user_role ?? 'student') as 'student' | 'tutor' | 'admin' | 'owner',
+            avatar_url: thread.other_user_avatar_url,
+            is_active: true,
+            created_at: thread.created_at ?? new Date().toISOString(),
+          },
+        ],
+        last_message: thread.last_message,
+        unread_count: thread.unread_count ?? 0,
+        created_at: thread.created_at ?? new Date().toISOString(),
+        updated_at: thread.updated_at ?? thread.last_message_time ?? new Date().toISOString(),
+        other_user_id: thread.other_user_id,
+      };
+      return conv;
+    });
+  }, [conversations]);
 
   const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return conversations;
+    if (!searchQuery.trim()) return normalizedConversations;
 
     const query = searchQuery.toLowerCase();
-    return conversations.filter((conv) => {
-      const participantNames = conv.participants
+    return normalizedConversations.filter((conv) => {
+      const participants = conv.participants ?? [];
+      const participantNames = participants
         .map((p) => `${p.first_name} ${p.last_name}`.toLowerCase())
         .join(' ');
-      const lastMessage = conv.last_message?.content.toLowerCase() || '';
+      // Handle last_message which could be string, Message object, or undefined
+      let lastMessageContent = '';
+      if (typeof conv.last_message === 'string') {
+        lastMessageContent = conv.last_message.toLowerCase();
+      } else if (conv.last_message && typeof conv.last_message === 'object') {
+        lastMessageContent = (conv.last_message.content || '').toLowerCase();
+      }
 
-      return participantNames.includes(query) || lastMessage.includes(query);
+      return participantNames.includes(query) || lastMessageContent.includes(query);
     });
-  }, [conversations, searchQuery]);
+  }, [normalizedConversations, searchQuery]);
 
   return (
     <div className="space-y-6">
@@ -190,6 +119,16 @@ export default function MessagesPage() {
                 <ConversationSkeleton />
                 <ConversationSkeleton />
               </>
+            ) : error ? (
+              <div className="text-center py-12">
+                <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
+                <p className="text-slate-700 dark:text-slate-300 font-medium">
+                  Failed to load conversations
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Please try refreshing the page
+                </p>
+              </div>
             ) : filteredConversations.length === 0 ? (
               <div className="text-center py-12">
                 <MessageCircle className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />

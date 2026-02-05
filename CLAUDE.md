@@ -118,11 +118,20 @@ Next.js 15 App Router with protected routes and role-based UI:
 
 ### Booking State Machine
 
-The bookings module uses a four-field status system (`backend/modules/bookings/domain/`):
-- `SessionState`: pending_tutor, pending_student, confirmed, in_progress, completed, cancelled, expired, no_show
-- `SessionOutcome`: pending, successful, failed, cancelled, disputed
-- `PaymentState`: pending, authorized, captured, refunded, released_to_tutor, failed
-- `DisputeState`: none, filed, under_review, resolved_student_favor, resolved_tutor_favor
+The bookings module uses a four-field status system (`backend/modules/bookings/domain/status.py`):
+
+- `SessionState`: REQUESTED, SCHEDULED, ACTIVE, ENDED, CANCELLED, EXPIRED
+  - Forward-only progression: REQUESTED -> SCHEDULED -> ACTIVE -> ENDED
+  - Terminal states: ENDED, CANCELLED, EXPIRED
+
+- `SessionOutcome`: COMPLETED, NOT_HELD, NO_SHOW_STUDENT, NO_SHOW_TUTOR
+  - Only set when session reaches a terminal state
+
+- `PaymentState`: PENDING, AUTHORIZED, CAPTURED, VOIDED, REFUNDED, PARTIALLY_REFUNDED
+  - Tracks payment lifecycle independently of session state
+
+- `DisputeState`: NONE, OPEN, RESOLVED_UPHELD, RESOLVED_REFUNDED
+  - Admin-managed dispute resolution workflow
 
 State transitions are enforced by `BookingStateMachine` class. Background jobs handle auto-transitions (expire, start, end sessions).
 

@@ -1,16 +1,22 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks';
 import { loginSchema, type LoginFormData } from '@/lib/validators';
-import { Card, CardContent, Button, Input } from '@/components/ui';
+import { Card, CardContent, Button, Input, Skeleton } from '@/components/ui';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isLoggingIn, loginError } = useAuth();
+
+  const registered = searchParams.get('registered') === 'true';
+  const reset = searchParams.get('reset') === 'true';
+  const verified = searchParams.get('verified') === 'true';
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -36,6 +42,30 @@ export default function LoginPage() {
           Welcome back
         </h2>
 
+        {registered && (
+          <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <p className="text-sm text-green-600 dark:text-green-400">
+              Account created successfully! Please sign in.
+            </p>
+          </div>
+        )}
+
+        {reset && (
+          <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <p className="text-sm text-green-600 dark:text-green-400">
+              Password reset successfully! Please sign in with your new password.
+            </p>
+          </div>
+        )}
+
+        {verified && (
+          <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <p className="text-sm text-green-600 dark:text-green-400">
+              Email verified successfully! Please sign in.
+            </p>
+          </div>
+        )}
+
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <Input
             label="Email"
@@ -48,7 +78,7 @@ export default function LoginPage() {
           <Input
             label="Password"
             type="password"
-            placeholder="••••••••"
+            placeholder="Enter your password"
             error={form.formState.errors.password?.message}
             {...form.register('password')}
           />
@@ -81,5 +111,28 @@ export default function LoginPage() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function LoginFormSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <Skeleton className="h-8 w-40 mb-6" />
+        <div className="space-y-4">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFormSkeleton />}>
+      <LoginForm />
+    </Suspense>
   );
 }

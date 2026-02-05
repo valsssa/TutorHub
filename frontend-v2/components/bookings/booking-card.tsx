@@ -22,8 +22,8 @@ export function BookingCard({
 }: BookingCardProps) {
   const displayName =
     userRole === 'student'
-      ? booking.tutor?.display_name ?? 'Tutor'
-      : `Student #${booking.student_id}`;
+      ? booking.tutor?.name ?? 'Tutor'
+      : booking.student?.name ?? 'Student';
 
   const avatarUrl = userRole === 'student' ? booking.tutor?.avatar_url : undefined;
 
@@ -43,7 +43,7 @@ export function BookingCard({
             <div className="flex items-start justify-between gap-2">
               <div>
                 <h3 className="font-semibold text-slate-900 dark:text-white truncate">
-                  {booking.subject?.name ?? 'Session'}
+                  {booking.subject_name ?? 'Session'}
                 </h3>
                 <p className="text-sm text-slate-500 flex items-center gap-1">
                   <User className="h-3 w-3" />
@@ -56,14 +56,14 @@ export function BookingCard({
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                {formatDate(booking.start_time)}
+                {formatDate(booking.start_at)}
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
-                {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                {formatTime(booking.start_at)} - {formatTime(booking.end_at)}
               </span>
               <span className="font-medium text-slate-900 dark:text-white">
-                {formatCurrency(booking.total_amount, booking.currency)}
+                {formatCurrency(booking.rate_cents / 100, booking.currency)}
               </span>
             </div>
 

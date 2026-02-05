@@ -91,26 +91,6 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Next.js Frontend
-  # ---------------------------------------------------------------------------
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-    container_name: edustream-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  # ---------------------------------------------------------------------------
   # MinIO Object Storage (Optional - for file uploads)
   # ---------------------------------------------------------------------------
   minio:

@@ -4,8 +4,10 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   RotateCcw,
-  Gift,
   Minus,
+  CreditCard,
+  Banknote,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { Badge } from '@/components/ui';
 import { formatCurrency, formatDate, formatTime } from '@/lib/utils';
@@ -15,9 +17,9 @@ const typeConfig: Record<
   TransactionType,
   { icon: typeof ArrowDownLeft; label: string; colorClass: string }
 > = {
-  earning: {
+  deposit: {
     icon: ArrowDownLeft,
-    label: 'Earning',
+    label: 'Deposit',
     colorClass: 'text-green-600 bg-green-50 dark:bg-green-900/20',
   },
   withdrawal: {
@@ -30,15 +32,25 @@ const typeConfig: Record<
     label: 'Refund',
     colorClass: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20',
   },
-  bonus: {
-    icon: Gift,
-    label: 'Bonus',
-    colorClass: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20',
+  payout: {
+    icon: Banknote,
+    label: 'Payout',
+    colorClass: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20',
+  },
+  payment: {
+    icon: CreditCard,
+    label: 'Payment',
+    colorClass: 'text-slate-600 bg-slate-100 dark:bg-slate-700/50',
   },
   fee: {
     icon: Minus,
     label: 'Fee',
     colorClass: 'text-red-600 bg-red-50 dark:bg-red-900/20',
+  },
+  transfer: {
+    icon: ArrowLeftRight,
+    label: 'Transfer',
+    colorClass: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20',
   },
 };
 
@@ -55,10 +67,12 @@ interface TransactionItemProps {
 }
 
 export function TransactionItem({ transaction, showDetails = false }: TransactionItemProps) {
-  const config = typeConfig[transaction.type];
+  const config = typeConfig[transaction.type] || typeConfig.payment;
   const Icon = config.icon;
 
-  const isPositive = ['earning', 'refund', 'bonus'].includes(transaction.type);
+  // Deposits, refunds, and payouts add to balance (positive)
+  // Withdrawals, payments, fees subtract from balance (negative)
+  const isPositive = ['deposit', 'refund', 'payout'].includes(transaction.type);
   const amountPrefix = isPositive ? '+' : '-';
   const amountColorClass = isPositive
     ? 'text-green-600 dark:text-green-400'

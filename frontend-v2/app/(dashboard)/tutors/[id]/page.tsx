@@ -1,11 +1,10 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  Star,
   Clock,
   Calendar,
   MessageSquare,
@@ -13,7 +12,7 @@ import {
   Share2,
   CheckCircle,
 } from 'lucide-react';
-import { useTutor, useTutorAvailability } from '@/lib/hooks';
+import { useTutor, useTutorAvailability, useTutorReviews } from '@/lib/hooks';
 import {
   Card,
   CardContent,
@@ -24,7 +23,8 @@ import {
   Badge,
   Skeleton,
 } from '@/components/ui';
-import { formatCurrency } from '@/lib/utils';
+import { StarRating } from '@/components/reviews';
+import { formatCurrency, formatRelativeTime } from '@/lib/utils';
 
 interface TutorProfilePageProps {
   params: Promise<{ id: string }>;
@@ -40,55 +40,22 @@ const DAYS_OF_WEEK = [
   'Saturday',
 ];
 
-const MOCK_REVIEWS = [
-  {
-    id: 1,
-    student_name: 'Alex M.',
-    rating: 5,
-    comment: 'Excellent tutor! Very patient and explains concepts clearly.',
-    created_at: '2024-01-15',
-  },
-  {
-    id: 2,
-    student_name: 'Sarah K.',
-    rating: 4,
-    comment: 'Great sessions, helped me improve my grades significantly.',
-    created_at: '2024-01-10',
-  },
-  {
-    id: 3,
-    student_name: 'Mike R.',
-    rating: 5,
-    comment: 'Highly recommended! Knows the subject matter very well.',
-    created_at: '2024-01-05',
-  },
-];
-
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star
-          key={i}
-          className={`h-4 w-4 ${
-            i < rating
-              ? 'fill-amber-400 text-amber-400'
-              : 'fill-slate-200 text-slate-200 dark:fill-slate-700 dark:text-slate-700'
-          }`}
-        />
-      ))}
-    </div>
-  );
-}
+const REVIEWS_PAGE_SIZE = 5;
 
 export default function TutorProfilePage({ params }: TutorProfilePageProps) {
   const { id } = use(params);
   const router = useRouter();
   const tutorId = parseInt(id, 10);
+  const [reviewsPage, setReviewsPage] = useState(1);
 
   const { data: tutor, isLoading: tutorLoading } = useTutor(tutorId);
   const { data: availability, isLoading: availabilityLoading } =
     useTutorAvailability(tutorId);
+  const { data: reviews, isLoading: reviewsLoading } = useTutorReviews(
+    tutorId,
+    reviewsPage,
+    REVIEWS_PAGE_SIZE
+  );
 
   const groupedAvailability = availability?.reduce(
     (acc, slot) => {
@@ -210,12 +177,12 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
 
                   <div className="mt-4 flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <StarRating rating={Math.round(tutor.average_rating)} />
+                      <StarRating value={Math.round(tutor.average_rating)} readonly size="sm" />
                       <span className="text-sm font-medium text-slate-900 dark:text-white">
                         {tutor.average_rating.toFixed(1)}
                       </span>
                       <span className="text-sm text-slate-500">
-                        ({tutor.review_count} reviews)
+                        ({tutor.total_reviews ?? 0} reviews)
                       </span>
                     </div>
                     {tutor.is_approved && (
@@ -307,12 +274,34 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
               <div className="flex items-center justify-between">
                 <CardTitle>Reviews</CardTitle>
                 <Badge variant="default">
-                  {tutor.review_count} reviews
+                  {tutor.total_reviews ?? 0} reviews
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
-              {tutor.review_count === 0 ? (
+              {reviewsLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <div className="space-y-1">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-3 w-16" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4 mt-1" />
+                    </div>
+                  ))}
+                </div>
+              ) : !reviews || reviews.length === 0 ? (
                 <div className="py-8 text-center">
                   <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-500">
@@ -321,30 +310,42 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {MOCK_REVIEWS.map((review) => (
+                  {reviews.map((review) => (
                     <div
                       key={review.id}
                       className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <Avatar name={review.student_name} size="sm" />
+                          <Avatar name="Student" size="sm" />
                           <div>
                             <p className="font-medium text-slate-900 dark:text-white">
-                              {review.student_name}
+                              Student
                             </p>
                             <p className="text-xs text-slate-500">
-                              {new Date(review.created_at).toLocaleDateString()}
+                              {formatRelativeTime(review.created_at)}
                             </p>
                           </div>
                         </div>
-                        <StarRating rating={review.rating} />
+                        <StarRating value={review.rating} readonly size="sm" />
                       </div>
-                      <p className="text-slate-600 dark:text-slate-400">
-                        {review.comment}
-                      </p>
+                      {review.comment && (
+                        <p className="text-slate-600 dark:text-slate-400">
+                          {review.comment}
+                        </p>
+                      )}
                     </div>
                   ))}
+                  {reviews.length >= REVIEWS_PAGE_SIZE && (
+                    <div className="text-center pt-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setReviewsPage((prev) => prev + 1)}
+                      >
+                        Load more reviews
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -383,7 +384,7 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500">Sessions completed</span>
                     <span className="font-medium text-slate-900 dark:text-white">
-                      {tutor.review_count * 3}+
+                      {(tutor.total_reviews || 0) * 3}+
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">

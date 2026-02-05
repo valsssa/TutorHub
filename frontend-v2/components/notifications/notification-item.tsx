@@ -42,22 +42,25 @@ const typeColors: Record<NotificationType, string> = {
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
   const timeAgo = formatRelativeTime(notification.created_at);
 
+  // Support both is_read and read for backward compatibility
+  const isRead = notification.is_read ?? notification.read ?? false;
+
   const content = (
     <div
       className={cn(
         'flex items-start gap-3 p-4 rounded-xl transition-colors',
         'hover:bg-slate-50 dark:hover:bg-slate-800/50',
-        !notification.read && 'bg-slate-50/50 dark:bg-slate-800/30'
+        !isRead && 'bg-slate-50/50 dark:bg-slate-800/30'
       )}
       onClick={onClick}
     >
       <div
         className={cn(
           'shrink-0 p-2 rounded-lg',
-          typeColors[notification.type]
+          typeColors[notification.type as NotificationType]
         )}
       >
-        {typeIcons[notification.type] || <Bell className="h-5 w-5 text-slate-500" />}
+        {typeIcons[notification.type as NotificationType] || <Bell className="h-5 w-5 text-slate-500" />}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -65,13 +68,13 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
           <p
             className={cn(
               'text-sm text-slate-900 dark:text-white',
-              !notification.read && 'font-semibold'
+              !isRead && 'font-semibold'
             )}
           >
             {notification.title}
           </p>
           <div className="flex items-center gap-2 shrink-0">
-            {!notification.read && (
+            {!isRead && (
               <span className="h-2 w-2 rounded-full bg-primary-500" />
             )}
             <span className="text-xs text-slate-500 dark:text-slate-400">

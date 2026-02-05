@@ -64,8 +64,11 @@ export default function MyPackagesPage() {
     router.push(`/bookings/new?package_id=${pkg.id}`);
   };
 
-  const activePackages = data?.items.filter((pkg) => pkg.status === 'active') ?? [];
-  const expiringSoonPackages = activePackages.filter((pkg) => {
+  // data is PurchasedPackage[] array, not paginated
+  const packages = data ?? [];
+  const activePackages = packages.filter((pkg: PurchasedPackage) => pkg.status === 'active');
+  const expiringSoonPackages = activePackages.filter((pkg: PurchasedPackage) => {
+    if (!pkg.expires_at) return false;
     const expiresAt = new Date(pkg.expires_at);
     const now = new Date();
     const daysUntilExpiry = Math.ceil(
@@ -148,7 +151,7 @@ export default function MyPackagesPage() {
               </p>
               <Button onClick={() => window.location.reload()}>Retry</Button>
             </div>
-          ) : !data?.items.length ? (
+          ) : packages.length === 0 ? (
             <div className="py-12 text-center">
               <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
@@ -164,7 +167,7 @@ export default function MyPackagesPage() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {data.items.map((purchasedPackage) => (
+              {packages.map((purchasedPackage: PurchasedPackage) => (
                 <PurchasedPackageCard
                   key={purchasedPackage.id}
                   purchasedPackage={purchasedPackage}
@@ -176,33 +179,7 @@ export default function MyPackagesPage() {
         </CardContent>
       </Card>
 
-      {data && data.total > data.page_size && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={data.page === 1}
-            onClick={() => {
-              // TODO: Implement pagination
-            }}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-slate-500">
-            Page {data.page} of {data.total_pages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={data.page === data.total_pages}
-            onClick={() => {
-              // TODO: Implement pagination
-            }}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      {/* Pagination removed - API returns simple array */}
     </div>
   );
 }

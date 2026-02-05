@@ -176,19 +176,19 @@ export default function BookingDetailPage() {
               <div className="flex items-start gap-4">
                 <Avatar
                   src={booking.tutor?.avatar_url}
-                  name={booking.tutor?.display_name}
+                  name={booking.tutor?.name}
                   size="xl"
                 />
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    {booking.subject?.name ?? 'Session'}
+                    {booking.subject_name ?? 'Session'}
                   </h3>
                   <p className="text-slate-600 dark:text-slate-400">
-                    with {booking.tutor?.display_name ?? 'Tutor'}
+                    with {booking.tutor?.name ?? 'Tutor'}
                   </p>
-                  {booking.tutor?.headline && (
+                  {booking.tutor?.title && (
                     <p className="text-sm text-slate-500 mt-1">
-                      {booking.tutor.headline}
+                      {booking.tutor.title}
                     </p>
                   )}
                 </div>
@@ -200,7 +200,7 @@ export default function BookingDetailPage() {
                   <div>
                     <p className="text-sm text-slate-500">Date</p>
                     <p className="font-medium text-slate-900 dark:text-white">
-                      {formatDate(booking.start_time, {
+                      {formatDate(booking.start_at, {
                         weekday: 'long',
                         month: 'long',
                         day: 'numeric',
@@ -215,11 +215,7 @@ export default function BookingDetailPage() {
                   <div>
                     <p className="text-sm text-slate-500">Time</p>
                     <p className="font-medium text-slate-900 dark:text-white">
-                      {formatTime(booking.start_time)} -{' '}
-                      {formatTime(booking.end_time)}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      ({booking.duration_minutes} minutes)
+                      {formatTime(booking.start_at)} - {formatTime(booking.end_at)}
                     </p>
                   </div>
                 </div>
@@ -239,19 +235,19 @@ export default function BookingDetailPage() {
                   <div>
                     <p className="text-sm text-slate-500">Total</p>
                     <p className="font-medium text-slate-900 dark:text-white">
-                      {formatCurrency(booking.total_amount, booking.currency)}
+                      {formatCurrency(booking.rate_cents / 100, booking.currency)}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {booking.student_message && (
+              {booking.notes_student && (
                 <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Message to tutor
                   </p>
                   <p className="text-slate-600 dark:text-slate-400">
-                    {booking.student_message}
+                    {booking.notes_student}
                   </p>
                 </div>
               )}
@@ -377,7 +373,7 @@ export default function BookingDetailPage() {
               <div className="flex justify-between">
                 <span className="text-slate-500">Session fee</span>
                 <span className="font-medium text-slate-900 dark:text-white">
-                  {formatCurrency(booking.total_amount, booking.currency)}
+                  {formatCurrency(booking.total_amount ?? booking.rate_cents / 100, booking.currency)}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -385,10 +381,12 @@ export default function BookingDetailPage() {
                 <span
                   className={`font-medium ${
                     booking.payment_state === 'captured' ||
-                    booking.payment_state === 'released_to_tutor'
+                    booking.payment_state === 'released_to_tutor' ||
+                    booking.payment_state === 'CAPTURED'
                       ? 'text-green-600'
                       : booking.payment_state === 'refunded' ||
-                        booking.payment_state === 'failed'
+                        booking.payment_state === 'failed' ||
+                        booking.payment_state === 'REFUNDED'
                       ? 'text-red-600'
                       : 'text-amber-600'
                   }`}
@@ -402,7 +400,7 @@ export default function BookingDetailPage() {
                   Total
                 </span>
                 <span className="font-bold text-slate-900 dark:text-white">
-                  {formatCurrency(booking.total_amount, booking.currency)}
+                  {formatCurrency(booking.total_amount ?? booking.rate_cents / 100, booking.currency)}
                 </span>
               </div>
             </CardContent>

@@ -27,17 +27,17 @@ const tabs: { key: TabKey; label: string; states: SessionState[] }[] = [
   {
     key: 'upcoming',
     label: 'Upcoming',
-    states: ['pending_tutor', 'pending_student', 'confirmed', 'in_progress'],
+    states: ['REQUESTED', 'SCHEDULED', 'ACTIVE'],
   },
   {
     key: 'past',
     label: 'Past',
-    states: ['completed'],
+    states: ['ENDED'],
   },
   {
     key: 'cancelled',
     label: 'Cancelled',
-    states: ['cancelled', 'expired', 'no_show'],
+    states: ['CANCELLED', 'EXPIRED'],
   },
 ];
 
@@ -58,9 +58,9 @@ export default function BookingsPage() {
   const cancelBooking = useCancelBooking();
   const confirmBooking = useConfirmBooking();
 
+  const bookingItems = bookings?.bookings ?? [];
   const filteredBookings =
-    bookings?.items.filter((b) => currentTabStates.includes(b.session_state)) ??
-    [];
+    bookingItems.filter((b) => currentTabStates.includes(b.session_state));
 
   const handleCancel = (id: number) => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {

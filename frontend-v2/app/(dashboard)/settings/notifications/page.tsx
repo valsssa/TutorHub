@@ -1,13 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Mail, Bell, Check } from 'lucide-react';
-import {
-  notificationPreferencesSchema,
-  type NotificationPreferencesFormData,
-} from '@/lib/validators/settings';
+import { Mail, Bell, Check, AlertCircle } from 'lucide-react';
+import { z } from 'zod';
+import { useNotificationPreferences, useUpdateNotificationPreferences } from '@/lib/hooks';
 import {
   Card,
   CardHeader,
@@ -16,7 +14,20 @@ import {
   CardContent,
   CardFooter,
   Button,
+  Skeleton,
 } from '@/components/ui';
+
+// Schema matching backend API
+const notificationPreferencesSchema = z.object({
+  email_enabled: z.boolean(),
+  push_enabled: z.boolean(),
+  session_reminders_enabled: z.boolean(),
+  booking_requests_enabled: z.boolean(),
+  review_prompts_enabled: z.boolean(),
+  marketing_enabled: z.boolean(),
+});
+
+type NotificationPreferencesFormData = z.infer<typeof notificationPreferencesSchema>;
 
 interface ToggleProps {
   id: string;
@@ -24,9 +35,10 @@ interface ToggleProps {
   description?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  disabled?: boolean;
 }
 
-function Toggle({ id, label, description, checked, onChange }: ToggleProps) {
+function Toggle({ id, label, description, checked, onChange, disabled }: ToggleProps) {
   return (
     <div className="flex items-center justify-between py-3">
       <div className="flex-1 pr-4">
@@ -45,8 +57,9 @@ function Toggle({ id, label, description, checked, onChange }: ToggleProps) {
         id={id}
         role="switch"
         aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+        onClick={() => !disabled && onChange(!checked)}
+        disabled={disabled}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
           checked ? 'bg-primary-500' : 'bg-slate-200 dark:bg-slate-700'
         }`}
       >
@@ -60,39 +73,120 @@ function Toggle({ id, label, description, checked, onChange }: ToggleProps) {
   );
 }
 
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center justify-between py-3">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+              <Skeleton className="h-6 w-11 rounded-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between py-3">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+              <Skeleton className="h-6 w-11 rounded-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function NotificationSettingsPage() {
-  const [isSaving, setIsSaving] = useState(false);
+  const { data: preferences, isLoading, error: fetchError } = useNotificationPreferences();
+  const updatePreferences = useUpdateNotificationPreferences();
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const form = useForm<NotificationPreferencesFormData>({
     resolver: zodResolver(notificationPreferencesSchema),
     defaultValues: {
-      email_booking_confirmations: true,
-      email_booking_reminders: true,
-      email_messages: true,
-      email_marketing: false,
-      push_booking_confirmations: true,
-      push_booking_reminders: true,
-      push_messages: true,
+      email_enabled: true,
+      push_enabled: true,
+      session_reminders_enabled: true,
+      booking_requests_enabled: true,
+      review_prompts_enabled: true,
+      marketing_enabled: false,
     },
   });
 
   const values = form.watch();
 
+  // Reset form when preferences load from API
+  useEffect(() => {
+    if (preferences) {
+      form.reset({
+        email_enabled: preferences.email_enabled ?? true,
+        push_enabled: preferences.push_enabled ?? true,
+        session_reminders_enabled: preferences.session_reminders_enabled ?? true,
+        booking_requests_enabled: preferences.booking_requests_enabled ?? true,
+        review_prompts_enabled: preferences.review_prompts_enabled ?? true,
+        marketing_enabled: preferences.marketing_enabled ?? false,
+      });
+    }
+  }, [preferences, form]);
+
   const onSubmit = async (data: NotificationPreferencesFormData) => {
-    setIsSaving(true);
     setSaveSuccess(false);
     try {
-      // TODO: Implement notification preferences API call
-      console.log('Notification preferences:', data);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await updatePreferences.mutateAsync(data);
       setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
-      // Handle error
-    } finally {
-      setIsSaving(false);
+      // Error handled by mutation
     }
   };
+
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  if (fetchError) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <AlertCircle className="h-10 w-10 text-red-500" />
+            <div>
+              <p className="font-medium text-slate-900 dark:text-white">
+                Failed to load preferences
+              </p>
+              <p className="text-sm text-slate-500">
+                {fetchError instanceof Error ? fetchError.message : 'Please try again later'}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -100,6 +194,17 @@ export default function NotificationSettingsPage() {
         <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
           <Check className="h-4 w-4" />
           <span className="text-sm">Preferences saved successfully!</span>
+        </div>
+      )}
+
+      {updatePreferences.isError && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">
+          <AlertCircle className="h-4 w-4" />
+          <span className="text-sm">
+            {updatePreferences.error instanceof Error
+              ? updatePreferences.error.message
+              : 'Failed to save preferences'}
+          </span>
         </div>
       )}
 
@@ -119,36 +224,44 @@ export default function NotificationSettingsPage() {
         </CardHeader>
         <CardContent className="divide-y divide-slate-100 dark:divide-slate-800">
           <Toggle
-            id="email_booking_confirmations"
-            label="Booking Confirmations"
-            description="Receive emails when your bookings are confirmed"
-            checked={values.email_booking_confirmations}
-            onChange={(checked) =>
-              form.setValue('email_booking_confirmations', checked)
-            }
+            id="email_enabled"
+            label="Email Notifications"
+            description="Master toggle for all email notifications"
+            checked={values.email_enabled}
+            onChange={(checked) => form.setValue('email_enabled', checked)}
+            disabled={updatePreferences.isPending}
           />
           <Toggle
-            id="email_booking_reminders"
-            label="Booking Reminders"
+            id="session_reminders_email"
+            label="Session Reminders"
             description="Receive reminder emails before your sessions"
-            checked={values.email_booking_reminders}
-            onChange={(checked) =>
-              form.setValue('email_booking_reminders', checked)
-            }
+            checked={values.email_enabled && values.session_reminders_enabled}
+            onChange={(checked) => form.setValue('session_reminders_enabled', checked)}
+            disabled={updatePreferences.isPending || !values.email_enabled}
           />
           <Toggle
-            id="email_messages"
-            label="New Messages"
-            description="Receive emails when you get new messages"
-            checked={values.email_messages}
-            onChange={(checked) => form.setValue('email_messages', checked)}
+            id="booking_requests_email"
+            label="Booking Requests"
+            description="Receive emails when you get new booking requests"
+            checked={values.email_enabled && values.booking_requests_enabled}
+            onChange={(checked) => form.setValue('booking_requests_enabled', checked)}
+            disabled={updatePreferences.isPending || !values.email_enabled}
           />
           <Toggle
-            id="email_marketing"
+            id="review_prompts_email"
+            label="Review Prompts"
+            description="Receive emails prompting you to review completed sessions"
+            checked={values.email_enabled && values.review_prompts_enabled}
+            onChange={(checked) => form.setValue('review_prompts_enabled', checked)}
+            disabled={updatePreferences.isPending || !values.email_enabled}
+          />
+          <Toggle
+            id="marketing_enabled"
             label="Marketing & Promotions"
             description="Receive emails about new features and promotions"
-            checked={values.email_marketing}
-            onChange={(checked) => form.setValue('email_marketing', checked)}
+            checked={values.email_enabled && values.marketing_enabled}
+            onChange={(checked) => form.setValue('marketing_enabled', checked)}
+            disabled={updatePreferences.isPending || !values.email_enabled}
           />
         </CardContent>
       </Card>
@@ -169,33 +282,32 @@ export default function NotificationSettingsPage() {
         </CardHeader>
         <CardContent className="divide-y divide-slate-100 dark:divide-slate-800">
           <Toggle
-            id="push_booking_confirmations"
-            label="Booking Confirmations"
-            description="Get notified when your bookings are confirmed"
-            checked={values.push_booking_confirmations}
-            onChange={(checked) =>
-              form.setValue('push_booking_confirmations', checked)
-            }
+            id="push_enabled"
+            label="Push Notifications"
+            description="Master toggle for all push notifications"
+            checked={values.push_enabled}
+            onChange={(checked) => form.setValue('push_enabled', checked)}
+            disabled={updatePreferences.isPending}
           />
           <Toggle
-            id="push_booking_reminders"
-            label="Booking Reminders"
+            id="session_reminders_push"
+            label="Session Reminders"
             description="Get reminded before your sessions start"
-            checked={values.push_booking_reminders}
-            onChange={(checked) =>
-              form.setValue('push_booking_reminders', checked)
-            }
+            checked={values.push_enabled && values.session_reminders_enabled}
+            onChange={(checked) => form.setValue('session_reminders_enabled', checked)}
+            disabled={updatePreferences.isPending || !values.push_enabled}
           />
           <Toggle
-            id="push_messages"
-            label="New Messages"
-            description="Get notified when you receive new messages"
-            checked={values.push_messages}
-            onChange={(checked) => form.setValue('push_messages', checked)}
+            id="booking_requests_push"
+            label="Booking Requests"
+            description="Get notified when you receive new booking requests"
+            checked={values.push_enabled && values.booking_requests_enabled}
+            onChange={(checked) => form.setValue('booking_requests_enabled', checked)}
+            disabled={updatePreferences.isPending || !values.push_enabled}
           />
         </CardContent>
         <CardFooter className="justify-end">
-          <Button type="submit" loading={isSaving}>
+          <Button type="submit" loading={updatePreferences.isPending}>
             Save Preferences
           </Button>
         </CardFooter>

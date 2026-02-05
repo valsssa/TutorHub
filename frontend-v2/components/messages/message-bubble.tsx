@@ -51,7 +51,7 @@ export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps
           )}
         >
           <p className="text-sm whitespace-pre-wrap break-words">
-            {message.content}
+            {message.message}
           </p>
         </div>
         <span

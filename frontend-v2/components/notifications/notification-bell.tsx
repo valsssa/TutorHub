@@ -96,7 +96,7 @@ export function NotificationBell() {
                   <NotificationItem
                     key={notification.id}
                     notification={notification}
-                    onClick={() => handleNotificationClick(notification.id, notification.read)}
+                    onClick={() => handleNotificationClick(notification.id, notification.is_read ?? notification.read ?? false)}
                   />
                 ))}
               </div>

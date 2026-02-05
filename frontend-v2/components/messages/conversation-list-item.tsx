@@ -17,7 +17,8 @@ export function ConversationListItem({
 }: ConversationListItemProps) {
   const { user } = useAuth();
 
-  const otherParticipant = conversation.participants.find(
+  const participants = conversation.participants ?? [];
+  const otherParticipant = participants.find(
     (p) => p.id !== user?.id
   );
 
@@ -25,14 +26,24 @@ export function ConversationListItem({
     ? `${otherParticipant.first_name} ${otherParticipant.last_name}`
     : 'Unknown User';
 
-  const lastMessagePreview = conversation.last_message?.content
-    ? conversation.last_message.content.length > 50
-      ? `${conversation.last_message.content.substring(0, 50)}...`
-      : conversation.last_message.content
+  // Handle last_message which could be string, Message object, or undefined
+  let lastMessageContent = '';
+  let lastMessageCreatedAt: string | undefined;
+  if (typeof conversation.last_message === 'string') {
+    lastMessageContent = conversation.last_message;
+  } else if (conversation.last_message && typeof conversation.last_message === 'object') {
+    lastMessageContent = conversation.last_message.message || '';
+    lastMessageCreatedAt = conversation.last_message.created_at;
+  }
+
+  const lastMessagePreview = lastMessageContent
+    ? lastMessageContent.length > 50
+      ? `${lastMessageContent.substring(0, 50)}...`
+      : lastMessageContent
     : 'No messages yet';
 
-  const timeAgo = conversation.last_message?.created_at
-    ? formatRelativeTime(conversation.last_message.created_at)
+  const timeAgo = lastMessageCreatedAt
+    ? formatRelativeTime(lastMessageCreatedAt)
     : formatRelativeTime(conversation.created_at);
 
   return (

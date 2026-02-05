@@ -1,10 +1,10 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Package, AlertCircle, Check } from 'lucide-react';
-import { useTutor, useTutorPackages, usePurchasePackage } from '@/lib/hooks';
+import { ArrowLeft, Package, AlertCircle, Check, Clock } from 'lucide-react';
+import { useTutor, usePurchasePackage } from '@/lib/hooks';
 import {
   Card,
   CardContent,
@@ -14,8 +14,8 @@ import {
   Avatar,
   Skeleton,
 } from '@/components/ui';
-import { PackageCard } from '@/components/packages/package-card';
-import type { Package as PackageType } from '@/types';
+import { formatCurrency } from '@/lib/utils';
+import type { PricingOption } from '@/types';
 
 interface TutorPackagesPageProps {
   params: Promise<{ id: string }>;
@@ -55,6 +55,86 @@ function PackagesSkeleton() {
   );
 }
 
+// Component to display a pricing option card
+interface PricingOptionCardProps {
+  option: PricingOption;
+  currency: string;
+  onPurchase?: (option: PricingOption) => void;
+  isPurchasing?: boolean;
+}
+
+function PricingOptionCard({ option, currency, onPurchase, isPurchasing }: PricingOptionCardProps) {
+  return (
+    <Card className="h-full flex flex-col">
+      <CardContent className="p-6 flex-1 flex flex-col">
+        <div className="flex items-start justify-between gap-2 mb-4">
+          <div>
+            <h3 className="font-semibold text-lg text-slate-900 dark:text-white">
+              {option.title}
+            </h3>
+            <p className="text-sm text-slate-500">
+              {option.duration_minutes} minute session
+            </p>
+          </div>
+        </div>
+
+        {option.description && (
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            {option.description}
+          </p>
+        )}
+
+        <div className="space-y-3 mb-6 flex-1">
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="h-4 w-4 text-slate-400" />
+            <span className="text-slate-600 dark:text-slate-400">
+              {option.duration_minutes} minutes per session
+            </span>
+          </div>
+          {option.validity_days && (
+            <div className="flex items-center gap-2 text-sm">
+              <Package className="h-4 w-4 text-slate-400" />
+              <span className="text-slate-600 dark:text-slate-400">
+                Valid for {option.validity_days} days after purchase
+              </span>
+            </div>
+          )}
+          {option.extend_on_use && (
+            <div className="flex items-center gap-2 text-sm">
+              <Check className="h-4 w-4 text-green-500" />
+              <span className="text-green-600 dark:text-green-400">
+                Validity extends on each use
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-end justify-between mb-4">
+            <div>
+              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                {formatCurrency(option.price, currency)}
+              </div>
+              <div className="text-sm text-slate-500">per session</div>
+            </div>
+          </div>
+
+          {onPurchase && (
+            <Button
+              className="w-full"
+              onClick={() => onPurchase(option)}
+              loading={isPurchasing}
+              disabled={isPurchasing}
+            >
+              Purchase Session
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
   const { id } = use(params);
   const router = useRouter();
@@ -64,14 +144,24 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
   const [purchaseSuccess, setPurchaseSuccess] = useState<number | null>(null);
 
   const { data: tutor, isLoading: tutorLoading } = useTutor(tutorId);
-  const { data: packagesData, isLoading: packagesLoading } = useTutorPackages(tutorId);
   const purchaseMutation = usePurchasePackage();
 
-  const handlePurchase = async (pkg: PackageType) => {
-    setPurchasingId(pkg.id);
+  // Extract pricing options from tutor profile
+  const pricingOptions = useMemo(() => {
+    return tutor?.pricing_options ?? [];
+  }, [tutor]);
+
+  const currency = tutor?.currency ?? 'USD';
+  const tutorDisplayName = tutor?.display_name ?? tutor?.name ?? 'Tutor';
+
+  const handlePurchase = async (option: PricingOption) => {
+    setPurchasingId(option.id);
     try {
-      await purchaseMutation.mutateAsync({ package_id: pkg.id });
-      setPurchaseSuccess(pkg.id);
+      await purchaseMutation.mutateAsync({
+        tutor_profile_id: tutorId,
+        pricing_option_id: option.id,
+      });
+      setPurchaseSuccess(option.id);
       setTimeout(() => {
         router.push('/packages');
       }, 2000);
@@ -82,7 +172,7 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
     }
   };
 
-  const isLoading = tutorLoading || packagesLoading;
+  const isLoading = tutorLoading;
 
   if (isLoading) {
     return (
@@ -130,12 +220,12 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-3">
-          <Avatar src={tutor.avatar_url} name={tutor.display_name} size="md" />
+          <Avatar src={tutor.avatar_url ?? tutor.profile_photo_url} name={tutorDisplayName} size="md" />
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">
               Session Packages
             </h1>
-            <p className="text-sm text-slate-500">by {tutor.display_name}</p>
+            <p className="text-sm text-slate-500">by {tutorDisplayName}</p>
           </div>
         </div>
       </div>
@@ -182,18 +272,18 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Available Packages
+            Available Session Options
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!packagesData?.items.length ? (
+          {pricingOptions.length === 0 ? (
             <div className="py-12 text-center">
               <Package className="h-12 w-12 text-slate-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                No packages available
+                No session options available
               </h3>
               <p className="text-slate-500 mb-4">
-                This tutor does not have any session packages available at the moment.
+                This tutor has not set up any session packages yet. You can still book individual sessions at their hourly rate.
               </p>
               <Button asChild variant="outline">
                 <Link href={`/tutors/${tutorId}`}>View Tutor Profile</Link>
@@ -201,12 +291,13 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {packagesData.items.map((pkg) => (
-                <PackageCard
-                  key={pkg.id}
-                  pkg={pkg}
+              {pricingOptions.map((option: PricingOption) => (
+                <PricingOptionCard
+                  key={option.id}
+                  option={option}
+                  currency={currency}
                   onPurchase={purchaseSuccess ? undefined : handlePurchase}
-                  isPurchasing={purchasingId === pkg.id}
+                  isPurchasing={purchasingId === option.id}
                 />
               ))}
             </div>

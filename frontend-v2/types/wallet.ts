@@ -1,4 +1,8 @@
-export type TransactionType = 'earning' | 'withdrawal' | 'refund' | 'bonus' | 'fee';
+// Backend transaction types (uppercase)
+export type BackendTransactionType = 'DEPOSIT' | 'WITHDRAWAL' | 'TRANSFER' | 'REFUND' | 'PAYOUT' | 'PAYMENT' | 'FEE';
+
+// Frontend-friendly transaction types (lowercase, mapped)
+export type TransactionType = 'deposit' | 'withdrawal' | 'refund' | 'payout' | 'payment' | 'fee' | 'transfer';
 
 export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
 
@@ -6,14 +10,26 @@ export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 export type PaymentMethodType = 'bank_account' | 'paypal' | 'stripe';
 
+// Backend returns simpler balance response
 export interface WalletBalance {
-  available: number;
-  pending: number;
-  total: number;
+  balance_cents: number;
   currency: string;
-  last_updated: string;
 }
 
+// Backend transaction response (raw from API)
+export interface BackendTransaction {
+  id: number;
+  type: BackendTransactionType;
+  amount_cents: number;
+  currency: string;
+  description: string | null;
+  status: string;
+  reference_id?: string | null;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+// Frontend transaction (transformed for display)
 export interface Transaction {
   id: number;
   type: TransactionType;
@@ -21,10 +37,47 @@ export interface Transaction {
   currency: string;
   description: string;
   status: TransactionStatus;
-  booking_id?: number;
-  withdrawal_id?: number;
+  reference_id?: string;
   created_at: string;
   completed_at?: string;
+}
+
+// Transform backend transaction to frontend format
+export function transformTransaction(backend: BackendTransaction): Transaction {
+  const typeMap: Record<BackendTransactionType, TransactionType> = {
+    DEPOSIT: 'deposit',
+    WITHDRAWAL: 'withdrawal',
+    TRANSFER: 'transfer',
+    REFUND: 'refund',
+    PAYOUT: 'payout',
+    PAYMENT: 'payment',
+    FEE: 'fee',
+  };
+
+  return {
+    id: backend.id,
+    type: typeMap[backend.type] || 'payment',
+    amount: backend.amount_cents / 100,
+    currency: backend.currency,
+    description: backend.description || getDefaultDescription(backend.type),
+    status: (backend.status?.toLowerCase() || 'pending') as TransactionStatus,
+    reference_id: backend.reference_id ?? undefined,
+    created_at: backend.created_at,
+    completed_at: backend.completed_at ?? undefined,
+  };
+}
+
+function getDefaultDescription(type: BackendTransactionType): string {
+  const descriptions: Record<BackendTransactionType, string> = {
+    DEPOSIT: 'Wallet top-up',
+    WITHDRAWAL: 'Withdrawal to bank',
+    TRANSFER: 'Transfer',
+    REFUND: 'Session refund',
+    PAYOUT: 'Tutor payout',
+    PAYMENT: 'Session payment',
+    FEE: 'Platform fee',
+  };
+  return descriptions[type] || 'Transaction';
 }
 
 export interface WithdrawalRequest {
@@ -56,10 +109,23 @@ export interface CreateWithdrawalInput {
 }
 
 export interface TransactionFilters {
-  type?: TransactionType;
-  status?: TransactionStatus;
+  type?: string;
+  status?: string;
   from_date?: string;
   to_date?: string;
   page?: number;
   page_size?: number;
+}
+
+// Wallet checkout types
+export interface WalletCheckoutRequest {
+  amount_cents: number;
+  currency?: string;
+}
+
+export interface WalletCheckoutResponse {
+  checkout_url: string;
+  session_id: string;
+  amount_cents: number;
+  currency: string;
 }

@@ -118,9 +118,11 @@ export default function FavoritesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {favorites.map((favorite) => (
           <div key={favorite.id} className="relative">
-            <TutorCard tutor={favorite.tutor} showFavorite={false} />
+            {favorite.tutor && (
+              <TutorCard tutor={favorite.tutor} showFavorite={false} />
+            )}
             <button
-              onClick={() => removeFavorite.mutate(favorite.tutor_id)}
+              onClick={() => removeFavorite.mutate(favorite.tutor_profile_id)}
               disabled={removeFavorite.isPending}
               className="absolute top-4 right-4 p-2 rounded-full bg-white dark:bg-slate-800 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
               aria-label="Remove from favorites"

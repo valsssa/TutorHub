@@ -112,7 +112,7 @@ export default function StudentDashboard() {
                   <SkeletonCard />
                   <SkeletonCard />
                 </div>
-              ) : bookings?.items.length === 0 ? (
+              ) : (bookings?.bookings ?? []).length === 0 ? (
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-500">No upcoming sessions</p>
@@ -122,7 +122,7 @@ export default function StudentDashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {bookings?.items.map((booking) => (
+                  {(bookings?.bookings ?? []).map((booking) => (
                     <div
                       key={booking.id}
                       className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800"
@@ -130,10 +130,10 @@ export default function StudentDashboard() {
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-medium text-slate-900 dark:text-white">
-                            {booking.subject?.name}
+                            {booking.subject_name}
                           </p>
                           <p className="text-sm text-slate-500">
-                            with {booking.tutor?.display_name}
+                            with {booking.tutor?.name}
                           </p>
                         </div>
                         <Button size="sm" variant="outline">

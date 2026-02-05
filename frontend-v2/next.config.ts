@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
   output: "standalone",
 
-  // Disable telemetry
-  telemetry: false,
+  // Allow cross-origin requests from custom dev domains
+  allowedDevOrigins: ["edustream.valsa.solutions"],
 
   // Image optimization settings
   images: {

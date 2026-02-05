@@ -1,7 +1,7 @@
 -- ============================================================================
 -- EduStream Complete Database Schema
 -- Student-Tutor Booking Platform - Production Ready
--- Consolidated from all migrations (001-045)
+-- Consolidated from all migrations (001-054)
 -- ============================================================================
 
 -- Enable required extensions
@@ -182,6 +182,8 @@ CREATE TABLE IF NOT EXISTS tutor_subjects (
     subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
     proficiency_level VARCHAR(20) NOT NULL DEFAULT 'B2',
     years_experience INTEGER CHECK (years_experience IS NULL OR years_experience >= 0),
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT uq_tutor_subject UNIQUE (tutor_profile_id, subject_id),
     CONSTRAINT valid_proficiency CHECK (proficiency_level IN ('native', 'c2', 'c1', 'b2', 'b1', 'a2', 'a1'))
@@ -189,6 +191,8 @@ CREATE TABLE IF NOT EXISTS tutor_subjects (
 
 CREATE INDEX IF NOT EXISTS idx_tutor_subjects_profile ON tutor_subjects(tutor_profile_id);
 CREATE INDEX IF NOT EXISTS idx_tutor_subjects_subject ON tutor_subjects(subject_id);
+CREATE INDEX IF NOT EXISTS idx_tutor_subjects_active ON tutor_subjects(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tutor_subjects_deleted_at ON tutor_subjects(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- Tutor availability slots
 CREATE TABLE IF NOT EXISTS tutor_availabilities (
@@ -201,6 +205,8 @@ CREATE TABLE IF NOT EXISTS tutor_availabilities (
     -- IANA timezone (e.g., "America/New_York") in which start_time/end_time are expressed
     -- Enables proper DST handling when converting to UTC for slot generation
     timezone VARCHAR(64) NOT NULL DEFAULT 'UTC',
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT chk_availability_time_order CHECK (start_time < end_time),
     CONSTRAINT uq_tutor_availability_slot UNIQUE (tutor_profile_id, day_of_week, start_time, end_time)
@@ -208,6 +214,8 @@ CREATE TABLE IF NOT EXISTS tutor_availabilities (
 
 CREATE INDEX IF NOT EXISTS idx_tutor_availability_profile_day ON tutor_availabilities(tutor_profile_id, day_of_week);
 CREATE INDEX IF NOT EXISTS idx_tutor_availability_timezone ON tutor_availabilities(timezone);
+CREATE INDEX IF NOT EXISTS idx_tutor_availabilities_active ON tutor_availabilities(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tutor_availabilities_deleted_at ON tutor_availabilities(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- Tutor blackouts (vacation/temporary blocks)
 CREATE TABLE IF NOT EXISTS tutor_blackouts (
@@ -234,11 +242,15 @@ CREATE TABLE IF NOT EXISTS tutor_certifications (
     credential_id VARCHAR(100),
     credential_url VARCHAR(500),
     document_url VARCHAR(500),
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_tutor_certifications_profile ON tutor_certifications(tutor_profile_id);
+CREATE INDEX IF NOT EXISTS idx_tutor_certifications_active ON tutor_certifications(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tutor_certifications_deleted_at ON tutor_certifications(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- Tutor education history
 CREATE TABLE IF NOT EXISTS tutor_education (
@@ -251,11 +263,15 @@ CREATE TABLE IF NOT EXISTS tutor_education (
     end_year INTEGER,
     description TEXT,
     document_url VARCHAR(500),
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_tutor_education_profile ON tutor_education(tutor_profile_id);
+CREATE INDEX IF NOT EXISTS idx_tutor_education_active ON tutor_education(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tutor_education_deleted_at ON tutor_education(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- Tutor pricing options
 CREATE TABLE IF NOT EXISTS tutor_pricing_options (
@@ -329,7 +345,7 @@ CREATE TABLE IF NOT EXISTS student_packages (
     id SERIAL PRIMARY KEY,
     student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     tutor_profile_id INTEGER NOT NULL REFERENCES tutor_profiles(id) ON DELETE CASCADE,
-    pricing_option_id INTEGER NOT NULL REFERENCES tutor_pricing_options(id) ON DELETE RESTRICT,
+    pricing_option_id INTEGER NOT NULL REFERENCES tutor_pricing_options(id) ON DELETE CASCADE,
     sessions_purchased INTEGER NOT NULL CHECK (sessions_purchased > 0),
     sessions_remaining INTEGER NOT NULL CHECK (sessions_remaining >= 0),
     sessions_used INTEGER DEFAULT 0 NOT NULL CHECK (sessions_used >= 0),
@@ -340,6 +356,8 @@ CREATE TABLE IF NOT EXISTS student_packages (
     payment_intent_id VARCHAR(255),
     -- Expiry notification tracking (migration 039)
     expiry_warning_sent BOOLEAN DEFAULT FALSE NOT NULL,
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT valid_package_status CHECK (status IN ('active', 'expired', 'exhausted', 'refunded'))
@@ -349,6 +367,10 @@ CREATE INDEX IF NOT EXISTS idx_student_packages_student ON student_packages(stud
 CREATE INDEX IF NOT EXISTS idx_student_packages_tutor ON student_packages(tutor_profile_id);
 CREATE INDEX IF NOT EXISTS idx_student_packages_expires ON student_packages(expires_at) WHERE expires_at IS NOT NULL AND status = 'active';
 CREATE INDEX IF NOT EXISTS idx_student_packages_active ON student_packages(student_id, tutor_profile_id, status) WHERE status = 'active';
+-- Partial index for finding expiring packages with remaining sessions (migration 054)
+CREATE INDEX IF NOT EXISTS idx_student_packages_expiry ON student_packages(expires_at) WHERE sessions_remaining > 0;
+CREATE INDEX IF NOT EXISTS idx_student_packages_soft_delete_active ON student_packages(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_student_packages_deleted_at ON student_packages(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- ============================================================================
 -- BOOKING & SESSION TABLES
@@ -383,11 +405,11 @@ CREATE TABLE IF NOT EXISTS bookings (
     join_url TEXT,
     hourly_rate NUMERIC(10,2) NOT NULL CHECK (hourly_rate > 0),
     total_amount NUMERIC(10,2) NOT NULL CHECK (total_amount >= 0),
-    rate_cents INTEGER,
-    currency CHAR(3) DEFAULT 'USD',
+    rate_cents INTEGER NOT NULL CHECK (rate_cents >= 0),
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD' CHECK (currency ~ '^[A-Z]{3}$'),
     platform_fee_pct NUMERIC(5,2) DEFAULT 20.00,
-    platform_fee_cents INTEGER DEFAULT 0,
-    tutor_earnings_cents INTEGER DEFAULT 0,
+    platform_fee_cents INTEGER NOT NULL DEFAULT 0 CHECK (platform_fee_cents >= 0),
+    tutor_earnings_cents INTEGER NOT NULL DEFAULT 0 CHECK (tutor_earnings_cents >= 0),
     pricing_option_id INTEGER REFERENCES tutor_pricing_options(id) ON DELETE SET NULL,
     package_id INTEGER REFERENCES student_packages(id) ON DELETE SET NULL,
     package_sessions_remaining INTEGER,
@@ -469,10 +491,33 @@ CREATE INDEX IF NOT EXISTS idx_bookings_version ON bookings(id, version);
 -- Migration 040 index
 CREATE INDEX IF NOT EXISTS idx_bookings_attendance_check ON bookings(session_state, tutor_joined_at, student_joined_at) WHERE session_state = 'ACTIVE';
 
--- Prevent tutor double-booking
-CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_no_overlap
-ON bookings (tutor_profile_id, start_time, end_time)
-WHERE session_state IN ('REQUESTED', 'SCHEDULED');
+-- Prevent tutor double-booking with GIST exclusion constraint
+-- Uses tstzrange to detect ANY time overlap, not just exact matches
+-- Example: Prevents both 1PM-2PM and 1:30PM-2:30PM for the same tutor
+-- The '[)' means half-open interval: [start, end) - so 1-2PM does not conflict with 2-3PM
+--
+-- Note: EXCLUDE constraints cannot use IF NOT EXISTS, so we handle via DO block
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'bookings_no_time_overlap'
+        AND conrelid = 'bookings'::regclass
+    ) THEN
+        ALTER TABLE bookings
+        ADD CONSTRAINT bookings_no_time_overlap
+        EXCLUDE USING gist (
+            tutor_profile_id WITH =,
+            tstzrange(start_time, end_time, '[)') WITH &&
+        )
+        WHERE (session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE') AND deleted_at IS NULL);
+    END IF;
+END $$;
+
+-- Supporting GIST index for time range queries
+CREATE INDEX IF NOT EXISTS idx_bookings_tutor_time_range
+ON bookings USING gist (tutor_profile_id, tstzrange(start_time, end_time, '[)'))
+WHERE session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE') AND deleted_at IS NULL;
 
 -- Session materials
 CREATE TABLE IF NOT EXISTS session_materials (
@@ -492,16 +537,20 @@ CREATE INDEX IF NOT EXISTS idx_session_materials_created_at ON session_materials
 -- ============================================================================
 
 -- Payments
+-- Note: student_id uses ON DELETE SET NULL with archived_student_id to preserve financial history
 CREATE TABLE IF NOT EXISTS payments (
     id SERIAL PRIMARY KEY,
     booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
-    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    student_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    archived_student_id INTEGER,
     amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
-    currency CHAR(3) NOT NULL DEFAULT 'USD',
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     provider VARCHAR(20) NOT NULL DEFAULT 'stripe',
     provider_payment_id TEXT,
     status VARCHAR(30) NOT NULL DEFAULT 'REQUIRES_ACTION',
     metadata JSONB DEFAULT '{}',
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT valid_payment_currency CHECK (currency ~ '^[A-Z]{3}$'),
@@ -514,17 +563,27 @@ CREATE INDEX IF NOT EXISTS idx_payments_student ON payments(student_id, status);
 CREATE INDEX IF NOT EXISTS idx_payments_provider_id ON payments(provider_payment_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
 CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_archived_student ON payments(archived_student_id) WHERE archived_student_id IS NOT NULL;
+-- Composite index for student payment history queries with status filter and date ordering (migration 054)
+CREATE INDEX IF NOT EXISTS idx_payments_student_status_created ON payments(student_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_active ON payments(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_payments_deleted_at ON payments(deleted_at) WHERE deleted_at IS NOT NULL;
+
+COMMENT ON COLUMN payments.archived_student_id IS 'Preserves original student_id after user deletion for financial records';
 
 -- Refunds
+-- Note: payment_id uses ON DELETE CASCADE - refunds cascade with their parent payment
 CREATE TABLE IF NOT EXISTS refunds (
     id SERIAL PRIMARY KEY,
-    payment_id INTEGER NOT NULL REFERENCES payments(id) ON DELETE RESTRICT,
+    payment_id INTEGER NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
     booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
     amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
-    currency CHAR(3) NOT NULL DEFAULT 'USD',
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     reason VARCHAR(30) NOT NULL,
     provider_refund_id TEXT,
     metadata JSONB DEFAULT '{}',
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT valid_refund_currency CHECK (currency ~ '^[A-Z]{3}$'),
     CONSTRAINT valid_refund_reason CHECK (reason IN ('STUDENT_CANCEL', 'TUTOR_CANCEL', 'NO_SHOW_TUTOR', 'GOODWILL', 'OTHER'))
@@ -534,6 +593,8 @@ CREATE INDEX IF NOT EXISTS idx_refunds_payment ON refunds(payment_id);
 CREATE INDEX IF NOT EXISTS idx_refunds_booking ON refunds(booking_id);
 CREATE INDEX IF NOT EXISTS idx_refunds_reason ON refunds(reason);
 CREATE INDEX IF NOT EXISTS idx_refunds_created ON refunds(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_refunds_active ON refunds(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_refunds_deleted_at ON refunds(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- Webhook events for Stripe idempotency (migration 035)
 CREATE TABLE IF NOT EXISTS webhook_events (
@@ -551,12 +612,15 @@ COMMENT ON COLUMN webhook_events.event_type IS 'Stripe event type (e.g., checkou
 COMMENT ON COLUMN webhook_events.processed_at IS 'Timestamp when the event was processed';
 
 -- Wallets table (migration 044)
+-- Note: user_id uses ON DELETE CASCADE - wallet is integral to user identity
 CREATE TABLE IF NOT EXISTS wallets (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     balance_cents INTEGER NOT NULL DEFAULT 0,
     pending_cents INTEGER NOT NULL DEFAULT 0,
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_user_wallet_per_currency UNIQUE (user_id, currency),
@@ -565,22 +629,27 @@ CREATE TABLE IF NOT EXISTS wallets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallets_active ON wallets(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_wallets_deleted_at ON wallets(deleted_at) WHERE deleted_at IS NOT NULL;
 
 COMMENT ON TABLE wallets IS 'User wallets for storing credits and making payments';
 COMMENT ON COLUMN wallets.balance_cents IS 'Available balance in cents';
 COMMENT ON COLUMN wallets.pending_cents IS 'Balance pending release (e.g., in escrow)';
 
 -- Wallet transactions table (migration 044)
+-- Note: wallet_id uses ON DELETE CASCADE - transactions cascade with their wallet
 CREATE TABLE IF NOT EXISTS wallet_transactions (
     id SERIAL PRIMARY KEY,
-    wallet_id INTEGER NOT NULL REFERENCES wallets(id) ON DELETE RESTRICT,
+    wallet_id INTEGER NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
     type VARCHAR(20) NOT NULL,
     amount_cents INTEGER NOT NULL,
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     description TEXT,
-    reference_id VARCHAR(255) UNIQUE,
+    reference_id VARCHAR(255) NOT NULL UNIQUE,
     transaction_metadata JSONB,
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMPTZ,
     CONSTRAINT valid_transaction_type CHECK (
@@ -595,21 +664,29 @@ CREATE INDEX IF NOT EXISTS idx_wallet_transactions_wallet_id ON wallet_transacti
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_created_at ON wallet_transactions(created_at);
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_reference_id ON wallet_transactions(reference_id);
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_status ON wallet_transactions(status);
+-- Composite index for wallet transaction queries filtered by type and status (migration 054)
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_wallet_type_status ON wallet_transactions(wallet_id, type, status);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_active ON wallet_transactions(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_deleted_at ON wallet_transactions(deleted_at) WHERE deleted_at IS NOT NULL;
 
 COMMENT ON TABLE wallet_transactions IS 'Transaction history for wallet operations';
 COMMENT ON COLUMN wallet_transactions.reference_id IS 'External reference for idempotency checks';
 
 -- Payouts
+-- Note: tutor_id uses ON DELETE SET NULL with archived_tutor_id to preserve payout history for tax/accounting
 CREATE TABLE IF NOT EXISTS payouts (
     id SERIAL PRIMARY KEY,
-    tutor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    tutor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    archived_tutor_id INTEGER,
     period_start DATE NOT NULL,
     period_end DATE NOT NULL,
     amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
-    currency CHAR(3) NOT NULL DEFAULT 'USD',
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     transfer_reference TEXT,
     metadata JSONB DEFAULT '{}',
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT valid_payout_currency CHECK (currency ~ '^[A-Z]{3}$'),
@@ -621,6 +698,11 @@ CREATE INDEX IF NOT EXISTS idx_payouts_tutor ON payouts(tutor_id, status);
 CREATE INDEX IF NOT EXISTS idx_payouts_period ON payouts(period_start, period_end);
 CREATE INDEX IF NOT EXISTS idx_payouts_status ON payouts(status);
 CREATE INDEX IF NOT EXISTS idx_payouts_created ON payouts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payouts_archived_tutor ON payouts(archived_tutor_id) WHERE archived_tutor_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_payouts_active ON payouts(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_payouts_deleted_at ON payouts(deleted_at) WHERE deleted_at IS NOT NULL;
+
+COMMENT ON COLUMN payouts.archived_tutor_id IS 'Preserves original tutor_id after user deletion for financial records';
 
 -- ============================================================================
 -- REVIEW & RATING TABLES
@@ -659,6 +741,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     last_message_at TIMESTAMPTZ,
     student_unread_count INTEGER NOT NULL DEFAULT 0,
     tutor_unread_count INTEGER NOT NULL DEFAULT 0,
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT uq_conversation_participants UNIQUE (student_id, tutor_id, booking_id)
@@ -668,6 +752,8 @@ CREATE INDEX IF NOT EXISTS idx_conversations_student ON conversations(student_id
 CREATE INDEX IF NOT EXISTS idx_conversations_tutor ON conversations(tutor_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_booking ON conversations(booking_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_conversations_active ON conversations(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_conversations_deleted_at ON conversations(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- Messages between users (Enhanced with edit/delete tracking, read receipts, and conversations)
 CREATE TABLE IF NOT EXISTS messages (
@@ -696,6 +782,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(sender_id, recipient_id, booking_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(recipient_id, is_read) WHERE is_read = FALSE;
 CREATE INDEX IF NOT EXISTS idx_messages_edited ON messages(is_edited) WHERE is_edited = TRUE;
+-- Partial composite index for conversation message queries, excluding soft-deleted messages (migration 054)
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_created ON messages(conversation_id, created_at DESC) WHERE deleted_at IS NULL;
 
 -- Message attachments (secure file attachments)
 CREATE TABLE IF NOT EXISTS message_attachments (
@@ -743,6 +831,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     read_at TIMESTAMPTZ,
     dismissed_at TIMESTAMPTZ,
     extra_data JSONB DEFAULT '{}'::JSONB,
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
@@ -752,6 +842,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_category ON notifications(category)
 CREATE INDEX IF NOT EXISTS idx_notifications_scheduled ON notifications(scheduled_for) WHERE scheduled_for IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_notifications_sent ON notifications(sent_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_priority ON notifications(priority, scheduled_for);
+-- Composite index for user notification queries with read status filter and date ordering (migration 054)
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created ON notifications(user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_active ON notifications(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_notifications_deleted_at ON notifications(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- ============================================================================
 -- ADDITIONAL FEATURE TABLES
@@ -762,12 +856,16 @@ CREATE TABLE IF NOT EXISTS favorite_tutors (
     id SERIAL PRIMARY KEY,
     student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     tutor_profile_id INTEGER NOT NULL REFERENCES tutor_profiles(id) ON DELETE CASCADE,
+    deleted_at TIMESTAMPTZ,
+    deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT uq_favorite UNIQUE (student_id, tutor_profile_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_favorite_tutors_student ON favorite_tutors(student_id);
 CREATE INDEX IF NOT EXISTS idx_favorite_tutors_created_at ON favorite_tutors(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_favorite_tutors_active ON favorite_tutors(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_favorite_tutors_deleted_at ON favorite_tutors(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- User reports for moderation
 CREATE TABLE IF NOT EXISTS reports (
@@ -1183,6 +1281,55 @@ SELECT * FROM tutor_profiles WHERE deleted_at IS NULL;
 CREATE OR REPLACE VIEW active_bookings AS
 SELECT * FROM bookings WHERE deleted_at IS NULL;
 
+-- Soft delete views for consistency
+CREATE OR REPLACE VIEW active_payments AS
+SELECT * FROM payments WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_refunds AS
+SELECT * FROM refunds WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_wallets AS
+SELECT * FROM wallets WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_wallet_transactions AS
+SELECT * FROM wallet_transactions WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_payouts AS
+SELECT * FROM payouts WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_notifications AS
+SELECT * FROM notifications WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_conversations AS
+SELECT * FROM conversations WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_favorite_tutors AS
+SELECT * FROM favorite_tutors WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_student_packages AS
+SELECT * FROM student_packages WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_tutor_subjects AS
+SELECT * FROM tutor_subjects WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_tutor_availabilities AS
+SELECT * FROM tutor_availabilities WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_tutor_certifications AS
+SELECT * FROM tutor_certifications WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_tutor_education AS
+SELECT * FROM tutor_education WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_reviews AS
+SELECT * FROM reviews WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_messages AS
+SELECT * FROM messages WHERE deleted_at IS NULL;
+
+CREATE OR REPLACE VIEW active_message_attachments AS
+SELECT * FROM message_attachments WHERE deleted_at IS NULL;
+
 -- ============================================================================
 -- SCHEMA MIGRATIONS TRACKING
 -- ============================================================================
@@ -1197,7 +1344,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 
 -- Record initial schema version
 INSERT INTO schema_migrations (version, description)
-VALUES ('001', 'Initial consolidated schema with all tables (migrations 001-045)')
+VALUES ('001', 'Initial consolidated schema with all tables (migrations 001-054)')
 ON CONFLICT (version) DO NOTHING;
 
 -- ============================================================================
@@ -1210,7 +1357,7 @@ BEGIN
     RAISE NOTICE '═══════════════════════════════════════════════════════════════';
     RAISE NOTICE '  EduStream Database Schema Initialized Successfully';
     RAISE NOTICE '═══════════════════════════════════════════════════════════════';
-    RAISE NOTICE '  Version: Consolidated (Migrations 001-045)';
+    RAISE NOTICE '  Version: Consolidated (Migrations 001-054)';
     RAISE NOTICE '  Architecture: Pure Data Storage (No DB Logic)';
     RAISE NOTICE '  Tables: 50+';
     RAISE NOTICE '  Indexes: 140+';

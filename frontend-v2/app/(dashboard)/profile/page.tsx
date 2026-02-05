@@ -137,7 +137,7 @@ function TutorProfile() {
                         {tutorProfile.average_rating.toFixed(1)}
                       </span>
                       <span className="text-sm text-slate-500">
-                        ({tutorProfile.review_count} reviews)
+                        ({tutorProfile.total_reviews ?? 0} reviews)
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-slate-500">
@@ -188,7 +188,7 @@ function TutorProfile() {
                   <span className="text-sm text-slate-500">Total Sessions</span>
                 </div>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {tutorProfile?.review_count ? tutorProfile.review_count * 3 : 0}
+                  {tutorProfile?.review_count ? tutorProfile.total_reviews ?? 0 * 3 : 0}
                 </p>
               </div>
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800">

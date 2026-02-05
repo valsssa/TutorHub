@@ -2,19 +2,23 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Lock, Bell, type LucideIcon } from 'lucide-react';
+import { User, Lock, Bell, Video, Link2, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/hooks';
 
 interface NavItem {
   href: string;
   icon: LucideIcon;
   label: string;
+  tutorOnly?: boolean;
 }
 
 const settingsNavItems: NavItem[] = [
   { href: '/settings/profile', icon: User, label: 'Profile' },
   { href: '/settings/account', icon: Lock, label: 'Account' },
   { href: '/settings/notifications', icon: Bell, label: 'Notifications' },
+  { href: '/settings/video', icon: Video, label: 'Video Settings', tutorOnly: true },
+  { href: '/settings/integrations', icon: Link2, label: 'Integrations', tutorOnly: true },
 ];
 
 export default function SettingsLayout({
@@ -23,6 +27,11 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const visibleNavItems = settingsNavItems.filter(
+    (item) => !item.tutorOnly || user?.role === 'tutor'
+  );
 
   return (
     <div className="space-y-6">
@@ -36,7 +45,7 @@ export default function SettingsLayout({
       <div className="flex flex-col lg:flex-row gap-6">
         <aside className="w-full lg:w-64 flex-shrink-0">
           <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
-            {settingsNavItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive =
                 pathname === item.href || pathname.startsWith(item.href + '/');
               return (

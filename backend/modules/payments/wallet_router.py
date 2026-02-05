@@ -139,6 +139,30 @@ async def create_wallet_checkout(
     )
 
 
+class TransactionResponse(BaseModel):
+    """Response model for a single transaction."""
+
+    id: int
+    type: str
+    amount_cents: int
+    currency: str
+    description: str | None
+    status: str
+    reference_id: str | None = None
+    created_at: datetime
+    completed_at: datetime | None = None
+
+
+class TransactionListResponse(BaseModel):
+    """Paginated list of transactions."""
+
+    items: list[TransactionResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 @router.get(
     "/balance",
     summary="Get wallet balance",
@@ -169,3 +193,121 @@ async def get_wallet_balance(
         "balance_cents": student_profile.credit_balance_cents or 0,
         "currency": current_user.currency or "USD",
     }
+
+
+@router.get(
+    "/transactions",
+    response_model=TransactionListResponse,
+    summary="Get wallet transactions",
+    description="""
+**Get paginated list of wallet transactions**
+
+Returns all transactions for the current user's wallet with optional filtering.
+
+**Filters:**
+- `type`: Filter by transaction type (DEPOSIT, WITHDRAWAL, REFUND, PAYMENT, FEE, PAYOUT, TRANSFER)
+- `status`: Filter by status (PENDING, COMPLETED, FAILED, CANCELLED)
+- `from_date`: Start date (inclusive)
+- `to_date`: End date (inclusive)
+- `page`: Page number (default 1)
+- `page_size`: Items per page (default 20, max 100)
+    """,
+)
+@limiter.limit("30/minute")
+async def get_wallet_transactions(
+    request: Request,
+    type: str | None = None,
+    status: str | None = None,
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: User = Depends(get_current_student_user),
+    db: Session = Depends(get_db),
+) -> TransactionListResponse:
+    """Get paginated wallet transactions for current user."""
+    from models import Wallet, WalletTransaction
+    from sqlalchemy import func
+
+    # Ensure page_size is within bounds
+    page_size = min(max(page_size, 1), 100)
+    page = max(page, 1)
+
+    # Get or create user's wallet
+    wallet = (
+        db.query(Wallet)
+        .filter(Wallet.user_id == current_user.id)
+        .first()
+    )
+
+    if not wallet:
+        # No wallet means no transactions
+        return TransactionListResponse(
+            items=[],
+            total=0,
+            page=page,
+            page_size=page_size,
+            total_pages=0,
+        )
+
+    # Build base query
+    query = db.query(WalletTransaction).filter(
+        WalletTransaction.wallet_id == wallet.id
+    )
+
+    # Apply filters
+    if type:
+        query = query.filter(WalletTransaction.type == type.upper())
+
+    if status:
+        query = query.filter(WalletTransaction.status == status.upper())
+
+    if from_date:
+        query = query.filter(WalletTransaction.created_at >= from_date)
+
+    if to_date:
+        query = query.filter(WalletTransaction.created_at <= to_date)
+
+    # Get total count
+    total = query.count()
+
+    # Calculate pagination
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    offset = (page - 1) * page_size
+
+    # Get transactions ordered by date descending
+    transactions = (
+        query.order_by(WalletTransaction.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
+
+    # Convert to response models
+    items = [
+        TransactionResponse(
+            id=t.id,
+            type=t.type,
+            amount_cents=t.amount_cents,
+            currency=t.currency,
+            description=t.description,
+            status=t.status,
+            reference_id=t.reference_id,
+            created_at=t.created_at,
+            completed_at=t.completed_at,
+        )
+        for t in transactions
+    ]
+
+    logger.info(
+        f"Retrieved {len(items)} transactions for user {current_user.id}, "
+        f"page {page}/{total_pages}"
+    )
+
+    return TransactionListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
