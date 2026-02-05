@@ -53,6 +53,7 @@ from modules.admin.feature_flags_router import (  # noqa: E402
 )
 from modules.admin.owner.router import router as owner_router  # noqa: E402
 from modules.admin.presentation.api import router as admin_router  # noqa: E402
+from modules.auth.email_verification_router import router as email_verification_router  # noqa: E402
 from modules.auth.oauth_router import router as oauth_router  # noqa: E402
 from modules.auth.password_router import router as password_router  # noqa: E402
 
@@ -646,6 +647,7 @@ ALLOWED_HEADERS = [
     "X-Request-ID",
     "Cache-Control",
     "Pragma",
+    "X-CSRF-Token",  # Required for CSRF protection with HttpOnly cookie auth
 ]
 # Headers the frontend is allowed to read from responses
 EXPOSE_HEADERS = [
@@ -696,6 +698,7 @@ API_V1_PREFIX = "/api/v1"
 app.include_router(auth_router, prefix=API_V1_PREFIX)
 app.include_router(oauth_router, prefix=API_V1_PREFIX)
 app.include_router(password_router, prefix=API_V1_PREFIX)
+app.include_router(email_verification_router, prefix=API_V1_PREFIX)
 app.include_router(profiles_router, prefix=API_V1_PREFIX)
 app.include_router(students_router, prefix=API_V1_PREFIX)
 app.include_router(favorites_router, prefix=API_V1_PREFIX)

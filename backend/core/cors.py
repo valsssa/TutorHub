@@ -59,6 +59,8 @@ def get_cors_origins() -> list[str]:
         return [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
+            "http://localhost:3001",  # frontend-v2 dev server
+            "http://127.0.0.1:3001",
             "http://localhost:8000",
             "http://127.0.0.1:8000",
             "http://localhost:5173",  # Vite dev server
@@ -104,7 +106,7 @@ def get_cors_headers(origin: str | None, allowed_origins: list[str]) -> dict[str
         headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         headers["Access-Control-Allow-Headers"] = (
             "Authorization, Content-Type, Accept, Origin, "
-            "X-Requested-With, X-Request-ID, Cache-Control, Pragma"
+            "X-Requested-With, X-Request-ID, Cache-Control, Pragma, X-CSRF-Token"
         )
         headers["Access-Control-Expose-Headers"] = (
             "X-Request-ID, X-RateLimit-Limit, X-RateLimit-Remaining, "

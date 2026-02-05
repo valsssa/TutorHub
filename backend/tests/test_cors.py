@@ -300,3 +300,85 @@ class TestCORSMiddleware:
         assert response.status_code == 200
         # Middleware should have added CORS headers
         assert response.headers.get("Access-Control-Allow-Origin") == "http://test.com"
+
+
+class TestCORSCredentialsSupport:
+    """Test CORS credentials support for HttpOnly cookie authentication."""
+
+    def test_credentials_header_present_on_response(self, client):
+        """Access-Control-Allow-Credentials header must be 'true' for cookie auth."""
+        response = client.get(
+            "/api/v1/cors-test",
+            headers={"Origin": "http://localhost:3000"},
+        )
+
+        assert response.status_code == 200
+        # This is CRITICAL for cookies to work cross-origin
+        assert response.headers.get("Access-Control-Allow-Credentials") == "true"
+
+    def test_credentials_header_on_preflight(self, client):
+        """Preflight response must include credentials header."""
+        response = client.options(
+            "/api/v1/cors-test",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type, X-CSRF-Token",
+            },
+        )
+
+        assert response.status_code in [200, 204]
+        assert response.headers.get("Access-Control-Allow-Credentials") == "true"
+
+    def test_csrf_token_header_allowed(self, client):
+        """X-CSRF-Token must be in allowed headers for CSRF protection."""
+        response = client.options(
+            "/api/v1/cors-test",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "X-CSRF-Token",
+            },
+        )
+
+        assert response.status_code in [200, 204]
+        allowed_headers = response.headers.get("Access-Control-Allow-Headers", "")
+        # X-CSRF-Token must be explicitly allowed
+        assert "X-CSRF-Token" in allowed_headers or "x-csrf-token" in allowed_headers.lower()
+
+    def test_no_wildcard_origin_with_credentials(self, client):
+        """Origin must NOT be wildcard when credentials=true (browser requirement)."""
+        response = client.get(
+            "/api/v1/cors-test",
+            headers={"Origin": "http://localhost:3000"},
+        )
+
+        assert response.status_code == 200
+        allow_origin = response.headers.get("Access-Control-Allow-Origin", "")
+        # Wildcard is not allowed when credentials=true
+        assert allow_origin != "*"
+        # Must be the specific origin
+        assert allow_origin == "http://localhost:3000"
+
+    def test_cors_headers_helper_includes_csrf(self):
+        """get_cors_headers includes X-CSRF-Token in allowed headers."""
+        from core.cors import get_cors_headers
+
+        headers = get_cors_headers(
+            origin="http://localhost:3000",
+            allowed_origins=["http://localhost:3000"],
+        )
+
+        assert "Access-Control-Allow-Headers" in headers
+        assert "X-CSRF-Token" in headers["Access-Control-Allow-Headers"]
+
+    def test_credentials_on_error_responses(self, client):
+        """Error responses must also include credentials header."""
+        response = client.get(
+            "/api/v1/nonexistent-endpoint-12345",
+            headers={"Origin": "http://localhost:3000"},
+        )
+
+        assert response.status_code == 404
+        # Even errors need credentials header for cross-origin cookie scenarios
+        assert response.headers.get("Access-Control-Allow-Credentials") == "true"
