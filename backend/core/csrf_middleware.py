@@ -5,7 +5,7 @@ Validates that state-changing requests include a CSRF token that
 matches the value stored in a cookie.
 """
 
-from typing import Callable, Sequence
+from typing import Awaitable, Callable, Sequence
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -17,28 +17,6 @@ from core.cookie_config import get_cookie_config
 
 # HTTP methods that modify state and require CSRF protection
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
-
-
-def csrf_exempt(func: Callable) -> Callable:
-    """Decorator to mark a route handler as exempt from CSRF validation.
-
-    Use this decorator on route handlers that should not require CSRF tokens,
-    such as webhook endpoints that use other authentication mechanisms.
-
-    Example:
-        @router.post("/webhooks/stripe")
-        @csrf_exempt
-        async def stripe_webhook(request: Request):
-            ...
-
-    Args:
-        func: The route handler function to mark as exempt.
-
-    Returns:
-        The same function with _csrf_exempt attribute set to True.
-    """
-    func._csrf_exempt = True
-    return func
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
@@ -69,7 +47,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         self.exempt_paths = set(exempt_paths or [])
         self.config = get_cookie_config()
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Process request and validate CSRF token if needed.
 
         Args:

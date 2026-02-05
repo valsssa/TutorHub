@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import Request
 from starlette.responses import Response
 
-from core.csrf_middleware import CSRFMiddleware, csrf_exempt
+from core.csrf_middleware import CSRFMiddleware
 
 
 @pytest.fixture
@@ -245,29 +245,6 @@ class TestCSRFMiddlewareUnsafeMethods:
 
         await middleware.dispatch(request, call_next)
         assert inner_called
-
-
-class TestCSRFExemptDecorator:
-    """Tests for csrf_exempt decorator."""
-
-    def test_csrf_exempt_marks_function(self):
-        """csrf_exempt decorator should mark function with attribute."""
-
-        @csrf_exempt
-        def my_handler():
-            pass
-
-        assert hasattr(my_handler, "_csrf_exempt")
-        assert my_handler._csrf_exempt is True
-
-    def test_csrf_exempt_preserves_function(self):
-        """csrf_exempt decorator should preserve original function."""
-
-        @csrf_exempt
-        def my_handler(x, y):
-            return x + y
-
-        assert my_handler(2, 3) == 5
 
 
 class TestCSRFMiddlewareErrorResponse:
