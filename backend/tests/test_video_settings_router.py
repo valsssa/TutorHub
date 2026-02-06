@@ -431,7 +431,8 @@ class TestVideoSettingsIntegration:
             headers={"Authorization": f"Bearer {tutor_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
-        initial_settings = response.json()
+        # Verify initial settings returned
+        assert response.json() is not None
 
         # 2. Update to manual
         response = client.put(

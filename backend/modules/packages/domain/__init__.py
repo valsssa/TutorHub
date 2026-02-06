@@ -26,6 +26,7 @@ from modules.packages.domain.repositories import (
     StudentPackageRepository,
 )
 from modules.packages.domain.value_objects import (
+    TERMINAL_PACKAGE_STATUSES,
     DurationMinutes,
     PackageId,
     PackagePrice,
@@ -33,7 +34,6 @@ from modules.packages.domain.value_objects import (
     PricingOptionId,
     SessionCount,
     StudentId,
-    TERMINAL_PACKAGE_STATUSES,
     TutorProfileId,
     ValidityPeriod,
 )

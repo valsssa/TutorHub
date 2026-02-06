@@ -27,10 +27,10 @@ from modules.messages.domain.repositories import (
     MessageRepository,
 )
 from modules.messages.domain.value_objects import (
+    MAX_MESSAGE_LENGTH,
     AttachmentId,
     AttachmentInfo,
     ConversationId,
-    MAX_MESSAGE_LENGTH,
     MessageContent,
     MessageId,
     UserId,

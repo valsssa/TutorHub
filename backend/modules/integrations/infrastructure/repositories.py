@@ -129,9 +129,8 @@ class UserIntegrationRepositoryImpl(UserIntegrationRepository):
 
         # Check Google Calendar integration
         google_entity = self._user_to_google_calendar_entity(user)
-        if google_entity:
-            if status is None or google_entity.status == status:
-                integrations.append(google_entity)
+        if google_entity and (status is None or google_entity.status == status):
+            integrations.append(google_entity)
 
         return integrations
 

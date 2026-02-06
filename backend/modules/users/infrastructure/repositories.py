@@ -13,7 +13,6 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models import User
-
 from modules.users.domain.entities import UserEntity, UserPreferences
 from modules.users.domain.value_objects import (
     AvatarKey,

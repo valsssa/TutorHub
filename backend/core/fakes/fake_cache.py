@@ -4,13 +4,13 @@ Fake Cache - In-memory implementation of CachePort for testing.
 Provides TTL tracking, lock simulation, and operation history for assertions.
 """
 
+import time
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-import time
 from typing import Any
-import uuid
 
 from core.ports.cache import LockResult
 

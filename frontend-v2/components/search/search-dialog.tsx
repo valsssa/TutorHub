@@ -25,17 +25,30 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
   const totalResults =
     (results?.tutors.length || 0) + (results?.subjects.length || 0);
 
+  // Track previous isOpen state to detect when dialog opens
+  const prevIsOpenRef = useRef(isOpen);
+
   // Reset state and focus when dialog opens
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (isOpen) {
-      setQuery('');
-      setSelectedIndex(0);
+    const wasOpen = prevIsOpenRef.current;
+    prevIsOpenRef.current = isOpen;
+
+    if (isOpen && !wasOpen) {
+      // Dialog just opened - schedule state reset for next tick
+      const resetTimer = setTimeout(() => {
+        setQuery('');
+        setSelectedIndex(0);
+      }, 0);
+
       // Focus input after a brief delay to ensure it's rendered
-      const timer = setTimeout(() => {
+      const focusTimer = setTimeout(() => {
         inputRef.current?.focus();
       }, 10);
-      return () => clearTimeout(timer);
+
+      return () => {
+        clearTimeout(resetTimer);
+        clearTimeout(focusTimer);
+      };
     }
   }, [isOpen]);
 

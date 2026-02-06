@@ -8,7 +8,7 @@ abstracting away the specific storage provider (MinIO, S3, etc.).
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, BinaryIO, Protocol
+from typing import BinaryIO, Protocol
 
 
 class StorageStatus(str, Enum):

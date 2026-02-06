@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
 from core.config import settings
-from core.dependencies import AdminUser, CurrentUser, DatabaseSession, TutorUser
+from core.dependencies import AdminUser, DatabaseSession, TutorUser
 from core.rate_limiting import limiter
 from models import Booking
 

@@ -68,11 +68,14 @@ class UserIntegrationEntity:
     @property
     def needs_reconnection(self) -> bool:
         """Check if the integration needs user to reconnect."""
-        if self.status == IntegrationStatus.ERROR:
-            return True
-        if self.credentials and self.credentials.is_expired and not self.credentials.can_refresh:
-            return True
-        return False
+        return (
+            self.status == IntegrationStatus.ERROR
+            or (
+                self.credentials is not None
+                and self.credentials.is_expired
+                and not self.credentials.can_refresh
+            )
+        )
 
     @property
     def can_sync(self) -> bool:

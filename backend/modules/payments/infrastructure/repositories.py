@@ -6,6 +6,7 @@ using SQLAlchemy for database operations.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -537,10 +538,8 @@ class PayoutRepositoryImpl:
 
         completed_at = None
         if metadata.get("completed_at"):
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 completed_at = datetime.fromisoformat(metadata["completed_at"])
-            except (ValueError, TypeError):
-                pass
 
         return PayoutEntity(
             id=model.id,

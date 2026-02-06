@@ -226,8 +226,8 @@ async def get_wallet_transactions(
     db: Session = Depends(get_db),
 ) -> TransactionListResponse:
     """Get paginated wallet transactions for current user."""
+
     from models import Wallet, WalletTransaction
-    from sqlalchemy import func
 
     # Ensure page_size is within bounds
     page_size = min(max(page_size, 1), 100)

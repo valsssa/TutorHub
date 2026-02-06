@@ -9,7 +9,6 @@ from typing import NewType
 
 from modules.subjects.domain.exceptions import InvalidSubjectDataError
 
-
 # Subject ID as a NewType wrapper for type safety
 SubjectId = NewType("SubjectId", int)
 
@@ -45,7 +44,7 @@ class SubjectLevel(str, Enum):
         for level in cls:
             if level.value == value_lower:
                 return level
-        valid_levels = [l.value for l in cls]
+        valid_levels = [level.value for level in cls]
         raise InvalidSubjectDataError(
             "level",
             f"Invalid level '{value}'. Valid levels: {', '.join(valid_levels)}",

@@ -7,6 +7,7 @@ in the domain layer.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -343,17 +344,13 @@ def _audit_log_to_entity(model: AuditLog) -> AdminActionLog:
 
     new_data = model.new_data or {}
     if "action_type" in new_data:
-        try:
+        with contextlib.suppress(ValueError):
             action = AdminActionType(new_data["action_type"])
-        except ValueError:
-            pass
 
     target_type = TargetType.USER
     if "target_type" in new_data:
-        try:
+        with contextlib.suppress(ValueError):
             target_type = TargetType(new_data["target_type"])
-        except ValueError:
-            pass
     elif model.table_name:
         table_to_target = {
             "users": TargetType.USER,
@@ -519,7 +516,7 @@ class AdminActionLogRepositoryImpl:
         entities = [_audit_log_to_entity(m) for m in models]
 
         if action_types:
-            action_values = {a for a in action_types}
+            action_values = set(action_types)
             entities = [e for e in entities if e.action in action_values]
 
         return entities
@@ -564,7 +561,7 @@ class AdminActionLogRepositoryImpl:
         entities = [_audit_log_to_entity(m) for m in models]
 
         if action_types:
-            action_values = {a for a in action_types}
+            action_values = set(action_types)
             entities = [e for e in entities if e.action in action_values]
 
         return entities[:limit]

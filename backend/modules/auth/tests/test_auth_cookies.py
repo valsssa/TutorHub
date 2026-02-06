@@ -32,13 +32,13 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-min-32-characters-long-123"
 os.environ.setdefault("BCRYPT_ROUNDS", "4")
 os.environ["SKIP_STARTUP_MIGRATIONS"] = "true"
 
-# Imports after path setup
-import database
-from auth import get_password_hash
-from database import get_db
-from main import app
-from models import StudentProfile, User
-from models.base import Base
+# Imports after path setup (must be after env vars are set)
+import database  # noqa: E402
+from auth import get_password_hash  # noqa: E402
+from database import get_db  # noqa: E402
+from main import app  # noqa: E402
+from models import StudentProfile, User  # noqa: E402
+from models.base import Base  # noqa: E402
 
 # Database setup
 TEST_ENGINE = create_engine(TEST_DATABASE_URL, echo=False)
@@ -49,7 +49,8 @@ database.SessionLocal = TestingSessionLocal
 database.Base = Base
 
 # Disable rate limiting
-from core.rate_limiting import limiter
+from core.rate_limiting import limiter  # noqa: E402
+
 limiter.enabled = False
 
 # Standard test password
@@ -80,10 +81,9 @@ def create_test_user(
     db.commit()
     db.refresh(user)
 
-    if role == "student":
-        if not db.query(StudentProfile).filter_by(user_id=user.id).first():
-            db.add(StudentProfile(user_id=user.id))
-            db.commit()
+    if role == "student" and not db.query(StudentProfile).filter_by(user_id=user.id).first():
+        db.add(StudentProfile(user_id=user.id))
+        db.commit()
 
     return user
 

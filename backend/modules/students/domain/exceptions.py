@@ -16,10 +16,7 @@ class StudentNotFoundError(StudentError):
 
     def __init__(self, identifier: str | int | None = None):
         self.identifier = identifier
-        if identifier:
-            message = f"Student not found: {identifier}"
-        else:
-            message = "Student not found"
+        message = f"Student not found: {identifier}" if identifier else "Student not found"
         super().__init__(message)
 
 
@@ -28,10 +25,11 @@ class StudentProfileNotFoundError(StudentError):
 
     def __init__(self, identifier: str | int | None = None):
         self.identifier = identifier
-        if identifier:
-            message = f"Student profile not found: {identifier}"
-        else:
-            message = "Student profile not found"
+        message = (
+            f"Student profile not found: {identifier}"
+            if identifier
+            else "Student profile not found"
+        )
         super().__init__(message)
 
 

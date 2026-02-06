@@ -1,7 +1,8 @@
 """Tests for CSRF middleware."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import Request
 from starlette.responses import Response
 

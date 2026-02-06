@@ -5,8 +5,7 @@ This module provides standardized functions for working with datetimes,
 ensuring all timestamps are consistently in UTC and timezone-aware.
 """
 
-from datetime import UTC, datetime, timedelta, timezone
-from typing import overload
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 

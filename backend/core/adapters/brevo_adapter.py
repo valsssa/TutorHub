@@ -5,15 +5,11 @@ Wraps the existing email_service.py functionality with the EmailPort interface.
 Preserves retry logic and HTML email templates.
 """
 
-import asyncio
 import logging
-from datetime import UTC, datetime
-from typing import Any
 
 from core.config import settings
 from core.ports.email import (
     BookingEmailContext,
-    EmailPort,
     EmailResult,
     EmailStatus,
 )

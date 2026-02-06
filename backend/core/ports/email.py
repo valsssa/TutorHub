@@ -5,10 +5,10 @@ This port defines the contract for transactional email operations,
 abstracting away the specific email provider (Brevo, SendGrid, etc.).
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Protocol
+from typing import Protocol
 
 
 class EmailStatus(str, Enum):

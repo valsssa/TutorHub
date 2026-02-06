@@ -23,10 +23,7 @@ class UserNotFoundError(AuthError):
 
     def __init__(self, identifier: str | int | None = None):
         self.identifier = identifier
-        if identifier:
-            message = f"User not found: {identifier}"
-        else:
-            message = "User not found"
+        message = f"User not found: {identifier}" if identifier else "User not found"
         super().__init__(message)
 
 

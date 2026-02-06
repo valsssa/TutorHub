@@ -7,7 +7,7 @@ abstracting away the specific calendar provider (Google Calendar, etc.).
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Protocol
 
 
 @dataclass(frozen=True)

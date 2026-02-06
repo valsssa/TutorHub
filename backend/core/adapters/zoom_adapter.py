@@ -16,7 +16,6 @@ import httpx
 from core.config import settings
 from core.ports.meeting import (
     MeetingDetails,
-    MeetingPort,
     MeetingProvider,
     MeetingResult,
     MeetingStatus,

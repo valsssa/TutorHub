@@ -1,4 +1,5 @@
-import { test as base, expect, Page, BrowserContext } from '@playwright/test';
+/* eslint-disable react-hooks/rules-of-hooks */
+import { test as base, expect, Page } from '@playwright/test';
 
 interface TestUser {
   email: string;

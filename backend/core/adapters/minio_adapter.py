@@ -7,20 +7,16 @@ Preserves presigned URL generation and security best practices.
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
 from functools import lru_cache
 from typing import BinaryIO
 
-import boto3
 from aiobotocore.session import get_session
-from botocore.client import Config as SyncBotoConfig
 from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError
 
 from core.config import settings
 from core.ports.storage import (
     FileMetadata,
-    StoragePort,
     StorageResult,
     StorageStatus,
 )

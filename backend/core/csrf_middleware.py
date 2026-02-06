@@ -5,15 +5,14 @@ Validates that state-changing requests include a CSRF token that
 matches the value stored in a cookie.
 """
 
-from typing import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
 
-from core.csrf import validate_csrf_token
 from core.cookie_config import get_cookie_config
-
+from core.csrf import validate_csrf_token
 
 # HTTP methods that modify state and require CSRF protection
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -94,8 +93,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return True
 
         # Wildcard match (e.g., "/webhooks/*" matches "/webhooks/stripe")
-        for exempt in self.exempt_paths:
-            if exempt.endswith("*") and path.startswith(exempt[:-1]):
-                return True
-
-        return False
+        return any(
+            exempt.endswith("*") and path.startswith(exempt[:-1])
+            for exempt in self.exempt_paths
+        )

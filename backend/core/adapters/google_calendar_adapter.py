@@ -9,7 +9,6 @@ import logging
 from datetime import datetime
 from typing import Any
 
-import httpx
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -18,7 +17,6 @@ from core.config import settings
 from core.ports.calendar import (
     CalendarEvent,
     CalendarInfo,
-    CalendarPort,
     CalendarResult,
     FreeBusyResult,
     FreeBusySlot,

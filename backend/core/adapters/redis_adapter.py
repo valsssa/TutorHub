@@ -15,7 +15,7 @@ from typing import Any
 import redis.asyncio as redis
 
 from core.config import settings
-from core.ports.cache import CachePort, CacheResult, LockResult
+from core.ports.cache import LockResult
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ class RedisAdapter:
             r = await self._get_redis()
             values = await r.mget(keys)
             result = {}
-            for key, value in zip(keys, values):
+            for key, value in zip(keys, values, strict=False):
                 if value is not None:
                     try:
                         result[key] = json.loads(value)

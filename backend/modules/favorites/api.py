@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.dependencies import StudentUser, get_db
 from core.query_helpers import exists_or_409, get_by_id_or_404, get_or_404
-from models import FavoriteTutor, TutorProfile, User
+from models import FavoriteTutor, TutorProfile
 from modules.favorites.schemas import FavoriteCreate, FavoriteResponse
 
 logger = logging.getLogger(__name__)

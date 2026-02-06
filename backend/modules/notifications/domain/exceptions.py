@@ -16,10 +16,11 @@ class NotificationNotFoundError(NotificationError):
 
     def __init__(self, notification_id: int | None = None):
         self.notification_id = notification_id
-        if notification_id:
-            message = f"Notification not found: {notification_id}"
-        else:
-            message = "Notification not found"
+        message = (
+            f"Notification not found: {notification_id}"
+            if notification_id
+            else "Notification not found"
+        )
         super().__init__(message)
 
 

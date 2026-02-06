@@ -9,6 +9,12 @@ from sqlalchemy.orm import Session
 from core.config import Roles
 from core.cookie_config import get_cookie_config
 from core.exceptions import AuthenticationError
+from core.ports import CachePort as CachePortType
+from core.ports import CalendarPort as CalendarPortType
+from core.ports import EmailPort as EmailPortType
+from core.ports import MeetingPort as MeetingPortType
+from core.ports import PaymentPort as PaymentPortType
+from core.ports import StoragePort as StoragePortType
 from core.security import TokenManager
 from core.utils import StringUtils
 from database import get_db
@@ -126,17 +132,23 @@ async def get_current_user_from_request(
 
 
 async def get_current_user(
-    token: Annotated[str | None, Depends(oauth2_scheme)],
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
     """Get the current authenticated user from JWT token.
+
+    Token extraction priority:
+    1. HttpOnly cookie (preferred, more secure)
+    2. Authorization header (legacy, for gradual migration)
 
     Validates:
     - Token signature and expiry
     - Password change timestamp (invalidates tokens issued before password change)
     - Role match (invalidates tokens with outdated role after demotion/promotion)
     """
-    # Handle missing token (auto_error=False means token can be None)
+    # Extract token from cookie first, then fallback to Authorization header
+    token = extract_token_from_request(request)
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -203,13 +215,19 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
-    token: Annotated[str | None, Depends(oauth2_scheme)],
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
 ) -> User | None:
     """Get the current authenticated user from JWT token, or None if not authenticated.
 
+    Token extraction priority:
+    1. HttpOnly cookie (preferred, more secure)
+    2. Authorization header (legacy, for gradual migration)
+
     Returns None for any invalid token (including stale password/role tokens).
     """
+    token = extract_token_from_request(request)
+
     if not token:
         return None
 
@@ -398,9 +416,10 @@ def get_calendar_port():
 
 
 # Type aliases for port dependencies
-PaymentPort = Annotated["StripeAdapter", Depends(get_payment_port)]
-EmailPort = Annotated["BrevoAdapter", Depends(get_email_port)]
-StoragePort = Annotated["MinIOAdapter", Depends(get_storage_port)]
-CachePort = Annotated["RedisAdapter", Depends(get_cache_port)]
-MeetingPort = Annotated["ZoomAdapter", Depends(get_meeting_port)]
-CalendarPort = Annotated["GoogleCalendarAdapter", Depends(get_calendar_port)]
+# Note: Using port interface types rather than adapter implementations
+PaymentDep = Annotated[PaymentPortType, Depends(get_payment_port)]
+EmailDep = Annotated[EmailPortType, Depends(get_email_port)]
+StorageDep = Annotated[StoragePortType, Depends(get_storage_port)]
+CacheDep = Annotated[CachePortType, Depends(get_cache_port)]
+MeetingDep = Annotated[MeetingPortType, Depends(get_meeting_port)]
+CalendarDep = Annotated[CalendarPortType, Depends(get_calendar_port)]

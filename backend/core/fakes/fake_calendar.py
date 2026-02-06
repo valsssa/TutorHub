@@ -4,10 +4,10 @@ Fake Calendar - In-memory implementation of CalendarPort for testing.
 Provides configurable freebusy responses and event tracking for assertions.
 """
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
-import uuid
 
 from core.ports.calendar import (
     CalendarEvent,
@@ -249,11 +249,14 @@ class FakeCalendar:
 
             # Also include events from storage
             for event in self.events.values():
-                if event.user_id == user_id and event.calendar_id == calendar_id:
-                    if not (event.end_time <= start_time or event.start_time >= end_time):
-                        overlapping.append(
-                            FreeBusySlot(start=event.start_time, end=event.end_time)
-                        )
+                if (
+                    event.user_id == user_id
+                    and event.calendar_id == calendar_id
+                    and not (event.end_time <= start_time or event.start_time >= end_time)
+                ):
+                    overlapping.append(
+                        FreeBusySlot(start=event.start_time, end=event.end_time)
+                    )
 
             result = FreeBusyResult(
                 success=True,
@@ -281,24 +284,26 @@ class FakeCalendar:
 
         events = []
         for event in self.events.values():
-            if event.user_id == user_id and event.calendar_id == calendar_id:
-                if not (event.end_time <= start_time or event.start_time >= end_time):
-                    events.append(
-                        CalendarEvent(
-                            event_id=event.event_id,
-                            title=event.title,
-                            start_time=event.start_time,
-                            end_time=event.end_time,
-                            description=event.description,
-                            location=event.location,
-                            attendees=[email for email, _ in event.attendees],
-                            meeting_url=event.meeting_url,
-                            timezone=event.timezone,
-                        )
+            if (
+                event.user_id == user_id
+                and event.calendar_id == calendar_id
+                and not (event.end_time <= start_time or event.start_time >= end_time)
+            ):
+                events.append(
+                    CalendarEvent(
+                        event_id=event.event_id,
+                        title=event.title,
+                        start_time=event.start_time,
+                        end_time=event.end_time,
+                        description=event.description,
+                        location=event.location,
+                        attendees=[email for email, _ in event.attendees],
+                        meeting_url=event.meeting_url,
+                        timezone=event.timezone,
                     )
-
-                    if len(events) >= max_results:
-                        break
+                )
+                if len(events) >= max_results:
+                    break
 
         self._record_operation("get_events_in_range", args, events)
         return events

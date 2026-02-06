@@ -8,7 +8,6 @@ No SQLAlchemy or infrastructure dependencies.
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 
 from modules.bookings.domain.status import (
     DisputeState,

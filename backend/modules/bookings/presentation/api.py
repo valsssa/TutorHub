@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from core.dependencies import StudentUser, get_current_tutor_profile, get_current_user
-from core.query_helpers import get_or_404, get_with_options_or_404
+from core.query_helpers import get_or_404
 from core.transactions import atomic_operation
 from database import get_db
 from models import Booking, TutorProfile, User
@@ -26,6 +26,7 @@ from modules.bookings.schemas import (
     BookingDTO,
     BookingListResponse,
     BookingRescheduleRequest,
+    BookingStatsResponse,
     DisputeCreateRequest,
     DisputeResolveRequest,
     MarkNoShowRequest,
@@ -132,6 +133,136 @@ def _get_booking_or_404(
 # NOTE: The _require_role helper has been removed in favor of using
 # StudentUser/TutorUser/AdminUser type aliases from core.dependencies
 # which automatically enforce role requirements via FastAPI dependency injection.
+
+
+# ============================================================================
+# Stats Endpoint (must be before /bookings/{booking_id} to avoid path conflict)
+# ============================================================================
+
+
+@router.get("/bookings/stats", response_model=BookingStatsResponse)
+async def get_booking_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get booking statistics for the current user.
+
+    Returns counts by status, total hours, and next upcoming booking.
+    Students see their student bookings, tutors see their tutor bookings.
+    """
+    from sqlalchemy import func
+
+    # Build base query filtered by user role
+    if current_user.role == "student":
+        base_filter = Booking.student_id == current_user.id
+    elif current_user.role == "tutor":
+        tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == current_user.id).first()
+        if not tutor_profile:
+            return BookingStatsResponse(
+                total_bookings=0,
+                upcoming_count=0,
+                pending_count=0,
+                completed_count=0,
+                cancelled_count=0,
+                active_count=0,
+                total_hours=0.0,
+                next_booking=None,
+            )
+        base_filter = Booking.tutor_profile_id == tutor_profile.id
+    else:
+        # Admin/owner can see all (or restrict as needed)
+        base_filter = True
+
+    now = datetime.now(UTC)
+
+    # Count by status
+    total = db.query(func.count(Booking.id)).filter(base_filter).scalar() or 0
+
+    upcoming = (
+        db.query(func.count(Booking.id))
+        .filter(
+            base_filter,
+            Booking.session_state == SessionState.SCHEDULED.value,
+            Booking.start_time >= now,
+        )
+        .scalar()
+        or 0
+    )
+
+    pending = (
+        db.query(func.count(Booking.id))
+        .filter(base_filter, Booking.session_state == SessionState.REQUESTED.value)
+        .scalar()
+        or 0
+    )
+
+    completed = (
+        db.query(func.count(Booking.id))
+        .filter(
+            base_filter,
+            Booking.session_state == SessionState.ENDED.value,
+            Booking.session_outcome == "COMPLETED",
+        )
+        .scalar()
+        or 0
+    )
+
+    cancelled = (
+        db.query(func.count(Booking.id))
+        .filter(
+            base_filter,
+            Booking.session_state.in_([SessionState.CANCELLED.value, SessionState.EXPIRED.value]),
+        )
+        .scalar()
+        or 0
+    )
+
+    active = (
+        db.query(func.count(Booking.id))
+        .filter(base_filter, Booking.session_state == SessionState.ACTIVE.value)
+        .scalar()
+        or 0
+    )
+
+    # Calculate total hours from completed sessions
+    completed_bookings = (
+        db.query(Booking.start_time, Booking.end_time)
+        .filter(
+            base_filter,
+            Booking.session_state == SessionState.ENDED.value,
+            Booking.session_outcome == "COMPLETED",
+        )
+        .all()
+    )
+    total_hours = sum(
+        (b.end_time - b.start_time).total_seconds() / 3600
+        for b in completed_bookings
+        if b.start_time and b.end_time
+    )
+
+    # Get next upcoming booking
+    next_booking = (
+        db.query(Booking.start_time)
+        .filter(
+            base_filter,
+            Booking.session_state.in_([SessionState.SCHEDULED.value, SessionState.REQUESTED.value]),
+            Booking.start_time >= now,
+        )
+        .order_by(Booking.start_time.asc())
+        .first()
+    )
+
+    return BookingStatsResponse(
+        total_bookings=total,
+        upcoming_count=upcoming,
+        pending_count=pending,
+        completed_count=completed,
+        cancelled_count=cancelled,
+        active_count=active,
+        total_hours=round(total_hours, 1),
+        next_booking=next_booking[0] if next_booking else None,
+    )
 
 
 # ============================================================================

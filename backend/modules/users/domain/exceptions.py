@@ -37,10 +37,9 @@ class DuplicateEmailError(UserError):
     """Raised when attempting to create a user with an existing email."""
 
     def __init__(self, email: str | None = None) -> None:
-        if email:
-            message = f"User with email {email} already exists"
-        else:
-            message = "Email already in use"
+        message = (
+            f"User with email {email} already exists" if email else "Email already in use"
+        )
         super().__init__(message)
         self.email = email
 
@@ -68,10 +67,7 @@ class UserDeactivatedError(UserError):
     """Raised when attempting to operate on a deactivated user."""
 
     def __init__(self, user_id: int | None = None) -> None:
-        if user_id:
-            message = f"User {user_id} is deactivated"
-        else:
-            message = "User is deactivated"
+        message = f"User {user_id} is deactivated" if user_id else "User is deactivated"
         super().__init__(message)
         self.user_id = user_id
 
@@ -80,10 +76,11 @@ class InvalidCurrencyError(UserError):
     """Raised when an invalid currency code is provided."""
 
     def __init__(self, currency: str | None = None) -> None:
-        if currency:
-            message = f"Invalid or unsupported currency code: {currency}"
-        else:
-            message = "Invalid currency code"
+        message = (
+            f"Invalid or unsupported currency code: {currency}"
+            if currency
+            else "Invalid currency code"
+        )
         super().__init__(message)
         self.currency = currency
 
@@ -92,10 +89,7 @@ class InvalidTimezoneError(UserError):
     """Raised when an invalid timezone is provided."""
 
     def __init__(self, timezone: str | None = None) -> None:
-        if timezone:
-            message = f"Invalid IANA timezone: {timezone}"
-        else:
-            message = "Invalid timezone"
+        message = f"Invalid IANA timezone: {timezone}" if timezone else "Invalid timezone"
         super().__init__(message)
         self.timezone = timezone
 
@@ -129,9 +123,6 @@ class InvalidAvatarError(AvatarError):
     """Raised when the provided avatar image is invalid."""
 
     def __init__(self, reason: str | None = None) -> None:
-        if reason:
-            message = f"Invalid avatar: {reason}"
-        else:
-            message = "Invalid avatar image"
+        message = f"Invalid avatar: {reason}" if reason else "Invalid avatar image"
         super().__init__(message)
         self.reason = reason

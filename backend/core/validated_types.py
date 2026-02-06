@@ -15,10 +15,9 @@ Usage:
 
 import html
 import re
-from typing import Annotated, Any
+from typing import Annotated
 
-from pydantic import AfterValidator, BeforeValidator, Field, GetCoreSchemaHandler
-from pydantic_core import CoreSchema, core_schema
+from pydantic import AfterValidator, BeforeValidator
 
 
 def _sanitize_string(value: str | None) -> str | None:

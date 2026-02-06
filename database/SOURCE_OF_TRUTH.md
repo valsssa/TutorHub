@@ -1,37 +1,47 @@
 # Database Source of Truth
 
-This directory now contains only **one living schema** and a few **reference copies**. The intent of this document is to highlight the duplicates that already exist under `database/` and to point every maintainer to `database/init.sql` (and `database/migrations/`) as the single, authoritative source.
+**Single source of truth: `database/migrations/`**
 
-## Canonical assets
+All schema definitions live in the migrations directory. There is no separate `init.sql` file.
 
-- `database/init.sql` – the consolidated, up‑to‑date schema. All new columns, constraints, indexes, seeding blocks, and trigger definitions belong here.
-- `database/migrations/` – the migrations that the backend executes as part of startup. These files are the only scripts that should be modified or added when evolving the schema.
+## Canonical Assets
 
-## Duplicate/archival copies
+- `database/migrations/001_baseline_schema.sql` - Complete consolidated schema (tables, indexes, constraints, views, seed data)
+- `database/migrations/002_*.sql`, `003_*.sql`, etc. - Future incremental migrations
 
-1. `database/init.sql.backup.20251014_131325`
-   - A historical snapshot of `init.sql` from November 2025. It contains many of the same table/index definitions plus legacy triggers and business logic that were subsequently moved into the application.
-   - **Action**: Keep this file for reference but **do not** edit it; all live schema work happens in `database/init.sql`.
+## How It Works
 
-2. `database/migrations_archive/`
-   - Contains earlier migration versions (`001`–`020`) that were captured for auditing purposes. Their SQL is duplicated by the active migration pipeline only when a rebuild of a production database is required.
-   - **Action**: Use this folder only for historical comparison. New migrations belong in `database/migrations/`.
+**Fresh databases:**
+1. PostgreSQL runs `001_baseline_schema.sql` via docker-entrypoint-initdb.d
+2. Backend startup verifies `schema_migrations` table and records version `001`
+3. Any future migrations (`002_*`, `003_*`) are applied automatically
 
-## Enforcement
+**Existing databases:**
+- Backend compares `schema_migrations` table against files in `migrations/`
+- Runs any unapplied migrations in order
 
-- When reviewing or documenting schema changes, refer only to `database/init.sql` and the files in `database/migrations/`.
-- Remove any future duplicates by migrating them back into these paths and updating this document if new archival copies are created.
+## Migration Naming Convention
+
+```
+migrations/
+├── 001_baseline_schema.sql      # Consolidated baseline (from original 001-056)
+├── 002_add_feature_x.sql        # Future migration
+├── 003_fix_something.sql        # Future migration
+└── README.md                    # Migration documentation
+```
+
+## Archived Migrations
+
+The `migrations_archive/` directory contains the original 39 migration files (001-056) that were consolidated into the baseline. These are kept for historical reference only and are never executed.
 
 ---
 
-## Schema Integrity Features (as of 2026-02)
-
-This section documents key database-level protections and consistency measures.
+## Schema Integrity Features
 
 ### Constraints
 
 #### Monetary Value Constraints
-All monetary fields use CHECK constraints to prevent negative values and ensure data integrity:
+All monetary fields use CHECK constraints:
 
 | Table | Column | Constraint |
 |-------|--------|------------|
@@ -48,7 +58,7 @@ All monetary fields use CHECK constraints to prevent negative values and ensure 
 | `tutor_profiles` | `hourly_rate` | `CHECK (hourly_rate > 0)` |
 
 #### Booking Overlap Prevention
-The `bookings` table has an exclusion constraint using the `btree_gist` extension to prevent double-booking:
+The `bookings` table has an exclusion constraint using `btree_gist`:
 
 ```sql
 ALTER TABLE bookings
@@ -60,92 +70,45 @@ EXCLUDE USING gist (
 WHERE (session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE'));
 ```
 
-This constraint guarantees no overlapping time ranges for the same tutor in active booking states.
-
-#### Session State Constraints (Migration 034)
-The booking system uses a four-field status model with CHECK constraints:
+#### Session State Constraints
+Four-field status model with CHECK constraints:
 
 - `session_state`: `CHECK (session_state IN ('REQUESTED', 'SCHEDULED', 'ACTIVE', 'ENDED', 'CANCELLED', 'EXPIRED'))`
 - `session_outcome`: `CHECK (session_outcome IS NULL OR session_outcome IN ('COMPLETED', 'NOT_HELD', 'NO_SHOW_STUDENT', 'NO_SHOW_TUTOR'))`
 - `payment_state`: `CHECK (payment_state IN ('PENDING', 'AUTHORIZED', 'CAPTURED', 'VOIDED', 'REFUNDED', 'PARTIALLY_REFUNDED'))`
 - `dispute_state`: `CHECK (dispute_state IN ('NONE', 'OPEN', 'RESOLVED_UPHELD', 'RESOLVED_REFUNDED'))`
 
-#### Package Session Consistency (Migration 033)
-```sql
-ALTER TABLE student_packages
-ADD CONSTRAINT chk_sessions_consistency
-CHECK (sessions_remaining = sessions_purchased - sessions_used);
-```
+### Currency Type Standardization
 
-#### Foreign Key Cascades
-Key cascade behaviors:
-- `users.id` referenced by profiles: `ON DELETE CASCADE`
-- `tutor_profiles.id` referenced by bookings: `ON DELETE SET NULL` (preserves booking history)
-- `wallets.id` referenced by transactions: `ON DELETE RESTRICT` (prevents data loss)
-- `student_packages.pricing_option_id`: `ON DELETE RESTRICT` (preserves package integrity)
-
-### Currency Type Standardization (Migration 030)
-
-All currency fields are standardized to:
-- Type: `VARCHAR(3)` (previously some were `CHAR(3)`)
+All currency fields:
+- Type: `VARCHAR(3)`
 - Default: `'USD'`
 - Validation: `CHECK (currency ~ '^[A-Z]{3}$')` (ISO 4217 format)
 
-Tables with standardized currency fields:
-- `bookings.currency`
-- `payments.currency`
-- `payouts.currency`
-- `refunds.currency`
-- `users.currency`
-- `tutor_profiles.currency`
-- `wallets.currency`
-- `wallet_transactions.currency`
-
-### Performance Indexes
-
-Key composite indexes for query optimization (Migration 031):
-
-| Index | Purpose |
-|-------|---------|
-| `idx_messages_conversation` | Conversation history queries |
-| `idx_messages_unread` | Unread message counts |
-| `idx_bookings_date_range` | Date range booking queries |
-| `idx_bookings_session_state_times` | Auto-transition job queries |
-| `idx_bookings_requested_created` | Expired request detection |
-| `idx_bookings_disputes_open` | Admin dispute dashboard |
-| `idx_bookings_payment_state` | Payment reconciliation |
-| `idx_student_packages_active_lookup` | Active package lookup |
-| `idx_tutor_profiles_pending_review` | Admin approval queue |
-
 ### Soft Delete Consistency
 
-Tables with `deleted_at` column for soft delete:
-- `users`
-- `tutor_profiles`
-- `student_profiles`
-- `bookings`
-- `messages`
+Tables with `deleted_at` column:
+- `users`, `tutor_profiles`, `student_profiles`, `bookings`, `messages`, `notifications`, `wallets`, etc.
 
-Partial indexes exclude soft-deleted records where appropriate (e.g., `WHERE deleted_at IS NULL`).
+Partial indexes exclude soft-deleted records: `WHERE deleted_at IS NULL`
 
-### Optimistic Locking (Migration 047)
+### Optimistic Locking
 
-The `bookings` table includes a `version` column for optimistic locking:
-```sql
-ALTER TABLE bookings ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
-```
-
-This prevents race conditions in booking state transitions by detecting concurrent modifications.
+The `bookings` table includes a `version` column for preventing race conditions.
 
 ---
 
 ## Verification
 
-Run the database verification script to check schema integrity:
+Run the database verification script:
 
 ```bash
 ./scripts/verify-database.sh
 ```
 
-See `database/migrations/README.md` for migration documentation.
+---
 
+## Change History
+
+- **2026-02-06**: Consolidated 39 migrations into single `001_baseline_schema.sql`. Deleted `init.sql`.
+- **2026-02-05**: Migration 056 - Comprehensive database fixes (47 issues)

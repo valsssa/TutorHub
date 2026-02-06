@@ -1,5 +1,6 @@
 """Tests for CSRF protection utilities."""
 import pytest
+
 from core.csrf import generate_csrf_token, validate_csrf_token
 
 

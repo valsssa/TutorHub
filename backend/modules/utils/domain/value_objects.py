@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import NewType
 
-
 # Type-safe identifier for service names
 ServiceName = NewType("ServiceName", str)
 

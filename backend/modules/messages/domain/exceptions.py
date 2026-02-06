@@ -16,10 +16,7 @@ class MessageNotFoundError(MessageError):
 
     def __init__(self, message_id: int | None = None):
         self.message_id = message_id
-        if message_id:
-            msg = f"Message not found: {message_id}"
-        else:
-            msg = "Message not found"
+        msg = f"Message not found: {message_id}" if message_id else "Message not found"
         super().__init__(msg)
 
 
@@ -81,10 +78,7 @@ class AttachmentNotFoundError(MessageError):
 
     def __init__(self, attachment_id: int | None = None):
         self.attachment_id = attachment_id
-        if attachment_id:
-            msg = f"Attachment not found: {attachment_id}"
-        else:
-            msg = "Attachment not found"
+        msg = f"Attachment not found: {attachment_id}" if attachment_id else "Attachment not found"
         super().__init__(msg)
 
 

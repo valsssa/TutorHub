@@ -18,10 +18,11 @@ class ProfileNotFoundError(ProfileError):
         self.identifier = identifier
         self.by_user_id = by_user_id
         if identifier:
-            if by_user_id:
-                message = f"Profile not found for user: {identifier}"
-            else:
-                message = f"Profile not found: {identifier}"
+            message = (
+                f"Profile not found for user: {identifier}"
+                if by_user_id
+                else f"Profile not found: {identifier}"
+            )
         else:
             message = "Profile not found"
         super().__init__(message)

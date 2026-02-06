@@ -13,7 +13,7 @@ from core.config import settings
 from core.sanitization import sanitize_email
 from core.security import TokenManager
 from modules.auth.domain.entities import UserEntity
-from modules.auth.infrastructure.repository import UserRepository
+from modules.auth.infrastructure import UserRepositoryImpl
 
 logger = logging.getLogger(__name__)
 logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
@@ -24,7 +24,7 @@ class AuthService:
 
     def __init__(self, db: Session):
         """Initialize service with database session."""
-        self.repository = UserRepository(db)
+        self.repository = UserRepositoryImpl(db)
         self.db = db
 
     def register_user(

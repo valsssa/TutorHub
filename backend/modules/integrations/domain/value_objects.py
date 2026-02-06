@@ -9,7 +9,6 @@ from datetime import datetime
 from enum import Enum
 from typing import NewType
 
-
 # Type aliases for integration identifiers
 IntegrationId = NewType("IntegrationId", int)
 VideoMeetingId = NewType("VideoMeetingId", int)

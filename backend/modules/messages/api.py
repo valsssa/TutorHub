@@ -15,12 +15,12 @@ from sqlalchemy.orm import Session
 from core.avatar_storage import build_avatar_url
 from core.dependencies import CurrentUser
 from core.exceptions import ValidationError
-from core.query_helpers import get_by_id_or_404, get_or_404
 from core.message_storage import (
     delete_message_attachment,
     generate_presigned_url,
     store_message_attachment,
 )
+from core.query_helpers import get_by_id_or_404, get_or_404
 from database import get_db
 from models import Message, MessageAttachment
 from modules.messages.service import MessageService

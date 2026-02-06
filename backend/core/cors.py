@@ -17,8 +17,8 @@ handler responses. We need CORSSafetyNetMiddleware as a backup.
 
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -159,11 +159,10 @@ class CORSSafetyNetMiddleware(BaseHTTPMiddleware):
             )
 
         # Add CORS headers if missing and origin is allowed
-        if "access-control-allow-origin" not in response.headers:
-            if normalized_origin in self.origins_set:
-                response.headers["Access-Control-Allow-Origin"] = origin
-                response.headers["Access-Control-Allow-Credentials"] = "true"
-                response.headers["Vary"] = "Origin"
+        if "access-control-allow-origin" not in response.headers and normalized_origin in self.origins_set:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Vary"] = "Origin"
 
         return response
 

@@ -4,10 +4,10 @@ Fake Meeting - In-memory implementation of MeetingPort for testing.
 Provides configurable success/failure and meeting tracking for assertions.
 """
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
-import uuid
 
 from core.ports.meeting import (
     MeetingDetails,

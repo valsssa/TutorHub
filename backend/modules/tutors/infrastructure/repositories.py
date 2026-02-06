@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 
 from models.students import StudentNote
 from models.tutors import TutorAvailability, TutorProfile
-
 from modules.tutors.domain.entities import (
     AvailabilityEntity,
     StudentNoteEntity,

@@ -13,7 +13,6 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from models import StudentProfile, User
-
 from modules.students.domain.entities import StudentProfileEntity
 from modules.students.domain.exceptions import StudentProfileNotFoundError
 

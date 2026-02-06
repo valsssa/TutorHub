@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from io import BytesIO
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException
 
 # Initialize Sentry early (before other imports that might error)
 from core.sentry import init_sentry
@@ -23,7 +23,6 @@ tracing_initialized = init_tracing()
 # CORSMiddleware imported via core.cors.setup_cors  # noqa: E402
 from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse, StreamingResponse  # noqa: E402
-from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 from sqlalchemy import func  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
@@ -31,8 +30,8 @@ from sqlalchemy.orm import Session  # noqa: E402
 from auth import get_password_hash  # noqa: E402
 from core.config import settings  # noqa: E402
 from core.cors import setup_cors  # noqa: E402
-from core.dependencies import get_current_admin_user  # noqa: E402
 from core.csrf_middleware import CSRFMiddleware  # noqa: E402
+from core.dependencies import get_current_admin_user  # noqa: E402
 from core.middleware import SecurityHeadersMiddleware  # noqa: E402
 from core.rate_limiting import limiter  # noqa: E402
 from core.response_cache import ResponseCacheMiddleware  # noqa: E402

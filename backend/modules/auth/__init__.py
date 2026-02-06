@@ -2,6 +2,7 @@
 
 from .application.services import AuthService
 from .domain.entities import UserEntity
-from .infrastructure.repository import UserRepository
+from .domain.repositories import UserRepository
+from .infrastructure.repository import UserRepositoryImpl
 
-__all__ = ["AuthService", "UserEntity", "UserRepository"]
+__all__ = ["AuthService", "UserEntity", "UserRepository", "UserRepositoryImpl"]

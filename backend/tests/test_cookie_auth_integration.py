@@ -10,10 +10,9 @@ Tests the complete cookie-based auth lifecycle including:
 """
 
 import pytest
+from conftest import TEST_PASSWORD, create_test_user
 from fastapi import status
 from fastapi.testclient import TestClient
-
-from conftest import TEST_PASSWORD, create_test_user
 
 
 class TestFullAuthFlowWithCookies:
@@ -362,7 +361,8 @@ class TestRefreshTokenFlow:
             },
         )
         assert login_response.status_code == status.HTTP_200_OK
-        original_access_token = login_response.cookies.get("access_token")
+        # Store access token for assertion comparison if needed
+        assert login_response.cookies.get("access_token") is not None
 
         # Refresh
         refresh_response = client.post("/api/v1/auth/refresh")
@@ -388,7 +388,8 @@ class TestRefreshTokenFlow:
             },
         )
         assert login_response.status_code == status.HTTP_200_OK
-        original_csrf = login_response.cookies.get("csrf_token")
+        # Confirm CSRF token is set
+        assert login_response.cookies.get("csrf_token") is not None
 
         # Refresh
         refresh_response = client.post("/api/v1/auth/refresh")

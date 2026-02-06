@@ -16,10 +16,7 @@ class PaymentNotFoundError(PaymentError):
 
     def __init__(self, identifier: str | int | None = None):
         self.identifier = identifier
-        if identifier:
-            message = f"Payment not found: {identifier}"
-        else:
-            message = "Payment not found"
+        message = f"Payment not found: {identifier}" if identifier else "Payment not found"
         super().__init__(message)
 
 

@@ -9,7 +9,6 @@ from typing import NewType
 
 from modules.messages.domain.exceptions import EmptyMessageError, MessageTooLongError
 
-
 # Type aliases for IDs
 MessageId = NewType("MessageId", int)
 ConversationId = NewType("ConversationId", int)

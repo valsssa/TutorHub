@@ -4,10 +4,10 @@ Fake Email - In-memory implementation of EmailPort for testing.
 Logs all email calls and stores sent emails for test assertions.
 """
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
-import uuid
 
 from core.ports.email import (
     BookingEmailContext,

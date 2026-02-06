@@ -5,7 +5,7 @@ These are pure data classes representing the core messaging domain concepts.
 No SQLAlchemy or infrastructure dependencies.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 from modules.messages.domain.value_objects import AttachmentInfo
@@ -109,11 +109,7 @@ class MessageEntity:
         Returns:
             True if user can delete, False otherwise
         """
-        if self.sender_id != user_id:
-            return False
-        if self.is_deleted:
-            return False
-        return True
+        return self.sender_id == user_id and not self.is_deleted
 
 
 @dataclass

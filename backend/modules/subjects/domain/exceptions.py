@@ -16,10 +16,7 @@ class SubjectNotFoundError(SubjectError):
 
     def __init__(self, identifier: int | str | None = None):
         self.identifier = identifier
-        if identifier:
-            message = f"Subject not found: {identifier}"
-        else:
-            message = "Subject not found"
+        message = f"Subject not found: {identifier}" if identifier else "Subject not found"
         super().__init__(message)
 
 

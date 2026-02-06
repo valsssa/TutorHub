@@ -5,10 +5,10 @@ Provides configurable success/failure scenarios and transaction history
 for test assertions.
 """
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
-import uuid
 
 from core.ports.payment import (
     CheckoutSessionResult,

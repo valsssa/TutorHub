@@ -419,7 +419,7 @@ class MessageRepositoryImpl(MessageRepository):
             .all()
         )
 
-        return {sender_id: count for sender_id, count in results}
+        return dict(results)
 
     def _to_entity(self, model: Message) -> MessageEntity:
         """Convert SQLAlchemy model to domain entity."""

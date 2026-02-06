@@ -425,3 +425,21 @@ class DisputeDTO(BaseModel):
     resolved_at: datetime | None = None
     resolved_by: int | None = None
     resolution_notes: str | None = None
+
+
+# ============================================================================
+# Stats Responses
+# ============================================================================
+
+
+class BookingStatsResponse(BaseModel):
+    """Booking statistics for the current user."""
+
+    total_bookings: int = Field(..., description="Total number of bookings")
+    upcoming_count: int = Field(..., description="Upcoming confirmed bookings")
+    pending_count: int = Field(..., description="Bookings awaiting confirmation")
+    completed_count: int = Field(..., description="Successfully completed sessions")
+    cancelled_count: int = Field(..., description="Cancelled or expired bookings")
+    active_count: int = Field(..., description="Currently active sessions")
+    total_hours: float = Field(..., description="Total hours of completed sessions")
+    next_booking: datetime | None = Field(None, description="Start time of next upcoming booking")

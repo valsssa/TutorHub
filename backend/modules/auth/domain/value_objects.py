@@ -401,10 +401,9 @@ class IpAddress:
         if not value:
             return False
         normalized = value.strip().lower()
-        if normalized == "unknown":
-            return True
-        if cls.IPV4_PATTERN.match(normalized):
-            return True
-        if cls.IPV6_PATTERN.match(normalized) or "::" in normalized:
-            return True
-        return False
+        return (
+            normalized == "unknown"
+            or bool(cls.IPV4_PATTERN.match(normalized))
+            or bool(cls.IPV6_PATTERN.match(normalized))
+            or "::" in normalized
+        )

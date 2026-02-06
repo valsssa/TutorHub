@@ -65,10 +65,9 @@ class SessionCount:
 
     def __sub__(self, other: "SessionCount | int") -> "SessionCount":
         """Subtract session counts."""
-        if isinstance(other, SessionCount):
-            new_value = self.value - other.value
-        else:
-            new_value = self.value - other
+        new_value = (
+            self.value - other.value if isinstance(other, SessionCount) else self.value - other
+        )
         if new_value < 0:
             raise InvalidPackageConfigError(
                 f"Cannot subtract {other} from {self.value}: result would be negative"

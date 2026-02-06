@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import { test as base, expect, APIRequestContext } from '@playwright/test';
 
 interface ApiFixtures {

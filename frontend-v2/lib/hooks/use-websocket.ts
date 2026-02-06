@@ -55,6 +55,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
+  const connectRef = useRef<() => void>(() => {});
 
   // Clear all timers
   const clearTimers = useCallback(() => {
@@ -104,7 +105,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
     reconnectTimeoutRef.current = setTimeout(() => {
       if (mountedRef.current) {
-        connect();
+        connectRef.current();
       }
     }, delay);
   }, [autoReconnect, maxReconnectAttempts, reconnectAttempt, reconnectDelay, onReconnecting]);
@@ -213,6 +214,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     scheduleReconnect,
     startHeartbeat,
   ]);
+
+  // Keep connectRef in sync with connect
+  connectRef.current = connect;
 
   // Disconnect from WebSocket server
   const disconnect = useCallback(() => {

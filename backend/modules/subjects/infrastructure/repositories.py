@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -415,11 +416,8 @@ class SubjectRepositoryImpl(SubjectRepository):
         # Parse category if present
         category: SubjectCategory | None = None
         if model.category:
-            try:
+            with contextlib.suppress(Exception):
                 category = SubjectCategory.from_string(model.category)
-            except Exception:
-                # If category doesn't match enum, leave as None
-                pass
 
         return SubjectEntity(
             id=SubjectId(model.id) if model.id else None,

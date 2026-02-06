@@ -90,12 +90,14 @@ class SearchFilters:
                 reason="Subject ID must be a positive integer",
             )
 
-        if self.min_rating is not None:
-            if self.min_rating < MIN_RATING or self.min_rating > MAX_RATING:
-                raise InvalidSearchParametersError(
-                    parameter="min_rating",
-                    reason=f"Rating must be between {MIN_RATING} and {MAX_RATING}",
-                )
+        if (
+            self.min_rating is not None
+            and (self.min_rating < MIN_RATING or self.min_rating > MAX_RATING)
+        ):
+            raise InvalidSearchParametersError(
+                parameter="min_rating",
+                reason=f"Rating must be between {MIN_RATING} and {MAX_RATING}",
+            )
 
         if self.max_price is not None and self.max_price <= 0:
             raise InvalidSearchParametersError(

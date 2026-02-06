@@ -9,19 +9,17 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
-from sqlalchemy import String, cast, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from core.avatar_storage import build_avatar_url
 from models import Subject, TutorProfile, TutorSubject, User
-
 from modules.public.domain.entities import (
     PublicTutorProfileEntity,
     SearchResultEntity,
     SubjectInfo,
 )
 from modules.public.domain.value_objects import (
-    DEFAULT_PAGE_SIZE,
     PaginationParams,
     SearchFilters,
     SearchQuery,

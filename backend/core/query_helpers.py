@@ -4,15 +4,13 @@ This module provides standardized helpers for common query patterns like
 fetching entities with 404 handling, reducing duplicate code across modules.
 """
 
-from typing import Any, TypeVar, overload
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Query, Session
 
-T = TypeVar("T")
 
-
-def get_or_404(
+def get_or_404[T](
     db: Session,
     model: type[T],
     filters: dict[str, Any],
@@ -64,7 +62,7 @@ def get_or_404(
     return entity
 
 
-def get_or_none(
+def get_or_none[T](
     db: Session,
     model: type[T],
     filters: dict[str, Any],
@@ -102,7 +100,7 @@ def get_or_none(
     return query.first()
 
 
-def exists_or_404(
+def exists_or_404[T](
     db: Session,
     model: type[T],
     filters: dict[str, Any],
@@ -146,7 +144,7 @@ def exists_or_404(
     return True
 
 
-def get_by_id_or_404(
+def get_by_id_or_404[T](
     db: Session,
     model: type[T],
     entity_id: int,
@@ -188,7 +186,7 @@ def get_by_id_or_404(
     return get_or_404(db, model, {"id": entity_id}, detail=detail, include_deleted=include_deleted)
 
 
-def get_with_options_or_404(
+def get_with_options_or_404[T](
     query: Query[T],
     *,
     detail: str = "Resource not found",
@@ -226,7 +224,7 @@ def get_with_options_or_404(
     return entity
 
 
-def exists_or_409(
+def exists_or_409[T](
     db: Session,
     model: type[T],
     filters: dict[str, Any],

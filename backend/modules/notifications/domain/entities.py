@@ -204,11 +204,11 @@ class NotificationPreference:
             return False
 
         # Check quiet hours for non-urgent channels
-        if current_time and channel in (DeliveryChannel.EMAIL, DeliveryChannel.PUSH):
-            if self.is_in_quiet_hours(current_time):
-                return False
-
-        return True
+        return not (
+            current_time
+            and channel in (DeliveryChannel.EMAIL, DeliveryChannel.PUSH)
+            and self.is_in_quiet_hours(current_time)
+        )
 
 
 @dataclass

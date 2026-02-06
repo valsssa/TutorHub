@@ -44,10 +44,7 @@ class ServiceUnavailableError(UtilsError):
         service_name: str | None = None,
         retry_after: int | None = None,
     ) -> None:
-        if service_name:
-            message = f"Service unavailable: {service_name}"
-        else:
-            message = "Service unavailable"
+        message = f"Service unavailable: {service_name}" if service_name else "Service unavailable"
         if retry_after:
             message = f"{message}. Retry after {retry_after} seconds."
         super().__init__(message)

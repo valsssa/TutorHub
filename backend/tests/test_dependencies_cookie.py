@@ -1,10 +1,12 @@
 """Tests for cookie-based token extraction in dependencies."""
 
-import pytest
-from unittest.mock import MagicMock
-from fastapi import Request
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from core.dependencies import extract_token_from_request
+import pytest
+from fastapi import HTTPException, Request
+
+from core.dependencies import extract_token_from_request, get_current_user_from_request
 
 
 @pytest.fixture
@@ -91,12 +93,6 @@ def test_extract_token_handles_empty_cookie(mock_request):
 # =============================================================================
 # Tests for get_current_user_from_request
 # =============================================================================
-
-from datetime import datetime, timedelta
-from unittest.mock import patch, AsyncMock
-from fastapi import HTTPException
-
-from core.dependencies import get_current_user_from_request
 
 
 @pytest.fixture

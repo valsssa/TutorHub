@@ -227,11 +227,13 @@ class AverageRating:
             raise ValueError("Review count cannot be negative")
         if self.review_count == 0 and self.value != 0.0:
             raise ValueError("Average must be 0 when review count is 0")
-        if self.review_count > 0:
-            if self.value < MIN_RATING or self.value > MAX_RATING:
-                raise ValueError(
-                    f"Average rating must be between {MIN_RATING} and {MAX_RATING}"
-                )
+        if (
+            self.review_count > 0
+            and (self.value < MIN_RATING or self.value > MAX_RATING)
+        ):
+            raise ValueError(
+                f"Average rating must be between {MIN_RATING} and {MAX_RATING}"
+            )
 
     @property
     def rounded_value(self) -> float:

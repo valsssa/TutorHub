@@ -17,7 +17,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
-from core.dependencies import AdminUser, CurrentUser, DatabaseSession, TutorUser
+from core.dependencies import AdminUser, DatabaseSession, TutorUser
 from core.stripe_client import (
     create_connect_account,
     create_connect_account_link,

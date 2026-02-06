@@ -58,10 +58,11 @@ class InvalidFeatureFlagError(AdminError):
     ):
         self.reason = reason
         self.flag_name = flag_name
-        if flag_name:
-            message = f"Invalid feature flag '{flag_name}': {reason}"
-        else:
-            message = f"Invalid feature flag: {reason}"
+        message = (
+            f"Invalid feature flag '{flag_name}': {reason}"
+            if flag_name
+            else f"Invalid feature flag: {reason}"
+        )
         super().__init__(message)
 
 

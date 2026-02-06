@@ -13,7 +13,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models import FavoriteTutor
-
 from modules.favorites.domain.entities import FavoriteEntity
 from modules.favorites.domain.exceptions import DuplicateFavoriteError
 from modules.favorites.domain.value_objects import (

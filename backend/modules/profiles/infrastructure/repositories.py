@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session
 
 from core.avatar_storage import build_avatar_url
 from models import User, UserProfile
-
 from modules.profiles.domain.entities import UserProfileEntity
 from modules.profiles.domain.exceptions import ProfileNotFoundError
 from modules.profiles.domain.value_objects import ProfileId, UserId

@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import NewType
 
-
 # Type-safe identifier for notifications
 NotificationId = NewType("NotificationId", int)
 

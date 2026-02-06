@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from core.soft_delete import filter_active
 from models import User
 from modules.auth.domain.entities import UserEntity
-from modules.auth.domain.repositories import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -478,5 +477,6 @@ class UserRepositoryImpl:
         return [self._to_entity(user) for user in users]
 
 
-# Backwards compatibility alias
-UserRepository = UserRepositoryImpl
+# Note: UserRepository is the Protocol from domain/repositories.py
+# UserRepositoryImpl is the concrete implementation
+# They have the same name for backwards compatibility but different roles

@@ -167,7 +167,7 @@ The legacy APScheduler implementation in `core/scheduler.py` and `modules/bookin
 
 ### Database
 
-Schema in `database/init.sql`. Migrations in `database/migrations/` (34+ SQL files). Uses soft delete with `deleted_at` timestamps on most tables.
+Schema in `database/migrations/001_baseline_schema.sql` (single source of truth). Uses soft delete with `deleted_at` timestamps on most tables. See `database/SOURCE_OF_TRUTH.md` for details.
 
 ### Clean Architecture (Port/Adapter Pattern)
 

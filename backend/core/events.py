@@ -30,11 +30,12 @@ Usage:
 
 import asyncio
 import logging
+import uuid
 from collections import defaultdict
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Callable, Coroutine
-import uuid
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

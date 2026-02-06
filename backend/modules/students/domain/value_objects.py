@@ -7,7 +7,6 @@ Immutable objects that represent concepts with no identity, only values.
 from enum import Enum
 from typing import NewType
 
-
 # Type-safe ID wrappers
 StudentId = NewType("StudentId", int)
 StudentProfileId = NewType("StudentProfileId", int)
