@@ -140,7 +140,19 @@ async def create_wallet_checkout(
 
 
 class TransactionResponse(BaseModel):
-    """Response model for a single transaction."""
+    """Response model for a single wallet transaction.
+
+    Fields:
+        id: Unique transaction identifier
+        type: Transaction type (DEPOSIT, WITHDRAWAL, TRANSFER, REFUND, PAYOUT, PAYMENT, FEE)
+        amount_cents: Amount in cents (positive for credits, negative for debits)
+        currency: ISO 4217 currency code (e.g., USD, EUR)
+        description: Human-readable transaction description
+        status: Transaction status (PENDING, COMPLETED, FAILED, CANCELLED)
+        reference_id: External reference (e.g., Stripe payment intent ID)
+        created_at: When the transaction was initiated (ISO 8601 format)
+        completed_at: When the transaction completed (ISO 8601 format, null if pending)
+    """
 
     id: int
     type: str
@@ -152,15 +164,29 @@ class TransactionResponse(BaseModel):
     created_at: datetime
     completed_at: datetime | None = None
 
+    model_config = {"from_attributes": True}
+
 
 class TransactionListResponse(BaseModel):
-    """Paginated list of transactions."""
+    """Paginated list of wallet transactions.
+
+    Standard pagination response format matching other endpoints.
+
+    Fields:
+        items: List of transactions for the current page
+        total: Total number of transactions matching the filters
+        page: Current page number (1-indexed)
+        page_size: Number of items per page
+        total_pages: Total number of pages available
+    """
 
     items: list[TransactionResponse]
     total: int
     page: int
     page_size: int
     total_pages: int
+
+    model_config = {"from_attributes": True}
 
 
 @router.get(
