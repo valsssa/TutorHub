@@ -1,5 +1,16 @@
 import type { PricingOption } from './package';
 
+/**
+ * Valid tutor profile status values matching backend constraint.
+ */
+export type TutorProfileStatus =
+  | 'incomplete'
+  | 'pending_approval'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'archived';
+
 export interface Subject {
   id: number;
   name: string;
@@ -33,7 +44,7 @@ export interface TutorProfile {
   avatar_url?: string;
   profile_photo_url?: string; // Alternative field name
   is_approved: boolean;
-  profile_status?: string;
+  profile_status?: TutorProfileStatus;
   rejection_reason?: string;
   approved_at?: string;
   timezone?: string;
