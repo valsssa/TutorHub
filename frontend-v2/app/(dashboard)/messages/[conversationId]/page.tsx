@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, MoreVertical, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MoreVertical, AlertCircle, Loader2 } from 'lucide-react';
 import {
   useConversation,
   useMessages,
@@ -42,21 +42,80 @@ export default function ConversationPage() {
   const params = useParams();
   const conversationId = Number(params.conversationId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
 
   const { user: currentUser } = useAuth();
 
   const { data: conversationData, isLoading: conversationLoading, error: conversationError } =
     useConversation(conversationId);
   const { data: messagesData, isLoading: messagesLoading, error: messagesError } =
-    useMessages(conversationId);
+    useMessages(conversationId, currentPage);
   const sendMessageMutation = useSendMessage(conversationId);
   const markAsReadMutation = useMarkAsRead(conversationId);
 
-  // Normalize messages from API response
+  // Calculate if there are more messages to load
+  const hasMoreMessages = useMemo(() => {
+    if (!messagesData) return false;
+    const totalPages = Math.ceil(messagesData.total / messagesData.page_size);
+    return currentPage < totalPages;
+  }, [messagesData, currentPage]);
+
+  // Merge new messages with existing ones when page changes
+  useEffect(() => {
+    if (!messagesData?.messages) return;
+
+    if (currentPage === 1) {
+      // Initial load or refresh - replace all messages
+      setAllMessages(messagesData.messages);
+      setHasInitialLoad(true);
+    } else {
+      // Loading older messages - prepend to existing
+      // Older messages come from higher page numbers (reverse chronological)
+      setAllMessages(prev => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const newMessages = messagesData.messages.filter(m => !existingIds.has(m.id));
+        return [...newMessages, ...prev];
+      });
+      setIsLoadingMore(false);
+    }
+  }, [messagesData, currentPage]);
+
+  // Load older messages handler with scroll position preservation
+  const loadOlderMessages = useCallback(() => {
+    if (isLoadingMore || !hasMoreMessages) return;
+
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    // Store current scroll position from top
+    const scrollHeightBefore = container.scrollHeight;
+    const scrollTopBefore = container.scrollTop;
+
+    setIsLoadingMore(true);
+    setCurrentPage(prev => prev + 1);
+
+    // After render, restore scroll position
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (container) {
+          const scrollHeightAfter = container.scrollHeight;
+          const heightDiff = scrollHeightAfter - scrollHeightBefore;
+          container.scrollTop = scrollTopBefore + heightDiff;
+        }
+      });
+    });
+  }, [isLoadingMore, hasMoreMessages]);
+
+  // Normalize messages for rendering (sorted by created_at ascending)
   const messages: Message[] = useMemo(() => {
-    if (!messagesData) return [];
-    return messagesData.messages ?? [];
-  }, [messagesData]);
+    return [...allMessages].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }, [allMessages]);
 
   // Get conversation info (may come from conversation endpoint or messages response)
   const conversationParticipants = useMemo(() => {
@@ -89,9 +148,12 @@ export default function ConversationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, unreadCount]);
 
+  // Auto-scroll to bottom only on initial load or when sending new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (hasInitialLoad && currentPage === 1) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages.length, hasInitialLoad, currentPage]);
 
   const handleSendMessage = (content: string) => {
     sendMessageMutation.mutate({ content, recipient_id: conversationId });
@@ -158,8 +220,33 @@ export default function ConversationPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messagesLoading ? (
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+        >
+          {/* Load older messages button */}
+          {hasMoreMessages && hasInitialLoad && (
+            <div className="flex justify-center pb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadOlderMessages}
+                disabled={isLoadingMore}
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  'Load older messages'
+                )}
+              </Button>
+            </div>
+          )}
+
+          {messagesLoading && currentPage === 1 ? (
             <MessageSkeleton />
           ) : hasError ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
