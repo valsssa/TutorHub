@@ -13,6 +13,7 @@ from sqlalchemy import (
     Text,
     Time,
 )
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -50,11 +51,21 @@ class TutorProfile(Base):
     auto_confirm = Column(Boolean, default=False)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    # Enhanced booking fields (optional - require migration 017)
-    # cancellation_strikes = Column(Integer, default=0)
-    # auto_confirm = Column(Boolean, default=False)
-    # trial_price_cents = Column(Integer)
-    # payout_method = Column(Text)
+    # Verification and badges fields
+    badges = Column(ARRAY(String), default=list, nullable=True)
+    is_identity_verified = Column(Boolean, default=False, nullable=False)
+    is_education_verified = Column(Boolean, default=False, nullable=False)
+    is_background_checked = Column(Boolean, default=False, nullable=False)
+    verification_notes = Column(Text, nullable=True)
+    # Profile completeness tracking
+    profile_completeness_score = Column(Integer, default=0, nullable=True)
+    last_completeness_check = Column(TIMESTAMP(timezone=True), nullable=True)
+    # Enhanced booking/payment fields
+    cancellation_strikes = Column(Integer, default=0, nullable=False)
+    trial_price_cents = Column(Integer, nullable=True)
+    payout_method = Column(JSONB, nullable=True)
+    # Teaching content
+    teaching_philosophy = Column(Text, nullable=True)
     # Stripe Connect integration
     stripe_account_id = Column(String(255), nullable=True, index=True)  # acct_...
     stripe_charges_enabled = Column(Boolean, default=False)
@@ -113,7 +124,7 @@ class TutorProfile(Base):
         CheckConstraint("hourly_rate > 0", name="positive_rate"),
         CheckConstraint("average_rating BETWEEN 0 AND 5", name="valid_rating"),
         CheckConstraint(
-            "profile_status IN ('incomplete', 'pending_approval', 'under_review', 'approved', 'rejected')",
+            "profile_status IN ('incomplete', 'pending_approval', 'under_review', 'approved', 'rejected', 'archived')",
             name="valid_profile_status",
         ),
     )
