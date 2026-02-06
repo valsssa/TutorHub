@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Menu, Bell, Sun, Moon, LogOut, User, Settings, ChevronDown, Search } from 'lucide-react';
 import { useAuth, useSearchShortcut } from '@/lib/hooks';
 import { useUIStore } from '@/lib/stores';
-import { Avatar, Button } from '@/components/ui';
+import { Avatar } from '@/components/ui';
 import { SearchDialog } from '@/components/search';
 import { cn } from '@/lib/utils';
 

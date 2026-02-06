@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTutors, useSubjects } from '@/lib/hooks';
 import { useFiltersStore } from '@/lib/stores';

@@ -216,7 +216,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   ]);
 
   // Keep connectRef in sync with connect
-  connectRef.current = connect;
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // Disconnect from WebSocket server
   const disconnect = useCallback(() => {

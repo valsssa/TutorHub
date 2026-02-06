@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Plus, Trash2, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 
 interface TimeSlot {
@@ -86,7 +85,7 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
       )}
 
       <div className="space-y-2">
-        {daySlots.map((slot, index) => {
+        {daySlots.map((slot) => {
           const globalIndex = slots.findIndex(
             (s) =>
               s.day_of_week === slot.day_of_week &&

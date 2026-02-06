@@ -41,6 +41,10 @@ class Notification(Base):
     extra_data = Column(JSON)  # renamed from 'metadata' which is reserved in SQLAlchemy
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
+    # Soft delete columns
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     __table_args__ = (CheckConstraint("priority BETWEEN 1 AND 5", name="notification_priority_check"),)
 
     # Relationships

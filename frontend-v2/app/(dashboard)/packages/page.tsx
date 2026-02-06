@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Package, Search, Filter, AlertCircle } from 'lucide-react';
+import { Package, Search, AlertCircle } from 'lucide-react';
 import { useMyPackages } from '@/lib/hooks';
 import {
   Card,
@@ -11,8 +11,6 @@ import {
   CardHeader,
   CardTitle,
   Button,
-  Input,
-  Badge,
   Skeleton,
 } from '@/components/ui';
 import { PurchasedPackageCard } from '@/components/packages/package-card';

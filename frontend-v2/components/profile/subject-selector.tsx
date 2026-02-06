@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, ChevronDown, Check, Search } from 'lucide-react';
+import { X, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui';
 import type { Subject } from '@/types';

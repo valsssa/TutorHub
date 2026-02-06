@@ -27,7 +27,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 import { useAuth, useOwnerDashboard } from '@/lib/hooks';
 import {

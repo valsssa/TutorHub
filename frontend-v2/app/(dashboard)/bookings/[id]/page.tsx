@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
-  MapPin,
   MessageSquare,
   Video,
   DollarSign,

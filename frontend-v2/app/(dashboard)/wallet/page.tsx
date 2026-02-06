@@ -1,14 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import {
   Wallet,
-  ArrowUpRight,
-  Clock,
-  TrendingUp,
-  ChevronRight,
-  AlertCircle,
   CreditCard,
   Plus,
 } from 'lucide-react';
@@ -21,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
-  CardFooter,
   Button,
   Input,
   Skeleton,

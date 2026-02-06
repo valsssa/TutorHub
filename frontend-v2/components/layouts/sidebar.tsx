@@ -22,7 +22,6 @@ import {
   CheckCircle,
   FileText,
   Cog,
-  Building,
   ChevronLeft,
   type LucideIcon,
 } from 'lucide-react';

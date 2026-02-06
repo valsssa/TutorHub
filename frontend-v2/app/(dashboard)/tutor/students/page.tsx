@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Users, Search, FileText, Calendar, ChevronRight } from 'lucide-react';
+import { Users, FileText, Calendar, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Skeleton, Avatar } from '@/components/ui';
 import { useTutorStudents } from '@/lib/hooks/use-student-notes';
 import { formatDate } from '@/lib/utils';

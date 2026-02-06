@@ -13,7 +13,6 @@ interface PackageCardProps {
 
 export function PackageCard({ pkg, onPurchase, isPurchasing }: PackageCardProps) {
   const sessionsCount = pkg.sessions_count ?? 1;
-  const originalPrice = pkg.price;
   const pricePerSession = sessionsCount > 0 ? pkg.price / sessionsCount : pkg.price;
 
   return (
@@ -107,7 +106,6 @@ export function PurchasedPackageCard({
     : null;
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
   const isExpired = purchasedPackage.status === 'expired' || (daysUntilExpiry !== null && daysUntilExpiry <= 0);
-  const isExhausted = purchasedPackage.status === 'exhausted';
 
   const getStatusBadge = () => {
     switch (purchasedPackage.status) {

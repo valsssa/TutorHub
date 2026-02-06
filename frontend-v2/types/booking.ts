@@ -1,22 +1,17 @@
 import type { Subject } from './tutor';
 
-// Backend session states - supports both uppercase (backend enum) and lowercase (legacy/display)
+/**
+ * Valid session states matching backend BookingStateMachine.
+ * State flow: REQUESTED -> SCHEDULED -> ACTIVE -> ENDED
+ * Terminal states: ENDED, CANCELLED, EXPIRED
+ */
 export type SessionState =
   | 'REQUESTED'
   | 'SCHEDULED'
   | 'ACTIVE'
   | 'ENDED'
   | 'EXPIRED'
-  | 'CANCELLED'
-  // Legacy lowercase states for backwards compatibility
-  | 'pending_tutor'
-  | 'pending_student'
-  | 'confirmed'
-  | 'in_progress'
-  | 'completed'
-  | 'cancelled'
-  | 'expired'
-  | 'no_show';
+  | 'CANCELLED';
 
 export type SessionOutcome =
   | 'COMPLETED'
@@ -24,21 +19,16 @@ export type SessionOutcome =
   | 'NO_SHOW_STUDENT'
   | 'NO_SHOW_TUTOR';
 
-// Payment states - supports both uppercase (backend enum) and lowercase (legacy/display)
+/**
+ * Valid payment states matching backend PaymentState enum.
+ */
 export type PaymentState =
   | 'PENDING'
   | 'AUTHORIZED'
   | 'CAPTURED'
   | 'VOIDED'
   | 'REFUNDED'
-  | 'PARTIALLY_REFUNDED'
-  // Legacy lowercase states for backwards compatibility
-  | 'pending'
-  | 'authorized'
-  | 'captured'
-  | 'released_to_tutor'
-  | 'refunded'
-  | 'failed';
+  | 'PARTIALLY_REFUNDED';
 
 export type DisputeState =
   | 'NONE'

@@ -18,7 +18,7 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { MessageBubble, MessageInput } from '@/components/messages';
-import type { Message, User } from '@/types';
+import type { Message } from '@/types';
 
 function MessageSkeleton() {
   return (
