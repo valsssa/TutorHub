@@ -36,8 +36,8 @@ class BookingEntity:
     timezone: str = "UTC"
 
     # Status fields (4-field system)
-    session_state: SessionState = SessionState.PENDING_TUTOR
-    session_outcome: SessionOutcome = SessionOutcome.PENDING
+    session_state: SessionState = SessionState.REQUESTED
+    session_outcome: SessionOutcome | None = None
     payment_state: PaymentState = PaymentState.PENDING
     dispute_state: DisputeState = DisputeState.NONE
 
@@ -88,15 +88,15 @@ class BookingEntity:
 
     @property
     def is_confirmed(self) -> bool:
-        """Check if booking is confirmed."""
-        return self.session_state == SessionState.CONFIRMED
+        """Check if booking is confirmed (scheduled)."""
+        return self.session_state == SessionState.SCHEDULED
 
     @property
     def is_completed(self) -> bool:
         """Check if session completed successfully."""
         return (
-            self.session_state == SessionState.COMPLETED and
-            self.session_outcome == SessionOutcome.SUCCESSFUL
+            self.session_state == SessionState.ENDED
+            and self.session_outcome == SessionOutcome.COMPLETED
         )
 
     @property
@@ -111,8 +111,8 @@ class BookingEntity:
 
     @property
     def can_start(self) -> bool:
-        """Check if session can start (confirmed and time is right)."""
-        if self.session_state != SessionState.CONFIRMED:
+        """Check if session can start (scheduled and time is right)."""
+        if self.session_state != SessionState.SCHEDULED:
             return False
         now = datetime.now(self.start_time.tzinfo)
         return now >= self.start_time
@@ -120,7 +120,7 @@ class BookingEntity:
     @property
     def has_dispute(self) -> bool:
         """Check if there's an active dispute."""
-        return self.dispute_state not in (DisputeState.NONE, DisputeState.RESOLVED_STUDENT_FAVOR, DisputeState.RESOLVED_TUTOR_FAVOR)
+        return self.dispute_state == DisputeState.OPEN
 
 
 @dataclass

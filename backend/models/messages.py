@@ -64,6 +64,14 @@ class Conversation(Base):
         nullable=False,
     )
 
+    # Soft delete
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Unique constraint: one conversation per student-tutor pair (per booking if specified)
     __table_args__ = (
         UniqueConstraint(
@@ -93,6 +101,7 @@ class Conversation(Base):
         order_by="Message.created_at.desc()",
         lazy="dynamic",
     )
+    deleter = relationship("User", foreign_keys=[deleted_by])
 
 
 class Message(Base):
