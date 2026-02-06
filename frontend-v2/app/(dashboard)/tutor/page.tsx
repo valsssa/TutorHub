@@ -60,7 +60,7 @@ function StatCard({
             {isLoading ? (
               <Skeleton className="h-8 w-16 mb-1" />
             ) : (
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                 {value}
               </p>
             )}
@@ -106,16 +106,16 @@ function PendingRequestCard({
 
   return (
     <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-full bg-primary-100 dark:bg-primary-900/30">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-full bg-primary-100 dark:bg-primary-900/30 shrink-0">
             <User className="h-4 w-4 text-primary-600" />
           </div>
-          <div>
-            <p className="font-medium text-slate-900 dark:text-white">
+          <div className="min-w-0">
+            <p className="font-medium text-slate-900 dark:text-white truncate">
               {booking.student?.name || 'Student'}
             </p>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 truncate">
               {booking.subject_name || 'General'} - 60 min
             </p>
             <p className="text-xs text-slate-400 mt-1">
@@ -123,13 +123,13 @@ function PendingRequestCard({
               {dateLabel}, {formatTime(startDate)}
             </p>
             {booking.notes_student && (
-              <p className="text-xs text-slate-500 mt-2 italic">
+              <p className="text-xs text-slate-500 mt-2 italic line-clamp-2">
                 &ldquo;{booking.notes_student}&rdquo;
               </p>
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0 self-end sm:self-start">
           <Button
             size="sm"
             variant="outline"
@@ -181,24 +181,24 @@ function ScheduleCard({ booking }: { booking: Booking }) {
   };
 
   return (
-    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="text-center min-w-[60px]">
+    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="text-center min-w-[60px] shrink-0">
           <p className="text-xs text-slate-500">{formatTime(startDate)}</p>
           <p className="text-xs text-slate-400">-</p>
           <p className="text-xs text-slate-500">{formatTime(endDate)}</p>
         </div>
-        <div className="h-10 w-px bg-slate-200 dark:bg-slate-700" />
-        <div>
-          <p className="font-medium text-slate-900 dark:text-white">
+        <div className="h-10 w-px bg-slate-200 dark:bg-slate-700 shrink-0" />
+        <div className="min-w-0">
+          <p className="font-medium text-slate-900 dark:text-white truncate">
             {booking.subject_name || 'Session'}
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 truncate">
             with {booking.student?.name || 'Student'}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
         {getStatusBadge()}
         {booking.join_url && (
           <Button size="sm" asChild>
@@ -223,7 +223,7 @@ function LoadingSkeleton() {
         <Skeleton className="h-10 w-32" />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Skeleton className="h-24 rounded-2xl" />
         <Skeleton className="h-24 rounded-2xl" />
         <Skeleton className="h-24 rounded-2xl" />
@@ -364,7 +364,7 @@ export default function TutorDashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Upcoming Sessions"
           value={upcomingCount}

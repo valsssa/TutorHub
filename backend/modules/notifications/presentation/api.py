@@ -9,7 +9,7 @@ Provides endpoints for:
 """
 
 import logging
-from datetime import UTC, datetime, time
+from datetime import datetime, time
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status

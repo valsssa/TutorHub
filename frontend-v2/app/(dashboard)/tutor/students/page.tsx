@@ -134,23 +134,24 @@ export default function TutorStudentsPage() {
               <Link
                 key={student.id}
                 href={`/tutor/students/${student.id}/notes`}
-                className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group gap-3"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <Avatar
                     src={student.avatar_url}
                     name={student.name}
                     size="lg"
+                    className="shrink-0"
                   />
-                  <div>
-                    <p className="font-medium text-slate-900 dark:text-white">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900 dark:text-white truncate">
                       {student.name}
                     </p>
-                    <div className="flex items-center gap-3 text-sm text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
                       {student.last_session_date && (
                         <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Last session: {formatDate(student.last_session_date, { month: 'short', day: 'numeric' })}
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          Last: {formatDate(student.last_session_date, { month: 'short', day: 'numeric' })}
                         </span>
                       )}
                       {student.total_sessions && (
@@ -161,10 +162,10 @@ export default function TutorStudentsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                   <span className="text-sm text-slate-500 group-hover:text-primary-600 transition-colors flex items-center gap-1">
                     <FileText className="h-4 w-4" />
-                    View Notes
+                    <span className="hidden xs:inline">View Notes</span>
                   </span>
                   <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-primary-600 transition-colors" />
                 </div>

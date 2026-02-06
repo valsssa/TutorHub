@@ -4,13 +4,13 @@ import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from core.datetime_utils import utc_now
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import update
 from sqlalchemy.orm import Session, joinedload
 
 from core.audit import AuditLogger
+from core.datetime_utils import utc_now
 from core.dependencies import get_current_student_user, get_current_user
 from core.query_helpers import get_or_404, get_with_options_or_404
 from core.rate_limiting import limiter

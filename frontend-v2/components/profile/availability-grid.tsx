@@ -64,9 +64,9 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
   const daySlots = slots.filter((s) => s.day_of_week === day.value);
 
   return (
-    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
+    <div className="p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="font-medium text-slate-900 dark:text-white">
+        <h4 className="font-medium text-slate-900 dark:text-white text-sm sm:text-base">
           {day.label}
         </h4>
         <Button
@@ -96,16 +96,16 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
           return (
             <div
               key={`${slot.day_of_week}-${slot.start_time}-${slot.end_time}`}
-              className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg p-2"
+              className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-white dark:bg-slate-900 rounded-lg p-2"
             >
-              <Clock className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              <Clock className="h-4 w-4 text-slate-400 flex-shrink-0 hidden sm:block" />
               <select
                 value={slot.start_time}
                 onChange={(e) =>
                   onUpdate(globalIndex, { ...slot, start_time: e.target.value })
                 }
                 disabled={disabled}
-                className="flex-1 text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 {TIME_OPTIONS.map((time) => (
                   <option key={time} value={time}>
@@ -113,14 +113,14 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
                   </option>
                 ))}
               </select>
-              <span className="text-slate-400">to</span>
+              <span className="text-slate-400 text-sm">to</span>
               <select
                 value={slot.end_time}
                 onChange={(e) =>
                   onUpdate(globalIndex, { ...slot, end_time: e.target.value })
                 }
                 disabled={disabled}
-                className="flex-1 text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 {TIME_OPTIONS.map((time) => (
                   <option key={time} value={time}>
@@ -134,7 +134,7 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
                 size="icon"
                 onClick={() => onRemove(globalIndex)}
                 disabled={disabled}
-                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -143,12 +143,12 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
         })}
 
         {isAdding && (
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg p-2 border-2 border-dashed border-primary-300 dark:border-primary-700">
-            <Clock className="h-4 w-4 text-primary-500 flex-shrink-0" />
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-white dark:bg-slate-900 rounded-lg p-2 border-2 border-dashed border-primary-300 dark:border-primary-700">
+            <Clock className="h-4 w-4 text-primary-500 flex-shrink-0 hidden sm:block" />
             <select
               value={newStart}
               onChange={(e) => setNewStart(e.target.value)}
-              className="flex-1 text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               {TIME_OPTIONS.map((time) => (
                 <option key={time} value={time}>
@@ -156,11 +156,11 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
                 </option>
               ))}
             </select>
-            <span className="text-slate-400">to</span>
+            <span className="text-slate-400 text-sm">to</span>
             <select
               value={newEnd}
               onChange={(e) => setNewEnd(e.target.value)}
-              className="flex-1 text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               {TIME_OPTIONS.map((time) => (
                 <option key={time} value={time}>
@@ -168,22 +168,24 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
                 </option>
               ))}
             </select>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleAdd}
-              disabled={newStart >= newEnd}
-            >
-              Add
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsAdding(false)}
-            >
-              Cancel
-            </Button>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleAdd}
+                disabled={newStart >= newEnd}
+              >
+                Add
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsAdding(false)}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -207,7 +209,7 @@ export function AvailabilityGrid({ slots, onChange, disabled }: AvailabilityGrid
   };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
       {DAYS_OF_WEEK.map((day) => (
         <DaySlotEditor
           key={day.value}
@@ -248,7 +250,7 @@ export function AvailabilityPreview({ slots }: { slots: TimeSlot[] }) {
         <CardTitle>Weekly Availability</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {groupedSlots.map((day) => {
             if (day.slots.length === 0) return null;
 
@@ -257,7 +259,7 @@ export function AvailabilityPreview({ slots }: { slots: TimeSlot[] }) {
                 key={day.value}
                 className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800"
               >
-                <h4 className="font-medium text-slate-900 dark:text-white mb-2">
+                <h4 className="font-medium text-slate-900 dark:text-white mb-2 text-sm sm:text-base">
                   {day.label}
                 </h4>
                 <div className="space-y-1">
@@ -266,7 +268,7 @@ export function AvailabilityPreview({ slots }: { slots: TimeSlot[] }) {
                       key={idx}
                       className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2"
                     >
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-3 w-3 shrink-0" />
                       {slot.start_time} - {slot.end_time}
                     </div>
                   ))}

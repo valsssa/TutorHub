@@ -177,13 +177,13 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
             Notifications
           </h1>
-          <p className="text-slate-500 dark:text-slate-400">
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400">
             Stay updated with your tutoring activity
           </p>
         </div>
@@ -192,6 +192,7 @@ export default function NotificationsPage() {
             variant="outline"
             onClick={handleMarkAllAsRead}
             disabled={markAllAsRead.isPending}
+            className="self-start sm:self-auto"
           >
             <CheckCheck className="h-4 w-4 mr-2" />
             Mark all as read
@@ -207,12 +208,12 @@ export default function NotificationsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap scrollbar-none -mx-1 px-1">
             {filterOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setSelectedFilter(option.value)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
                   selectedFilter === option.value
                     ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'

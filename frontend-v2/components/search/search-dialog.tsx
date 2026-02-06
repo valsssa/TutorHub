@@ -141,15 +141,15 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
   const showEmptyState = !query.trim() && recentSearches.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-[15vh]">
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-0 sm:pt-[15vh]">
       <div
         ref={dialogRef}
-        className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+        className="w-full h-full sm:h-auto sm:max-w-xl bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl sm:border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col sm:block"
         role="dialog"
         aria-modal="true"
         aria-label="Search"
       >
-        <div className="flex items-center gap-3 px-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-3 px-3 sm:px-4 border-b border-slate-200 dark:border-slate-700">
           <Search className="h-5 w-5 text-slate-400 shrink-0" />
           <input
             ref={inputRef}
@@ -158,7 +158,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search tutors, subjects..."
-            className="flex-1 h-14 bg-transparent text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none text-base"
+            className="flex-1 h-12 sm:h-14 bg-transparent text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none text-base"
           />
           {isLoading && (
             <Loader2 className="h-5 w-5 text-slate-400 animate-spin shrink-0" />
@@ -172,7 +172,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
           </button>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="flex-1 sm:flex-none max-h-none sm:max-h-[60vh] overflow-y-auto overscroll-contain">
           {showEmptyState && (
             <div className="px-4 py-8 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -240,7 +240,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+        <div className="hidden sm:block px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">

@@ -98,8 +98,10 @@ class TutorProfile(Base):
 
     @property
     def profile_photo_url(self) -> str | None:
-        """Get tutor's profile photo URL."""
-        return None  # Placeholder - integrate with avatar storage if needed
+        """Get tutor's profile photo URL from user's avatar."""
+        if self.user and self.user.avatar_key:
+            return f"/api/v1/avatars/{self.user.avatar_key}"
+        return None
     availabilities = relationship(
         "TutorAvailability",
         back_populates="tutor_profile",

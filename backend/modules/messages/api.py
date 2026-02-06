@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.avatar_storage import build_avatar_url
-from core.dependencies import CurrentUser
+from core.dependencies import CompleteProfileUser, CurrentUser
 from core.exceptions import ValidationError
 from core.message_storage import (
     delete_message_attachment,
@@ -122,11 +122,11 @@ def get_message_service(db: Session = Depends(get_db)) -> MessageService:
 @router.post("", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def send_message(
     request: SendMessageRequest,
-    current_user: CurrentUser,
+    current_user: CompleteProfileUser,
     service: MessageService = Depends(get_message_service),
 ):
     """
-    Send a message to another user.
+    Send a message to another user. Requires complete profile (first/last name).
 
     **Business Rules:**
     - Message length: 1-2000 characters
@@ -456,7 +456,7 @@ async def mark_thread_read(
 
 @router.post("/with-attachment", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def send_message_with_attachment(
-    current_user: CurrentUser,
+    current_user: CompleteProfileUser,
     recipient_id: int = Form(..., gt=0),
     message: str = Form(..., min_length=1, max_length=2000),
     booking_id: int | None = Form(None, gt=0),
@@ -465,7 +465,7 @@ async def send_message_with_attachment(
     db: Session = Depends(get_db),
 ):
     """
-    Send a message with a file attachment.
+    Send a message with a file attachment. Requires complete profile (first/last name).
 
     **Business Rules:**
     - File size limits: 10 MB (5 MB for images)

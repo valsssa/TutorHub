@@ -43,7 +43,7 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
-      <div className="flex h-full items-center justify-between px-6">
+      <div className="flex h-full items-center justify-between px-3 sm:px-4 md:px-6">
         <button
           onClick={() => setMobileNavOpen(true)}
           className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -64,7 +64,7 @@ export function Topbar() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <button
             onClick={openSearch}
             className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -89,7 +89,7 @@ export function Topbar() {
             className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <Bell className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full" />
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full" aria-label="Unread notifications" />
           </Link>
 
           <div className="relative ml-2 pl-4 border-l border-slate-200 dark:border-slate-700" ref={menuRef}>
@@ -102,11 +102,11 @@ export function Topbar() {
                 name={user?.first_name ?? undefined}
                 size="sm"
               />
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-slate-900 dark:text-white">
+              <div className="hidden md:block text-left max-w-[120px] lg:max-w-[160px]">
+                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                   {user?.first_name} {user?.last_name}
                 </p>
-                <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+                <p className="text-xs text-slate-500 capitalize truncate">{user?.role}</p>
               </div>
               <ChevronDown className={cn(
                 'h-4 w-4 text-slate-400 transition-transform hidden md:block',

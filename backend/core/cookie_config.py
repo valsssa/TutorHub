@@ -19,9 +19,13 @@ class CookieConfig:
 
     Cross-subdomain authentication:
         When frontend (e.g., edustream.valsa.solutions) and backend
-        (e.g., api.valsa.solutions) are on different subdomains, the `domain`
-        must be set to the parent domain (e.g., ".valsa.solutions") for
-        cookies to be accessible across subdomains. Without this:
+        (e.g., api.valsa.solutions) are on different subdomains:
+        1. The `domain` must be set to the parent domain (e.g., ".valsa.solutions")
+        2. `SameSite` must be set to "none" for cross-origin requests with credentials
+        3. `Secure` must be true (required when SameSite=None)
+
+        Without proper configuration:
+        - Cookies won't be sent on cross-origin fetch/XHR requests
         - CSRF token cookies set by the backend won't be readable by frontend JS
         - DELETE/POST/PUT requests will fail with 403 CSRF validation errors
     """
@@ -33,7 +37,6 @@ class CookieConfig:
 
     # Security settings
     httponly: bool = True
-    samesite: Literal["lax", "strict", "none"] = "lax"
     path: str = "/"
 
     # TTL in seconds
@@ -46,8 +49,26 @@ class CookieConfig:
 
     @property
     def secure(self) -> bool:
-        """HTTPS-only cookies in non-development environments."""
+        """HTTPS-only cookies in non-development environments.
+
+        Note: Secure=true is REQUIRED when SameSite=None.
+        """
         return self.environment != "development"
+
+    @property
+    def samesite(self) -> Literal["lax", "strict", "none"]:
+        """SameSite cookie attribute based on cross-subdomain configuration.
+
+        When `domain` is set (cross-subdomain auth), cookies must use
+        SameSite=None to be sent on cross-origin requests. This requires
+        Secure=true (HTTPS), which is automatically enabled in production.
+
+        In development (same origin), SameSite=Lax provides CSRF protection.
+        """
+        # Cross-subdomain auth requires SameSite=None
+        if self.domain is not None:
+            return "none"
+        return "lax"
 
 
 @lru_cache

@@ -30,7 +30,7 @@ function StatCard({
             <Icon className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+            <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               {value}
             </p>
             <p className="text-sm text-slate-500">{label}</p>
@@ -68,7 +68,7 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statsLoading ? (
           <>
             <Skeleton className="h-24 rounded-2xl" />
@@ -100,7 +100,7 @@ export default function StudentDashboard() {
             <CardHeader>
               <CardTitle>Upcoming Sessions</CardTitle>
               <Link
-                href="/student/bookings"
+                href="/bookings"
                 className="text-sm text-primary-600 hover:underline"
               >
                 View all
@@ -127,16 +127,16 @@ export default function StudentDashboard() {
                       key={booking.id}
                       className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-slate-900 dark:text-white">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-900 dark:text-white truncate">
                             {booking.subject_name}
                           </p>
                           <p className="text-sm text-slate-500">
                             with {booking.tutor?.name}
                           </p>
                         </div>
-                        <Button size="sm" variant="outline">
+                        <Button size="sm" variant="outline" className="shrink-0">
                           View
                         </Button>
                       </div>
@@ -161,7 +161,7 @@ export default function StudentDashboard() {
                 </Link>
               </Button>
               <Button asChild variant="ghost" className="w-full justify-start">
-                <Link href="/student/bookings">
+                <Link href="/bookings">
                   <Calendar className="h-4 w-4 mr-3" />
                   My Bookings
                 </Link>

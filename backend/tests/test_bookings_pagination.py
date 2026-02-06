@@ -16,7 +16,7 @@ def test_bookings_list_returns_pagination_fields():
 
 def test_bookings_list_response_structure():
     """Verify BookingListResponse has the expected field types."""
-    from modules.bookings.schemas import BookingListResponse, BookingDTO
+    from modules.bookings.schemas import BookingDTO, BookingListResponse
 
     # Check field annotations
     fields = BookingListResponse.model_fields

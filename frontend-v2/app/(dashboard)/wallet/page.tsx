@@ -56,13 +56,13 @@ export default function WalletPage() {
   const balanceAmount = balance?.balance_cents ? balance.balance_cents / 100 : 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
             Wallet
           </h1>
-          <p className="text-slate-500">Manage your wallet balance</p>
+          <p className="text-sm sm:text-base text-slate-500">Manage your wallet balance</p>
         </div>
       </div>
 
@@ -87,12 +87,12 @@ export default function WalletPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 sm:pt-6">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30">
-                  <Wallet className="h-6 w-6 text-green-600 dark:text-green-400" />
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex-shrink-0">
+                  <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -114,10 +114,10 @@ export default function WalletPage() {
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-4 sm:pt-6">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                  <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex-shrink-0">
+                  <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 dark:text-slate-400">

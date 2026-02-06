@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
   if (isSuccess) {
     return (
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
               <svg
@@ -54,10 +54,10 @@ export default function ForgotPasswordPage() {
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
               Check your email
             </h2>
-            <p className="text-slate-500 mb-6">
+            <p className="text-sm sm:text-base text-slate-500 mb-6">
               We&apos;ve sent a password reset link to your email address. Please check your
               inbox and follow the instructions to reset your password.
             </p>
@@ -75,15 +75,15 @@ export default function ForgotPasswordPage() {
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+      <CardContent className="p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
           Forgot password?
         </h2>
-        <p className="text-slate-500 mb-6">
+        <p className="text-sm sm:text-base text-slate-500 mb-4 sm:mb-6">
           No worries, we&apos;ll send you reset instructions.
         </p>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
           <Input
             label="Email"
             type="email"

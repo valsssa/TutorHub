@@ -1,7 +1,7 @@
 """Favorites API endpoints."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from core.avatar_storage import build_avatar_url
-from core.dependencies import StudentUser, get_db
+from core.dependencies import CompleteProfileUser, StudentUser, get_db
 from core.query_helpers import get_by_id_or_404
 from models import FavoriteTutor, TutorProfile, TutorSubject
 from modules.favorites.schemas import (
@@ -20,7 +20,6 @@ from modules.favorites.schemas import (
     FavoritesCheckRequest,
     FavoritesCheckResponse,
     FavoriteWithTutorResponse,
-    PaginatedFavoritesResponse,
     TutorSubjectSummary,
     TutorSummary,
 )
@@ -145,10 +144,10 @@ async def get_favorites(
 @router.post("", response_model=FavoriteResponse, status_code=status.HTTP_201_CREATED)
 async def add_favorite(
     favorite_data: FavoriteCreate,
-    current_user: StudentUser,
+    current_user: CompleteProfileUser,
     db: Annotated[Session, Depends(get_db)],
 ):
-    """Add a tutor to favorites."""
+    """Add a tutor to favorites. Requires complete profile (first/last name)."""
     from fastapi import HTTPException
 
     # Check if tutor profile exists
@@ -223,7 +222,7 @@ async def remove_favorite(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Favorite not found")
 
     # Soft delete: set deleted_at and deleted_by
-    favorite.deleted_at = datetime.now(timezone.utc)
+    favorite.deleted_at = datetime.now(UTC)
     favorite.deleted_by = current_user.id
     db.commit()
     logger.info(f"User {current_user.id} removed tutor {tutor_profile_id} from favorites (soft delete)")

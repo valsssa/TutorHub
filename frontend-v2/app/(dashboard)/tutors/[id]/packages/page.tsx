@@ -23,10 +23,10 @@ interface TutorPackagesPageProps {
 
 function PackagesSkeleton() {
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {Array.from({ length: 3 }).map((_, i) => (
         <Card key={i}>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="space-y-2">
                 <Skeleton className="h-5 w-32" />
@@ -66,7 +66,7 @@ interface PricingOptionCardProps {
 function PricingOptionCard({ option, currency, onPurchase, isPurchasing }: PricingOptionCardProps) {
   return (
     <Card className="h-full flex flex-col">
-      <CardContent className="p-6 flex-1 flex flex-col">
+      <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2 mb-4">
           <div>
             <h3 className="font-semibold text-lg text-slate-900 dark:text-white">
@@ -215,17 +215,17 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-3">
-          <Avatar src={tutor.avatar_url ?? tutor.profile_photo_url} name={tutorDisplayName} size="md" />
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar src={tutor.avatar_url ?? tutor.profile_photo_url} name={tutorDisplayName} size="md" className="shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">
               Session Packages
             </h1>
-            <p className="text-sm text-slate-500">by {tutorDisplayName}</p>
+            <p className="text-sm text-slate-500 truncate">by {tutorDisplayName}</p>
           </div>
         </div>
       </div>
@@ -290,7 +290,7 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
               </Button>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {pricingOptions.map((option: PricingOption) => (
                 <PricingOptionCard
                   key={option.id}
@@ -305,11 +305,11 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-center gap-4">
-        <Button asChild variant="outline">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href={`/tutors/${tutorId}`}>View Profile</Link>
         </Button>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href={`/bookings/new?tutor_id=${tutorId}`}>Book Single Session</Link>
         </Button>
       </div>

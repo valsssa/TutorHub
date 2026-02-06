@@ -411,7 +411,7 @@ export default function VideoSettingsPage() {
             </div>
           )}
         </CardContent>
-        <CardFooter className="justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-6">
+        <CardFooter className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
           <div className="text-sm text-slate-500">
             {settings?.video_provider_configured ? (
               <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
@@ -427,6 +427,7 @@ export default function VideoSettingsPage() {
           </div>
           <Button
             type="submit"
+            className="w-full sm:w-auto"
             disabled={updateSettings.isPending || (
               !selectedProviderDetails.is_available && selectedProviderDetails.requires_setup
             )}

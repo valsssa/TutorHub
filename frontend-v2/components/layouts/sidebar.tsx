@@ -92,17 +92,22 @@ export function Sidebar() {
           'fixed left-0 top-0 z-50 h-full bg-white dark:bg-slate-900',
           'border-r border-slate-200 dark:border-slate-800',
           'transition-all duration-300',
-          sidebarCollapsed ? 'w-20' : 'w-64',
-          mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]',
+          mobileNavOpen
+            ? 'w-64 max-w-[80vw] translate-x-0'
+            : cn(
+                sidebarCollapsed ? 'w-20' : 'w-64',
+                '-translate-x-full lg:translate-x-0'
+              )
         )}
       >
         <div className="flex h-16 items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
-          {!sidebarCollapsed && (
+          {(mobileNavOpen || !sidebarCollapsed) && (
             <Link href="/" className="text-xl font-bold text-primary-600">
               EduStream
             </Link>
           )}
-          {sidebarCollapsed && (
+          {!mobileNavOpen && sidebarCollapsed && (
             <Link href="/" className="text-xl font-bold text-primary-600 mx-auto">
               E
             </Link>
@@ -120,7 +125,7 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className="p-3 space-y-1">
+        <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
           {items.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + '/');
@@ -137,7 +142,7 @@ export function Sidebar() {
                 )}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!sidebarCollapsed && (
+                {(mobileNavOpen || !sidebarCollapsed) && (
                   <span className="font-medium">{item.label}</span>
                 )}
               </Link>
@@ -157,7 +162,7 @@ export function Sidebar() {
             )}
           >
             <Settings className="h-5 w-5" />
-            {!sidebarCollapsed && <span className="font-medium">Settings</span>}
+            {(mobileNavOpen || !sidebarCollapsed) && <span className="font-medium">Settings</span>}
           </Link>
         </div>
       </aside>

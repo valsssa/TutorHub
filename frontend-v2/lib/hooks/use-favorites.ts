@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { favoritesApi } from '@/lib/api';
-import type { Favorite } from '@/types';
+import type { Favorite, PaginatedResponse } from '@/types';
 
 export const favoriteKeys = {
   all: ['favorites'] as const,
@@ -9,10 +9,24 @@ export const favoriteKeys = {
 };
 
 export function useFavorites() {
-  return useQuery({
+  const query = useQuery({
     queryKey: favoriteKeys.list(),
     queryFn: favoritesApi.list,
   });
+
+  // Return the items array for backward compatibility, plus pagination metadata
+  return {
+    ...query,
+    data: query.data?.items,
+    pagination: query.data ? {
+      total: query.data.total,
+      page: query.data.page,
+      page_size: query.data.page_size,
+      total_pages: query.data.total_pages,
+      has_next: query.data.has_next,
+      has_prev: query.data.has_prev,
+    } : undefined,
+  };
 }
 
 export function useIsFavorite(tutorId: number) {
@@ -29,9 +43,23 @@ export function useAddFavorite() {
   return useMutation({
     mutationFn: favoritesApi.add,
     onSuccess: (newFavorite) => {
-      queryClient.setQueryData<Favorite[]>(favoriteKeys.list(), (old) => {
-        if (!old) return [newFavorite];
-        return [...old, newFavorite];
+      queryClient.setQueryData<PaginatedResponse<Favorite>>(favoriteKeys.list(), (old) => {
+        if (!old) {
+          return {
+            items: [newFavorite],
+            total: 1,
+            page: 1,
+            page_size: 20,
+            total_pages: 1,
+            has_next: false,
+            has_prev: false,
+          };
+        }
+        return {
+          ...old,
+          items: [...old.items, newFavorite],
+          total: old.total + 1,
+        };
       });
       queryClient.setQueryData(
         favoriteKeys.check(newFavorite.tutor_profile_id),
@@ -50,11 +78,26 @@ export function useRemoveFavorite() {
       await queryClient.cancelQueries({ queryKey: favoriteKeys.list() });
       await queryClient.cancelQueries({ queryKey: favoriteKeys.check(tutorProfileId) });
 
-      const previousFavorites = queryClient.getQueryData<Favorite[]>(favoriteKeys.list());
+      const previousFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(favoriteKeys.list());
 
-      queryClient.setQueryData<Favorite[]>(favoriteKeys.list(), (old) => {
-        if (!old) return [];
-        return old.filter((f) => f.tutor_profile_id !== tutorProfileId);
+      queryClient.setQueryData<PaginatedResponse<Favorite>>(favoriteKeys.list(), (old) => {
+        if (!old) {
+          return {
+            items: [],
+            total: 0,
+            page: 1,
+            page_size: 20,
+            total_pages: 0,
+            has_next: false,
+            has_prev: false,
+          };
+        }
+        const newItems = old.items.filter((f) => f.tutor_profile_id !== tutorProfileId);
+        return {
+          ...old,
+          items: newItems,
+          total: Math.max(0, old.total - 1),
+        };
       });
 
       queryClient.setQueryData(

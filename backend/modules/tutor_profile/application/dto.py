@@ -145,15 +145,20 @@ def aggregate_to_public_profile(aggregate: TutorProfileAggregate) -> TutorPublic
     if not education_list and aggregate.education:
         education_list = [aggregate.education]
 
+    # Ensure names are never None for public profile (schema requires them)
+    first_name = aggregate.first_name or ""
+    last_name = aggregate.last_name or ""
+
     data = {
         "id": aggregate.id,
         "user_id": aggregate.user_id,
-        "first_name": aggregate.first_name,
-        "last_name": aggregate.last_name,
+        "first_name": first_name,
+        "last_name": last_name,
         "title": aggregate.title or "",
         "headline": aggregate.headline,
         "bio": aggregate.bio,
         "hourly_rate": aggregate.hourly_rate,
+        "currency": aggregate.currency or "USD",
         "experience_years": aggregate.experience_years,
         "average_rating": aggregate.average_rating,
         "total_reviews": aggregate.total_reviews,

@@ -29,19 +29,19 @@ export function ErrorDisplay({
   return (
     <div
       className={cn(
-        'flex min-h-[400px] flex-col items-center justify-center text-center px-4',
+        'flex min-h-[300px] sm:min-h-[400px] flex-col items-center justify-center text-center px-4',
         className
       )}
     >
-      <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/20">
-        <AlertCircle className="h-12 w-12 text-red-500" />
+      <div className="rounded-full bg-red-100 p-3 sm:p-4 dark:bg-red-900/20">
+        <AlertCircle className="h-8 w-8 sm:h-12 sm:w-12 text-red-500" />
       </div>
 
-      <h1 className="mt-6 text-2xl font-bold text-slate-900 dark:text-white">
+      <h1 className="mt-4 sm:mt-6 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
         {title}
       </h1>
 
-      <p className="mt-2 max-w-md text-slate-600 dark:text-slate-400">
+      <p className="mt-2 max-w-md text-sm sm:text-base text-slate-600 dark:text-slate-400">
         {message}
       </p>
 
@@ -53,7 +53,7 @@ export function ErrorDisplay({
         </div>
       )}
 
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3 w-full sm:w-auto">
         {onRetry && (
           <Button onClick={onRetry} variant="primary">
             <RefreshCw className="mr-2 h-4 w-4" />

@@ -25,9 +25,19 @@ class TestCookieConfigDefaults:
         assert config.refresh_token_name == "refresh_token"
         assert config.csrf_token_name == "csrf_token"
         assert config.httponly is True
-        assert config.samesite == "lax"
+        assert config.samesite == "lax"  # Default when domain is None
         assert config.access_token_max_age == 900  # 15 minutes
         assert config.refresh_token_max_age == 604800  # 7 days
+
+    def test_cookie_config_samesite_none_with_domain(self):
+        """SameSite is 'none' when domain is configured for cross-subdomain auth."""
+        config = CookieConfig(domain=".valsa.solutions")
+        assert config.samesite == "none"
+
+    def test_cookie_config_samesite_lax_without_domain(self):
+        """SameSite is 'lax' when domain is None (same origin)."""
+        config = CookieConfig(domain=None)
+        assert config.samesite == "lax"
 
     def test_cookie_config_path_default(self):
         """Cookie path defaults to root."""
@@ -93,6 +103,7 @@ class TestSetAccessTokenCookie:
     def test_set_access_token_cookie_production(self):
         """Access token cookie is set with correct security attributes."""
         response = MagicMock(spec=Response)
+        # No domain = same origin = samesite=lax
         config = CookieConfig(environment="production")
         set_access_token_cookie(response, "test_token", config)
         response.set_cookie.assert_called_once_with(
@@ -104,6 +115,23 @@ class TestSetAccessTokenCookie:
             samesite="lax",
             path="/",
             domain=None,
+        )
+
+    def test_set_access_token_cookie_cross_subdomain(self):
+        """Access token cookie uses samesite=none for cross-subdomain auth."""
+        response = MagicMock(spec=Response)
+        # With domain = cross-subdomain = samesite=none
+        config = CookieConfig(environment="production", domain=".valsa.solutions")
+        set_access_token_cookie(response, "test_token", config)
+        response.set_cookie.assert_called_once_with(
+            key="access_token",
+            value="test_token",
+            max_age=900,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            path="/",
+            domain=".valsa.solutions",
         )
 
     def test_set_access_token_cookie_development(self):
@@ -131,6 +159,7 @@ class TestSetRefreshTokenCookie:
     def test_set_refresh_token_cookie_production(self):
         """Refresh token cookie is set with restricted path."""
         response = MagicMock(spec=Response)
+        # No domain = same origin = samesite=lax
         config = CookieConfig(environment="production")
         set_refresh_token_cookie(response, "refresh_test", config)
         response.set_cookie.assert_called_once_with(
@@ -142,6 +171,23 @@ class TestSetRefreshTokenCookie:
             samesite="lax",
             path="/api/v1/auth",
             domain=None,
+        )
+
+    def test_set_refresh_token_cookie_cross_subdomain(self):
+        """Refresh token cookie uses samesite=none for cross-subdomain auth."""
+        response = MagicMock(spec=Response)
+        # With domain = cross-subdomain = samesite=none
+        config = CookieConfig(environment="production", domain=".valsa.solutions")
+        set_refresh_token_cookie(response, "refresh_test", config)
+        response.set_cookie.assert_called_once_with(
+            key="refresh_token",
+            value="refresh_test",
+            max_age=604800,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            path="/api/v1/auth",
+            domain=".valsa.solutions",
         )
 
     def test_set_refresh_token_cookie_restricted_path(self):

@@ -6,7 +6,8 @@ descriptive Python attribute names (payment_metadata, refund_metadata,
 payout_metadata) that map to the 'metadata' database column.
 """
 from sqlalchemy import inspect
-from models.payments import Payment, Refund, Payout
+
+from models.payments import Payment, Payout, Refund
 
 
 def test_payment_metadata_maps_to_database_column():

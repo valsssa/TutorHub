@@ -47,12 +47,12 @@ function RegisterForm() {
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+      <CardContent className="p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-6">
           Create your account
         </h2>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
               I want to
@@ -150,9 +150,9 @@ function RegisterForm() {
 function RegisterFormSkeleton() {
   return (
     <Card>
-      <CardContent className="p-6">
-        <Skeleton className="h-8 w-48 mb-6" />
-        <div className="space-y-4">
+      <CardContent className="p-4 sm:p-6">
+        <Skeleton className="h-7 sm:h-8 w-48 mb-4 sm:mb-6" />
+        <div className="space-y-3 sm:space-y-4">
           <Skeleton className="h-20 w-full" />
           <div className="grid grid-cols-2 gap-3">
             <Skeleton className="h-16 w-full" />

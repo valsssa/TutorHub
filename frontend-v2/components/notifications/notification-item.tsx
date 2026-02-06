@@ -48,7 +48,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
   const content = (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-xl transition-colors',
+        'flex items-start gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-xl transition-colors',
         'hover:bg-slate-50 dark:hover:bg-slate-800/50',
         !isRead && 'bg-slate-50/50 dark:bg-slate-800/30'
       )}
@@ -56,7 +56,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
     >
       <div
         className={cn(
-          'shrink-0 p-2 rounded-lg',
+          'shrink-0 p-1.5 sm:p-2 rounded-lg',
           typeColors[notification.type as NotificationType]
         )}
       >
@@ -67,22 +67,22 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
         <div className="flex items-start justify-between gap-2">
           <p
             className={cn(
-              'text-sm text-slate-900 dark:text-white',
+              'text-sm text-slate-900 dark:text-white leading-snug',
               !isRead && 'font-semibold'
             )}
           >
             {notification.title}
           </p>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {!isRead && (
               <span className="h-2 w-2 rounded-full bg-primary-500" />
             )}
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
               {timeAgo}
             </span>
           </div>
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
+        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
           {notification.message}
         </p>
       </div>

@@ -541,16 +541,21 @@ class TutorProfileResponse(BaseModel):
 
 
 class TutorPublicProfile(BaseModel):
-    """Public tutor profile (for listings)."""
+    """Public tutor profile (for listings).
+
+    Note: first_name and last_name are required for tutors to be listed publicly.
+    Tutors without complete names should not appear in search results.
+    """
 
     id: int
     user_id: int
-    first_name: str | None = None
-    last_name: str | None = None
+    first_name: str
+    last_name: str
     title: str
     headline: str | None
     bio: str | None
     hourly_rate: Decimal
+    currency: str = Field(default="USD", description="Currency for hourly_rate")
     experience_years: int
     average_rating: float
     total_reviews: int

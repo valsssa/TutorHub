@@ -1,6 +1,6 @@
 """Tests for FastAPI dependencies."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -132,7 +132,7 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_password_changed_invalidates_token(self, mock_db, mock_user):
         """Test token invalidated after password change."""
-        mock_user.password_changed_at = datetime.now(timezone.utc)
+        mock_user.password_changed_at = datetime.now(UTC)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
         mock_request = create_mock_request("token")
 
@@ -140,7 +140,7 @@ class TestGetCurrentUser:
             mock_decode.return_value = {
                 "sub": "test@example.com",
                 "role": "student",
-                "pwd_ts": (datetime.now(timezone.utc) - timedelta(hours=1)).timestamp(),
+                "pwd_ts": (datetime.now(UTC) - timedelta(hours=1)).timestamp(),
             }
 
             with pytest.raises(HTTPException) as exc_info:
@@ -152,7 +152,7 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_password_changed_without_pwd_ts(self, mock_db, mock_user):
         """Test old token without pwd_ts is invalidated after password change."""
-        mock_user.password_changed_at = datetime.now(timezone.utc)
+        mock_user.password_changed_at = datetime.now(UTC)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
         mock_request = create_mock_request("token")
 
@@ -308,14 +308,14 @@ class TestGetCurrentUserOptional:
     @pytest.mark.asyncio
     async def test_stale_password_token_returns_none(self, mock_db, mock_user):
         """Test returns None for stale password token."""
-        mock_user.password_changed_at = datetime.now(timezone.utc)
+        mock_user.password_changed_at = datetime.now(UTC)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
         mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {
                 "sub": "test@example.com",
-                "pwd_ts": (datetime.now(timezone.utc) - timedelta(hours=1)).timestamp(),
+                "pwd_ts": (datetime.now(UTC) - timedelta(hours=1)).timestamp(),
             }
 
             result = await get_current_user_optional(mock_request, mock_db)

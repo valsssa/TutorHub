@@ -22,7 +22,9 @@ export function AppShell({ children }: AppShellProps) {
         )}
       >
         <Topbar />
-        <main className="p-6">{children}</main>
+        <main className="p-3 sm:p-4 md:p-6 overflow-x-hidden">
+          <div className="max-w-screen-2xl mx-auto">{children}</div>
+        </main>
       </div>
     </div>
   );

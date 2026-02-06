@@ -92,7 +92,7 @@ export default function BookingsPage() {
 
       <Card>
         <CardHeader className="flex-col sm:flex-row gap-4">
-          <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+          <div className="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -108,22 +108,22 @@ export default function BookingsPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-slate-400" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:ml-auto w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="h-4 w-4 text-slate-400 shrink-0" />
               <Input
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="w-36"
+                className="w-full sm:w-36"
                 placeholder="From"
               />
-              <span className="text-slate-400">-</span>
+              <span className="text-slate-400 shrink-0">-</span>
               <Input
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="w-36"
+                className="w-full sm:w-36"
                 placeholder="To"
               />
             </div>

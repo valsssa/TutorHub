@@ -7,7 +7,6 @@ and only written to the database after the main transaction commits successfully
 
 import json
 import logging
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import event

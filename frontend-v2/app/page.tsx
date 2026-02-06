@@ -86,10 +86,10 @@ export default function HomePage() {
                 EduStream
               </span>
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link
                 href="/login"
-                className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors max-sm:hidden"
               >
                 Sign in
               </Link>
@@ -102,20 +102,20 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+      <section className="pt-24 pb-12 sm:pt-32 sm:pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white leading-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white leading-tight">
               Learn from the{' '}
               <span className="text-primary-600">Best Tutors</span>
               <br />
               Anywhere, Anytime
             </h1>
-            <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            <p className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
               Connect with expert tutors for personalized 1-on-1 video sessions.
               Master any subject with guidance tailored to your learning style.
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
               <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto px-8">
                   Start Learning Today
@@ -128,17 +128,17 @@ export default function HomePage() {
                 </Button>
               </Link>
             </div>
-            <div className="mt-8 flex items-center justify-center gap-6 text-sm text-slate-500 dark:text-slate-400">
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+            <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:gap-6 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 shrink-0" />
                 Free to join
               </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 shrink-0" />
                 No subscription
               </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 shrink-0" />
                 Pay per session
               </span>
             </div>
@@ -152,7 +152,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
-                <div className="text-3xl sm:text-4xl font-bold text-primary-600">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-600">
                   {stat.value}
                 </div>
                 <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -165,17 +165,17 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section className="py-12 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">
               Everything You Need to Succeed
             </h2>
             <p className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
               Our platform provides all the tools for effective online tutoring
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {features.map((feature) => (
               <div
                 key={feature.title}
@@ -197,20 +197,20 @@ export default function HomePage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-900/50">
+      <section className="py-12 sm:py-20 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">
               How It Works
             </h2>
             <p className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
               Get started with online tutoring in three simple steps
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-6 lg:gap-8">
             {howItWorks.map((item) => (
               <div key={item.step} className="text-center">
-                <div className="w-16 h-16 rounded-full bg-primary-600 text-white text-2xl font-bold flex items-center justify-center mx-auto mb-6">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary-600 text-white text-xl sm:text-2xl font-bold flex items-center justify-center mx-auto mb-4 sm:mb-6">
                   {item.step}
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">
@@ -226,18 +226,18 @@ export default function HomePage() {
       </section>
 
       {/* For Tutors Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section className="py-12 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-3xl p-8 md:p-12 lg:p-16">
+          <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 lg:p-16">
             <div className="max-w-3xl">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">
                 Share Your Knowledge, Earn Money
               </h2>
-              <p className="text-lg text-primary-100 mb-8">
+              <p className="text-base sm:text-lg text-primary-100 mb-6 sm:mb-8">
                 Join our community of tutors and help students achieve their goals.
                 Set your own rates, create your schedule, and teach from anywhere.
               </p>
-              <div className="flex flex-wrap gap-6 mb-8 text-white">
+              <div className="flex flex-wrap gap-4 sm:gap-6 mb-6 sm:mb-8 text-sm sm:text-base text-white">
                 <span className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
                   Flexible hours
@@ -267,12 +267,12 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-900/50">
+      <section className="py-12 sm:py-20 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-3 sm:mb-4">
             Ready to Start Learning?
           </h2>
-          <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 mb-6 sm:mb-8">
             Join thousands of students who are already achieving their goals with EduStream.
           </p>
           <Link href="/register">
@@ -285,9 +285,9 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-slate-200 dark:border-slate-800">
+      <footer className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8 border-t border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
             <div className="flex items-center gap-2">
               <GraduationCap className="h-6 w-6 text-primary-600" />
               <span className="text-lg font-bold text-slate-900 dark:text-white">

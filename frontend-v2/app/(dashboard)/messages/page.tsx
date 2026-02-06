@@ -92,12 +92,12 @@ export default function MessagesPage() {
   }, [normalizedConversations, searchQuery]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
           Messages
         </h1>
-        <p className="text-slate-500 dark:text-slate-400">
+        <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400">
           Chat with your tutors and students
         </p>
       </div>
@@ -115,7 +115,7 @@ export default function MessagesPage() {
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex h-10 w-full rounded-xl border bg-white pl-10 pr-4 py-2 text-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-white"
+                className="flex h-9 sm:h-10 w-full rounded-xl border bg-white pl-10 pr-4 py-2 text-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-white"
               />
             </div>
           </div>

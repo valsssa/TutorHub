@@ -94,11 +94,11 @@ function ZoomIntegrationCard() {
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-12 w-12 rounded-xl" />
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-64" />
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Skeleton className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl" />
+            <div className="space-y-2 flex-1 min-w-0">
+              <Skeleton className="h-5 w-32 sm:w-40" />
+              <Skeleton className="h-4 w-48 sm:w-64" />
             </div>
           </div>
         </CardHeader>
@@ -136,10 +136,10 @@ function ZoomIntegrationCard() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30">
-              <Video className="h-6 w-6 text-blue-600" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex-shrink-0">
+              <Video className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
             <div>
               <CardTitle>Zoom</CardTitle>
@@ -283,10 +283,10 @@ function GoogleCalendarCard() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-red-100 dark:bg-red-900/30">
-              <Calendar className="h-6 w-6 text-red-600" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-red-100 dark:bg-red-900/30 flex-shrink-0">
+              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
             </div>
             <div>
               <CardTitle>Google Calendar</CardTitle>
@@ -373,7 +373,7 @@ function GoogleCalendarCard() {
       </CardContent>
       <CardFooter className="border-t border-slate-100 dark:border-slate-800 pt-4">
         {status?.is_connected ? (
-          <div className="flex items-center justify-between w-full">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
             <a
               href="https://calendar.google.com"
               target="_blank"
@@ -481,9 +481,9 @@ export default function IntegrationsPage() {
 
       {/* Help section */}
       <Card>
-        <CardContent className="py-6">
-          <div className="flex items-start gap-4">
-            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+        <CardContent className="py-4 sm:py-6">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 flex-shrink-0">
               <AlertCircle className="h-5 w-5 text-slate-500" />
             </div>
             <div className="space-y-1">

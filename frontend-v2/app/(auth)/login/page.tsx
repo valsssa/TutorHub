@@ -37,8 +37,8 @@ function LoginForm() {
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
+      <CardContent className="p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-6">
           Welcome back
         </h2>
 
@@ -66,7 +66,7 @@ function LoginForm() {
           </div>
         )}
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
           <Input
             label="Email"
             type="email"
@@ -117,12 +117,12 @@ function LoginForm() {
 function LoginFormSkeleton() {
   return (
     <Card>
-      <CardContent className="p-6">
-        <Skeleton className="h-8 w-40 mb-6" />
-        <div className="space-y-4">
+      <CardContent className="p-4 sm:p-6">
+        <Skeleton className="h-7 sm:h-8 w-40 mb-4 sm:mb-6" />
+        <div className="space-y-3 sm:space-y-4">
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-11 w-full" />
         </div>
       </CardContent>
     </Card>

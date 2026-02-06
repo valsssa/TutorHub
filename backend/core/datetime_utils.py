@@ -3,7 +3,7 @@
 All datetime operations in the codebase MUST use these utilities
 to ensure timezone consistency. Never use datetime.utcnow().
 """
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def utc_now() -> datetime:
@@ -11,7 +11,7 @@ def utc_now() -> datetime:
 
     Use this instead of datetime.utcnow() or datetime.now().
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def is_aware(dt: datetime) -> bool:

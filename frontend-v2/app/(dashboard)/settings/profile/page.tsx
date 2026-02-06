@@ -145,8 +145,8 @@ export default function ProfileSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-6">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6">
+            <div className="relative flex-shrink-0">
               <Avatar
                 src={user?.avatar_url}
                 name={`${user?.first_name} ${user?.last_name}`}
@@ -173,8 +173,8 @@ export default function ProfileSettingsPage() {
                 onChange={handleFileSelect}
               />
             </div>
-            <div className="space-y-2">
-              <div className="flex gap-2">
+            <div className="space-y-2 text-center sm:text-left">
+              <div className="flex gap-2 justify-center sm:justify-start">
                 <Button
                   variant="outline"
                   size="sm"

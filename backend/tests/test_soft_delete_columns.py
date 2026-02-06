@@ -2,11 +2,10 @@
 import pytest
 from sqlalchemy import inspect
 
-from models.students import FavoriteTutor, StudentPackage, StudentProfile
-from models.payments import Refund, Payout, Wallet, WalletTransaction
+from models.payments import Payout, Refund, Wallet, WalletTransaction
 from models.reviews import Review
-from models.tutors import TutorSubject, TutorAvailability, TutorCertification, TutorEducation
-
+from models.students import FavoriteTutor, StudentPackage, StudentProfile
+from models.tutors import TutorAvailability, TutorCertification, TutorEducation, TutorSubject
 
 MODELS_REQUIRING_SOFT_DELETE = [
     FavoriteTutor, StudentPackage, StudentProfile,

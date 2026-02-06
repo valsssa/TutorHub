@@ -45,31 +45,31 @@ export function BookingCard({
 
   return (
     <Card hover className="transition-all">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          <Avatar src={avatarUrl} name={displayName} size="lg" />
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <Avatar src={avatarUrl} name={displayName} size="lg" className="shrink-0" />
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0">
                 <h3 className="font-semibold text-slate-900 dark:text-white truncate">
                   {booking.subject_name ?? 'Session'}
                 </h3>
-                <p className="text-sm text-slate-500 flex items-center gap-1">
-                  <User className="h-3 w-3" />
+                <p className="text-sm text-slate-500 flex items-center gap-1 truncate">
+                  <User className="h-3 w-3 shrink-0" />
                   {displayName}
                 </p>
               </div>
               <BookingStatusBadge status={booking.session_state} />
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
               <span className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-4 w-4 shrink-0" />
                 {formatDate(booking.start_at)}
               </span>
               <span className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
+                <Clock className="h-4 w-4 shrink-0" />
                 {formatTime(booking.start_at)} - {formatTime(booking.end_at)}
               </span>
               <span className="font-medium text-slate-900 dark:text-white">
@@ -77,7 +77,7 @@ export function BookingCard({
               </span>
             </div>
 
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-3 sm:mt-4 flex items-center gap-2 flex-wrap">
               <Button asChild size="sm" variant="outline">
                 <Link href={`/bookings/${booking.id}`}>View Details</Link>
               </Button>

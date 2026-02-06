@@ -15,20 +15,20 @@ interface ReviewCardProps {
 export function ReviewCard({ review, className }: ReviewCardProps) {
   return (
     <Card className={className}>
-      <div className="flex items-start gap-4">
-        <Avatar name="Student" size="md" />
+      <div className="flex items-start gap-3 sm:gap-4">
+        <Avatar name="Student" size="md" className="shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-2 mb-1">
             <span className="font-medium text-slate-900 dark:text-white truncate">
               Student
             </span>
-            <span className="text-sm text-slate-500 dark:text-slate-400 shrink-0">
+            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 shrink-0">
               {formatRelativeTime(review.created_at)}
             </span>
           </div>
           <StarRating value={review.rating} readonly size="sm" className="mb-2" />
           {review.comment && (
-            <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+            <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed break-words">
               {review.comment}
             </p>
           )}

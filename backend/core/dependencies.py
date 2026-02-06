@@ -268,6 +268,33 @@ async def get_current_active_user(
     return current_user
 
 
+async def require_complete_profile(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Require user to have complete profile (first_name and last_name).
+
+    Use this dependency on endpoints where users must have completed their profile
+    before taking action (e.g., booking tutors, sending messages, favoriting).
+
+    Raises:
+        HTTPException 403: If profile is incomplete (missing first_name or last_name)
+    """
+    profile_incomplete = getattr(current_user, "profile_incomplete", False)
+    has_first_name = bool(current_user.first_name and current_user.first_name.strip())
+    has_last_name = bool(current_user.last_name and current_user.last_name.strip())
+
+    if profile_incomplete or not has_first_name or not has_last_name:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Please complete your profile before continuing",
+                "code": "PROFILE_INCOMPLETE",
+                "redirect": "/settings/profile",
+            },
+        )
+    return current_user
+
+
 async def get_current_admin_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
@@ -332,6 +359,7 @@ TutorUser = Annotated[User, Depends(get_current_tutor_user)]
 StudentUser = Annotated[User, Depends(get_current_student_user)]
 DatabaseSession = Annotated[Session, Depends(get_db)]
 CurrentTutorProfile = Annotated["TutorProfile", Depends(get_current_tutor_profile)]
+CompleteProfileUser = Annotated[User, Depends(require_complete_profile)]
 
 
 # =============================================================================

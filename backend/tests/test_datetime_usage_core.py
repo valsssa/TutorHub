@@ -1,6 +1,6 @@
 """Tests to verify datetime usage across entire codebase."""
-from pathlib import Path
 import os
+from pathlib import Path
 
 
 def test_no_utcnow_in_entire_codebase():

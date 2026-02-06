@@ -142,7 +142,7 @@ export default function NewBookingPage() {
                     {tutors?.items.map((tutor) => (
                       <label
                         key={tutor.id}
-                        className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition-all ${
                           selectedTutorId === tutor.id
                             ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                             : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -158,6 +158,7 @@ export default function NewBookingPage() {
                           src={tutor.avatar_url}
                           name={tutor.display_name}
                           size="lg"
+                          className="shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-slate-900 dark:text-white truncate">
@@ -172,13 +173,13 @@ export default function NewBookingPage() {
                             <span className="text-amber-500">
                               {'*'.repeat(Math.round(tutor.average_rating))}
                             </span>
-                            <span className="text-slate-500">
+                            <span className="text-slate-500 truncate">
                               ({tutor.total_reviews ?? 0} reviews)
                             </span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-slate-900 dark:text-white">
+                        <div className="text-right shrink-0">
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">
                             {formatCurrency(tutor.hourly_rate, tutor.currency)}
                           </p>
                           <p className="text-xs text-slate-500">per hour</p>
@@ -204,13 +205,13 @@ export default function NewBookingPage() {
               </CardHeader>
               <CardContent>
                 {subjectsLoading ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <Skeleton key={i} className="h-12 rounded-xl" />
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {(selectedTutor?.subjects ?? subjects ?? []).map(
                       (subject) => (
                         <label
@@ -318,7 +319,7 @@ export default function NewBookingPage() {
           </div>
 
           <div className="space-y-6">
-            <Card className="sticky top-6">
+            <Card className="lg:sticky lg:top-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5" />

@@ -158,22 +158,22 @@ export default function AvailabilityPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               Manage Availability
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
               Set your weekly availability for tutoring sessions
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 ml-11 sm:ml-0">
           <Link href="/profile">
             <Button variant="outline">Cancel</Button>
           </Link>
@@ -188,8 +188,8 @@ export default function AvailabilityPage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -227,17 +227,19 @@ export default function AvailabilityPage() {
             <CardHeader>
               <CardTitle>Weekly Schedule</CardTitle>
             </CardHeader>
-            <CardContent>
-              <AvailabilityGrid
-                slots={slots}
-                onChange={handleSlotsChange}
-                disabled={updateAvailability.isPending}
-              />
+            <CardContent className="overflow-x-auto">
+              <div className="min-w-[320px]">
+                <AvailabilityGrid
+                  slots={slots}
+                  onChange={handleSlotsChange}
+                  disabled={updateAvailability.isPending}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <AvailabilityPreview slots={slots} />
 
           <Card>

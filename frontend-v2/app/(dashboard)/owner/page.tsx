@@ -89,7 +89,7 @@ function MetricCard({
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
               {label}
             </p>
-            <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+            <p className="mt-2 text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
               {value}
             </p>
             {change && (
@@ -139,18 +139,18 @@ function SystemHealthItem({ name, status, latency }: SystemHealthItemProps) {
   const StatusIcon = config.icon;
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${config.bg}`}>
+    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 gap-2">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className={`p-1.5 sm:p-2 rounded-lg shrink-0 ${config.bg}`}>
           <StatusIcon className={`h-4 w-4 ${config.color}`} />
         </div>
-        <span className="font-medium text-slate-700 dark:text-slate-200">
+        <span className="font-medium text-sm sm:text-base text-slate-700 dark:text-slate-200 truncate">
           {name}
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {latency && (
-          <span className="text-sm text-slate-500">{latency}</span>
+          <span className="text-xs sm:text-sm text-slate-500">{latency}</span>
         )}
         <Badge variant={config.badge}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -347,7 +347,7 @@ export default function OwnerDashboard() {
             Welcome back, {user?.first_name}. Here is your business overview.
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <select
             value={periodDays}
             onChange={(e) => setPeriodDays(Number(e.target.value))}
@@ -365,13 +365,13 @@ export default function OwnerDashboard() {
           <Button variant="outline" asChild>
             <Link href="/owner/reports">
               <FileText className="h-4 w-4 mr-2" />
-              Reports
+              <span className="hidden sm:inline">Reports</span>
             </Link>
           </Button>
           <Button asChild>
             <Link href="/owner/settings">
               <Settings className="h-4 w-4 mr-2" />
-              Platform Settings
+              <span className="hidden sm:inline">Platform Settings</span>
             </Link>
           </Button>
         </div>
@@ -440,17 +440,17 @@ export default function OwnerDashboard() {
                 loading={isLoading}
               />
               {dashboard && (
-                <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                   <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800">
-                    <p className="text-2xl font-bold text-slate-600">{dashboard.commission_tiers.standard_tutors}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-slate-600">{dashboard.commission_tiers.standard_tutors}</p>
                     <p className="text-xs text-slate-500">Standard (20%)</p>
                   </div>
                   <div className="p-3 rounded-lg bg-slate-200 dark:bg-slate-700">
-                    <p className="text-2xl font-bold text-slate-500">{dashboard.commission_tiers.silver_tutors}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-slate-500">{dashboard.commission_tiers.silver_tutors}</p>
                     <p className="text-xs text-slate-500">Silver (15%)</p>
                   </div>
                   <div className="p-3 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                    <p className="text-2xl font-bold text-amber-600">{dashboard.commission_tiers.gold_tutors}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-amber-600">{dashboard.commission_tiers.gold_tutors}</p>
                     <p className="text-xs text-slate-500">Gold (10%)</p>
                   </div>
                 </div>
@@ -478,10 +478,10 @@ export default function OwnerDashboard() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5 text-primary-500" />
@@ -502,41 +502,41 @@ export default function OwnerDashboard() {
               </div>
             ) : dashboard ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                  <div>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 gap-3">
+                  <div className="min-w-0">
                     <p className="text-sm text-slate-500">Gross Merchandise Value</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
                       {formatCurrency(dashboard.revenue.total_gmv_cents)}
                     </p>
                   </div>
-                  <DollarSign className="h-8 w-8 text-slate-400" />
+                  <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-slate-400 shrink-0" />
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-green-50 dark:bg-green-900/20">
-                  <div>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-green-50 dark:bg-green-900/20 gap-3">
+                  <div className="min-w-0">
                     <p className="text-sm text-green-600">Platform Fees</p>
-                    <p className="text-lg font-bold text-green-700 dark:text-green-400">
+                    <p className="text-base sm:text-lg font-bold text-green-700 dark:text-green-400 truncate">
                       {formatCurrency(dashboard.revenue.total_platform_fees_cents)}
                     </p>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-green-400" />
+                  <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 shrink-0" />
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20">
-                  <div>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 gap-3">
+                  <div className="min-w-0">
                     <p className="text-sm text-blue-600">Tutor Payouts</p>
-                    <p className="text-lg font-bold text-blue-700 dark:text-blue-400">
+                    <p className="text-base sm:text-lg font-bold text-blue-700 dark:text-blue-400 truncate">
                       {formatCurrency(dashboard.revenue.total_tutor_payouts_cents)}
                     </p>
                   </div>
-                  <Users className="h-8 w-8 text-blue-400" />
+                  <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400 shrink-0" />
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20">
-                  <div>
+                <div className="flex items-center justify-between p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 gap-3">
+                  <div className="min-w-0">
                     <p className="text-sm text-purple-600">Average Booking Value</p>
-                    <p className="text-lg font-bold text-purple-700 dark:text-purple-400">
+                    <p className="text-base sm:text-lg font-bold text-purple-700 dark:text-purple-400 truncate">
                       {formatCurrency(dashboard.revenue.average_booking_value_cents)}
                     </p>
                   </div>
-                  <BarChart3 className="h-8 w-8 text-purple-400" />
+                  <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400 shrink-0" />
                 </div>
               </div>
             ) : null}
@@ -549,7 +549,7 @@ export default function OwnerDashboard() {
             <CardDescription>Common owner operations</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button
                 variant="outline"
                 className="h-auto py-6 flex-col gap-2"

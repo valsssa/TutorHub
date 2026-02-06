@@ -5,8 +5,8 @@ Verifies that payment capture has proper idempotency protection
 to prevent double capture and other race conditions.
 """
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 
 def test_payment_capture_has_idempotency():

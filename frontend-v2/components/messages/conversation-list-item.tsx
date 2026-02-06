@@ -50,7 +50,7 @@ export function ConversationListItem({
     <Link
       href={`/messages/${conversation.id}`}
       className={cn(
-        'flex items-center gap-3 p-4 rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
+        'flex items-center gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
         isActive && 'bg-primary-50 dark:bg-primary-900/20',
         conversation.unread_count > 0 && 'bg-slate-50 dark:bg-slate-800/30'
       )}

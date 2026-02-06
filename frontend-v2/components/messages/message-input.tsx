@@ -39,7 +39,7 @@ export function MessageInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex items-center gap-3 p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+      className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
     >
       <div className="flex-1">
         <input

@@ -21,16 +21,17 @@ export function TutorCard({ tutor, showFavorite = true }: TutorCardProps) {
             <FavoriteButton tutorId={tutor.id} size="sm" />
           </div>
         )}
-        <div className="p-4 flex items-start gap-4">
+        <div className="p-4 flex items-start gap-3 sm:gap-4">
           <Avatar
             src={tutor.avatar_url}
             name={tutor.display_name}
             size="lg"
+            className="shrink-0"
           />
           <div className="flex-1 min-w-0">
             <Link
               href={`/tutors/${tutor.id}`}
-              className="text-lg font-semibold text-slate-900 dark:text-white hover:text-primary-600 transition-colors line-clamp-1"
+              className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white hover:text-primary-600 transition-colors truncate block"
             >
               {tutor.display_name}
             </Link>
@@ -42,22 +43,22 @@ export function TutorCard({ tutor, showFavorite = true }: TutorCardProps) {
           </div>
         </div>
 
-        <div className="px-4 pb-3 flex items-center gap-2">
-          <div className="flex items-center gap-1">
+        <div className="px-4 pb-3 flex items-center gap-2 overflow-hidden">
+          <div className="flex items-center gap-1 shrink-0">
             <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
             <span className="text-sm font-medium text-slate-900 dark:text-white">
               {Number(tutor.average_rating || 0).toFixed(1)}
             </span>
           </div>
-          <span className="text-slate-400">|</span>
-          <span className="text-sm text-slate-500">
+          <span className="text-slate-400 shrink-0">|</span>
+          <span className="text-sm text-slate-500 truncate">
             {tutor.total_reviews ?? 0} {(tutor.total_reviews ?? 0) === 1 ? 'review' : 'reviews'}
           </span>
         </div>
 
         <div className="px-4 pb-3 flex flex-wrap gap-1.5">
           {tutor.subjects.slice(0, 3).map((subject) => (
-            <Badge key={subject.id} variant="default">
+            <Badge key={subject.id} variant="default" className="truncate max-w-[120px]">
               {subject.name}
             </Badge>
           ))}
@@ -66,14 +67,14 @@ export function TutorCard({ tutor, showFavorite = true }: TutorCardProps) {
           )}
         </div>
 
-        <div className="mt-auto px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            <span className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="mt-auto px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+          <div className="shrink-0">
+            <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
               {formatCurrency(tutor.hourly_rate, tutor.currency)}
             </span>
-            <span className="text-sm text-slate-500">/hr</span>
+            <span className="text-xs sm:text-sm text-slate-500">/hr</span>
           </div>
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="shrink-0">
             <Link href={`/tutors/${tutor.id}`}>View Profile</Link>
           </Button>
         </div>

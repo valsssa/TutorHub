@@ -108,8 +108,8 @@ export default function BookingDetailPage() {
         <Skeleton className="h-8 w-48" />
         <Card>
           <CardContent className="p-6">
-            <div className="flex gap-6">
-              <Skeleton className="h-24 w-24 rounded-full" />
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+              <Skeleton className="h-24 w-24 rounded-full shrink-0" />
               <div className="flex-1 space-y-3">
                 <Skeleton className="h-6 w-1/3" />
                 <Skeleton className="h-4 w-1/2" />
@@ -170,21 +170,22 @@ export default function BookingDetailPage() {
               <BookingStatusBadge status={booking.session_state} />
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col sm:flex-row items-start gap-4">
                 <Avatar
                   src={booking.tutor?.avatar_url}
                   name={booking.tutor?.name}
                   size="xl"
+                  className="shrink-0"
                 />
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
                     {booking.subject_name ?? 'Session'}
                   </h3>
-                  <p className="text-slate-600 dark:text-slate-400">
+                  <p className="text-slate-600 dark:text-slate-400 truncate">
                     with {booking.tutor?.name ?? 'Tutor'}
                   </p>
                   {booking.tutor?.title && (
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-sm text-slate-500 mt-1 truncate">
                       {booking.tutor.title}
                     </p>
                   )}
@@ -249,7 +250,7 @@ export default function BookingDetailPage() {
                 </div>
               )}
             </CardContent>
-            <CardFooter className="gap-2">
+            <CardFooter className="gap-2 flex-wrap">
               {canConfirm && (
                 <Button onClick={handleConfirm} loading={confirmBooking.isPending}>
                   <CheckCircle className="h-4 w-4 mr-2" />

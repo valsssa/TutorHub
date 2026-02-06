@@ -80,25 +80,25 @@ export function TransactionItem({ transaction, showDetails = false }: Transactio
 
   return (
     <div
-      className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+      className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
       data-testid="transaction-item"
     >
       <div
-        className={`flex items-center justify-center h-10 w-10 rounded-full ${config.colorClass}`}
+        className={`flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full flex-shrink-0 ${config.colorClass}`}
       >
-        <Icon className="h-5 w-5" />
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-slate-900 dark:text-white">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          <span className="text-sm sm:text-base font-medium text-slate-900 dark:text-white">
             {config.label}
           </span>
           <Badge variant={statusVariant[transaction.status]} className="text-xs">
             {transaction.status}
           </Badge>
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 truncate">
           {transaction.description}
         </p>
         {showDetails && (
@@ -108,8 +108,8 @@ export function TransactionItem({ transaction, showDetails = false }: Transactio
         )}
       </div>
 
-      <div className="text-right">
-        <p className={`font-semibold ${amountColorClass}`}>
+      <div className="text-right flex-shrink-0">
+        <p className={`text-sm sm:text-base font-semibold ${amountColorClass}`}>
           {amountPrefix}{formatCurrency(Math.abs(transaction.amount), transaction.currency)}
         </p>
         {!showDetails && (

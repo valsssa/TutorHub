@@ -108,6 +108,14 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             TutorProfile.profile_status == "approved",
         )
 
+        # Only show tutors who have complete profiles (first and last name)
+        query = query.filter(
+            TutorProfile.user.has(User.first_name.isnot(None)),
+            TutorProfile.user.has(User.first_name != ""),
+            TutorProfile.user.has(User.last_name.isnot(None)),
+            TutorProfile.user.has(User.last_name != ""),
+        )
+
         # Filter by subject (join only if filtering, eager load already loaded)
         if filters.subject_id is not None:
             # The join is already loaded via joinedload, just filter
@@ -571,6 +579,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
             bio=profile.bio,
             description=profile.description,
             hourly_rate=profile.hourly_rate or Decimal("0.00"),
+            currency=profile.currency or "USD",
             experience_years=profile.experience_years or 0,
             education=profile.education,
             languages=profile.languages or [],

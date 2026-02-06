@@ -7,12 +7,11 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-
-from core.datetime_utils import utc_now
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from core.dependencies import StudentUser, get_current_tutor_profile, get_current_user
+from core.datetime_utils import utc_now
+from core.dependencies import CompleteProfileUser, StudentUser, get_current_tutor_profile, get_current_user
 from core.query_helpers import get_or_404
 from core.transactions import atomic_operation
 from database import get_db
@@ -281,11 +280,12 @@ async def get_booking_stats(
 async def create_booking(
     request: BookingCreateRequest,
     response: Response,
-    current_user: StudentUser,
+    current_user: CompleteProfileUser,
     db: Session = Depends(get_db),
 ):
     """
     Create tutoring session booking with automatic conflict checking and pricing.
+    Requires complete profile (first/last name).
 
     - Validates tutor availability and checks for conflicts
     - Checks external calendar (Google Calendar) for conflicts if tutor has it connected

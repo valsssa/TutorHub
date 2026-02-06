@@ -1,10 +1,10 @@
 import { api } from './client';
-import type { Favorite } from '@/types';
+import type { Favorite, PaginatedResponse } from '@/types';
 
 export const favoritesApi = {
-  // Get all favorite tutors for current student
+  // Get all favorite tutors for current student (paginated)
   list: () =>
-    api.get<Favorite[]>('/favorites'),
+    api.get<PaginatedResponse<Favorite>>('/favorites'),
 
   // Add a tutor to favorites
   add: (tutorProfileId: number) =>

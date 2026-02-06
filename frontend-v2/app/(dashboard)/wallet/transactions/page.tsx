@@ -105,19 +105,19 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button asChild variant="ghost" size="icon">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Button asChild variant="ghost" size="icon" className="flex-shrink-0">
           <Link href="/wallet">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
             Transaction History
           </h1>
-          <p className="text-slate-500">
+          <p className="text-sm sm:text-base text-slate-500 truncate">
             {totalCount > 0
               ? `${totalCount} transaction${totalCount !== 1 ? 's' : ''} found`
               : 'View all your wallet transactions'}
@@ -128,6 +128,7 @@ export default function TransactionsPage() {
           size="icon"
           onClick={() => refetch()}
           disabled={isRefetching}
+          className="flex-shrink-0"
         >
           <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
         </Button>
@@ -298,16 +299,17 @@ export default function TransactionsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-              <p className="text-sm text-slate-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 sm:mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <p className="text-sm text-slate-500 order-2 sm:order-1">
                 Page {page} of {totalPages}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 order-1 sm:order-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1 || isLoading}
+                  className="flex-1 sm:flex-initial"
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Previous
@@ -317,6 +319,7 @@ export default function TransactionsPage() {
                   size="sm"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages || isLoading}
+                  className="flex-1 sm:flex-initial"
                 >
                   Next
                   <ChevronRight className="h-4 w-4 ml-1" />

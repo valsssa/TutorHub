@@ -28,7 +28,8 @@ def test_message_response_conversation_id_is_optional():
 
 def test_message_response_serialization_with_conversation_id():
     """Verify MessageResponse serializes conversation_id correctly."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from schemas import MessageResponse
 
     # Create a MessageResponse with conversation_id
@@ -51,7 +52,8 @@ def test_message_response_serialization_with_conversation_id():
 
 def test_message_response_serialization_without_conversation_id():
     """Verify MessageResponse works without conversation_id (None)."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from schemas import MessageResponse
 
     # Create a MessageResponse without conversation_id

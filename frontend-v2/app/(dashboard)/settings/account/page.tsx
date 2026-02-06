@@ -138,13 +138,13 @@ export default function AccountSettingsPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-slate-200 dark:bg-slate-700">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 rounded-lg bg-slate-200 dark:bg-slate-700 flex-shrink-0">
                 <Mail className="h-5 w-5 text-slate-600 dark:text-slate-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                   Email: {user?.email}
                 </p>
                 <p className="text-xs text-slate-500">
@@ -157,6 +157,7 @@ export default function AccountSettingsPage() {
               variant="outline"
               onClick={handlePasswordReset}
               loading={requestPasswordReset.isPending}
+              className="self-start sm:self-auto flex-shrink-0"
             >
               Send Reset Link
             </Button>
@@ -244,8 +245,8 @@ export default function AccountSettingsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 border border-red-200 dark:border-red-800 rounded-xl">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 border border-red-200 dark:border-red-800 rounded-xl">
+            <div className="min-w-0">
               <p className="text-sm font-medium text-slate-900 dark:text-white">
                 Delete Account
               </p>
@@ -256,7 +257,7 @@ export default function AccountSettingsPage() {
             <Button
               type="button"
               variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20"
+              className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20 self-start sm:self-auto flex-shrink-0"
               onClick={() => {
                 // TODO: Implement account deletion with confirmation modal
                 alert('Account deletion requires confirmation. This feature is coming soon.');

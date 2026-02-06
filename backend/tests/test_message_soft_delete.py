@@ -1,5 +1,6 @@
 """Tests for message soft delete functionality."""
 from sqlalchemy import inspect
+
 from models.messages import Conversation, Message, MessageAttachment
 
 

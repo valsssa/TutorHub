@@ -23,7 +23,7 @@ export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps
   return (
     <div
       className={cn(
-        'flex gap-3 max-w-[80%]',
+        'flex gap-2 sm:gap-3 max-w-[90%] sm:max-w-[80%] md:max-w-[70%]',
         isSent ? 'ml-auto flex-row-reverse' : 'mr-auto'
       )}
     >

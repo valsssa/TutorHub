@@ -25,10 +25,10 @@ const STATUS_OPTIONS: { value: PurchasedPackageStatus | 'all'; label: string }[]
 
 function PackagesSkeleton() {
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {Array.from({ length: 3 }).map((_, i) => (
         <Card key={i}>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="space-y-2">
                 <Skeleton className="h-5 w-32" />
@@ -76,13 +76,13 @@ export default function MyPackagesPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
             My Packages
           </h1>
-          <p className="text-slate-500 mt-1">
+          <p className="text-sm sm:text-base text-slate-500 mt-1">
             Manage your purchased session packages
           </p>
         </div>
@@ -116,18 +116,19 @@ export default function MyPackagesPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
               Session Packages
             </CardTitle>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap scrollbar-none -mx-1 px-1">
               {STATUS_OPTIONS.map((option) => (
                 <Button
                   key={option.value}
                   size="sm"
                   variant={statusFilter === option.value ? 'primary' : 'ghost'}
                   onClick={() => setStatusFilter(option.value)}
+                  className="flex-shrink-0"
                 >
                   {option.label}
                 </Button>
@@ -164,7 +165,7 @@ export default function MyPackagesPage() {
               </Button>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {packages.map((purchasedPackage: PurchasedPackage) => (
                 <PurchasedPackageCard
                   key={purchasedPackage.id}

@@ -87,20 +87,20 @@ function StudentEditForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Profile Picture</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6">
             <Avatar
               src={user?.avatar_url}
               name={`${user?.first_name} ${user?.last_name}`}
               size="xl"
-              className="h-24 w-24"
+              className="h-20 w-20 sm:h-24 sm:w-24"
             />
-            <div>
+            <div className="text-center sm:text-left">
               <Button type="button" variant="outline">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Photo
@@ -118,7 +118,7 @@ function StudentEditForm() {
           <CardTitle>Personal Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="First Name"
               {...register('first_name')}
@@ -148,13 +148,13 @@ function StudentEditForm() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-end gap-4">
-        <Link href="/profile">
-          <Button type="button" variant="outline">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4">
+        <Link href="/profile" className="w-full sm:w-auto">
+          <Button type="button" variant="outline" className="w-full sm:w-auto">
             Cancel
           </Button>
         </Link>
-        <Button type="submit" loading={isUpdatingProfile} disabled={!isDirty}>
+        <Button type="submit" loading={isUpdatingProfile} disabled={!isDirty} className="w-full sm:w-auto">
           <Save className="h-4 w-4 mr-2" />
           Save Changes
         </Button>
@@ -224,20 +224,20 @@ function TutorEditForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Profile Picture</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6">
             <Avatar
               src={tutorProfile?.avatar_url || user?.avatar_url}
               name={tutorProfile?.display_name || `${user?.first_name} ${user?.last_name}`}
               size="xl"
-              className="h-24 w-24"
+              className="h-20 w-20 sm:h-24 sm:w-24"
             />
-            <div>
+            <div className="text-center sm:text-left">
               <Button type="button" variant="outline">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Photo
@@ -255,7 +255,7 @@ function TutorEditForm() {
           <CardTitle>Personal Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="First Name"
               {...register('first_name')}
@@ -343,9 +343,9 @@ function TutorEditForm() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-end gap-4">
-        <Link href="/profile">
-          <Button type="button" variant="outline">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4">
+        <Link href="/profile" className="w-full sm:w-auto">
+          <Button type="button" variant="outline" className="w-full sm:w-auto">
             Cancel
           </Button>
         </Link>
@@ -353,6 +353,7 @@ function TutorEditForm() {
           type="submit"
           loading={isUpdatingProfile || updateTutorProfile.isPending}
           disabled={!isDirty}
+          className="w-full sm:w-auto"
         >
           <Save className="h-4 w-4 mr-2" />
           Save Changes

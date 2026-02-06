@@ -49,15 +49,15 @@ export default function ResetPasswordPage() {
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+      <CardContent className="p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
           Reset your password
         </h2>
-        <p className="text-slate-500 mb-6">
+        <p className="text-sm sm:text-base text-slate-500 mb-4 sm:mb-6">
           Enter your new password below.
         </p>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
           <Input
             label="New password"
             type="password"

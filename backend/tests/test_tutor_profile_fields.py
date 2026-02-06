@@ -1,7 +1,7 @@
 """Tests for TutorProfile model fields."""
 from sqlalchemy import inspect
-from models.tutors import TutorProfile
 
+from models.tutors import TutorProfile
 
 # Fields that must exist in TutorProfile model based on database schema
 REQUIRED_FIELDS = [

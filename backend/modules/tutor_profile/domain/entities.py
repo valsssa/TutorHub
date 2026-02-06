@@ -80,6 +80,7 @@ class TutorProfileAggregate:
     bio: str | None = None
     description: str | None = None
     hourly_rate: Decimal = Decimal("0.00")
+    currency: str = "USD"
     experience_years: int = 0
     education: str | None = None
     languages: list[str] = field(default_factory=list)

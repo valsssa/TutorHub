@@ -43,24 +43,24 @@ function StarRating({ rating }: { rating: number }) {
 
 function ProfileSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-32" />
       </div>
       <Card>
-        <CardContent className="p-6">
-          <div className="flex items-start gap-6">
-            <Skeleton className="h-24 w-24 rounded-full" />
-            <div className="flex-1 space-y-3">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+            <Skeleton className="h-20 w-20 sm:h-24 sm:w-24 rounded-full" />
+            <div className="flex-1 space-y-3 w-full">
               <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-4 w-full sm:w-64" />
               <Skeleton className="h-4 w-32" />
             </div>
           </div>
         </CardContent>
       </Card>
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <Skeleton className="h-48 rounded-2xl" />
         <Skeleton className="h-48 rounded-2xl" />
       </div>
@@ -77,20 +77,20 @@ function TutorProfile() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
           My Profile
         </h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
           <Link href="/profile/availability">
-            <Button variant="outline">
+            <Button variant="outline" className="whitespace-nowrap text-sm">
               <Clock className="h-4 w-4 mr-2" />
               Manage Availability
             </Button>
           </Link>
           <Link href="/profile/edit">
-            <Button>
+            <Button className="whitespace-nowrap text-sm">
               <Edit className="h-4 w-4 mr-2" />
               Edit Profile
             </Button>
@@ -99,7 +99,7 @@ function TutorProfile() {
       </div>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-start gap-6">
             <Avatar
               src={tutorProfile?.avatar_url || user?.avatar_url}
@@ -175,46 +175,46 @@ function TutorProfile() {
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Quick Stats</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
                 <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="h-5 w-5 text-primary-500" />
-                  <span className="text-sm text-slate-500">Total Sessions</span>
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary-500" />
+                  <span className="text-xs sm:text-sm text-slate-500">Total Sessions</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                   {tutorProfile?.review_count ? tutorProfile.total_reviews ?? 0 * 3 : 0}
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
+              <div className="p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
                 <div className="flex items-center gap-2 mb-2">
-                  <Star className="h-5 w-5 text-amber-500" />
-                  <span className="text-sm text-slate-500">Average Rating</span>
+                  <Star className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
+                  <span className="text-xs sm:text-sm text-slate-500">Average Rating</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                   {Number(tutorProfile?.average_rating || 0).toFixed(1)}
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
+              <div className="p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
                 <div className="flex items-center gap-2 mb-2">
-                  <MessageSquare className="h-5 w-5 text-green-500" />
-                  <span className="text-sm text-slate-500">Reviews</span>
+                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+                  <span className="text-xs sm:text-sm text-slate-500">Reviews</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                   {tutorProfile?.review_count || 0}
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
+              <div className="p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
                 <div className="flex items-center gap-2 mb-2">
-                  <BookOpen className="h-5 w-5 text-blue-500" />
-                  <span className="text-sm text-slate-500">Subjects</span>
+                  <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+                  <span className="text-xs sm:text-sm text-slate-500">Subjects</span>
                 </div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                   {tutorProfile?.subjects?.length || 0}
                 </p>
               </div>
@@ -262,9 +262,9 @@ function StudentProfile() {
   const { user } = useAuth();
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
           My Profile
         </h1>
         <Link href="/profile/edit">
@@ -276,13 +276,13 @@ function StudentProfile() {
       </div>
 
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-start gap-6">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
             <Avatar
               src={user?.avatar_url}
               name={`${user?.first_name} ${user?.last_name}`}
               size="xl"
-              className="h-24 w-24"
+              className="h-20 w-20 sm:h-24 sm:w-24"
             />
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -299,7 +299,7 @@ function StudentProfile() {
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>

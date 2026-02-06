@@ -1,5 +1,6 @@
 """Tests for the favorites API endpoints."""
 
+from datetime import UTC
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -373,7 +374,7 @@ class TestCheckFavorite:
         mock_favorite.id = 1
         mock_favorite.student_id = 1
         mock_favorite.tutor_profile_id = 10
-        mock_favorite.created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        mock_favorite.created_at = datetime(2024, 1, 1, tzinfo=UTC)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_favorite
 
         result = await check_favorite(10, student_user, mock_db)
@@ -543,8 +544,9 @@ class TestPaginatedFavoritesResponse:
 
     def test_create_paginated_response(self):
         """Test creating a paginated response with metadata."""
-        from modules.favorites.schemas import PaginatedFavoritesResponse, FavoriteResponse
         from datetime import datetime
+
+        from modules.favorites.schemas import FavoriteResponse, PaginatedFavoritesResponse
 
         items = [
             FavoriteResponse(id=1, student_id=1, tutor_profile_id=10, created_at=datetime.now()),

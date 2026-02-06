@@ -16,7 +16,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
   const isDev = process.env.NODE_ENV === 'development';
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
       <ErrorDisplay
         title="Dashboard Error"
         message="Something went wrong while loading this page. Please try again."

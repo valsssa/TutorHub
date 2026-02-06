@@ -70,7 +70,7 @@ function StatCard({
             <Icon className="h-5 w-5 text-primary-600" />
           </div>
           <div className="flex-1">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">
+            <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               {value}
             </p>
             <p className="text-sm text-slate-500">{label}</p>
@@ -106,7 +106,7 @@ function LoadingSkeleton() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-24 rounded-2xl" />
         ))}
@@ -183,7 +183,7 @@ function PendingTutorCard({
             </span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button
             size="sm"
             variant="outline"
@@ -328,7 +328,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Users"
           value={stats?.totalUsers.toLocaleString() || '0'}
@@ -484,11 +484,11 @@ export default function AdminDashboard() {
               <CardTitle>Platform Health</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-600 dark:text-slate-400">
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-sm text-slate-600 dark:text-slate-400 truncate">
                   Satisfaction Rate
                 </span>
-                <span className="font-semibold text-slate-900 dark:text-white">
+                <span className="font-semibold text-slate-900 dark:text-white shrink-0">
                   {isStatsLoading ? (
                     <Skeleton className="h-5 w-12" />
                   ) : (
@@ -496,11 +496,11 @@ export default function AdminDashboard() {
                   )}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-600 dark:text-slate-400">
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-sm text-slate-600 dark:text-slate-400 truncate">
                   Completion Rate
                 </span>
-                <span className="font-semibold text-slate-900 dark:text-white">
+                <span className="font-semibold text-slate-900 dark:text-white shrink-0">
                   {isStatsLoading ? (
                     <Skeleton className="h-5 w-12" />
                   ) : (

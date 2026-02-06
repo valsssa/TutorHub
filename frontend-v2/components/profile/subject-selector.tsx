@@ -69,7 +69,7 @@ export function SubjectSelector({
 
       <div
         className={cn(
-          'relative min-h-[42px] w-full rounded-xl border bg-white px-3 py-2',
+          'relative min-h-[44px] sm:min-h-[42px] w-full rounded-xl border bg-white px-3 py-2',
           'border-slate-200 dark:border-slate-700 dark:bg-slate-900',
           'focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent',
           error && 'border-red-500 focus-within:ring-red-500',
@@ -84,12 +84,12 @@ export function SubjectSelector({
       >
         <div className="flex flex-wrap gap-1.5 items-center">
           {selectedSubjects.map((subject) => (
-            <Badge key={subject.id} variant="primary" className="gap-1 pr-1">
+            <Badge key={subject.id} variant="primary" className="gap-1 pr-1 text-xs sm:text-sm">
               {subject.name}
               <button
                 type="button"
                 onClick={(e) => removeSubject(subject.id, e)}
-                className="ml-1 rounded-full hover:bg-primary-600 p-0.5"
+                className="ml-1 rounded-full hover:bg-primary-600 p-0.5 touch-manipulation"
                 disabled={disabled}
               >
                 <X className="h-3 w-3" />
@@ -104,19 +104,19 @@ export function SubjectSelector({
             onFocus={() => setIsOpen(true)}
             placeholder={selectedSubjects.length === 0 ? placeholder : ''}
             className={cn(
-              'flex-1 min-w-[120px] bg-transparent outline-none text-sm',
+              'flex-1 min-w-[100px] bg-transparent outline-none text-sm',
               'placeholder:text-slate-400 dark:placeholder:text-slate-500'
             )}
             disabled={disabled}
           />
           <ChevronDown className={cn(
-            'h-4 w-4 text-slate-400 transition-transform',
+            'h-4 w-4 text-slate-400 transition-transform shrink-0',
             isOpen && 'transform rotate-180'
           )} />
         </div>
 
         {isOpen && !disabled && (
-          <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-auto">
+          <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-48 sm:max-h-60 overflow-auto overscroll-contain">
             {filteredSubjects.length === 0 ? (
               <div className="p-3 text-sm text-slate-500 text-center">
                 {searchTerm ? 'No subjects found' : 'No subjects available'}
@@ -131,8 +131,8 @@ export function SubjectSelector({
                       type="button"
                       onClick={() => toggleSubject(subject.id)}
                       className={cn(
-                        'w-full px-3 py-2 text-left text-sm flex items-center justify-between',
-                        'hover:bg-slate-50 dark:hover:bg-slate-800',
+                        'w-full px-3 py-2.5 sm:py-2 text-left text-sm flex items-center justify-between touch-manipulation',
+                        'hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-700',
                         isSelected && 'bg-primary-50 dark:bg-primary-900/20'
                       )}
                     >
@@ -143,7 +143,7 @@ export function SubjectSelector({
                         {subject.name}
                       </span>
                       {isSelected && (
-                        <Check className="h-4 w-4 text-primary-500" />
+                        <Check className="h-4 w-4 text-primary-500 shrink-0" />
                       )}
                     </button>
                   );

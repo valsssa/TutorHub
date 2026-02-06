@@ -14,15 +14,15 @@ interface StarRatingProps {
 }
 
 const sizeClasses = {
-  sm: 'h-4 w-4',
-  md: 'h-5 w-5',
-  lg: 'h-6 w-6',
+  sm: 'h-5 w-5 sm:h-4 sm:w-4',
+  md: 'h-6 w-6 sm:h-5 sm:w-5',
+  lg: 'h-8 w-8 sm:h-6 sm:w-6',
 };
 
 const gapClasses = {
-  sm: 'gap-0.5',
-  md: 'gap-1',
-  lg: 'gap-1.5',
+  sm: 'gap-1 sm:gap-0.5',
+  md: 'gap-1.5 sm:gap-1',
+  lg: 'gap-2 sm:gap-1.5',
 };
 
 export function StarRating({
@@ -70,8 +70,8 @@ export function StarRating({
         onMouseLeave={handleMouseLeave}
         disabled={readonly}
         className={cn(
-          'relative focus:outline-none',
-          isInteractive && 'cursor-pointer transition-transform hover:scale-110',
+          'relative focus:outline-none p-1 -m-1 sm:p-0 sm:m-0',
+          isInteractive && 'cursor-pointer transition-transform hover:scale-110 active:scale-95',
           readonly && 'cursor-default'
         )}
         aria-label={`${starValue} star${starValue !== 1 ? 's' : ''}`}

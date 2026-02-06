@@ -42,13 +42,13 @@ export default function VerifyEmailPage() {
   if (state === 'loading') {
     return (
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center mb-4">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
             </div>
-            <Skeleton className="h-8 w-48 mx-auto mb-2" />
-            <Skeleton className="h-4 w-64 mx-auto" />
+            <Skeleton className="h-7 sm:h-8 w-48 mx-auto mb-2" />
+            <Skeleton className="h-4 w-56 sm:w-64 mx-auto" />
           </div>
         </CardContent>
       </Card>
@@ -58,7 +58,7 @@ export default function VerifyEmailPage() {
   if (state === 'success') {
     return (
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
               <svg
@@ -75,10 +75,10 @@ export default function VerifyEmailPage() {
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
               Email verified!
             </h2>
-            <p className="text-slate-500 mb-6">
+            <p className="text-sm sm:text-base text-slate-500 mb-6">
               Your email has been successfully verified. You can now sign in to your account.
             </p>
             <Link
@@ -95,7 +95,7 @@ export default function VerifyEmailPage() {
 
   return (
     <Card>
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <div className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
             <svg
@@ -112,10 +112,10 @@ export default function VerifyEmailPage() {
               />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
             Verification failed
           </h2>
-          <p className="text-slate-500 mb-6">
+          <p className="text-sm sm:text-base text-slate-500 mb-6">
             {error || 'We could not verify your email address.'}
           </p>
           <div className="space-y-3">

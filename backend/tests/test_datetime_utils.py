@@ -1,27 +1,27 @@
 """Tests for datetime utility functions."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 
-from core.datetime_utils import utc_now, is_aware, ensure_utc
+from core.datetime_utils import ensure_utc, is_aware, utc_now
 
 
 class TestUtcNow:
     def test_returns_timezone_aware_datetime(self):
         result = utc_now()
         assert result.tzinfo is not None
-        assert result.tzinfo == timezone.utc
+        assert result.tzinfo == UTC
 
     def test_returns_current_time(self):
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         result = utc_now()
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
         assert before <= result <= after
 
 
 class TestIsAware:
     def test_aware_datetime_returns_true(self):
-        aware = datetime.now(timezone.utc)
+        aware = datetime.now(UTC)
         assert is_aware(aware) is True
 
     def test_naive_datetime_returns_false(self):
@@ -31,7 +31,7 @@ class TestIsAware:
 
 class TestEnsureUtc:
     def test_aware_utc_returns_unchanged(self):
-        dt = datetime.now(timezone.utc)
+        dt = datetime.now(UTC)
         result = ensure_utc(dt)
         assert result == dt
 

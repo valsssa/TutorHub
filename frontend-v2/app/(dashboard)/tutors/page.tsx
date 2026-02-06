@@ -90,7 +90,7 @@ export default function TutorsPage() {
         </div>
         <Button
           variant="outline"
-          className="sm:hidden"
+          className="lg:hidden"
           onClick={() => setShowFilters(!showFilters)}
         >
           <SlidersHorizontal className="h-4 w-4 mr-2" />
@@ -104,6 +104,19 @@ export default function TutorsPage() {
             showFilters ? 'block' : 'hidden lg:block'
           }`}
         >
+          {showFilters && (
+            <div className="flex items-center justify-between lg:hidden">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Filters</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Close
+              </Button>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Search</CardTitle>
@@ -225,7 +238,7 @@ export default function TutorsPage() {
           )}
 
           {isLoading ? (
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
                 <TutorCardSkeleton key={i} />
               ))}
@@ -251,14 +264,14 @@ export default function TutorsPage() {
                 Showing {tutorsData?.items.length} of {tutorsData?.total} tutors
               </div>
 
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {tutorsData?.items.map((tutor) => (
                   <TutorCard key={tutor.id} tutor={tutor} />
                 ))}
               </div>
 
               {tutorsData && tutorsData.total_pages > 1 && (
-                <div className="mt-8 flex items-center justify-center gap-2">
+                <div className="mt-8 flex items-center justify-center gap-2 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
@@ -267,7 +280,7 @@ export default function TutorsPage() {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
                     {Array.from({ length: tutorsData.total_pages }).map((_, i) => {
                       const page = i + 1;
                       const isCurrentPage = page === tutorsData.page;
