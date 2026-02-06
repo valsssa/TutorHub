@@ -524,7 +524,7 @@ class TutorProfileResponse(BaseModel):
     profile_status: str
     rejection_reason: str | None
     approved_at: datetime | None = None
-    average_rating: Decimal
+    average_rating: float
     total_reviews: int
     total_sessions: int
     created_at: datetime
@@ -552,7 +552,7 @@ class TutorPublicProfile(BaseModel):
     bio: str | None
     hourly_rate: Decimal
     experience_years: int
-    average_rating: Decimal
+    average_rating: float
     total_reviews: int
     total_sessions: int
     subjects: list[PublicSubjectItem] = []

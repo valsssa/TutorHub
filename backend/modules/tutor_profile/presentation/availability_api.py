@@ -27,6 +27,35 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tutors", tags=["tutor-availability"])
 
 
+@router.get("/{tutor_id}/availability", response_model=list[TutorAvailabilityResponse])
+@limiter.limit("60/minute")
+async def get_tutor_availability(
+    request: Request,
+    tutor_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Get a tutor's recurring availability schedule (public endpoint).
+    Returns the raw availability windows without checking bookings.
+    """
+    # Verify tutor exists and is approved
+    tutor = db.query(TutorProfile).filter(
+        TutorProfile.id == tutor_id,
+        TutorProfile.is_approved.is_(True)
+    ).first()
+    if not tutor:
+        raise HTTPException(status_code=404, detail="Tutor not found or not approved")
+
+    availabilities = (
+        db.query(TutorAvailability)
+        .filter(TutorAvailability.tutor_profile_id == tutor_id)
+        .order_by(TutorAvailability.day_of_week, TutorAvailability.start_time)
+        .all()
+    )
+
+    return availabilities
+
+
 @router.get("/{tutor_id}/available-slots", response_model=list[AvailableSlot])
 @limiter.limit("60/minute")
 async def get_available_slots(

@@ -68,7 +68,7 @@ from modules.payments.wallet_router import router as wallet_router  # noqa: E402
 from modules.profiles.presentation.api import router as profiles_router  # noqa: E402
 from modules.public.router import router as public_router  # noqa: E402
 from modules.reviews.presentation.api import router as reviews_router  # noqa: E402
-from modules.students.presentation.api import favorites_router  # noqa: E402
+from modules.favorites.api import router as favorites_router  # noqa: E402
 from modules.students.presentation.api import router as students_router  # noqa: E402
 from modules.subjects.presentation.api import router as subjects_router  # noqa: E402
 from modules.tutor_profile.presentation.api import router as tutor_profile_router  # noqa: E402
