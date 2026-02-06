@@ -27,11 +27,21 @@ export function BookingCard({
 
   const avatarUrl = userRole === 'student' ? booking.tutor?.avatar_url : undefined;
 
-  const canCancel = ['pending_tutor', 'pending_student', 'confirmed'].includes(
-    booking.session_state
-  );
+  // New state machine: can cancel if in REQUESTED or SCHEDULED state
+  // Legacy compatibility: also check old lowercase states during transition
+  const canCancel = [
+    'REQUESTED',
+    'SCHEDULED',
+    'pending_tutor',
+    'pending_student',
+    'confirmed',
+  ].includes(booking.session_state);
+
+  // New state machine: tutor confirms REQUESTED -> SCHEDULED
+  // Legacy compatibility: also check old 'pending_tutor' during transition
   const canConfirm =
-    userRole === 'tutor' && booking.session_state === 'pending_tutor';
+    userRole === 'tutor' &&
+    ['REQUESTED', 'pending_tutor'].includes(booking.session_state);
 
   return (
     <Card hover className="transition-all">
