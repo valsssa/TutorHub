@@ -7,6 +7,8 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+
+from core.datetime_utils import utc_now
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -431,7 +433,7 @@ async def list_bookings(
                     SessionState.SCHEDULED.value,
                     SessionState.ACTIVE.value,
                 ]),
-                Booking.start_time >= datetime.utcnow(),
+                Booking.start_time >= utc_now(),
             )
         elif status_filter.lower() == "pending":
             query = query.filter(Booking.session_state == SessionState.REQUESTED.value)
@@ -586,7 +588,7 @@ async def reschedule_booking(
         # Validate reschedule timing
         decision = ReschedulePolicy.evaluate_reschedule(
             booking_start_at=booking.start_time,
-            now=datetime.utcnow(),
+            now=utc_now(),
             new_start_at=request.new_start_at,
         )
 
@@ -630,7 +632,7 @@ async def reschedule_booking(
         # Update booking
         booking.start_time = request.new_start_at
         booking.end_time = new_end_at
-        booking.notes = (booking.notes or "") + f"\n[Rescheduled at {datetime.utcnow()}]"
+        booking.notes = (booking.notes or "") + f"\n[Rescheduled at {utc_now()}]"
 
         db.commit()
         db.refresh(booking)

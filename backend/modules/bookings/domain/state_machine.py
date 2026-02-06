@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from core.datetime_utils import utc_now
 from modules.bookings.domain.status import (
     CANCELLABLE_SESSION_STATES,
     TERMINAL_SESSION_STATES,
@@ -124,7 +125,7 @@ class BookingStateMachine:
         optimistic locking integrity.
         """
         booking.version = (booking.version or 1) + 1
-        booking.updated_at = datetime.utcnow()
+        booking.updated_at = utc_now()
 
     @staticmethod
     def verify_version(booking: "Booking", expected_version: int) -> bool:
@@ -284,7 +285,7 @@ class BookingStateMachine:
 
         booking.session_state = SessionState.SCHEDULED.value
         booking.payment_state = PaymentState.AUTHORIZED.value
-        booking.confirmed_at = datetime.utcnow()
+        booking.confirmed_at = utc_now()
         cls.increment_version(booking)
 
         return TransitionResult(success=True)
@@ -328,7 +329,7 @@ class BookingStateMachine:
         booking.session_outcome = SessionOutcome.NOT_HELD.value
         booking.payment_state = PaymentState.VOIDED.value
         booking.cancelled_by_role = CancelledByRole.TUTOR.value
-        booking.cancelled_at = datetime.utcnow()
+        booking.cancelled_at = utc_now()
         cls.increment_version(booking)
 
         return TransitionResult(success=True)
@@ -373,7 +374,7 @@ class BookingStateMachine:
         booking.session_state = SessionState.CANCELLED.value
         booking.session_outcome = SessionOutcome.NOT_HELD.value
         booking.cancelled_by_role = cancelled_by.value
-        booking.cancelled_at = datetime.utcnow()
+        booking.cancelled_at = utc_now()
 
         # Determine payment state based on current state and refund decision
         current_payment = PaymentState(booking.payment_state)
@@ -601,7 +602,7 @@ class BookingStateMachine:
                     f"Conflicting no-show reports: {existing_reporter} reported {existing_claim}, "
                     f"{reporter_role} reported {new_claim}. Requires admin review."
                 )
-                booking.disputed_at = datetime.utcnow()
+                booking.disputed_at = utc_now()
                 # Don't set disputed_by as this is a system-generated dispute
                 cls.increment_version(booking)
 
@@ -618,7 +619,7 @@ class BookingStateMachine:
                     f"{reporter_role} claims {who_was_absent.lower()} was absent. "
                     f"Requires admin review."
                 )
-                booking.disputed_at = datetime.utcnow()
+                booking.disputed_at = utc_now()
                 cls.increment_version(booking)
 
                 return TransitionResult(
@@ -761,7 +762,7 @@ class BookingStateMachine:
 
         booking.dispute_state = DisputeState.OPEN.value
         booking.dispute_reason = reason
-        booking.disputed_at = datetime.utcnow()
+        booking.disputed_at = utc_now()
         booking.disputed_by = disputed_by_user_id
         cls.increment_version(booking)
 
@@ -813,7 +814,7 @@ class BookingStateMachine:
             )
 
         booking.dispute_state = resolution.value
-        booking.resolved_at = datetime.utcnow()
+        booking.resolved_at = utc_now()
         booking.resolved_by = resolved_by_user_id
         booking.resolution_notes = notes
 
