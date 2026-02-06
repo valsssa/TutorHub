@@ -70,9 +70,6 @@ export interface Booking {
   // Time fields (ISO UTC strings)
   start_at: string;
   end_at: string;
-  // Legacy time field aliases
-  start_time?: string;
-  end_time?: string;
   duration_minutes?: number;
   student_tz: string;
   tutor_tz: string;
@@ -88,7 +85,6 @@ export interface Booking {
   join_url?: string;
   notes_student?: string;
   notes_tutor?: string;
-  student_message?: string; // Alias for notes_student
   tutor: TutorInfo;
   student: StudentInfo;
   student_id?: number; // Direct reference for display
@@ -111,7 +107,6 @@ export interface CreateBookingInput {
   tutor_id?: number; // Alternative field name
   subject_id?: number;
   start_at?: string; // ISO datetime string (UTC)
-  start_time?: string; // Alternative field name
   duration_minutes: number; // 25, 30, 45, 50, 60, 90, 120
   lesson_type?: LessonType;
   notes_student?: string;
@@ -130,7 +125,6 @@ export interface BookingFilters {
 // Response structure from backend
 export interface BookingListResponse {
   bookings: Booking[];
-  items?: Booking[]; // Alternative field name used in some responses
   total: number;
   page: number;
   page_size: number;
