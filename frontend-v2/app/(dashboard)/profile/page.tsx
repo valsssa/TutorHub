@@ -132,9 +132,9 @@ function TutorProfile() {
                 {tutorProfile && (
                   <>
                     <div className="flex items-center gap-2">
-                      <StarRating rating={Math.round(tutorProfile.average_rating)} />
+                      <StarRating rating={Math.round(Number(tutorProfile.average_rating || 0))} />
                       <span className="text-sm font-medium text-slate-900 dark:text-white">
-                        {tutorProfile.average_rating.toFixed(1)}
+                        {Number(tutorProfile.average_rating || 0).toFixed(1)}
                       </span>
                       <span className="text-sm text-slate-500">
                         ({tutorProfile.total_reviews ?? 0} reviews)

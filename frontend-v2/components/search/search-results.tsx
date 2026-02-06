@@ -70,7 +70,7 @@ export function SearchResults({
                       <div className="flex items-center gap-1">
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                         <span className="text-xs text-slate-500">
-                          {tutor.average_rating.toFixed(1)}
+                          {Number(tutor.average_rating || 0).toFixed(1)}
                         </span>
                       </div>
                       {tutor.subjects.length > 0 && (

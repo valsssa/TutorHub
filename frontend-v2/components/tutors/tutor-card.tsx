@@ -46,7 +46,7 @@ export function TutorCard({ tutor, showFavorite = true }: TutorCardProps) {
           <div className="flex items-center gap-1">
             <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
             <span className="text-sm font-medium text-slate-900 dark:text-white">
-              {tutor.average_rating.toFixed(1)}
+              {Number(tutor.average_rating || 0).toFixed(1)}
             </span>
           </div>
           <span className="text-slate-400">|</span>

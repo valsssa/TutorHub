@@ -177,9 +177,9 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
 
                   <div className="mt-4 flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <StarRating value={Math.round(tutor.average_rating)} readonly size="sm" />
+                      <StarRating value={Math.round(Number(tutor.average_rating || 0))} readonly size="sm" />
                       <span className="text-sm font-medium text-slate-900 dark:text-white">
-                        {tutor.average_rating.toFixed(1)}
+                        {Number(tutor.average_rating || 0).toFixed(1)}
                       </span>
                       <span className="text-sm text-slate-500">
                         ({tutor.total_reviews ?? 0} reviews)

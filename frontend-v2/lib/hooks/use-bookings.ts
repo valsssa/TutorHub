@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingsApi } from '@/lib/api';
 import { tutorKeys } from './use-tutors';
+import { useAuth } from './use-auth';
 import type { BookingFilters, CreateBookingInput } from '@/types';
 
 export const bookingKeys = {
@@ -13,9 +14,11 @@ export const bookingKeys = {
 };
 
 export function useBookings(filters: BookingFilters = {}) {
+  const { user } = useAuth();
   return useQuery({
     queryKey: bookingKeys.list(filters),
     queryFn: () => bookingsApi.list(filters),
+    enabled: !!user,
   });
 }
 
@@ -28,9 +31,11 @@ export function useBooking(id: number) {
 }
 
 export function useBookingStats() {
+  const { user } = useAuth();
   return useQuery({
     queryKey: bookingKeys.stats(),
     queryFn: bookingsApi.getStats,
+    enabled: !!user,
   });
 }
 

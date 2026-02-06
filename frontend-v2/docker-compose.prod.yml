@@ -21,7 +21,8 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions/api/v1}
       NEXT_TELEMETRY_DISABLED: "1"
     restart: unless-stopped
-    # No volumes - uses the built artifacts from the Docker image
+    # Override dev volumes with !reset to use built artifacts from Docker image
+    volumes: !reset []
 
 networks:
   default:
