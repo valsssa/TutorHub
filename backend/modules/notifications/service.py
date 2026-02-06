@@ -396,6 +396,31 @@ class NotificationService:
         notification.read_at = datetime.now(UTC)
         return True
 
+    def mark_all_read(self, db: Session, user_id: int) -> int:
+        """
+        Mark all unread notifications as read for a user.
+
+        Uses atomic bulk UPDATE for race condition safety and idempotency.
+        Safe to call multiple times - if already read, returns 0.
+
+        Args:
+            db: Database session
+            user_id: User whose notifications to mark as read
+
+        Returns:
+            Number of notifications that were marked as read
+        """
+        now = datetime.now(UTC)
+        updated_count = (
+            db.query(Notification)
+            .filter(
+                Notification.user_id == user_id,
+                Notification.is_read.is_(False),
+            )
+            .update({"is_read": True, "read_at": now})
+        )
+        return updated_count
+
     def dismiss_notification(self, db: Session, notification_id: int, user_id: int) -> bool:
         """Dismiss (hide) a notification without deleting it."""
         notification = (

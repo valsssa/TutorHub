@@ -189,15 +189,17 @@ async def mark_all_notifications_read(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Mark all notifications as read."""
-    now = datetime.now(UTC)
-    db.query(Notification).filter(
-        Notification.user_id == current_user.id,
-        Notification.is_read.is_(False),
-    ).update({"is_read": True, "read_at": now})
+    """
+    Mark all notifications as read.
 
+    Uses atomic bulk UPDATE for race condition safety and idempotency.
+    Safe to call multiple times - if all already read, succeeds without error.
+    """
+    count = notification_service.mark_all_read(db, current_user.id)
     db.commit()
-    return {"message": "All notifications marked as read"}
+
+    logger.debug(f"Marked {count} notifications as read for user {current_user.id}")
+    return {"message": "All notifications marked as read", "count": count}
 
 
 @router.patch("/{notification_id}/dismiss")
