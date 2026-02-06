@@ -99,7 +99,7 @@ export function Topbar() {
             >
               <Avatar
                 src={user?.avatar_url}
-                name={user?.first_name}
+                name={user?.first_name ?? undefined}
                 size="sm"
               />
               <div className="hidden md:block text-left">

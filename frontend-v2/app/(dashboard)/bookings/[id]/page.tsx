@@ -49,27 +49,25 @@ function getTimeline(sessionState: SessionState): TimelineStep[] {
   ];
 
   switch (sessionState) {
-    case 'pending_tutor':
-    case 'pending_student':
+    case 'REQUESTED':
       steps[0].status = 'completed';
       steps[1].status = 'current';
       break;
-    case 'confirmed':
+    case 'SCHEDULED':
       steps[0].status = 'completed';
       steps[1].status = 'completed';
       steps[2].status = 'current';
       break;
-    case 'in_progress':
+    case 'ACTIVE':
       steps[0].status = 'completed';
       steps[1].status = 'completed';
       steps[2].status = 'current';
       break;
-    case 'completed':
+    case 'ENDED':
       steps.forEach((s) => (s.status = 'completed'));
       break;
-    case 'cancelled':
-    case 'expired':
-    case 'no_show':
+    case 'CANCELLED':
+    case 'EXPIRED':
       steps[0].status = 'completed';
       steps[1] = { label: 'Cancelled', status: 'completed', icon: XCircle };
       steps.splice(2);
@@ -138,13 +136,13 @@ export default function BookingDetailPage() {
 
   const timeline = getTimeline(booking.session_state);
   const userRole = user?.role === 'tutor' ? 'tutor' : 'student';
-  const canCancel = ['pending_tutor', 'pending_student', 'confirmed'].includes(
+  const canCancel = ['REQUESTED', 'SCHEDULED'].includes(
     booking.session_state
   );
   const canConfirm =
-    userRole === 'tutor' && booking.session_state === 'pending_tutor';
+    userRole === 'tutor' && booking.session_state === 'REQUESTED';
   const canReschedule =
-    ['pending_tutor', 'pending_student', 'confirmed'].includes(
+    ['REQUESTED', 'SCHEDULED'].includes(
       booking.session_state
     );
 
@@ -259,7 +257,7 @@ export default function BookingDetailPage() {
                 </Button>
               )}
 
-              {booking.session_state === 'confirmed' && (
+              {booking.session_state === 'SCHEDULED' && (
                 <Button>
                   <Video className="h-4 w-4 mr-2" />
                   Join Session
@@ -379,13 +377,10 @@ export default function BookingDetailPage() {
                 <span className="text-slate-500">Status</span>
                 <span
                   className={`font-medium ${
-                    booking.payment_state === 'captured' ||
-                    booking.payment_state === 'released_to_tutor' ||
                     booking.payment_state === 'CAPTURED'
                       ? 'text-green-600'
-                      : booking.payment_state === 'refunded' ||
-                        booking.payment_state === 'failed' ||
-                        booking.payment_state === 'REFUNDED'
+                      : booking.payment_state === 'REFUNDED' ||
+                        booking.payment_state === 'VOIDED'
                       ? 'text-red-600'
                       : 'text-amber-600'
                   }`}

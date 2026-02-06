@@ -156,7 +156,7 @@ export default function ConversationPage() {
   }, [messages.length, hasInitialLoad, currentPage]);
 
   const handleSendMessage = (content: string) => {
-    sendMessageMutation.mutate({ content, recipient_id: conversationId });
+    sendMessageMutation.mutate({ message: content, recipient_id: conversationId });
   };
 
   const isLoading = conversationLoading || messagesLoading;

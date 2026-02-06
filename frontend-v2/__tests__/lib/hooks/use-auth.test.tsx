@@ -37,9 +37,15 @@ const mockUser: User = {
   email: 'test@example.com',
   first_name: 'Test',
   last_name: 'User',
+  full_name: 'Test User',
+  profile_incomplete: false,
   role: 'student',
   is_active: true,
+  is_verified: true,
+  timezone: 'UTC',
+  currency: 'USD',
   created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
 };
 
 const mockTokens: AuthTokens = {

@@ -61,8 +61,8 @@ function StudentEditForm() {
   } = useForm<EditProfileFormData>({
     resolver: zodResolver(editProfileSchema),
     defaultValues: {
-      first_name: user?.first_name || '',
-      last_name: user?.last_name || '',
+      first_name: user?.first_name ?? '',
+      last_name: user?.last_name ?? '',
       bio: '',
     },
   });
@@ -70,8 +70,8 @@ function StudentEditForm() {
   useEffect(() => {
     if (user) {
       reset({
-        first_name: user.first_name,
-        last_name: user.last_name,
+        first_name: user.first_name ?? '',
+        last_name: user.last_name ?? '',
         bio: '',
       });
     }
@@ -191,8 +191,8 @@ function TutorEditForm() {
   useEffect(() => {
     if (user && tutorProfile) {
       reset({
-        first_name: user.first_name,
-        last_name: user.last_name,
+        first_name: user.first_name ?? '',
+        last_name: user.last_name ?? '',
         bio: tutorProfile.bio || '',
         headline: tutorProfile.headline || '',
         hourly_rate: tutorProfile.hourly_rate,

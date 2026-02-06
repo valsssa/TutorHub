@@ -19,9 +19,15 @@ describe('authApi', () => {
     email: 'test@example.com',
     first_name: 'Test',
     last_name: 'User',
+    full_name: 'Test User',
+    profile_incomplete: false,
     role: 'student',
     is_active: true,
+    is_verified: true,
+    timezone: 'UTC',
+    currency: 'USD',
     created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
   };
 
   const mockTokens: AuthTokens = {
@@ -124,10 +130,16 @@ describe('authApi', () => {
         email: 'full@example.com',
         first_name: 'Full',
         last_name: 'User',
+        full_name: 'Full User',
+        profile_incomplete: false,
         role: 'admin',
         avatar_url: 'https://example.com/avatar.jpg',
         is_active: true,
+        is_verified: true,
+        timezone: 'America/New_York',
+        currency: 'USD',
         created_at: '2024-06-15T10:30:00Z',
+        updated_at: '2024-06-15T10:30:00Z',
       };
       vi.mocked(api.get).mockResolvedValueOnce(fullUser);
 

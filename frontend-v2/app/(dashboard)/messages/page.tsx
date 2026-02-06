@@ -44,12 +44,20 @@ export default function MessagesPage() {
           {
             id: thread.other_user_id ?? 0,
             email: thread.other_user_email ?? '',
-            first_name: thread.other_user_first_name ?? '',
-            last_name: thread.other_user_last_name ?? '',
+            first_name: thread.other_user_first_name ?? null,
+            last_name: thread.other_user_last_name ?? null,
+            full_name: thread.other_user_first_name && thread.other_user_last_name
+              ? `${thread.other_user_first_name} ${thread.other_user_last_name}`
+              : null,
+            profile_incomplete: false,
             role: (thread.other_user_role ?? 'student') as 'student' | 'tutor' | 'admin' | 'owner',
             avatar_url: thread.other_user_avatar_url,
             is_active: true,
+            is_verified: true,
+            timezone: 'UTC',
+            currency: 'USD',
             created_at: thread.created_at ?? new Date().toISOString(),
+            updated_at: thread.updated_at ?? new Date().toISOString(),
           },
         ],
         last_message: thread.last_message,
@@ -76,7 +84,7 @@ export default function MessagesPage() {
       if (typeof conv.last_message === 'string') {
         lastMessageContent = conv.last_message.toLowerCase();
       } else if (conv.last_message && typeof conv.last_message === 'object') {
-        lastMessageContent = (conv.last_message.content || '').toLowerCase();
+        lastMessageContent = (conv.last_message.message || '').toLowerCase();
       }
 
       return participantNames.includes(query) || lastMessageContent.includes(query);

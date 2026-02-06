@@ -171,7 +171,7 @@ function ScheduleCard({ booking }: { booking: Booking }) {
 
   const getStatusBadge = () => {
     const now = new Date();
-    if (booking.session_state === 'ACTIVE' || booking.session_state === 'in_progress') {
+    if (booking.session_state === 'ACTIVE') {
       return <Badge variant="success">In Progress</Badge>;
     }
     if (startDate > now) {
