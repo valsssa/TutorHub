@@ -1,10 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Wallet,
   CreditCard,
   Plus,
+  History,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import {
   useWalletBalance,
@@ -25,7 +29,7 @@ export default function WalletPage() {
   const [topUpAmount, setTopUpAmount] = useState('');
   const [showTopUpForm, setShowTopUpForm] = useState(false);
 
-  const { data: balance, isLoading: balanceLoading } = useWalletBalance();
+  const { data: balance, isLoading: balanceLoading, error: balanceError, refetch } = useWalletBalance();
   const createCheckout = useCreateWalletCheckout();
 
   const handleTopUp = async () => {
@@ -62,51 +66,76 @@ export default function WalletPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {balanceError ? (
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30">
-                <Wallet className="h-6 w-6 text-green-600 dark:text-green-400" />
+          <CardContent className="py-8">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-red-50 dark:bg-red-900/20 mb-3">
+                <AlertCircle className="h-6 w-6 text-red-500" />
               </div>
-              <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Balance
-                </p>
-                {balanceLoading ? (
-                  <Skeleton className="h-8 w-24" />
-                ) : (
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {formatCurrency(balanceAmount, balance?.currency)}
-                  </p>
-                )}
-              </div>
+              <p className="text-red-600 dark:text-red-400 font-medium mb-2">
+                Failed to load wallet balance
+              </p>
+              <p className="text-sm text-slate-500 mb-4">
+                {balanceError instanceof Error ? balanceError.message : 'An error occurred'}
+              </p>
+              <Button variant="outline" onClick={() => refetch()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
             </div>
           </CardContent>
         </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30">
+                  <Wallet className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Balance
+                  </p>
+                  {balanceLoading ? (
+                    <Skeleton className="h-8 w-24" />
+                  ) : (
+                    <p
+                      className="text-2xl font-bold text-slate-900 dark:text-white"
+                      data-testid="balance"
+                    >
+                      {formatCurrency(balanceAmount, balance?.currency)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Currency
-                </p>
-                {balanceLoading ? (
-                  <Skeleton className="h-8 w-24" />
-                ) : (
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {balance?.currency || 'USD'}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Currency
                   </p>
-                )}
+                  {balanceLoading ? (
+                    <Skeleton className="h-8 w-24" />
+                  ) : (
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                      {balance?.currency || 'USD'}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -157,6 +186,23 @@ export default function WalletPage() {
               </Button>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Transaction History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-slate-500 mb-4">
+            View your complete transaction history including deposits, withdrawals, and payments.
+          </p>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/wallet/transactions">
+              <History className="h-4 w-4 mr-2" />
+              View Transaction History
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     </div>

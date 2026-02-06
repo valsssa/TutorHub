@@ -79,7 +79,10 @@ export function TransactionItem({ transaction, showDetails = false }: Transactio
     : 'text-slate-900 dark:text-white';
 
   return (
-    <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+    <div
+      className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+      data-testid="transaction-item"
+    >
       <div
         className={`flex items-center justify-center h-10 w-10 rounded-full ${config.colorClass}`}
       >
