@@ -43,7 +43,7 @@ class StudentProfile(Base):
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="student_profile")
+    user = relationship("User", back_populates="student_profile", foreign_keys=[user_id])
 
 
 class FavoriteTutor(Base):

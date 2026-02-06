@@ -48,7 +48,7 @@ class Notification(Base):
     __table_args__ = (CheckConstraint("priority BETWEEN 1 AND 5", name="notification_priority_check"),)
 
     # Relationships
-    user = relationship("User", back_populates="notifications")
+    user = relationship("User", back_populates="notifications", foreign_keys=[user_id])
 
 
 class NotificationPreferences(Base):
