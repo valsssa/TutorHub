@@ -25,7 +25,7 @@ const PRICE_RANGES = [
 
 const SORT_OPTIONS = [
   { value: 'rating', label: 'Top Rated' },
-  { value: 'price', label: 'Lowest Price' },
+  { value: 'rate_asc', label: 'Lowest Price' },
   { value: 'experience', label: 'Most Experience' },
 ] as const;
 
@@ -58,7 +58,7 @@ export default function TutorsPage() {
     });
   };
 
-  const handleSortChange = (sortBy: 'rating' | 'price' | 'experience') => {
+  const handleSortChange = (sortBy: 'rating' | 'rate_asc' | 'rate_desc' | 'experience') => {
     setTutorFilters({ sort_by: sortBy, page: 1 });
   };
 

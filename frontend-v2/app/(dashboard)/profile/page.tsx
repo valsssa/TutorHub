@@ -197,7 +197,7 @@ function TutorProfile() {
                   <span className="text-sm text-slate-500">Average Rating</span>
                 </div>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {tutorProfile?.average_rating?.toFixed(1) || '0.0'}
+                  {Number(tutorProfile?.average_rating || 0).toFixed(1)}
                 </p>
               </div>
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800">

@@ -109,7 +109,7 @@ export function StarRating({
       </div>
       {showValue && (
         <span className="ml-2 text-sm font-medium text-slate-600 dark:text-slate-400">
-          {value.toFixed(1)}
+          {Number(value || 0).toFixed(1)}
         </span>
       )}
     </div>

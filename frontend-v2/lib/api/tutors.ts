@@ -3,18 +3,109 @@ import { toQueryString } from '@/lib/utils';
 import type { PaginatedResponse } from '@/types';
 import type { TutorProfile, TutorFilters, AvailabilitySlot, Subject } from '@/types';
 
+/**
+ * Map frontend filter parameters to backend API parameters.
+ * Frontend uses: subject, price_min, price_max
+ * Backend expects: subject_id, min_rate, max_rate, search_query
+ */
+function mapFiltersToBackend(filters: TutorFilters): Record<string, string | number | undefined> {
+  const mapped: Record<string, string | number | undefined> = {};
+
+  // Map subject name to search_query for text search
+  if (filters.subject) {
+    mapped.search_query = filters.subject;
+  }
+
+  // Map subject_id if provided directly
+  if (filters.subject_id) {
+    mapped.subject_id = filters.subject_id;
+  }
+
+  // Map price filters to rate filters
+  if (filters.price_min !== undefined) {
+    mapped.min_rate = filters.price_min;
+  }
+  if (filters.price_max !== undefined) {
+    mapped.max_rate = filters.price_max;
+  }
+
+  // Map other filters directly
+  if (filters.min_rating !== undefined) {
+    mapped.min_rating = filters.min_rating;
+  }
+  if (filters.min_experience !== undefined) {
+    mapped.min_experience = filters.min_experience;
+  }
+  if (filters.language) {
+    mapped.language = filters.language;
+  }
+  if (filters.search_query) {
+    mapped.search_query = filters.search_query;
+  }
+
+  // Map sort_by - keep as-is since backend supports rating, rate_asc, rate_desc, experience
+  if (filters.sort_by) {
+    mapped.sort_by = filters.sort_by;
+  }
+
+  // Pagination
+  if (filters.page) {
+    mapped.page = filters.page;
+  }
+  if (filters.page_size) {
+    mapped.page_size = filters.page_size;
+  }
+
+  return mapped;
+}
+
+/**
+ * Transform backend tutor response to ensure frontend-expected fields exist.
+ * Backend returns: first_name, last_name, profile_photo_url, and Decimal fields as strings
+ * Frontend expects: display_name, avatar_url, and numeric fields as numbers
+ */
+function transformTutor(tutor: TutorProfile): TutorProfile {
+  return {
+    ...tutor,
+    // Create display_name from first_name + last_name if not present
+    display_name: tutor.display_name ||
+      [tutor.first_name, tutor.last_name].filter(Boolean).join(' ') ||
+      tutor.title ||
+      'Tutor',
+    // Map profile_photo_url to avatar_url
+    avatar_url: tutor.avatar_url || tutor.profile_photo_url,
+    // Convert numeric string fields to numbers (backend sends Decimal as string)
+    average_rating: Number(tutor.average_rating) || 0,
+    hourly_rate: Number(tutor.hourly_rate) || 0,
+    total_reviews: Number(tutor.total_reviews) || 0,
+    total_sessions: Number(tutor.total_sessions) || 0,
+    experience_years: Number(tutor.experience_years) || 0,
+  };
+}
+
 export const tutorsApi = {
   // List approved tutors with filtering and pagination
-  list: (filters: TutorFilters = {}) =>
-    api.get<PaginatedResponse<TutorProfile>>(`/tutors?${toQueryString(filters)}`),
+  list: async (filters: TutorFilters = {}) => {
+    const backendFilters = mapFiltersToBackend(filters);
+    const response = await api.get<PaginatedResponse<TutorProfile>>(`/tutors?${toQueryString(backendFilters)}`);
+    // Transform each tutor to ensure frontend-expected fields
+    return {
+      ...response,
+      items: response.items.map(transformTutor),
+    };
+  },
 
   // Get a single tutor's public profile by ID
-  get: (id: number) =>
-    api.get<TutorProfile>(`/tutors/${id}`),
+  get: async (id: number) => {
+    const tutor = await api.get<TutorProfile>(`/tutors/${id}`);
+    return transformTutor(tutor);
+  },
 
   // Get a tutor's public profile (explicit public endpoint)
-  getPublic: (id: number) =>
-    api.get<TutorProfile>(`/tutors/${id}/public`),
+  getPublic: async (id: number) => {
+    const tutor = await api.get<TutorProfile>(`/tutors/${id}/public`);
+    return transformTutor(tutor);
+  },
 
   // Get tutor's availability
   getAvailability: (tutorId: number, weekStart?: string) => {
@@ -27,8 +118,10 @@ export const tutorsApi = {
     api.get<Subject[]>('/subjects'),
 
   // Get current tutor's own profile (requires tutor role)
-  getMyProfile: () =>
-    api.get<TutorProfile>('/tutors/me/profile'),
+  getMyProfile: async () => {
+    const tutor = await api.get<TutorProfile>('/tutors/me/profile');
+    return transformTutor(tutor);
+  },
 
   // Update current tutor's about section
   updateAbout: (data: {
@@ -73,8 +166,8 @@ export const tutorsApi = {
     api.get(`/tutors/${tutorId}/reviews?page=${page}&page_size=${pageSize}`),
 
   // Get featured tutors (for homepage)
-  getFeatured: (limit = 6) =>
-    api.get<PaginatedResponse<TutorProfile>>(`/tutors?sort_by=rating&page_size=${limit}`).then(
-      (response) => response.items ?? []
-    ),
+  getFeatured: async (limit = 6) => {
+    const response = await api.get<PaginatedResponse<TutorProfile>>(`/tutors?sort_by=rating&page_size=${limit}`);
+    return (response.items ?? []).map(transformTutor);
+  },
 };

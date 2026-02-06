@@ -19,7 +19,10 @@ export interface Subject {
 export interface TutorProfile {
   id: number;
   user_id: number;
-  // Name fields - backend uses various naming conventions
+  // Name fields from backend - first_name/last_name
+  first_name?: string;
+  last_name?: string;
+  // Legacy name fields for backwards compatibility
   name?: string;
   display_name?: string;
   title?: string;
@@ -29,7 +32,7 @@ export interface TutorProfile {
   hourly_rate: number;
   currency?: string;
   experience_years?: number;
-  education?: string;
+  education?: string | string[];
   languages?: string[];
   video_url?: string;
   subjects: Subject[];
@@ -40,9 +43,10 @@ export interface TutorProfile {
   total_reviews?: number;
   review_count?: number; // Alias for total_reviews
   total_sessions?: number;
-  // Profile state
+  // Profile photos - backend uses profile_photo_url
   avatar_url?: string;
-  profile_photo_url?: string; // Alternative field name
+  profile_photo_url?: string;
+  // Profile state
   is_approved: boolean;
   profile_status?: TutorProfileStatus;
   rejection_reason?: string;
@@ -50,13 +54,24 @@ export interface TutorProfile {
   timezone?: string;
   version?: number;
   created_at?: string;
+  // Extra fields from public profile
+  recent_review?: string;
+  next_available_slots?: string[];
 }
 
 export interface TutorFilters {
+  // Subject filtering - can use either subject name (search_query) or subject_id
   subject?: string;
+  subject_id?: number;
+  // Price filtering - maps to backend min_rate/max_rate
   price_min?: number;
   price_max?: number;
-  sort_by?: 'rating' | 'price' | 'experience';
+  min_rating?: number;
+  min_experience?: number;
+  language?: string;
+  search_query?: string;
+  // Sort options: 'rating' (default), 'rate_asc', 'rate_desc', 'experience'
+  sort_by?: 'rating' | 'rate_asc' | 'rate_desc' | 'experience';
   page?: number;
   page_size?: number;
 }
