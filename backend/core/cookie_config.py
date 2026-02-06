@@ -16,6 +16,14 @@ class CookieConfig:
 
     Provides secure defaults for HttpOnly cookie-based authentication.
     The Secure flag is automatically enabled in non-development environments.
+
+    Cross-subdomain authentication:
+        When frontend (e.g., edustream.valsa.solutions) and backend
+        (e.g., api.valsa.solutions) are on different subdomains, the `domain`
+        must be set to the parent domain (e.g., ".valsa.solutions") for
+        cookies to be accessible across subdomains. Without this:
+        - CSRF token cookies set by the backend won't be readable by frontend JS
+        - DELETE/POST/PUT requests will fail with 403 CSRF validation errors
     """
 
     # Cookie names
@@ -34,7 +42,7 @@ class CookieConfig:
 
     # Environment-dependent
     environment: str = "development"
-    domain: str | None = None
+    domain: str | None = None  # Set to ".valsa.solutions" for cross-subdomain auth
 
     @property
     def secure(self) -> bool:

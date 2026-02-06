@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"  # development, staging, production
 
+    # Cookie Domain - Required for cross-subdomain authentication
+    # Set to ".valsa.solutions" in production for frontend/API on different subdomains
+    COOKIE_DOMAIN: str | None = None
+
     # Validation
     PASSWORD_MIN_LENGTH: int = 6
     PASSWORD_MAX_LENGTH: int = 128

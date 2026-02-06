@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 
 from core.cookie_config import get_cookie_config
+from core.cors import is_origin_allowed
 from core.csrf import validate_csrf_token
 
 # HTTP methods that modify state and require CSRF protection
@@ -72,9 +73,20 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         header_token = request.headers.get("x-csrf-token")
 
         if not validate_csrf_token(cookie_token, header_token):
+            # Build response with CORS headers for cross-origin error visibility
+            # Without CORS headers, browsers block the response and show generic errors
+            origin = request.headers.get("origin", "")
+            headers: dict[str, str] = {}
+
+            if origin and is_origin_allowed(origin):
+                headers["Access-Control-Allow-Origin"] = origin
+                headers["Access-Control-Allow-Credentials"] = "true"
+                headers["Vary"] = "Origin"
+
             return JSONResponse(
                 status_code=403,
                 content={"detail": "CSRF validation failed"},
+                headers=headers,
             )
 
         return await call_next(request)

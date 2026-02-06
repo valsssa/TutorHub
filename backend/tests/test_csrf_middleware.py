@@ -262,6 +262,46 @@ class TestCSRFMiddlewareErrorResponse:
         # JSONResponse body is bytes
         assert b"CSRF validation failed" in response.body
 
+    @pytest.mark.asyncio
+    async def test_403_response_includes_cors_headers_for_allowed_origin(self, middleware):
+        """403 response should include CORS headers for allowed origins."""
+        allowed_origin = "https://edustream.valsa.solutions"
+        request = make_request(
+            "POST",
+            "/api/v1/bookings",
+            cookies={},
+            headers={"origin": allowed_origin},
+        )
+
+        with patch("core.csrf_middleware.is_origin_allowed", return_value=True):
+            response = await middleware.dispatch(
+                request, lambda r: AsyncMock(return_value=Response())()
+            )
+
+        assert response.status_code == 403
+        assert response.headers.get("access-control-allow-origin") == allowed_origin
+        assert response.headers.get("access-control-allow-credentials") == "true"
+        assert response.headers.get("vary") == "Origin"
+
+    @pytest.mark.asyncio
+    async def test_403_response_no_cors_headers_for_disallowed_origin(self, middleware):
+        """403 response should NOT include CORS headers for disallowed origins."""
+        disallowed_origin = "https://evil.example.com"
+        request = make_request(
+            "POST",
+            "/api/v1/bookings",
+            cookies={},
+            headers={"origin": disallowed_origin},
+        )
+
+        with patch("core.csrf_middleware.is_origin_allowed", return_value=False):
+            response = await middleware.dispatch(
+                request, lambda r: AsyncMock(return_value=Response())()
+            )
+
+        assert response.status_code == 403
+        assert "access-control-allow-origin" not in response.headers
+
 
 class TestCSRFMiddlewareConfiguration:
     """Tests for middleware configuration."""
