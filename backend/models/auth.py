@@ -147,8 +147,8 @@ class RegistrationFraudSignal(Base):
     signal_type = Column(String(50), nullable=False)
     signal_value = Column(Text, nullable=False)
     confidence_score = Column(
-        Integer,
-        default=50,
+        Numeric(3, 2),
+        default=0.50,
         nullable=False,
     )
     detected_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
