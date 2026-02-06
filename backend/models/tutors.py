@@ -130,6 +130,8 @@ class TutorSubject(Base):
     proficiency_level = Column(String(20), default="B2")  # Phase 3: CEFR default
     years_experience = Column(Integer)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     tutor_profile = relationship("TutorProfile", back_populates="subjects")
@@ -163,6 +165,8 @@ class TutorCertification(Base):
         server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     tutor_profile = relationship("TutorProfile", back_populates="certifications")
 
@@ -187,6 +191,8 @@ class TutorEducation(Base):
         server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     tutor_profile = relationship("TutorProfile", back_populates="educations")
 
@@ -235,6 +241,8 @@ class TutorAvailability(Base):
     # This enables proper DST handling when converting to UTC for slot generation
     timezone = Column(String(64), nullable=False, default="UTC", server_default="UTC")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     tutor_profile = relationship("TutorProfile", back_populates="availabilities")

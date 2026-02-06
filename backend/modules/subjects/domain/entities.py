@@ -8,6 +8,7 @@ No SQLAlchemy or infrastructure dependencies.
 from dataclasses import dataclass
 from datetime import datetime
 
+from core.datetime_utils import utc_now
 from modules.subjects.domain.value_objects import (
     SubjectCategory,
     SubjectId,
@@ -142,7 +143,7 @@ class SubjectEntity:
             level=new_level,
             is_active=is_active if is_active is not None else self.is_active,
             created_at=self.created_at,
-            updated_at=datetime.utcnow(),
+            updated_at=utc_now(),
         )
 
     def deactivate(self) -> "SubjectEntity":
@@ -160,7 +161,7 @@ class SubjectEntity:
             level=self.level,
             is_active=False,
             created_at=self.created_at,
-            updated_at=datetime.utcnow(),
+            updated_at=utc_now(),
         )
 
     def activate(self) -> "SubjectEntity":
@@ -178,7 +179,7 @@ class SubjectEntity:
             level=self.level,
             is_active=True,
             created_at=self.created_at,
-            updated_at=datetime.utcnow(),
+            updated_at=utc_now(),
         )
 
     @property

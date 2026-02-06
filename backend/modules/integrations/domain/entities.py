@@ -8,6 +8,7 @@ No SQLAlchemy or infrastructure dependencies.
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from core.datetime_utils import utc_now
 from modules.integrations.domain.value_objects import (
     IntegrationId,
     IntegrationStatus,
@@ -88,29 +89,29 @@ class UserIntegrationEntity:
     def mark_error(self, error_message: str) -> None:
         """Mark the integration as having an error."""
         self.status = IntegrationStatus.ERROR
-        self.last_error_at = datetime.utcnow()
+        self.last_error_at = utc_now()
         self.last_error_message = error_message
         self.error_count += 1
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
     def mark_connected(self) -> None:
         """Mark the integration as connected."""
         self.status = IntegrationStatus.CONNECTED
-        self.connected_at = datetime.utcnow()
+        self.connected_at = utc_now()
         self.error_count = 0
         self.last_error_message = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
     def mark_disconnected(self) -> None:
         """Mark the integration as disconnected."""
         self.status = IntegrationStatus.DISCONNECTED
         self.credentials = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
     def update_last_sync(self) -> None:
         """Update the last sync timestamp."""
-        self.last_sync_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_sync_at = utc_now()
+        self.updated_at = utc_now()
 
 
 @dataclass
@@ -159,7 +160,7 @@ class VideoMeetingEntity:
         """Check if the meeting is still valid."""
         if not self.is_active:
             return False
-        if self.expires_at and datetime.utcnow() >= self.expires_at:
+        if self.expires_at and utc_now() >= self.expires_at:
             return False
         return bool(self.meeting_url)
 
@@ -170,13 +171,13 @@ class VideoMeetingEntity:
 
     def mark_accessed(self) -> None:
         """Mark the meeting as accessed."""
-        self.last_accessed_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_accessed_at = utc_now()
+        self.updated_at = utc_now()
 
     def deactivate(self) -> None:
         """Deactivate the meeting."""
         self.is_active = False
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
 
 @dataclass
@@ -217,15 +218,15 @@ class CalendarEventEntity:
     def mark_synced(self) -> None:
         """Mark the event as synced."""
         self.is_synced = True
-        self.synced_at = datetime.utcnow()
+        self.synced_at = utc_now()
         self.sync_error = None
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
     def mark_sync_error(self, error: str) -> None:
         """Mark the event as having a sync error."""
         self.is_synced = False
         self.sync_error = error
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
 
 @dataclass

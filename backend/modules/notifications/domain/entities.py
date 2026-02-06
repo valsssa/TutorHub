@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from core.datetime_utils import utc_now
 from modules.notifications.domain.value_objects import (
     DeliveryChannel,
     NotificationCategory,
@@ -69,7 +70,7 @@ class NotificationEntity:
         """Check if notification has expired."""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return utc_now() > self.expires_at
 
     @property
     def is_visible(self) -> bool:
@@ -85,12 +86,12 @@ class NotificationEntity:
         """Mark notification as read."""
         if not self.is_read:
             self.is_read = True
-            self.read_at = datetime.utcnow()
+            self.read_at = utc_now()
 
     def dismiss(self) -> None:
         """Dismiss (hide) the notification."""
         if self.dismissed_at is None:
-            self.dismissed_at = datetime.utcnow()
+            self.dismissed_at = utc_now()
 
 
 @dataclass

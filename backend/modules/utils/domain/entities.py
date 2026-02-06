@@ -8,6 +8,7 @@ No SQLAlchemy or infrastructure dependencies.
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from core.datetime_utils import utc_now
 from modules.utils.domain.value_objects import (
     ServiceName,
     ServiceStatus,
@@ -32,7 +33,7 @@ class HealthCheckEntity:
     def __post_init__(self) -> None:
         """Set checked_at if not provided."""
         if self.checked_at is None:
-            self.checked_at = datetime.utcnow()
+            self.checked_at = utc_now()
 
     @property
     def is_healthy(self) -> bool:
@@ -89,7 +90,7 @@ class SystemHealthEntity:
     def __post_init__(self) -> None:
         """Set timestamp if not provided."""
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow()
+            self.timestamp = utc_now()
 
     @property
     def is_healthy(self) -> bool:

@@ -29,6 +29,8 @@ class Review(Base):
     is_public = Column(Boolean, default=True)
     booking_snapshot = Column(JSONType, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     booking = relationship("Booking", back_populates="review")

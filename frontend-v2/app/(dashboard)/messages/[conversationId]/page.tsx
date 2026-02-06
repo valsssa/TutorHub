@@ -86,6 +86,7 @@ export default function ConversationPage() {
     if (unreadCount > 0) {
       markAsReadMutation.mutate();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, unreadCount]);
 
   useEffect(() => {

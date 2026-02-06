@@ -8,6 +8,7 @@ No SQLAlchemy or infrastructure dependencies.
 from dataclasses import dataclass
 from datetime import datetime, time
 
+from core.datetime_utils import utc_now
 from modules.tutors.domain.value_objects import (
     AvailabilityId,
     StudentNoteId,
@@ -60,7 +61,7 @@ class StudentNoteEntity:
             content=new_content,
             is_private=self.is_private,
             created_at=self.created_at,
-            updated_at=datetime.utcnow(),
+            updated_at=utc_now(),
         )
 
     def __eq__(self, other: object) -> bool:
@@ -135,7 +136,7 @@ class VideoSettingsEntity:
             custom_meeting_url=custom_url,
             auto_create_meeting=self.auto_create_meeting,
             created_at=self.created_at,
-            updated_at=datetime.utcnow(),
+            updated_at=utc_now(),
         )
 
     def __eq__(self, other: object) -> bool:

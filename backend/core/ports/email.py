@@ -10,6 +10,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Protocol
 
+from core.datetime_utils import utc_now
+
 
 class EmailStatus(str, Enum):
     """Status of email delivery."""
@@ -35,7 +37,7 @@ class EmailResult:
     def __post_init__(self) -> None:
         # Set timestamp if not provided (workaround for frozen dataclass)
         if self.timestamp is None:
-            object.__setattr__(self, "timestamp", datetime.utcnow())
+            object.__setattr__(self, "timestamp", utc_now())
 
 
 @dataclass(frozen=True)

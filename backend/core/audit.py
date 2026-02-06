@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
+from core.datetime_utils import utc_now
 from database import SessionLocal
 from models import AuditLog
 
@@ -279,7 +280,7 @@ class AuditLogger:
                 "old_status": old_status,
                 "new_status": new_status,
                 "rejection_reason": rejection_reason,
-                "decided_at": datetime.utcnow().isoformat(),
+                "decided_at": utc_now().isoformat(),
             },
             changed_by=admin_id,
             ip_address=ip_address,
@@ -306,7 +307,7 @@ class AuditLogger:
             "currency": currency,
             "payment_intent_id": payment_intent_id,
             "status": status,
-            "paid_at": datetime.utcnow().isoformat(),
+            "paid_at": utc_now().isoformat(),
         }
 
         AuditLogger.log_action(
@@ -337,7 +338,7 @@ class AuditLogger:
         data_with_context = {
             **availability_data,
             "reason": reason,
-            "changed_at": datetime.utcnow().isoformat(),
+            "changed_at": utc_now().isoformat(),
         }
 
         AuditLogger.log_action(
@@ -365,7 +366,7 @@ class AuditLogger:
         Never lose track of deletion decisions.
         """
         delete_data = {
-            "deleted_at": datetime.utcnow().isoformat(),
+            "deleted_at": utc_now().isoformat(),
             "deleted_by": user_id,
             "reason": reason,
         }

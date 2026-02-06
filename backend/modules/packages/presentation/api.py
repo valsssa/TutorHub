@@ -4,6 +4,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+from core.datetime_utils import utc_now
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import update
@@ -133,7 +134,7 @@ async def purchase_package(
     # Calculate expiration date (if pricing option has validity)
     expires_at = None
     if pricing_option.validity_days:
-        expires_at = datetime.utcnow() + timedelta(days=pricing_option.validity_days)
+        expires_at = utc_now() + timedelta(days=pricing_option.validity_days)
 
     try:
         # Use atomic transaction to ensure package + audit logs are created together
@@ -148,7 +149,7 @@ async def purchase_package(
                 sessions_remaining=1,
                 sessions_used=0,
                 purchase_price=pricing_option.price,
-                purchased_at=datetime.utcnow(),
+                purchased_at=utc_now(),
                 expires_at=expires_at,
                 status="active",
                 payment_intent_id=purchase_data.payment_intent_id,
@@ -181,7 +182,7 @@ async def purchase_package(
                     "pricing_option_id": purchase_data.pricing_option_id,
                     "purchase_price": float(pricing_option.price),
                     "agreed_terms": purchase_data.agreed_terms,
-                    "purchased_at": datetime.utcnow().isoformat(),
+                    "purchased_at": utc_now().isoformat(),
                     "decision": "student_purchased_package",
                 },
                 changed_by=current_user.id,

@@ -33,6 +33,7 @@ from typing import Any
 import redis.asyncio as redis
 
 from core.config import settings
+from core.datetime_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +153,7 @@ class FeatureFlags:
         # Check local cache
         if name in self._local_cache:
             flag, cached_at = self._local_cache[name]
-            age = (datetime.utcnow() - cached_at).total_seconds()
+            age = (utc_now() - cached_at).total_seconds()
             if age < self.CACHE_TTL:
                 return flag
 
@@ -162,7 +163,7 @@ class FeatureFlags:
             data = await r.get(self._get_key(name))
             if data:
                 flag = FeatureFlag.from_dict(json.loads(data))
-                self._local_cache[name] = (flag, datetime.utcnow())
+                self._local_cache[name] = (flag, utc_now())
                 return flag
         except Exception as e:
             logger.error(f"Error fetching feature flag {name}: {e}")
@@ -172,7 +173,7 @@ class FeatureFlags:
     async def set_flag(self, flag: FeatureFlag) -> None:
         """Save feature flag to Redis."""
         try:
-            flag.updated_at = datetime.utcnow()
+            flag.updated_at = utc_now()
             if flag.created_at is None:
                 flag.created_at = flag.updated_at
 

@@ -39,6 +39,8 @@ class StudentProfile(Base):
         server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="student_profile")
@@ -53,6 +55,8 @@ class FavoriteTutor(Base):
     student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     student = relationship("User", foreign_keys=[student_id])
@@ -110,6 +114,8 @@ class StudentPackage(Base):
         # No onupdate - updated_at is set in application code
         nullable=False,
     )
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     student = relationship("User", foreign_keys=[student_id])

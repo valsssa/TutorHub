@@ -108,6 +108,8 @@ class Refund(Base):
     provider_refund_id = Column(Text)
     refund_metadata = Column(JSONType)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     payment = relationship("Payment", back_populates="refunds")
@@ -142,6 +144,8 @@ class Payout(Base):
         server_default=func.now(),
         # No onupdate - updated_at is set in application code
     )
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     tutor = relationship("User", foreign_keys=[tutor_id])
@@ -176,6 +180,8 @@ class Wallet(Base):
     currency = Column(String(3), default="USD", nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id])
@@ -217,6 +223,8 @@ class WalletTransaction(Base):
     transaction_metadata = Column(JSONType, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     wallet = relationship("Wallet", back_populates="transactions")
