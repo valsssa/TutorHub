@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
 )
@@ -60,7 +61,7 @@ class User(Base):
     google_calendar_connected_at = Column(TIMESTAMP(timezone=True), nullable=True)
     currency = Column(String(3), nullable=False, default="USD", server_default="USD")
     timezone = Column(String(64), nullable=False, default="UTC", server_default="UTC")
-    preferred_language = Column(String(5), nullable=False, default="en", server_default="en")
+    preferred_language = Column(String(2), nullable=False, default="en", server_default="en")
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     # Token security: tracks when password was last changed to invalidate old tokens
@@ -69,6 +70,11 @@ class User(Base):
     registration_ip = Column(INET, nullable=True, index=True)
     trial_restricted = Column(Boolean, default=False, nullable=False)
     fraud_flags = Column(JSONB, default=list, server_default="[]")
+    # Locale detection fields
+    detected_language = Column(String(2), nullable=True)
+    locale = Column(String(10), default="en-US", nullable=True)
+    detected_locale = Column(String(10), nullable=True)
+    locale_detection_confidence = Column(Numeric(3, 2), nullable=True)
 
     # Relationships
     profile = relationship(
