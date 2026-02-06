@@ -150,7 +150,7 @@ class TutorSubject(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "proficiency_level IN ('native', 'c2', 'c1', 'b2', 'b1', 'a2', 'a1')",  # Phase 3: CEFR levels (lowercase)
+            "proficiency_level IN ('NATIVE', 'C2', 'C1', 'B2', 'B1', 'A2', 'A1')",  # CEFR levels (uppercase, matches database schema)
             name="valid_proficiency",
         ),
     )
