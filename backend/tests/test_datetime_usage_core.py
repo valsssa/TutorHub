@@ -8,7 +8,7 @@ def test_no_utcnow_in_entire_codebase():
     backend_path = Path(__file__).parent.parent
     violations = []
 
-    for root, dirs, files in os.walk(backend_path):
+    for root, _dirs, files in os.walk(backend_path):
         # Skip test files, migrations, and __pycache__
         if "__pycache__" in root or "migrations" in root:
             continue

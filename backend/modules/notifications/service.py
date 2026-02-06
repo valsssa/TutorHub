@@ -133,12 +133,18 @@ class NotificationService:
             # Marketing/promotional not enabled
             return False, False
 
-        # Check quiet hours for email
+        # Check quiet hours for email (handles midnight rollover, e.g., 22:00-06:00)
         should_email = prefs.email_enabled
         if should_email and prefs.quiet_hours_start and prefs.quiet_hours_end:
             current_time = datetime.now(UTC).time()
-            if prefs.quiet_hours_start <= current_time <= prefs.quiet_hours_end:
-                should_email = False
+            if prefs.quiet_hours_start <= prefs.quiet_hours_end:
+                # Normal range (e.g., 08:00-17:00)
+                if prefs.quiet_hours_start <= current_time <= prefs.quiet_hours_end:
+                    should_email = False
+            else:
+                # Midnight rollover (e.g., 22:00-06:00)
+                if current_time >= prefs.quiet_hours_start or current_time <= prefs.quiet_hours_end:
+                    should_email = False
 
         return True, should_email
 

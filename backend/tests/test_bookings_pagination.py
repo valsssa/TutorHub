@@ -25,9 +25,9 @@ def test_bookings_list_response_structure():
     assert fields["bookings"].annotation == list[BookingDTO]
 
     # pagination fields should be integers
-    assert fields["total"].annotation == int
-    assert fields["page"].annotation == int
-    assert fields["page_size"].annotation == int
+    assert fields["total"].annotation is int
+    assert fields["page"].annotation is int
+    assert fields["page_size"].annotation is int
 
 
 def test_booking_list_response_can_be_instantiated():

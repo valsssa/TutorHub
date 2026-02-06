@@ -279,7 +279,7 @@ async def get_dashboard_link(
         login_link = client.Account.create_login_link(tutor_profile.stripe_account_id)
         return ConnectDashboardLinkResponse(url=login_link.url)
 
-    except stripe.error.StripeError as e:
+    except stripe.StripeError as e:
         logger.error(f"Error creating dashboard link: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -354,7 +354,7 @@ async def get_payout_balance(
             next_payout_date=None,  # Would need to check payout schedule
         )
 
-    except stripe.error.StripeError as e:
+    except stripe.StripeError as e:
         logger.error(f"Error getting balance: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -428,7 +428,7 @@ async def get_payout_history(
             total_paid_cents=total_paid,
         )
 
-    except stripe.error.StripeError as e:
+    except stripe.StripeError as e:
         logger.error(f"Error getting payout history: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

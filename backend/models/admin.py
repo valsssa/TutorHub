@@ -2,6 +2,7 @@
 
 from sqlalchemy import (
     TIMESTAMP,
+    BigInteger,
     CheckConstraint,
     Column,
     ForeignKey,
@@ -9,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -50,7 +52,7 @@ class AuditLog(Base):
 
     __tablename__ = "audit_log"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     table_name = Column(String(100), nullable=False)
     record_id = Column(Integer, nullable=False)
     action = Column(String(20), nullable=False)
@@ -58,7 +60,7 @@ class AuditLog(Base):
     new_data = Column(JSONType)
     changed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     changed_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    ip_address = Column(String(45))  # IPv6 support
+    ip_address = Column(INET)
     user_agent = Column(Text)
 
     # Relationships

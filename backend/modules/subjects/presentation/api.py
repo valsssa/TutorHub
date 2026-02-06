@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from core.cache import cache_with_ttl, invalidate_cache
+from core.cache import invalidate_cache
 from core.dependencies import get_current_admin_user
 from core.query_helpers import get_by_id_or_404
 from core.rate_limiting import limiter
@@ -21,25 +21,38 @@ router = APIRouter(prefix="/subjects", tags=["subjects"])
 # Initialize rate limiter
 
 
-@cache_with_ttl(ttl_seconds=300)  # Cache for 5 minutes
 def _get_cached_subjects(db: Session, include_inactive: bool = False) -> list[Subject]:
-    """Helper to fetch subjects with caching."""
+    """Helper to fetch subjects, with in-memory cache keyed by include_inactive flag."""
+    cache_key = f"_get_cached_subjects:{include_inactive}"
+
+    import time
+
+    from core.cache import _cache
+
+    if cache_key in _cache:
+        cached_value, expiry_time = _cache[cache_key]
+        if time.time() < expiry_time:
+            return cached_value
+        del _cache[cache_key]
+
     query = db.query(Subject)
     if not include_inactive:
         query = query.filter(Subject.is_active.is_(True))
-    return query.all()
+    result = query.all()
+
+    _cache[cache_key] = (result, time.time() + 300)  # 5 minute TTL
+    return result
 
 
 @router.get("", response_model=list[SubjectResponse])
 @limiter.limit("60/minute")
-def list_subjects(
+async def list_subjects(
     request: Request,
     include_inactive: bool = False,
     db: Session = Depends(get_db),
 ):
     """List all active subjects. Public endpoint."""
-    # Inactive subjects are never shown to public
-    return _get_cached_subjects(db, include_inactive=False)
+    return _get_cached_subjects(db, include_inactive=include_inactive)
 
 
 @router.post("", response_model=SubjectResponse, status_code=status.HTTP_201_CREATED)

@@ -65,7 +65,7 @@ async def create_review(
         sanitized_comment = None
         if review_data.comment:
             sanitized_comment = sanitize_text_input(review_data.comment, max_length=2000)
-            if not sanitized_comment.strip():
+            if not sanitized_comment or not sanitized_comment.strip():
                 sanitized_comment = None
 
         # Create booking snapshot - immutable record of what was agreed upon

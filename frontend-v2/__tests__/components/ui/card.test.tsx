@@ -43,7 +43,7 @@ describe('CardHeader', () => {
   it('applies default styling', () => {
     render(<CardHeader>Header</CardHeader>);
     const header = screen.getByText(/header/i);
-    expect(header).toHaveClass('flex', 'items-center', 'justify-between', 'mb-4');
+    expect(header).toHaveClass('flex', 'flex-col', 'mb-4');
   });
 });
 

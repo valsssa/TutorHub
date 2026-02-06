@@ -54,13 +54,13 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True)
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"))
-    student_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     archived_student_id = Column(Integer, nullable=True)
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     provider = Column(String(20), default="stripe", nullable=False)
     provider_payment_id = Column(Text)
-    status = Column(String(30), default="pending", nullable=False)
+    status = Column(String(30), default="REQUIRES_ACTION", nullable=False)
     payment_metadata = Column("metadata", JSONType)
     # Stripe-specific fields
     stripe_checkout_session_id = Column(String(255), nullable=True, index=True)
@@ -81,6 +81,9 @@ class Payment(Base):
     student = relationship("User", foreign_keys=[student_id])
     refunds = relationship("Refund", back_populates="payment", cascade="all, delete-orphan")
 
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     __table_args__ = (
         CheckConstraint("amount_cents > 0", name="positive_payment_amount"),
         CheckConstraint(
@@ -88,8 +91,7 @@ class Payment(Base):
             name="valid_payment_provider",
         ),
         CheckConstraint(
-            "status IN ('pending', 'completed', 'failed', 'refunded', 'partially_refunded', "
-            "'REQUIRES_ACTION', 'AUTHORIZED', 'CAPTURED', 'REFUNDED', 'FAILED')",
+            "status IN ('REQUIRES_ACTION', 'AUTHORIZED', 'CAPTURED', 'REFUNDED', 'FAILED')",
             name="valid_payment_status",
         ),
     )
@@ -101,7 +103,7 @@ class Refund(Base):
     __tablename__ = "refunds"
 
     id = Column(Integer, primary_key=True)
-    payment_id = Column(Integer, ForeignKey("payments.id", ondelete="RESTRICT"), nullable=False)
+    payment_id = Column(Integer, ForeignKey("payments.id", ondelete="CASCADE"), nullable=False)
     booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"))
     amount_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
@@ -131,7 +133,7 @@ class Payout(Base):
     __tablename__ = "payouts"
 
     id = Column(Integer, primary_key=True)
-    tutor_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    tutor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     archived_tutor_id = Column(Integer, nullable=True)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
@@ -174,7 +176,7 @@ class Wallet(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(
         Integer,
-        ForeignKey("users.id", ondelete="RESTRICT"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
     balance_cents = Column(Integer, default=0, nullable=False)
@@ -213,7 +215,7 @@ class WalletTransaction(Base):
     id = Column(Integer, primary_key=True)
     wallet_id = Column(
         Integer,
-        ForeignKey("wallets.id", ondelete="RESTRICT"),
+        ForeignKey("wallets.id", ondelete="CASCADE"),
         nullable=False,
     )
     type = Column(String(20), nullable=False)

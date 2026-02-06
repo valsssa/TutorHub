@@ -473,6 +473,13 @@ async def authenticate_websocket(websocket: WebSocket, token: str, db: Session) 
     try:
         # Decode and validate JWT
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+        # Validate token type is "access" (reject refresh tokens)
+        token_type = payload.get("type")
+        if token_type != "access":
+            logger.debug(f"WebSocket auth failed: Invalid token type '{token_type}'")
+            return None
+
         email: str = payload.get("sub")
         if not email:
             logger.debug("WebSocket auth failed: No email in token")

@@ -415,14 +415,23 @@ async def list_bookings(
         joinedload(Booking.subject),
     )
 
-    # Filter by user role
-    if current_user.role == "student" or role == "student":
+    # Filter by user role - check actual role first, then use query param for dual-role users
+    if current_user.role == "student":
         query = query.filter(Booking.student_id == current_user.id)
-    elif current_user.role == "tutor" or role == "tutor":
+    elif current_user.role == "tutor":
         tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == current_user.id).first()
         if not tutor_profile:
             return BookingListResponse(bookings=[], total=0, page=page, page_size=page_size)
         query = query.filter(Booking.tutor_profile_id == tutor_profile.id)
+    elif current_user.role in ("admin", "owner"):
+        # Admin/owner: use role param to filter, or show all if no role specified
+        if role == "student":
+            query = query.filter(Booking.student_id == current_user.id)
+        elif role == "tutor":
+            tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == current_user.id).first()
+            if not tutor_profile:
+                return BookingListResponse(bookings=[], total=0, page=page, page_size=page_size)
+            query = query.filter(Booking.tutor_profile_id == tutor_profile.id)
 
     # Apply status filter using new session_state field
     if status_filter:

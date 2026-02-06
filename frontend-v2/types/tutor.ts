@@ -19,11 +19,10 @@ export interface Subject {
 export interface TutorProfile {
   id: number;
   user_id: number;
-  // Name fields from backend - first_name/last_name
+  // Name fields from backend
   first_name?: string;
   last_name?: string;
-  // Legacy name fields for backwards compatibility
-  name?: string;
+  name?: string; // Combined first+last from /tutors/{id} endpoint
   display_name?: string;
   title?: string;
   headline?: string;

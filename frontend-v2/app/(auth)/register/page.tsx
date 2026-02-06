@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const defaultRole = searchParams.get('role') as 'student' | 'tutor' | null;
+  const roleParam = searchParams.get('role');
+  const defaultRole = roleParam === 'student' || roleParam === 'tutor' ? roleParam : 'student';
   const { register: registerUser, isRegistering, registerError } = useAuth();
 
   const form = useForm<RegisterFormData>({
@@ -24,7 +25,7 @@ function RegisterForm() {
       confirmPassword: '',
       first_name: '',
       last_name: '',
-      role: defaultRole || 'student',
+      role: defaultRole,
     },
   });
 
@@ -124,6 +125,12 @@ function RegisterForm() {
             error={form.formState.errors.confirmPassword?.message}
             {...form.register('confirmPassword')}
           />
+
+          {form.formState.errors.root && (
+            <p className="text-sm text-red-500">
+              {form.formState.errors.root.message}
+            </p>
+          )}
 
           {registerError && (
             <p className="text-sm text-red-500">

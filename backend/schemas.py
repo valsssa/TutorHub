@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from core.constants import is_valid_language_code, is_valid_proficiency_level
-from core.sanitization import sanitize_url, validate_phone_number, validate_video_url
+from core.sanitization import sanitize_html, sanitize_url, validate_phone_number, validate_video_url
 from core.timezone import is_valid_timezone
 from core.utils import StringUtils
 
@@ -41,6 +41,7 @@ class UserCreate(BaseModel):
     def validate_name(cls, value: str, info) -> str:
         """Validate and normalize name fields.
 
+        - Sanitizes HTML to prevent stored XSS
         - Trims leading/trailing whitespace
         - Rejects whitespace-only strings
         - Enforces min 1 char after trim, max 100 chars
@@ -48,8 +49,11 @@ class UserCreate(BaseModel):
         if not value:
             raise ValueError(f"{info.field_name.replace('_', ' ').title()} is required")
 
+        # Sanitize HTML to prevent stored XSS
+        normalized = sanitize_html(value) or ""
+
         # Normalize: trim whitespace
-        normalized = value.strip()
+        normalized = normalized.strip()
 
         # Reject whitespace-only strings
         if not normalized:
@@ -876,12 +880,16 @@ class UserSelfUpdate(BaseModel):
 
         If a name is provided, it must be non-empty after trimming.
         This prevents clearing names via update.
+        Sanitizes HTML to prevent stored XSS.
         """
         if value is None:
             return None
 
+        # Sanitize HTML to prevent stored XSS
+        normalized = sanitize_html(value) or ""
+
         # Normalize: trim whitespace
-        normalized = value.strip()
+        normalized = normalized.strip()
 
         # Reject whitespace-only strings (prevents clearing via "   ")
         if not normalized:

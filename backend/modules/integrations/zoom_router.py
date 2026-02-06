@@ -114,9 +114,10 @@ class ZoomClient:
     def __init__(self):
         self._access_token: str | None = None
         self._token_expires: datetime | None = None
+        self._token_lock = asyncio.Lock()
 
     async def _get_access_token(self) -> str:
-        """Get or refresh Server-to-Server OAuth token."""
+        """Get or refresh Server-to-Server OAuth token (thread-safe)."""
 
         if not settings.ZOOM_CLIENT_ID or not settings.ZOOM_CLIENT_SECRET:
             raise HTTPException(
@@ -124,7 +125,7 @@ class ZoomClient:
                 detail="Zoom integration not configured",
             )
 
-        # Check if token is still valid
+        # Check if token is still valid (fast path, no lock needed)
         if (
             self._access_token
             and self._token_expires
@@ -132,36 +133,46 @@ class ZoomClient:
         ):
             return self._access_token
 
-        # Get new token using Server-to-Server OAuth
-        credentials = base64.b64encode(
-            f"{settings.ZOOM_CLIENT_ID}:{settings.ZOOM_CLIENT_SECRET}".encode()
-        ).decode()
+        # Acquire lock to prevent concurrent token refreshes
+        async with self._token_lock:
+            # Re-check after acquiring lock (another coroutine may have refreshed)
+            if (
+                self._access_token
+                and self._token_expires
+                and datetime.now(UTC) < self._token_expires - timedelta(minutes=5)
+            ):
+                return self._access_token
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                ZOOM_TOKEN_URL,
-                headers={
-                    "Authorization": f"Basic {credentials}",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                data={
-                    "grant_type": "account_credentials",
-                    "account_id": settings.ZOOM_ACCOUNT_ID,
-                },
-            )
+            # Get new token using Server-to-Server OAuth
+            credentials = base64.b64encode(
+                f"{settings.ZOOM_CLIENT_ID}:{settings.ZOOM_CLIENT_SECRET}".encode()
+            ).decode()
 
-            if response.status_code != 200:
-                logger.error(f"Zoom token error: {response.text}")
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Failed to authenticate with Zoom",
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    ZOOM_TOKEN_URL,
+                    headers={
+                        "Authorization": f"Basic {credentials}",
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    data={
+                        "grant_type": "account_credentials",
+                        "account_id": settings.ZOOM_ACCOUNT_ID,
+                    },
                 )
 
-            data = response.json()
-            self._access_token = data["access_token"]
-            self._token_expires = datetime.now(UTC) + timedelta(seconds=data["expires_in"])
+                if response.status_code != 200:
+                    logger.error(f"Zoom token error: {response.text}")
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail="Failed to authenticate with Zoom",
+                    )
 
-            return self._access_token
+                data = response.json()
+                self._access_token = data["access_token"]
+                self._token_expires = datetime.now(UTC) + timedelta(seconds=data["expires_in"])
+
+                return self._access_token
 
     async def create_meeting(
         self,

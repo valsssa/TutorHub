@@ -272,7 +272,7 @@ async def use_package_credit(
     is_valid, error_message = PackageExpirationService.check_package_validity(package)
     if not is_valid:
         # If expired, mark it atomically and commit
-        if "expired" in error_message.lower() and package.status == "active":
+        if error_message and "expired" in error_message.lower() and package.status == "active":
             db.execute(
                 update(StudentPackage)
                 .where(

@@ -15,7 +15,7 @@ from core.sanitization import sanitize_text_input
 from core.transactions import atomic_operation
 from core.utils import StringUtils, paginate
 from database import get_db
-from models import Booking, Notification, Review, Subject, TutorProfile, User
+from models import Booking, Notification, Review, Subject, TutorProfile, TutorResponseLog, User
 from modules.users.avatar.schemas import AvatarResponse
 from modules.users.avatar.service import AvatarService
 from schemas import (
@@ -702,6 +702,7 @@ async def get_recent_activities(
                     "action": action,
                     "time": time_str,
                     "type": "success" if is_completed else "info",
+                    "_created_at": booking.created_at,
                 }
             )
 
@@ -727,15 +728,20 @@ async def get_recent_activities(
                     "action": action,
                     "time": time_str,
                     "type": "info",
+                    "_created_at": user.created_at,
                 }
             )
 
-        # Sort by most recent and limit
+        # Sort by most recent timestamp and limit
         activities_sorted = sorted(
             activities,
-            key=lambda x: x["id"] if x["id"] < 10000 else x["id"] - 10000,
+            key=lambda x: x["_created_at"],
             reverse=True,
         )[:limit]
+
+        # Remove internal sort key before returning
+        for activity in activities_sorted:
+            del activity["_created_at"]
 
         logger.info(f"Admin {current_user.email} fetched recent activities")
         return activities_sorted
@@ -869,8 +875,8 @@ async def get_session_metrics(
             ),
             SessionMetric(
                 metric="Response Time",
-                value="2.1 min",
-                change="-0.3 min",
+                value=_get_avg_response_time(db, current_month_start),
+                change=_get_response_time_change(db, current_month_start, previous_month_start),
             ),
         ]
 
@@ -1074,3 +1080,43 @@ def calculate_avg_duration(bookings: list) -> float:
             total_minutes += duration
 
     return total_minutes / len(bookings) if bookings else 0.0
+
+
+def _get_avg_response_time(db: Session, since: datetime) -> str:
+    """Get average tutor response time since a given date."""
+    avg_minutes = (
+        db.query(func.avg(TutorResponseLog.response_time_minutes))
+        .filter(
+            TutorResponseLog.response_time_minutes.isnot(None),
+            TutorResponseLog.booking_created_at >= since,
+        )
+        .scalar()
+    )
+    if avg_minutes is None:
+        return "N/A"
+    return f"{float(avg_minutes):.1f} min"
+
+
+def _get_response_time_change(db: Session, current_start: datetime, previous_start: datetime) -> str:
+    """Get change in avg response time between current and previous period."""
+    current_avg = (
+        db.query(func.avg(TutorResponseLog.response_time_minutes))
+        .filter(
+            TutorResponseLog.response_time_minutes.isnot(None),
+            TutorResponseLog.booking_created_at >= current_start,
+        )
+        .scalar()
+    )
+    previous_avg = (
+        db.query(func.avg(TutorResponseLog.response_time_minutes))
+        .filter(
+            TutorResponseLog.response_time_minutes.isnot(None),
+            TutorResponseLog.booking_created_at >= previous_start,
+            TutorResponseLog.booking_created_at < current_start,
+        )
+        .scalar()
+    )
+    if current_avg is None or previous_avg is None:
+        return "N/A"
+    change = float(current_avg) - float(previous_avg)
+    return f"{change:+.1f} min"

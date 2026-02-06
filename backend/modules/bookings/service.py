@@ -6,6 +6,7 @@ Implements core booking business logic per booking_detail.md spec.
 import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, or_, update
@@ -554,7 +555,7 @@ class BookingService:
     def mark_no_show(
         self,
         booking: Booking,
-        reporter_role: str,
+        reporter_role: Literal["STUDENT", "TUTOR"],
         notes: str | None = None,
         *,
         use_lock: bool = False,
@@ -691,7 +692,7 @@ class BookingService:
         import time
 
         # Generate a secure, deterministic token based on booking_id
-        secret = "platform_meeting_secret_key"  # Should be in settings
+        secret = settings.SECRET_KEY
         timestamp = int(time.time() / 3600)  # Changes every hour for security
         token_data = f"{booking_id}:{timestamp}:{secret}"
         secure_token = hashlib.sha256(token_data.encode()).hexdigest()[:16]

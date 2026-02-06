@@ -3,7 +3,10 @@ import { z } from 'zod';
 export const createBookingSchema = z.object({
   tutor_id: z.number().positive('Please select a tutor'),
   subject_id: z.number().positive('Please select a subject'),
-  start_time: z.string().datetime('Invalid date/time'),
+  start_time: z.string().min(1, 'Please select a date and time').refine(
+    (val) => !isNaN(Date.parse(val)),
+    'Invalid date/time'
+  ),
   duration: z.enum(['30', '60', '90', '120'], {
     message: 'Please select a duration',
   }),

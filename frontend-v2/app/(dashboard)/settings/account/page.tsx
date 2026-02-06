@@ -55,7 +55,8 @@ export default function AccountSettingsPage() {
         timezone: user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
     }
-  }, [user, accountForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const onTimezoneSubmit = async (data: AccountSettingsFormData) => {
     setTimezoneSuccess(false);

@@ -8,11 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_student_user
-from core.query_helpers import exists_or_409, get_by_id_or_404, get_or_404
 from core.rate_limiting import limiter
 from database import get_db
-from models import FavoriteTutor, StudentProfile, TutorProfile, User
-from schemas import FavoriteTutorCreate, FavoriteTutorResponse, StudentProfileResponse, StudentProfileUpdate
+from models import StudentProfile, User
+from schemas import StudentProfileResponse, StudentProfileUpdate
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -77,10 +76,12 @@ async def update_student_profile(
         for field, value in update_fields.items():
             setattr(profile, field, value)
 
+        # Fetch the user record from the current db session for syncing user-level fields.
+        # current_user may be loaded in a separate session and become stale.
+        user_record = db.query(User).filter(User.id == current_user.id).first()
+
         # Keep profile preferred_language in sync with user preference if provided.
-        # current_user is loaded in a separate session; persist the change on this db session.
         if "preferred_language" in update_fields and update_fields["preferred_language"]:
-            user_record = db.query(User).filter(User.id == current_user.id).first()
             if user_record:
                 user_record.preferred_language = update_fields["preferred_language"]
 
@@ -91,8 +92,8 @@ async def update_student_profile(
 
         db.commit()
         db.refresh(profile)
-        # Add derived fields for response
-        profile.timezone = current_user.timezone
+        # Add derived fields for response using fresh user record
+        profile.timezone = user_record.timezone if user_record else current_user.timezone
         logger.info(f"Student profile updated successfully for user: {current_user.id}")
         return profile
     except Exception as e:
@@ -107,156 +108,5 @@ async def update_student_profile(
         )
 
 
-# ============================================================================
-# Favorite Tutors Endpoints
-# ============================================================================
-
-favorites_router = APIRouter(prefix="/favorites", tags=["favorites"])
-
-
-@favorites_router.get("", response_model=list[FavoriteTutorResponse])
-@limiter.limit("20/minute")
-async def get_favorite_tutors(
-    request: Request,
-    current_user: User = Depends(get_current_student_user),
-    db: Session = Depends(get_db),
-):
-    """Get current student's favorite tutors."""
-    try:
-        logger.debug(f"Fetching favorite tutors for user: {current_user.id}")
-        favorites = (
-            db.query(FavoriteTutor)
-            .filter(FavoriteTutor.student_id == current_user.id)
-            .order_by(FavoriteTutor.created_at.desc())
-            .all()
-        )
-        return favorites
-    except Exception as e:
-        logger.error(
-            f"Error fetching favorite tutors for user {current_user.id}: {str(e)}",
-            exc_info=True,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve favorite tutors",
-        )
-
-
-@favorites_router.post("", response_model=FavoriteTutorResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit("10/minute")
-async def add_favorite_tutor(
-    request: Request,
-    favorite_data: FavoriteTutorCreate,
-    current_user: User = Depends(get_current_student_user),
-    db: Session = Depends(get_db),
-):
-    """Add a tutor to student's favorites."""
-    try:
-        logger.info(f"Adding favorite tutor {favorite_data.tutor_profile_id} for user: {current_user.id}")
-
-        # Check if tutor profile exists
-        get_by_id_or_404(db, TutorProfile, favorite_data.tutor_profile_id, detail="Tutor profile not found")
-
-        # Check if already favorited
-        exists_or_409(
-            db, FavoriteTutor,
-            {"student_id": current_user.id, "tutor_profile_id": favorite_data.tutor_profile_id},
-            detail="Tutor is already in favorites"
-        )
-
-        # Create favorite
-        favorite = FavoriteTutor(
-            student_id=current_user.id,
-            tutor_profile_id=favorite_data.tutor_profile_id
-        )
-        db.add(favorite)
-        db.commit()
-        db.refresh(favorite)
-
-        logger.info(f"Favorite tutor added successfully for user: {current_user.id}")
-        return favorite
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            f"Error adding favorite tutor for user {current_user.id}: {str(e)}",
-            exc_info=True,
-        )
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to add favorite tutor",
-        )
-
-
-@favorites_router.delete("/{tutor_profile_id}", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit("10/minute")
-async def remove_favorite_tutor(
-    request: Request,
-    tutor_profile_id: int,
-    current_user: User = Depends(get_current_student_user),
-    db: Session = Depends(get_db),
-):
-    """Remove a tutor from student's favorites."""
-    try:
-        logger.info(f"Removing favorite tutor {tutor_profile_id} for user: {current_user.id}")
-
-        # Find and delete the favorite
-        favorite = get_or_404(
-            db, FavoriteTutor,
-            {"student_id": current_user.id, "tutor_profile_id": tutor_profile_id},
-            detail="Favorite tutor not found"
-        )
-
-        db.delete(favorite)
-        db.commit()
-
-        logger.info(f"Favorite tutor removed successfully for user: {current_user.id}")
-        return None
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            f"Error removing favorite tutor for user {current_user.id}: {str(e)}",
-            exc_info=True,
-        )
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to remove favorite tutor",
-        )
-
-
-@favorites_router.get("/{tutor_profile_id}", response_model=FavoriteTutorResponse)
-@limiter.limit("20/minute")
-async def check_favorite_status(
-    request: Request,
-    tutor_profile_id: int,
-    current_user: User = Depends(get_current_student_user),
-    db: Session = Depends(get_db),
-):
-    """Check if a tutor is in student's favorites."""
-    try:
-        logger.debug(f"Checking favorite status for tutor {tutor_profile_id}, user: {current_user.id}")
-
-        favorite = get_or_404(
-            db, FavoriteTutor,
-            {"student_id": current_user.id, "tutor_profile_id": tutor_profile_id},
-            detail="Tutor is not in favorites"
-        )
-
-        return favorite
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            f"Error checking favorite status for user {current_user.id}: {str(e)}",
-            exc_info=True,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to check favorite status",
-        )
+# NOTE: Favorites endpoints have been consolidated into modules/favorites/api.py
+# The duplicate favorites_router that was here has been removed to avoid route conflicts.

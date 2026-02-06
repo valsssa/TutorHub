@@ -188,7 +188,7 @@ function TutorProfile() {
                   <span className="text-xs sm:text-sm text-slate-500">Total Sessions</span>
                 </div>
                 <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                  {tutorProfile?.review_count ? tutorProfile.total_reviews ?? 0 * 3 : 0}
+                  {tutorProfile?.total_sessions ?? (tutorProfile?.total_reviews ?? 0)}
                 </p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800">

@@ -23,8 +23,8 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True)
-    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
-    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="SET NULL"))
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="SET NULL"))
     start_time = Column(TIMESTAMP(timezone=True), nullable=False)
     end_time = Column(TIMESTAMP(timezone=True), nullable=False)
@@ -57,7 +57,7 @@ class Booking(Base):
     # Pricing fields (production schema)
     hourly_rate = Column(DECIMAL(10, 2), nullable=False)
     total_amount = Column(DECIMAL(10, 2), nullable=False)
-    rate_cents = Column(Integer, nullable=True)
+    rate_cents = Column(Integer, nullable=False)
     currency = Column(String(3), default="USD", nullable=False)
     platform_fee_pct = Column(DECIMAL(5, 2), default=20.0, nullable=False)
     platform_fee_cents = Column(Integer, default=0, nullable=False)

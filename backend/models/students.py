@@ -95,7 +95,7 @@ class StudentPackage(Base):
     tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"), nullable=False)
     pricing_option_id = Column(
         Integer,
-        ForeignKey("tutor_pricing_options.id", ondelete="RESTRICT"),
+        ForeignKey("tutor_pricing_options.id", ondelete="CASCADE"),
         nullable=False,
     )
     sessions_purchased = Column(Integer, nullable=False)

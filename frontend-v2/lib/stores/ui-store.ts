@@ -7,6 +7,26 @@ export interface Toast {
   duration?: number;
 }
 
+type Theme = 'light' | 'dark' | 'system';
+
+function getStoredTheme(): Theme {
+  if (typeof window === 'undefined') return 'system';
+  const stored = localStorage.getItem('theme');
+  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+  return 'system';
+}
+
+function applyThemeToDOM(theme: Theme) {
+  if (typeof document === 'undefined') return;
+  let isDark: boolean;
+  if (theme === 'system') {
+    isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } else {
+    isDark = theme === 'dark';
+  }
+  document.documentElement.classList.toggle('dark', isDark);
+}
+
 interface UIState {
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
@@ -25,8 +45,9 @@ interface UIState {
   mobileNavOpen: boolean;
   setMobileNavOpen: (open: boolean) => void;
 
-  theme: 'light' | 'dark' | 'system';
-  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  initTheme: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -57,7 +78,18 @@ export const useUIStore = create<UIState>((set) => ({
   setMobileNavOpen: (open) => set({ mobileNavOpen: open }),
 
   theme: 'system',
-  setTheme: (theme) => set({ theme }),
+  setTheme: (theme) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', theme);
+    }
+    applyThemeToDOM(theme);
+    set({ theme });
+  },
+  initTheme: () => {
+    const theme = getStoredTheme();
+    applyThemeToDOM(theme);
+    set({ theme });
+  },
 }));
 
 export function useToast() {

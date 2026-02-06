@@ -1,6 +1,6 @@
 import type { TutorProfile } from './tutor';
 
-export type PurchasedPackageStatus = 'active' | 'expired' | 'exhausted' | 'cancelled';
+export type PurchasedPackageStatus = 'active' | 'expired' | 'exhausted' | 'refunded';
 
 // TutorPricingOption from backend (matches TutorPricingOptionResponse schema)
 export interface PricingOption {

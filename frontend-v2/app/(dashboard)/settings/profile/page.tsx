@@ -47,7 +47,8 @@ export default function ProfileSettingsPage() {
         bio: '', // Bio is not in the User type currently
       });
     }
-  }, [user, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const onSubmit = async (data: ProfileFormData) => {
     setSaveSuccess(false);

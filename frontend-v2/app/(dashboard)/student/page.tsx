@@ -24,16 +24,16 @@ function StatCard({
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30">
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex flex-col items-center text-center gap-2 sm:flex-row sm:items-center sm:text-left sm:gap-3">
+          <div className="p-2.5 rounded-lg bg-primary-100 dark:bg-primary-900/30">
             <Icon className="h-5 w-5 text-primary-600" />
           </div>
           <div>
             <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               {value}
             </p>
-            <p className="text-sm text-slate-500">{label}</p>
+            <p className="text-xs sm:text-sm text-slate-500">{label}</p>
           </div>
         </div>
       </CardContent>
@@ -68,7 +68,7 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {statsLoading ? (
           <>
             <Skeleton className="h-24 rounded-2xl" />

@@ -284,13 +284,7 @@ class MessageService:
                         Message.recipient_id == user_id,
                         Message.sender_id == t[0],  # other_user_id
                         Message.is_read.is_(False),
-                        or_(
-                            Message.booking_id == booking_id,
-                            and_(
-                                booking_id.is_(None) if booking_id is None else False,
-                                Message.booking_id.is_(None),
-                            ),
-                        )
+                        Message.booking_id == booking_id
                         if booking_id is not None
                         else Message.booking_id.is_(None),
                     )

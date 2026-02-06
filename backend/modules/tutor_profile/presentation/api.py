@@ -112,7 +112,7 @@ Retrieve the complete tutor profile for the currently authenticated tutor user.
         },
     },
 )
-def get_my_profile(
+async def get_my_profile(
     request: Request,
     current_user=Depends(get_current_tutor_user),
     db: Session = Depends(get_db),
@@ -123,7 +123,7 @@ def get_my_profile(
 
 @router.patch("/me/about", response_model=TutorProfileResponse)
 @limiter.limit("10/minute")
-def update_about_section(
+async def update_about_section(
     request: Request,
     payload: TutorAboutUpdate,
     current_user=Depends(get_current_tutor_user),
@@ -221,7 +221,7 @@ async def replace_education_section(
 
 @router.put("/me/subjects", response_model=TutorProfileResponse)
 @limiter.limit("10/minute")
-def replace_subjects_section(
+async def replace_subjects_section(
     request: Request,
     payload: list[TutorSubjectInput],
     current_user=Depends(get_current_tutor_user),
@@ -233,7 +233,7 @@ def replace_subjects_section(
 
 @router.patch("/me/description", response_model=TutorProfileResponse)
 @limiter.limit("10/minute")
-def update_description_section(
+async def update_description_section(
     request: Request,
     payload: TutorDescriptionUpdate,
     current_user=Depends(get_current_tutor_user),
@@ -245,7 +245,7 @@ def update_description_section(
 
 @router.patch("/me/video", response_model=TutorProfileResponse)
 @limiter.limit("10/minute")
-def update_video_section(
+async def update_video_section(
     request: Request,
     payload: TutorVideoUpdate,
     current_user=Depends(get_current_tutor_user),
@@ -269,7 +269,7 @@ async def update_profile_photo(
 
 @router.patch("/me/pricing", response_model=TutorProfileResponse)
 @limiter.limit("10/minute")
-def update_pricing_section(
+async def update_pricing_section(
     request: Request,
     payload: TutorPricingUpdate,
     current_user=Depends(get_current_tutor_user),
@@ -281,7 +281,7 @@ def update_pricing_section(
 
 @router.put("/me/availability", response_model=TutorProfileResponse)
 @limiter.limit("10/minute")
-def replace_availability_section(
+async def replace_availability_section(
     request: Request,
     payload: TutorAvailabilityBulkUpdate,
     current_user=Depends(get_current_tutor_user),
@@ -293,7 +293,7 @@ def replace_availability_section(
 
 @router.post("/me/submit", response_model=TutorProfileResponse)
 @limiter.limit("5/minute")
-def submit_profile_for_review(
+async def submit_profile_for_review(
     request: Request,
     current_user=Depends(get_current_tutor_user),
     db: Session = Depends(get_db),
@@ -304,7 +304,7 @@ def submit_profile_for_review(
 
 @router.get("", response_model=PaginatedResponse[TutorPublicProfile])
 @limiter.limit("60/minute")
-def list_tutors(
+async def list_tutors(
     request: Request,
     pagination: PaginationParams = Depends(),
     subject_id: int | None = None,
@@ -346,7 +346,7 @@ def list_tutors(
 
 @router.get("/{tutor_id}/public", response_model=TutorPublicProfile)
 @limiter.limit("60/minute")
-def get_tutor_public_profile(
+async def get_tutor_public_profile(
     request: Request,
     tutor_id: int,
     db: Session = Depends(get_db),
@@ -360,7 +360,7 @@ def get_tutor_public_profile(
 
 @router.get("/{tutor_id}", response_model=TutorProfileResponse)
 @limiter.limit("60/minute")
-def get_tutor_profile(
+async def get_tutor_profile(
     request: Request,
     tutor_id: int,
     db: Session = Depends(get_db),
@@ -374,7 +374,7 @@ def get_tutor_profile(
 
 @router.get("/{tutor_id}/reviews")
 @limiter.limit("60/minute")
-def get_tutor_reviews(
+async def get_tutor_reviews(
     request: Request,
     tutor_id: int,
     current_user=Depends(get_current_user),

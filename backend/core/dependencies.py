@@ -157,7 +157,7 @@ async def get_current_user(
         )
 
     try:
-        payload = TokenManager.decode_token(token)
+        payload = TokenManager.decode_token(token, expected_type="access")
         email: str = payload.get("sub")
         if email is None:
             raise AuthenticationError("Invalid token payload")
@@ -232,7 +232,7 @@ async def get_current_user_optional(
         return None
 
     try:
-        payload = TokenManager.decode_token(token)
+        payload = TokenManager.decode_token(token, expected_type="access")
         email: str = payload.get("sub")
         if email is None:
             return None

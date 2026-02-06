@@ -94,10 +94,11 @@ export function Sidebar() {
           'transition-all duration-300',
           'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]',
           mobileNavOpen
-            ? 'w-64 max-w-[80vw] translate-x-0'
+            ? 'w-64 max-w-[80vw] translate-x-0 pointer-events-auto'
             : cn(
                 sidebarCollapsed ? 'w-20' : 'w-64',
-                '-translate-x-full lg:translate-x-0'
+                '-translate-x-full lg:translate-x-0',
+                'max-lg:pointer-events-none lg:pointer-events-auto'
               )
         )}
       >
@@ -128,7 +129,8 @@ export function Sidebar() {
         <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
           {items.map((item) => {
             const isActive =
-              pathname === item.href || pathname.startsWith(item.href + '/');
+              pathname === item.href ||
+              (item.href !== '/' && item.href !== '/student' && item.href !== '/tutor' && item.href !== '/admin' && item.href !== '/owner' && pathname.startsWith(item.href + '/'));
             return (
               <Link
                 key={item.href}

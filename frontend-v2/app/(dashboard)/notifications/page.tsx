@@ -20,77 +20,6 @@ import {
 import { NotificationItem } from '@/components/notifications';
 import type { Notification, NotificationType } from '@/types/notification';
 
-const mockNotifications: Notification[] = [
-  {
-    id: 1,
-    type: 'booking_request',
-    title: 'New Booking Request',
-    message: 'John Doe has requested a tutoring session for Mathematics on Feb 15.',
-    is_read: false,
-    read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    action_url: '/bookings',
-  },
-  {
-    id: 2,
-    type: 'message',
-    title: 'New Message',
-    message: 'Sarah Williams sent you a message: "Hi! I have a question about..."',
-    is_read: false,
-    read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    action_url: '/messages/1',
-  },
-  {
-    id: 3,
-    type: 'booking_confirmed',
-    title: 'Booking Confirmed',
-    message: 'Your tutoring session with Michael Chen has been confirmed for Feb 14.',
-    is_read: true,
-    read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    action_url: '/bookings',
-  },
-  {
-    id: 4,
-    type: 'payment',
-    title: 'Payment Received',
-    message: 'You received a payment of $50.00 for your tutoring session.',
-    is_read: true,
-    read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-    action_url: '/wallet',
-  },
-  {
-    id: 5,
-    type: 'review',
-    title: 'New Review',
-    message: 'Emily Johnson left you a 5-star review!',
-    is_read: true,
-    read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-  },
-  {
-    id: 6,
-    type: 'booking_cancelled',
-    title: 'Booking Cancelled',
-    message: 'Your session scheduled for Feb 10 has been cancelled by the student.',
-    is_read: true,
-    read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-  },
-  {
-    id: 7,
-    type: 'system',
-    title: 'Profile Update Reminder',
-    message: 'Complete your profile to attract more students and get more bookings.',
-    is_read: true,
-    read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-    action_url: '/profile',
-  },
-];
-
 const filterOptions: { value: NotificationType | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'booking_request', label: 'Booking Requests' },
@@ -153,7 +82,7 @@ export default function NotificationsPage() {
   const markAsRead = useMarkNotificationAsRead();
   const markAllAsRead = useMarkAllNotificationsAsRead();
 
-  const notifications = apiData?.items ?? mockNotifications;
+  const notifications = apiData?.items ?? [];
   const unreadCount = countData?.unread_count ?? notifications.filter((n) => !n.read).length;
 
   const filteredNotifications = useMemo(() => {

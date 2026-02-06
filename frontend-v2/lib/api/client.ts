@@ -45,7 +45,6 @@ export function getCsrfToken(): string | null {
 }
 
 class ApiClient {
-  private isRefreshing = false;
   private refreshPromise: Promise<boolean> | null = null;
 
   /**
@@ -90,11 +89,9 @@ class ApiClient {
 
     // On 401, try to refresh tokens (unless this is already a retry)
     if (response.status === 401 && !options._isRetry) {
-      // Ensure only one refresh happens at a time
-      if (!this.isRefreshing) {
-        this.isRefreshing = true;
+      // Ensure only one refresh happens at a time; concurrent requests queue on the same promise
+      if (!this.refreshPromise) {
         this.refreshPromise = this.tryRefresh().finally(() => {
-          this.isRefreshing = false;
           this.refreshPromise = null;
         });
       }

@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { Star } from 'lucide-react';
-import { Card, CardContent, Avatar, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Avatar, Badge, buttonVariants } from '@/components/ui';
 import { FavoriteButton } from '@/components/favorites';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import type { TutorProfile } from '@/types';
 
 interface TutorCardProps {
@@ -74,9 +74,12 @@ export function TutorCard({ tutor, showFavorite = true }: TutorCardProps) {
             </span>
             <span className="text-xs sm:text-sm text-slate-500">/hr</span>
           </div>
-          <Button asChild size="sm" className="shrink-0">
-            <Link href={`/tutors/${tutor.id}`}>View Profile</Link>
-          </Button>
+          <Link
+            href={`/tutors/${tutor.id}`}
+            className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'shrink-0')}
+          >
+            View Profile
+          </Link>
         </div>
       </CardContent>
     </Card>

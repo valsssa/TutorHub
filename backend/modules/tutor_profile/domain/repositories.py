@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 
 from .entities import TutorAvailabilityEntity, TutorProfileAggregate
 
@@ -29,7 +29,7 @@ class TutorProfileRepository(Protocol):
 
     def get_by_id(self, db, tutor_id: int) -> TutorProfileAggregate | None: ...
 
-    def list_public(self, db, filters: TutorListingFilter) -> list[TutorProfileAggregate]: ...
+    def list_public(self, db, filters: TutorListingFilter, pagination: Any) -> tuple[list[TutorProfileAggregate], int]: ...
 
     def update_about(
         self,
@@ -55,6 +55,8 @@ class TutorProfileRepository(Protocol):
 
     def update_video(self, db, user_id: int, video_url: str) -> TutorProfileAggregate: ...
 
+    def update_profile_photo(self, db, user_id: int, photo_url: str) -> TutorProfileAggregate: ...
+
     def update_pricing(
         self, db, user_id: int, *, hourly_rate: Decimal, pricing_options: list[dict], expected_version: int
     ) -> TutorProfileAggregate: ...
@@ -67,3 +69,5 @@ class TutorProfileRepository(Protocol):
         timezone: str | None,
         expected_version: int,
     ) -> TutorProfileAggregate: ...
+
+    def submit_for_review(self, db, user_id: int) -> TutorProfileAggregate: ...

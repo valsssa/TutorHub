@@ -13,7 +13,7 @@ from sqlalchemy import (
     Text,
     Time,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -46,6 +46,9 @@ class TutorProfile(Base):
     total_sessions = Column(Integer, default=0)
     timezone = Column(String(64), default="UTC")  # Phase 3: Tutor timezone
     currency = Column(String(3), nullable=False, default="USD", server_default="USD")
+    pricing_model = Column(String(20), default="hourly", nullable=False)
+    instant_book_enabled = Column(Boolean, default=False, nullable=False)
+    instant_book_requirements = Column(Text, nullable=True)
     # Booking configuration fields (from init.sql schema)
     auto_confirm_threshold_hours = Column(Integer, default=24)
     auto_confirm = Column(Boolean, default=False)
@@ -66,6 +69,8 @@ class TutorProfile(Base):
     payout_method = Column(JSONB, nullable=True)
     # Teaching content
     teaching_philosophy = Column(Text, nullable=True)
+    # Full-text search
+    search_vector = Column(TSVECTOR, nullable=True)
     # Stripe Connect integration
     stripe_account_id = Column(String(255), nullable=True, index=True)  # acct_...
     stripe_charges_enabled = Column(Boolean, default=False)
@@ -221,7 +226,11 @@ class TutorPricingOption(Base):
     description = Column(Text)
     duration_minutes = Column(Integer, nullable=False)
     price = Column(DECIMAL(10, 2), nullable=False)
+    pricing_type = Column(String(20), default="package", nullable=False)
+    sessions_included = Column(Integer, nullable=True)
     validity_days = Column(Integer, nullable=True)  # Number of days package is valid (NULL = no expiration)
+    is_popular = Column(Boolean, default=False, nullable=False)
+    sort_order = Column(Integer, default=0, nullable=False)
     extend_on_use = Column(Boolean, default=False, nullable=False)  # Rolling expiry: extend validity on each use
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
@@ -236,6 +245,10 @@ class TutorPricingOption(Base):
         CheckConstraint("duration_minutes > 0", name="positive_duration"),
         CheckConstraint("price > 0", name="positive_price"),
         CheckConstraint("validity_days IS NULL OR validity_days > 0", name="positive_validity_days"),
+        CheckConstraint(
+            "pricing_type IN ('hourly', 'session', 'package', 'subscription')",
+            name="valid_pricing_type",
+        ),
     )
 
 

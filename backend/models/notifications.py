@@ -1,7 +1,6 @@
 """Notification models."""
 
 from sqlalchemy import (
-    JSON,
     TIMESTAMP,
     Boolean,
     CheckConstraint,
@@ -15,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from .base import Base
+from .base import Base, JSONType
 
 
 class Notification(Base):
@@ -38,7 +37,7 @@ class Notification(Base):
     sent_at = Column(TIMESTAMP(timezone=True))
     read_at = Column(TIMESTAMP(timezone=True))
     dismissed_at = Column(TIMESTAMP(timezone=True))
-    extra_data = Column(JSON)  # renamed from 'metadata' which is reserved in SQLAlchemy
+    extra_data = Column(JSONType)  # renamed from 'metadata' which is reserved in SQLAlchemy
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     # Soft delete columns

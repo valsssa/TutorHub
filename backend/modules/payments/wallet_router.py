@@ -102,8 +102,8 @@ async def create_wallet_checkout(
         currency=checkout_request.currency.lower(),
         tutor_name=None,
         subject_name="Wallet Credit Top-Up",
-        success_url=f"{request.headers.get('origin', settings.FRONTEND_URL)}/wallet?payment=success",
-        cancel_url=f"{request.headers.get('origin', settings.FRONTEND_URL)}/wallet?payment=cancelled",
+        success_url=f"{settings.FRONTEND_URL}/wallet?payment=success",
+        cancel_url=f"{settings.FRONTEND_URL}/wallet?payment=cancelled",
         customer_email=current_user.email,
         metadata={
             "payment_type": "wallet_topup",

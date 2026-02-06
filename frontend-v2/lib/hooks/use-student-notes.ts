@@ -80,40 +80,28 @@ export function useTutorStudents() {
       const studentsMap = new Map<number, TutorStudent>();
 
       bookings.forEach((booking: Booking) => {
-        if (booking.student && !studentsMap.has(booking.student.id)) {
-          const existingStudent = studentsMap.get(booking.student.id);
-          const bookingDate = new Date(booking.start_at || '');
+        if (!booking.student) return;
 
-          if (!existingStudent) {
-            studentsMap.set(booking.student.id, {
-              id: booking.student.id,
-              name: booking.student.name,
-              avatar_url: booking.student.avatar_url,
-              last_session_date: booking.start_at,
-              total_sessions: 1,
-            });
-          } else {
-            // Update if this booking is more recent
-            const existingDate = existingStudent.last_session_date
-              ? new Date(existingStudent.last_session_date)
-              : new Date(0);
+        const existingStudent = studentsMap.get(booking.student.id);
+        const bookingDate = new Date(booking.start_at || '');
 
-            if (bookingDate > existingDate) {
-              existingStudent.last_session_date = booking.start_at;
-            }
-            existingStudent.total_sessions = (existingStudent.total_sessions || 0) + 1;
-          }
-        } else if (booking.student && studentsMap.has(booking.student.id)) {
-          const student = studentsMap.get(booking.student.id)!;
-          const bookingDate = new Date(booking.start_at || '');
-          const existingDate = student.last_session_date
-            ? new Date(student.last_session_date)
+        if (!existingStudent) {
+          studentsMap.set(booking.student.id, {
+            id: booking.student.id,
+            name: booking.student.name,
+            avatar_url: booking.student.avatar_url,
+            last_session_date: booking.start_at,
+            total_sessions: 1,
+          });
+        } else {
+          const existingDate = existingStudent.last_session_date
+            ? new Date(existingStudent.last_session_date)
             : new Date(0);
 
           if (bookingDate > existingDate) {
-            student.last_session_date = booking.start_at;
+            existingStudent.last_session_date = booking.start_at;
           }
-          student.total_sessions = (student.total_sessions || 0) + 1;
+          existingStudent.total_sessions = (existingStudent.total_sessions || 0) + 1;
         }
       });
 

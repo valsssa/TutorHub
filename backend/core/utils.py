@@ -1,6 +1,7 @@
 """Common utility functions."""
 
 import functools
+import inspect
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -100,7 +101,7 @@ def handle_db_errors(
                 ) from e
 
         # Return appropriate wrapper based on function type
-        if functools.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
 

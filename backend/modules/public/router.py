@@ -129,7 +129,7 @@ async def get_platform_stats(db: DatabaseSession) -> PlatformStats:
     return PlatformStats(
         tutor_count=tutor_count,
         student_count=student_count,
-        average_rating=round(float(avg_rating or 4.8), 1),  # Default to 4.8 if no ratings
+        average_rating=round(float(avg_rating), 1) if avg_rating else 0.0,
         completed_sessions=completed_sessions,
         generated_at=datetime.now(UTC),
     )
@@ -159,10 +159,13 @@ async def get_featured_reviews(
 ) -> FeaturedReviewsResponse:
     """Get featured reviews for homepage testimonials."""
 
-    # Get high-rated reviews with comments
+    from sqlalchemy.orm import joinedload as jl
+
+    # Get high-rated reviews with comments, eagerly loading reviewer
     # Note: Review uses student_id, not reviewer_id
     reviews = (
         db.query(Review)
+        .options(jl(Review.student))
         .join(User, Review.student_id == User.id)
         .filter(
             Review.rating >= 4,
@@ -180,8 +183,8 @@ async def get_featured_reviews(
 
     featured_reviews = []
     for review in reviews:
-        # Get reviewer info (student who wrote the review)
-        reviewer = db.query(User).filter(User.id == review.student_id).first()
+        # Use eagerly loaded reviewer (avoids N+1 query)
+        reviewer = review.student
         if not reviewer:
             continue
 

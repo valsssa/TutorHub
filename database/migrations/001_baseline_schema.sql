@@ -565,6 +565,13 @@ CREATE TABLE IF NOT EXISTS payments (
     provider_payment_id TEXT,
     status VARCHAR(30) NOT NULL DEFAULT 'REQUIRES_ACTION',
     metadata JSONB DEFAULT '{}',
+    -- Stripe-specific fields
+    stripe_checkout_session_id VARCHAR(255),
+    stripe_payment_intent_id VARCHAR(255),
+    paid_at TIMESTAMPTZ,
+    refunded_at TIMESTAMPTZ,
+    refund_amount_cents INTEGER,
+    error_message TEXT,
     deleted_at TIMESTAMPTZ,
     deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,

@@ -21,9 +21,9 @@ class Review(Base):
     __tablename__ = "reviews"
 
     id = Column(Integer, primary_key=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), unique=True)
-    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="CASCADE"))
-    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="SET NULL"), unique=True)
+    tutor_profile_id = Column(Integer, ForeignKey("tutor_profiles.id", ondelete="SET NULL"))
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     rating = Column(Integer, nullable=False)
     comment = Column(Text)
     is_public = Column(Boolean, default=True)

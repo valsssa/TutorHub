@@ -24,7 +24,7 @@ tracing_initialized = init_tracing()
 from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse, StreamingResponse  # noqa: E402
 from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
-from sqlalchemy import func  # noqa: E402
+from sqlalchemy import func, select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from auth import get_password_hash  # noqa: E402
@@ -781,7 +781,7 @@ def health_check(db: Session = Depends(get_db)):
     logger.debug("Health check endpoint accessed")
     try:
         # Test database connection
-        db.execute(func.now())
+        db.execute(select(func.now()))
         logger.debug("Database connection successful")
         return {
             "status": "healthy",

@@ -50,7 +50,7 @@ def test_tutor_profile_field_types():
         ("profile_completeness_score", 0),
         ("cancellation_strikes", 0),
     ]
-    for field, expected_default in integer_fields_with_defaults:
+    for field, _expected_default in integer_fields_with_defaults:
         assert field in columns, f"Missing field: {field}"
 
 

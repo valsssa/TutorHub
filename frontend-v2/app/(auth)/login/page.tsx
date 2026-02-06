@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,10 +9,25 @@ import { useAuth } from '@/lib/hooks';
 import { loginSchema, type LoginFormData } from '@/lib/validators';
 import { Card, CardContent, Button, Input, Skeleton } from '@/components/ui';
 
+function LoginFormSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-4 sm:p-6">
+        <Skeleton className="h-7 sm:h-8 w-40 mb-4 sm:mb-6" />
+        <div className="space-y-3 sm:space-y-4">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-11 w-full" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isLoggingIn, loginError } = useAuth();
+  const { user, isLoading, login, isLoggingIn, loginError } = useAuth();
 
   const registered = searchParams.get('registered') === 'true';
   const reset = searchParams.get('reset') === 'true';
@@ -26,14 +41,40 @@ function LoginForm() {
     },
   });
 
+  const getRoleBasedRedirect = (role?: string) => {
+    switch (role) {
+      case 'admin': return '/admin';
+      case 'tutor': return '/tutor';
+      case 'owner': return '/owner';
+      default: return '/student';
+    }
+  };
+
   const onSubmit = async (data: LoginFormData) => {
     try {
       await login(data);
-      router.push('/student');
+      // Redirect will happen after query invalidation refetches user
     } catch {
       // Error handled by useAuth
     }
   };
+
+  // Redirect after successful login once user data is available
+  useEffect(() => {
+    if (user && !isLoggingIn) {
+      router.push(getRoleBasedRedirect(user.role));
+    }
+  }, [user, isLoggingIn, router]);
+
+  // Show loading skeleton while checking auth status
+  if (isLoading) {
+    return <LoginFormSkeleton />;
+  }
+
+  // Already authenticated — show skeleton while redirect fires
+  if (user) {
+    return <LoginFormSkeleton />;
+  }
 
   return (
     <Card>
@@ -108,21 +149,6 @@ function LoginForm() {
           <Link href="/register" className="text-primary-600 hover:underline">
             Sign up
           </Link>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function LoginFormSkeleton() {
-  return (
-    <Card>
-      <CardContent className="p-4 sm:p-6">
-        <Skeleton className="h-7 sm:h-8 w-40 mb-4 sm:mb-6" />
-        <div className="space-y-3 sm:space-y-4">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-11 w-full" />
         </div>
       </CardContent>
     </Card>

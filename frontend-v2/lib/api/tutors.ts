@@ -65,11 +65,21 @@ function mapFiltersToBackend(filters: TutorFilters): Record<string, string | num
  * Frontend expects: display_name, avatar_url, and numeric fields as numbers
  */
 function transformTutor(tutor: TutorProfile): TutorProfile {
+  // Normalize subjects: backend TutorSubjectResponse uses subject_name,
+  // frontend Subject type expects name. Also handle TutorPublicProfile's
+  // PublicSubjectItem which already has name.
+  const rawSubjects = (tutor.subjects ?? []) as Array<Record<string, unknown>>;
+  const normalizedSubjects = rawSubjects.map((s) => ({
+    id: Number(s.subject_id ?? s.id),
+    name: String(s.name ?? s.subject_name ?? ''),
+  }));
+
   return {
     ...tutor,
-    // Create display_name from first_name + last_name if not present
+    // Create display_name: prefer first+last, then name field, then title
     display_name: tutor.display_name ||
       [tutor.first_name, tutor.last_name].filter(Boolean).join(' ') ||
+      tutor.name ||
       tutor.title ||
       'Tutor',
     // Map profile_photo_url to avatar_url
@@ -80,6 +90,10 @@ function transformTutor(tutor: TutorProfile): TutorProfile {
     total_reviews: Number(tutor.total_reviews) || 0,
     total_sessions: Number(tutor.total_sessions) || 0,
     experience_years: Number(tutor.experience_years) || 0,
+    // Ensure subjects are in frontend-expected format
+    subjects: normalizedSubjects,
+    // Default currency if not provided by backend
+    currency: tutor.currency || 'USD',
   };
 }
 

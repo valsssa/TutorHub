@@ -730,10 +730,16 @@ async def _handle_checkout_completed(db: Session, session: dict):
         payment.stripe_payment_intent_id = session.get("payment_intent")
         payment.paid_at = datetime.now(UTC)
 
-    # Update booking state if requested (await tutor confirmation)
+    # Update booking state via state machine if in REQUESTED state
     if booking.session_state == "REQUESTED":
-        booking.session_state = "SCHEDULED"
-        booking.updated_at = datetime.now(UTC)
+        from modules.bookings.domain.state_machine import BookingStateMachine
+
+        result = BookingStateMachine.accept_booking(booking)
+        if not result.success:
+            logger.warning(
+                f"State machine rejected REQUESTED->SCHEDULED for booking {booking_id}: "
+                f"{result.error_message}"
+            )
 
     db.commit()
 

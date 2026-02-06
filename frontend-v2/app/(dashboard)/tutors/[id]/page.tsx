@@ -11,20 +11,22 @@ import {
   Heart,
   Share2,
   CheckCircle,
+  Play,
 } from 'lucide-react';
-import { useTutor, useTutorAvailability, useTutorReviews } from '@/lib/hooks';
+import { useTutor, useTutorAvailability, useTutorReviews, useToggleFavorite } from '@/lib/hooks';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   Button,
+  buttonVariants,
   Avatar,
   Badge,
   Skeleton,
 } from '@/components/ui';
 import { StarRating } from '@/components/reviews';
-import { formatCurrency, formatRelativeTime } from '@/lib/utils';
+import { cn, formatCurrency, formatRelativeTime } from '@/lib/utils';
 
 interface TutorProfilePageProps {
   params: Promise<{ id: string }>;
@@ -41,6 +43,85 @@ const DAYS_OF_WEEK = [
 ];
 
 const REVIEWS_PAGE_SIZE = 5;
+
+function getYouTubeId(url: string): string | null {
+  const match = url.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/))([a-zA-Z0-9_-]{11})/
+  );
+  return match ? match[1] : null;
+}
+
+function getVimeoId(url: string): string | null {
+  const match = url.match(/vimeo\.com\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+function VideoEmbed({ url }: { url: string }) {
+  const youtubeId = getYouTubeId(url);
+  if (youtubeId) {
+    return (
+      <div className="relative w-full aspect-video rounded-xl overflow-hidden">
+        <iframe
+          src={`https://www.youtube.com/embed/${youtubeId}`}
+          title="Tutor intro video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="absolute inset-0 w-full h-full"
+        />
+      </div>
+    );
+  }
+
+  const vimeoId = getVimeoId(url);
+  if (vimeoId) {
+    return (
+      <div className="relative w-full aspect-video rounded-xl overflow-hidden">
+        <iframe
+          src={`https://player.vimeo.com/video/${vimeoId}`}
+          title="Tutor intro video"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          className="absolute inset-0 w-full h-full"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <video
+      src={url}
+      controls
+      className="w-full aspect-video rounded-xl bg-black"
+      preload="metadata"
+    >
+      Your browser does not support the video tag.
+    </video>
+  );
+}
+
+function FavoriteHeartButton({ tutorId }: { tutorId: number }) {
+  const { isFavorite, isLoading, toggle } = useToggleFavorite(tutorId);
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={(e) => {
+        e.preventDefault();
+        toggle();
+      }}
+      disabled={isLoading}
+      aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+    >
+      <Heart
+        className={cn(
+          'h-5 w-5 transition-colors',
+          isFavorite ? 'fill-red-500 text-red-500' : ''
+        )}
+      />
+    </Button>
+  );
+}
 
 export default function TutorProfilePage({ params }: TutorProfilePageProps) {
   const { id } = use(params);
@@ -122,9 +203,9 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
             <p className="text-slate-500 mb-4">
               The tutor you are looking for does not exist or has been removed.
             </p>
-            <Button asChild>
-              <Link href="/tutors">Browse Tutors</Link>
-            </Button>
+            <Link href="/tutors" className={buttonVariants({ variant: 'primary', size: 'md' })}>
+              Browse Tutors
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -159,6 +240,11 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                       <h2 className="text-2xl font-bold text-slate-900 dark:text-white truncate">
                         {tutor.display_name}
                       </h2>
+                      {tutor.title && tutor.title !== tutor.display_name && (
+                        <p className="text-sm font-medium text-primary-600 dark:text-primary-400 mt-0.5">
+                          {tutor.title}
+                        </p>
+                      )}
                       {tutor.headline && (
                         <p className="text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
                           {tutor.headline}
@@ -166,9 +252,7 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon">
-                        <Heart className="h-5 w-5" />
-                      </Button>
+                      <FavoriteHeartButton tutorId={tutorId} />
                       <Button variant="ghost" size="icon">
                         <Share2 className="h-5 w-5" />
                       </Button>
@@ -204,6 +288,20 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
               </div>
             </CardContent>
           </Card>
+
+          {tutor.video_url && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Play className="h-5 w-5" />
+                  Intro Video
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VideoEmbed url={tutor.video_url} />
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
@@ -363,18 +461,20 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
               </div>
 
               <div className="space-y-3">
-                <Button className="w-full" size="lg" asChild>
-                  <Link href={`/bookings/new?tutor=${tutorId}`}>
-                    <Calendar className="h-5 w-5 mr-2" />
-                    Book Session
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full" size="lg" asChild>
-                  <Link href={`/messages/${tutor.user_id}`}>
-                    <MessageSquare className="h-5 w-5 mr-2" />
-                    Send Message
-                  </Link>
-                </Button>
+                <Link
+                  href={`/bookings/new?tutor=${tutorId}`}
+                  className={cn(buttonVariants({ variant: 'primary', size: 'lg' }), 'w-full')}
+                >
+                  <Calendar className="h-5 w-5 mr-2" />
+                  Book Session
+                </Link>
+                <Link
+                  href={`/messages/${tutor.user_id}`}
+                  className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'w-full')}
+                >
+                  <MessageSquare className="h-5 w-5 mr-2" />
+                  Send Message
+                </Link>
               </div>
 
               <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
@@ -388,13 +488,13 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500">Sessions completed</span>
                     <span className="font-medium text-slate-900 dark:text-white">
-                      {(tutor.total_reviews || 0) * 3}+
+                      {tutor.total_sessions ?? (tutor.total_reviews ?? 0)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500">Member since</span>
                     <span className="font-medium text-slate-900 dark:text-white">
-                      2024
+                      {tutor.created_at ? new Date(tutor.created_at).getFullYear() : 'N/A'}
                     </span>
                   </div>
                 </div>

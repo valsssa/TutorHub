@@ -148,6 +148,7 @@ def register(
         registration_ip=client_host if client_host != "unknown" else None,
         trial_restricted=fraud_analysis["restrict_trial"],
     )
+    assert user_entity.id is not None, "User entity must have an ID after registration"
 
     # Record fraud signals if any
     if fraud_analysis["signals"] or x_device_fingerprint:

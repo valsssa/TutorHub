@@ -365,13 +365,13 @@ export default function OwnerDashboard() {
           <Button variant="outline" asChild>
             <Link href="/owner/reports">
               <FileText className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Reports</span>
+              <span className="max-sm:hidden">Reports</span>
             </Link>
           </Button>
           <Button asChild>
             <Link href="/owner/settings">
               <Settings className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Platform Settings</span>
+              <span className="max-sm:hidden">Platform Settings</span>
             </Link>
           </Button>
         </div>

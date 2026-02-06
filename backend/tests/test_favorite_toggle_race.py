@@ -121,7 +121,7 @@ class TestFavoriteToggleRaceCondition:
         has_recovery = False
         block_indent = 0
 
-        for i, line in enumerate(lines):
+        for _i, line in enumerate(lines):
             if "except IntegrityError" in line:
                 in_except_block = True
                 # Get the indentation level of the except line

@@ -5,16 +5,19 @@ Handles password reset flow:
 - Request reset (sends email)
 - Verify token
 - Reset password
+
+Tokens are stored in Redis via CachePort for multi-instance safety.
 """
 
+import json
 import logging
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 
-from core.dependencies import DatabaseSession
+from core.dependencies import CacheDep, DatabaseSession
 from core.email_service import email_service
 from core.security import PasswordHasher
 from core.utils import StringUtils
@@ -27,8 +30,9 @@ router = APIRouter(
     tags=["auth"],
 )
 
-# In-memory token storage (use Redis in production)
-_reset_tokens: dict[str, dict] = {}
+# Redis key prefix for password reset tokens
+_RESET_TOKEN_PREFIX = "password_reset:"
+_RESET_TOKEN_TTL = 3600  # 1 hour in seconds
 
 
 # ============================================================================
@@ -76,6 +80,7 @@ even if the email doesn't exist.
 async def request_password_reset(
     request: PasswordResetRequest,
     db: DatabaseSession,
+    cache: CacheDep,
 ) -> MessageResponse:
     """Request password reset email."""
 
@@ -90,17 +95,18 @@ async def request_password_reset(
     if user and user.is_active:
         # Generate reset token
         token = secrets.token_urlsafe(32)
-        _reset_tokens[token] = {
+        token_data = {
             "user_id": user.id,
             "email": email,
-            "created_at": datetime.now(UTC),
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
-        # Clean up old tokens
-        cutoff = datetime.now(UTC) - timedelta(hours=2)
-        for t, data in list(_reset_tokens.items()):
-            if data["created_at"] < cutoff:
-                del _reset_tokens[t]
+        # Store in Redis with 1-hour TTL (auto-expires, no cleanup needed)
+        await cache.set(
+            f"{_RESET_TOKEN_PREFIX}{token}",
+            json.dumps(token_data),
+            ttl_seconds=_RESET_TOKEN_TTL,
+        )
 
         # Send email
         name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "User"
@@ -127,23 +133,16 @@ async def request_password_reset(
 )
 async def verify_reset_token(
     request: PasswordResetVerify,
+    cache: CacheDep,
 ) -> MessageResponse:
     """Verify password reset token."""
 
-    token_data = _reset_tokens.get(request.token)
+    raw = await cache.get(f"{_RESET_TOKEN_PREFIX}{request.token}")
 
-    if not token_data:
+    if not raw:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token",
-        )
-
-    # Check if expired (1 hour)
-    if datetime.now(UTC) - token_data["created_at"] > timedelta(hours=1):
-        del _reset_tokens[request.token]
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Reset token has expired",
         )
 
     return MessageResponse(message="Token is valid")
@@ -158,24 +157,20 @@ async def verify_reset_token(
 async def reset_password(
     request: PasswordResetConfirm,
     db: DatabaseSession,
+    cache: CacheDep,
 ) -> MessageResponse:
     """Reset password with token."""
 
-    token_data = _reset_tokens.get(request.token)
+    cache_key = f"{_RESET_TOKEN_PREFIX}{request.token}"
+    raw = await cache.get(cache_key)
 
-    if not token_data:
+    if not raw:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token",
         )
 
-    # Check if expired
-    if datetime.now(UTC) - token_data["created_at"] > timedelta(hours=1):
-        del _reset_tokens[request.token]
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Reset token has expired",
-        )
+    token_data = json.loads(raw)
 
     # Get user - exclude soft-deleted users
     user = db.query(User).filter(
@@ -196,8 +191,8 @@ async def reset_password(
     user.updated_at = now
     db.commit()
 
-    # Consume token
-    del _reset_tokens[request.token]
+    # Consume token (delete from Redis)
+    await cache.delete(cache_key)
 
     logger.info(f"Password reset completed for user {user.id}")
 
