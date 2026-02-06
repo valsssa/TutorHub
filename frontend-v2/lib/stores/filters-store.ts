@@ -16,7 +16,7 @@ interface FiltersState {
 }
 
 const defaultTutorFilters: TutorFilters = {
-  sort_by: 'rating',
+  sort_by: 'rating' as const,
   page: 1,
   page_size: 12,
 };
