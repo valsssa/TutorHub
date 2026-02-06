@@ -789,6 +789,7 @@ class MessageResponse(BaseModel):
     id: int
     sender_id: int
     recipient_id: int
+    conversation_id: int | None = None
     booking_id: int | None = None
     message: str
     is_read: bool = False
