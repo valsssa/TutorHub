@@ -25,7 +25,6 @@ export interface Message {
   sender_id: number;
   recipient_id?: number;
   message: string; // Message content (backend field name)
-  content?: string; // Alternative field name for message content
   booking_id?: number;
   conversation_id?: number;
   is_read: boolean;
@@ -47,13 +46,11 @@ export interface MessageAttachment {
 export interface SendMessageInput {
   recipient_id?: number; // Optional when used in conversation context
   message?: string;
-  content?: string; // Alternative field name
   booking_id?: number;
 }
 
 export interface PaginatedMessagesResponse {
   messages: Message[];
-  items?: Message[]; // Alternative field name
   total: number;
   page: number;
   page_size: number;
