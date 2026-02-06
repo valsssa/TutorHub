@@ -1,6 +1,6 @@
 """Tests for FastAPI dependencies."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -17,6 +17,21 @@ from core.dependencies import (
     get_current_user,
     get_current_user_optional,
 )
+
+
+def create_mock_request(token: str | None = None, use_header: bool = False) -> MagicMock:
+    """Create a mock Request object with token in cookie or header."""
+    request = MagicMock()
+    if token and not use_header:
+        request.cookies = {"access_token": token}
+        request.headers = {}
+    elif token and use_header:
+        request.cookies = {}
+        request.headers = {"authorization": f"Bearer {token}"}
+    else:
+        request.cookies = {}
+        request.headers = {}
+    return request
 
 
 class TestGetCurrentUser:
@@ -43,6 +58,7 @@ class TestGetCurrentUser:
     async def test_valid_token(self, mock_db, mock_user):
         """Test authentication with valid token."""
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("valid_token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {
@@ -50,7 +66,7 @@ class TestGetCurrentUser:
                 "role": "student",
             }
 
-            result = await get_current_user("valid_token", mock_db)
+            result = await get_current_user(mock_request, mock_db)
 
             assert result == mock_user
 
@@ -59,24 +75,26 @@ class TestGetCurrentUser:
         """Test authentication with invalid token."""
         from core.exceptions import AuthenticationError
 
+        mock_request = create_mock_request("invalid_token")
+
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.side_effect = AuthenticationError("Invalid token")
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user("invalid_token", mock_db)
+                await get_current_user(mock_request, mock_db)
 
             assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_missing_email_in_token(self, mock_db):
         """Test authentication with missing email in token."""
-        from core.exceptions import AuthenticationError
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {"sub": None}
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user("token", mock_db)
+                await get_current_user(mock_request, mock_db)
 
             assert exc_info.value.status_code == 401
 
@@ -84,12 +102,13 @@ class TestGetCurrentUser:
     async def test_user_not_found(self, mock_db):
         """Test authentication when user not found."""
         mock_db.query.return_value.filter.return_value.first.return_value = None
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {"sub": "unknown@example.com"}
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user("token", mock_db)
+                await get_current_user(mock_request, mock_db)
 
             assert exc_info.value.status_code == 401
             assert "not found" in exc_info.value.detail.lower()
@@ -99,12 +118,13 @@ class TestGetCurrentUser:
         """Test authentication for inactive user."""
         mock_user.is_active = False
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {"sub": "test@example.com", "role": "student"}
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user("token", mock_db)
+                await get_current_user(mock_request, mock_db)
 
             assert exc_info.value.status_code == 403
             assert "inactive" in exc_info.value.detail.lower()
@@ -112,18 +132,19 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_password_changed_invalidates_token(self, mock_db, mock_user):
         """Test token invalidated after password change."""
-        mock_user.password_changed_at = datetime.utcnow()
+        mock_user.password_changed_at = datetime.now(timezone.utc)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {
                 "sub": "test@example.com",
                 "role": "student",
-                "pwd_ts": (datetime.utcnow() - timedelta(hours=1)).timestamp(),
+                "pwd_ts": (datetime.now(timezone.utc) - timedelta(hours=1)).timestamp(),
             }
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user("token", mock_db)
+                await get_current_user(mock_request, mock_db)
 
             assert exc_info.value.status_code == 401
             assert "password change" in exc_info.value.detail.lower()
@@ -131,8 +152,9 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_password_changed_without_pwd_ts(self, mock_db, mock_user):
         """Test old token without pwd_ts is invalidated after password change."""
-        mock_user.password_changed_at = datetime.utcnow()
+        mock_user.password_changed_at = datetime.now(timezone.utc)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {
@@ -141,7 +163,7 @@ class TestGetCurrentUser:
             }
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user("token", mock_db)
+                await get_current_user(mock_request, mock_db)
 
             assert exc_info.value.status_code == 401
 
@@ -150,6 +172,7 @@ class TestGetCurrentUser:
         """Test token invalidated when role changes."""
         mock_user.role = "tutor"
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {
@@ -158,10 +181,37 @@ class TestGetCurrentUser:
             }
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user("token", mock_db)
+                await get_current_user(mock_request, mock_db)
 
             assert exc_info.value.status_code == 401
             assert "role" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_no_token_provided(self, mock_db):
+        """Test authentication fails when no token is provided."""
+        mock_request = create_mock_request(None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_user(mock_request, mock_db)
+
+        assert exc_info.value.status_code == 401
+        assert "not authenticated" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_token_from_authorization_header(self, mock_db, mock_user):
+        """Test authentication with token in Authorization header (legacy support)."""
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("header_token", use_header=True)
+
+        with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
+            mock_decode.return_value = {
+                "sub": "test@example.com",
+                "role": "student",
+            }
+
+            result = await get_current_user(mock_request, mock_db)
+
+            assert result == mock_user
 
 
 class TestGetCurrentUserOptional:
@@ -187,19 +237,22 @@ class TestGetCurrentUserOptional:
     @pytest.mark.asyncio
     async def test_no_token(self, mock_db):
         """Test returns None when no token provided."""
-        result = await get_current_user_optional(None, mock_db)
+        mock_request = create_mock_request(None)
+        result = await get_current_user_optional(mock_request, mock_db)
         assert result is None
 
     @pytest.mark.asyncio
     async def test_empty_token(self, mock_db):
         """Test returns None for empty token."""
-        result = await get_current_user_optional("", mock_db)
+        mock_request = create_mock_request(None)  # Empty cookies/headers
+        result = await get_current_user_optional(mock_request, mock_db)
         assert result is None
 
     @pytest.mark.asyncio
     async def test_valid_token(self, mock_db, mock_user):
         """Test returns user for valid token."""
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("valid_token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {
@@ -207,7 +260,7 @@ class TestGetCurrentUserOptional:
                 "role": "student",
             }
 
-            result = await get_current_user_optional("valid_token", mock_db)
+            result = await get_current_user_optional(mock_request, mock_db)
 
             assert result == mock_user
 
@@ -216,10 +269,12 @@ class TestGetCurrentUserOptional:
         """Test returns None for invalid token."""
         from core.exceptions import AuthenticationError
 
+        mock_request = create_mock_request("invalid")
+
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.side_effect = AuthenticationError("Invalid")
 
-            result = await get_current_user_optional("invalid", mock_db)
+            result = await get_current_user_optional(mock_request, mock_db)
 
             assert result is None
 
@@ -227,11 +282,12 @@ class TestGetCurrentUserOptional:
     async def test_user_not_found_returns_none(self, mock_db):
         """Test returns None when user not found."""
         mock_db.query.return_value.filter.return_value.first.return_value = None
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {"sub": "unknown@example.com"}
 
-            result = await get_current_user_optional("token", mock_db)
+            result = await get_current_user_optional(mock_request, mock_db)
 
             assert result is None
 
@@ -240,27 +296,29 @@ class TestGetCurrentUserOptional:
         """Test returns None for inactive user."""
         mock_user.is_active = False
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {"sub": "test@example.com"}
 
-            result = await get_current_user_optional("token", mock_db)
+            result = await get_current_user_optional(mock_request, mock_db)
 
             assert result is None
 
     @pytest.mark.asyncio
     async def test_stale_password_token_returns_none(self, mock_db, mock_user):
         """Test returns None for stale password token."""
-        mock_user.password_changed_at = datetime.utcnow()
+        mock_user.password_changed_at = datetime.now(timezone.utc)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {
                 "sub": "test@example.com",
-                "pwd_ts": (datetime.utcnow() - timedelta(hours=1)).timestamp(),
+                "pwd_ts": (datetime.now(timezone.utc) - timedelta(hours=1)).timestamp(),
             }
 
-            result = await get_current_user_optional("token", mock_db)
+            result = await get_current_user_optional(mock_request, mock_db)
 
             assert result is None
 
@@ -269,6 +327,7 @@ class TestGetCurrentUserOptional:
         """Test returns None for stale role token."""
         mock_user.role = "tutor"
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        mock_request = create_mock_request("token")
 
         with patch("core.dependencies.TokenManager.decode_token") as mock_decode:
             mock_decode.return_value = {
@@ -276,7 +335,7 @@ class TestGetCurrentUserOptional:
                 "role": "student",
             }
 
-            result = await get_current_user_optional("token", mock_db)
+            result = await get_current_user_optional(mock_request, mock_db)
 
             assert result is None
 
