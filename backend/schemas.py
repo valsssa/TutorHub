@@ -252,6 +252,15 @@ class SubjectResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PublicSubjectItem(BaseModel):
+    """Minimal subject info for public tutor listings."""
+
+    id: int
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 # ============================================================================
 # Tutor Schemas
 # ============================================================================
@@ -546,7 +555,7 @@ class TutorPublicProfile(BaseModel):
     average_rating: Decimal
     total_reviews: int
     total_sessions: int
-    subjects: list[str] = []
+    subjects: list[PublicSubjectItem] = []
     education: list[str] = []
     video_url: str | None = None
     profile_photo_url: str | None = None

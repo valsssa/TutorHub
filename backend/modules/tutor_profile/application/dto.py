@@ -128,7 +128,11 @@ def aggregate_to_profile_response(
 
 def aggregate_to_public_profile(aggregate: TutorProfileAggregate) -> TutorPublicProfile:
     """Convert aggregate to TutorPublicProfile DTO."""
-    subjects: list[str] = [subject.subject_name or "" for subject in aggregate.subjects]
+    # Build subject list with id and name for frontend compatibility
+    subjects: list[dict] = [
+        {"id": subject.subject_id, "name": subject.subject_name or ""}
+        for subject in aggregate.subjects
+    ]
 
     # Format education list from educations entities
     education_list: list[str] = []
