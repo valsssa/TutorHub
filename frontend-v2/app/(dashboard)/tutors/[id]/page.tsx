@@ -151,16 +151,16 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                   src={tutor.avatar_url}
                   name={tutor.display_name}
                   size="xl"
-                  className="h-24 w-24"
+                  className="h-24 w-24 shrink-0"
                 />
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                    <div className="min-w-0">
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white truncate">
                         {tutor.display_name}
                       </h2>
                       {tutor.headline && (
-                        <p className="text-slate-600 dark:text-slate-400 mt-1">
+                        <p className="text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
                           {tutor.headline}
                         </p>
                       )}
@@ -315,11 +315,11 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                       key={review.id}
                       className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <Avatar name="Student" size="sm" />
-                          <div>
-                            <p className="font-medium text-slate-900 dark:text-white">
+                      <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar name="Student" size="sm" className="shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 dark:text-white truncate">
                               Student
                             </p>
                             <p className="text-xs text-slate-500">
@@ -353,7 +353,7 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
         </div>
 
         <div className="space-y-4">
-          <Card className="sticky top-4">
+          <Card className="lg:sticky lg:top-4">
             <CardContent className="p-6">
               <div className="text-center mb-6">
                 <div className="text-3xl font-bold text-slate-900 dark:text-white">
@@ -363,13 +363,17 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
               </div>
 
               <div className="space-y-3">
-                <Button className="w-full" size="lg">
-                  <Calendar className="h-5 w-5 mr-2" />
-                  Book Session
+                <Button className="w-full" size="lg" asChild>
+                  <Link href={`/bookings/new?tutor=${tutorId}`}>
+                    <Calendar className="h-5 w-5 mr-2" />
+                    Book Session
+                  </Link>
                 </Button>
-                <Button variant="outline" className="w-full" size="lg">
-                  <MessageSquare className="h-5 w-5 mr-2" />
-                  Send Message
+                <Button variant="outline" className="w-full" size="lg" asChild>
+                  <Link href={`/messages/${tutor.user_id}`}>
+                    <MessageSquare className="h-5 w-5 mr-2" />
+                    Send Message
+                  </Link>
                 </Button>
               </div>
 
