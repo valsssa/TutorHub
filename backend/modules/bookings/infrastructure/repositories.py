@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 from sqlalchemy import and_, or_
@@ -164,7 +166,7 @@ class BookingRepositoryImpl(BookingRepository):
         Returns:
             Created booking with populated ID
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         model = self._to_model(booking)
         model.created_at = now
         model.updated_at = now
@@ -206,7 +208,7 @@ class BookingRepositoryImpl(BookingRepository):
                 actual_version=model.version,
             )
 
-        now = datetime.now(UTC)
+        now = utc_now()
         model.student_id = booking.student_id
         model.tutor_profile_id = booking.tutor_profile_id
         model.start_time = booking.start_time
@@ -264,7 +266,7 @@ class BookingRepositoryImpl(BookingRepository):
         Returns:
             List of pending bookings
         """
-        cutoff = datetime.now(UTC) - timedelta(hours=older_than_hours)
+        cutoff = utc_now() - timedelta(hours=older_than_hours)
 
         bookings = (
             self._base_query()
@@ -291,7 +293,7 @@ class BookingRepositoryImpl(BookingRepository):
         Returns:
             List of bookings ready to start
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         window_start = now - timedelta(minutes=buffer_minutes)
         window_end = now + timedelta(minutes=buffer_minutes)
 
@@ -321,7 +323,7 @@ class BookingRepositoryImpl(BookingRepository):
         Returns:
             List of sessions to end
         """
-        cutoff = datetime.now(UTC) - timedelta(minutes=grace_period_minutes)
+        cutoff = utc_now() - timedelta(minutes=grace_period_minutes)
 
         bookings = (
             self._base_query()
@@ -350,7 +352,7 @@ class BookingRepositoryImpl(BookingRepository):
         Returns:
             List of bookings needing reminders
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         target_time = now + timedelta(hours=hours_until)
         window_start = target_time - timedelta(minutes=window_minutes // 2)
         window_end = target_time + timedelta(minutes=window_minutes // 2)

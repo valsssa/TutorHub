@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -152,7 +154,7 @@ class UserIntegrationRepositoryImpl(UserIntegrationRepository):
         if not user:
             raise ValueError(f"User {integration.user_id} not found")
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         if integration.integration_type == IntegrationType.GOOGLE_CALENDAR:
             user.google_calendar_connected_at = integration.connected_at or now
@@ -189,7 +191,7 @@ class UserIntegrationRepositoryImpl(UserIntegrationRepository):
         if not user:
             raise ValueError(f"User {integration.user_id} not found")
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         if integration.integration_type == IntegrationType.GOOGLE_CALENDAR:
             if integration.credentials:
@@ -233,7 +235,7 @@ class UserIntegrationRepositoryImpl(UserIntegrationRepository):
         if not user:
             return False
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         if integration_type == IntegrationType.GOOGLE_CALENDAR:
             if not user.google_calendar_refresh_token:
@@ -542,7 +544,7 @@ class VideoMeetingRepositoryImpl(VideoMeetingRepository):
         if not booking:
             raise ValueError(f"Booking {meeting.booking_id} not found")
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         booking.video_provider = meeting.provider.value
         booking.meeting_url = meeting.meeting_url
@@ -578,7 +580,7 @@ class VideoMeetingRepositoryImpl(VideoMeetingRepository):
         if not booking:
             raise ValueError(f"Booking {meeting.booking_id} not found")
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         booking.video_provider = meeting.provider.value
         booking.meeting_url = meeting.meeting_url
@@ -624,7 +626,7 @@ class VideoMeetingRepositoryImpl(VideoMeetingRepository):
         if not booking.meeting_url and not booking.zoom_meeting_id:
             return False
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         booking.video_provider = None
         booking.meeting_url = None
@@ -695,7 +697,7 @@ class VideoMeetingRepositoryImpl(VideoMeetingRepository):
             List of expired meetings
         """
         offset = (page - 1) * page_size
-        now = datetime.now(UTC)
+        now = utc_now()
 
         bookings = (
             self.db.query(Booking)
@@ -941,7 +943,7 @@ class CalendarEventRepositoryImpl(CalendarEventRepository):
         if not booking:
             raise ValueError(f"Booking {event.booking_id} not found")
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         booking.google_calendar_event_id = event.external_event_id
         booking.updated_at = now
@@ -982,7 +984,7 @@ class CalendarEventRepositoryImpl(CalendarEventRepository):
         if not booking:
             raise ValueError(f"Booking {event.booking_id} not found")
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         booking.google_calendar_event_id = event.external_event_id
         booking.updated_at = now
@@ -1024,7 +1026,7 @@ class CalendarEventRepositoryImpl(CalendarEventRepository):
         if not booking or not booking.google_calendar_event_id:
             return False
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         booking.google_calendar_event_id = None
         booking.updated_at = now

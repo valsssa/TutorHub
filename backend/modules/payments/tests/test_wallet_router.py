@@ -6,6 +6,8 @@ balance retrieval, and error handling.
 """
 
 from datetime import UTC, datetime
+
+from core.datetime_utils import utc_now
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -330,7 +332,7 @@ class TestPaymentRecord:
 
     def test_payment_timestamp_is_utc(self):
         """Test that payment created_at is UTC timezone aware."""
-        now = datetime.now(UTC)
+        now = utc_now()
         assert now.tzinfo is not None
 
     def test_payment_initial_status_is_pending(self):

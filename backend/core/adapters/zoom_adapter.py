@@ -8,7 +8,9 @@ Preserves Server-to-Server OAuth and retry logic.
 import asyncio
 import base64
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 import httpx
@@ -57,7 +59,7 @@ class ZoomAdapter:
         if (
             self._access_token
             and self._token_expires
-            and datetime.now(UTC) < self._token_expires - timedelta(minutes=5)
+            and utc_now() < self._token_expires - timedelta(minutes=5)
         ):
             return self._access_token
 
@@ -85,7 +87,7 @@ class ZoomAdapter:
 
             data = response.json()
             self._access_token = data["access_token"]
-            self._token_expires = datetime.now(UTC) + timedelta(seconds=data["expires_in"])
+            self._token_expires = utc_now() + timedelta(seconds=data["expires_in"])
 
             return self._access_token
 

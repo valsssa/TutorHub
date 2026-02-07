@@ -12,6 +12,8 @@ import asyncio
 import base64
 import logging
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Annotated
 
 import httpx
@@ -129,7 +131,7 @@ class ZoomClient:
         if (
             self._access_token
             and self._token_expires
-            and datetime.now(UTC) < self._token_expires - timedelta(minutes=5)
+            and utc_now() < self._token_expires - timedelta(minutes=5)
         ):
             return self._access_token
 
@@ -139,7 +141,7 @@ class ZoomClient:
             if (
                 self._access_token
                 and self._token_expires
-                and datetime.now(UTC) < self._token_expires - timedelta(minutes=5)
+                and utc_now() < self._token_expires - timedelta(minutes=5)
             ):
                 return self._access_token
 
@@ -170,7 +172,7 @@ class ZoomClient:
 
                 data = response.json()
                 self._access_token = data["access_token"]
-                self._token_expires = datetime.now(UTC) + timedelta(seconds=data["expires_in"])
+                self._token_expires = utc_now() + timedelta(seconds=data["expires_in"])
 
                 return self._access_token
 
@@ -435,7 +437,7 @@ async def create_meeting_for_booking(
     booking.join_url = meeting["join_url"]
     booking.meeting_url = meeting["start_url"]  # Host URL
     booking.zoom_meeting_id = str(meeting["id"])
-    booking.updated_at = datetime.now(UTC)
+    booking.updated_at = utc_now()
     db.commit()
 
     logger.info(f"Created Zoom meeting {meeting['id']} for booking {booking_id}")
@@ -477,7 +479,7 @@ async def delete_meeting(
         booking.join_url = None
         booking.meeting_url = None
         booking.zoom_meeting_id = None
-        booking.updated_at = datetime.now(UTC)
+        booking.updated_at = utc_now()
         db.commit()
 
     # Delete from Zoom
@@ -507,14 +509,14 @@ async def auto_create_meetings(
     """Auto-create meetings for upcoming confirmed bookings."""
 
     # Find confirmed bookings without meeting URL in the next X hours
-    cutoff = datetime.now(UTC) + timedelta(hours=hours_ahead)
+    cutoff = utc_now() + timedelta(hours=hours_ahead)
 
     bookings = (
         db.query(Booking)
         .filter(
             Booking.session_state == "SCHEDULED",
             Booking.start_time <= cutoff,
-            Booking.start_time > datetime.now(UTC),
+            Booking.start_time > utc_now(),
             Booking.join_url.is_(None),
         )
         .all()
@@ -536,7 +538,7 @@ async def auto_create_meetings(
             booking.join_url = meeting["join_url"]
             booking.meeting_url = meeting["start_url"]
             booking.zoom_meeting_id = str(meeting["id"])
-            booking.updated_at = datetime.now(UTC)
+            booking.updated_at = utc_now()
 
             created += 1
 

@@ -8,7 +8,9 @@ Tracks tutor response times to booking requests for:
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -33,7 +35,7 @@ class ResponseTrackingService:
             booking_id=booking.id,
             tutor_profile_id=booking.tutor_profile_id,
             student_id=booking.student_id,
-            booking_created_at=booking.created_at or datetime.now(UTC),
+            booking_created_at=booking.created_at or utc_now(),
         )
         self.db.add(log_entry)
         self.db.flush()
@@ -60,7 +62,7 @@ class ResponseTrackingService:
             .first()
         )
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         if log_entry:
             log_entry.tutor_responded_at = now
@@ -109,7 +111,7 @@ class ResponseTrackingService:
         )
 
         # Calculate 24h response rate
-        cutoff = datetime.now(UTC) - timedelta(hours=24)
+        cutoff = utc_now() - timedelta(hours=24)
         total_24h = (
             self.db.query(TutorResponseLog)
             .filter(
@@ -137,8 +139,8 @@ class ResponseTrackingService:
         if metrics:
             metrics.avg_response_time_minutes = int(avg_response or 0)
             metrics.response_rate_24h = round(response_rate_24h, 2)
-            metrics.updated_at = datetime.now(UTC)
-            metrics.last_calculated = datetime.now(UTC)
+            metrics.updated_at = utc_now()
+            metrics.last_calculated = utc_now()
         else:
             metrics = TutorMetrics(
                 tutor_profile_id=tutor_profile_id,

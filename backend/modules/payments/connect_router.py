@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+
+from core.datetime_utils import utc_now
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -192,7 +194,7 @@ async def create_connect_and_onboard(
 
     # Save account ID to tutor profile
     tutor_profile.stripe_account_id = account.id
-    tutor_profile.updated_at = datetime.now(UTC)
+    tutor_profile.updated_at = utc_now()
     db.commit()
 
     # Create onboarding link

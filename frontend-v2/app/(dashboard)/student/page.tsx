@@ -58,7 +58,7 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const { data: stats, isLoading: statsLoading } = useBookingStats();
   const { data: bookings, isLoading: bookingsLoading } = useBookings({
-    status: 'confirmed',
+    status: 'upcoming',
     page_size: 3,
   });
   const { data: walletBalance, isLoading: walletLoading } = useWalletBalance();

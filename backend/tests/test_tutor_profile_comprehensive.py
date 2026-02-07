@@ -17,6 +17,8 @@ Tests cover:
 """
 
 from datetime import UTC, datetime, time, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from io import BytesIO
 
@@ -943,7 +945,7 @@ class TestBlackoutPeriods:
 
     def test_create_blackout_success(self, client, tutor_token):
         """Test creating a blackout period."""
-        start_dt = datetime.now(UTC) + timedelta(days=7)
+        start_dt = utc_now() + timedelta(days=7)
         end_dt = start_dt + timedelta(days=3)
 
         response = client.post(
@@ -962,7 +964,7 @@ class TestBlackoutPeriods:
 
     def test_create_blackout_invalid_time_range(self, client, tutor_token):
         """Test that end must be after start."""
-        start_dt = datetime.now(UTC) + timedelta(days=10)
+        start_dt = utc_now() + timedelta(days=10)
         end_dt = start_dt - timedelta(days=1)  # Invalid: before start
 
         response = client.post(
@@ -980,8 +982,8 @@ class TestBlackoutPeriods:
         """Test getting own blackouts."""
         blackout = TutorBlackout(
             tutor_id=tutor_user.id,
-            start_at=datetime.now(UTC) + timedelta(days=14),
-            end_at=datetime.now(UTC) + timedelta(days=17),
+            start_at=utc_now() + timedelta(days=14),
+            end_at=utc_now() + timedelta(days=17),
             reason="Conference",
         )
         db_session.add(blackout)
@@ -999,8 +1001,8 @@ class TestBlackoutPeriods:
         """Test deleting a blackout period."""
         blackout = TutorBlackout(
             tutor_id=tutor_user.id,
-            start_at=datetime.now(UTC) + timedelta(days=20),
-            end_at=datetime.now(UTC) + timedelta(days=22),
+            start_at=utc_now() + timedelta(days=20),
+            end_at=utc_now() + timedelta(days=22),
             reason="To be deleted",
         )
         db_session.add(blackout)
@@ -1019,8 +1021,8 @@ class TestBlackoutPeriods:
         """Test that tutors cannot delete another tutor's blackout."""
         blackout = TutorBlackout(
             tutor_id=second_tutor.id,
-            start_at=datetime.now(UTC) + timedelta(days=25),
-            end_at=datetime.now(UTC) + timedelta(days=27),
+            start_at=utc_now() + timedelta(days=25),
+            end_at=utc_now() + timedelta(days=27),
             reason="Other tutor's blackout",
         )
         db_session.add(blackout)
@@ -1340,8 +1342,8 @@ class TestAvailableSlots:
         db_session.commit()
 
         # Get slots for next week
-        start_date = (datetime.now(UTC) + timedelta(days=1)).isoformat()
-        end_date = (datetime.now(UTC) + timedelta(days=8)).isoformat()
+        start_date = (utc_now() + timedelta(days=1)).isoformat()
+        end_date = (utc_now() + timedelta(days=8)).isoformat()
 
         response = client.get(
             f"/api/v1/tutors/{tutor_user.tutor_profile.id}/available-slots",
@@ -1354,8 +1356,8 @@ class TestAvailableSlots:
 
     def test_get_available_slots_date_range_limit(self, client, student_token, tutor_user):
         """Test that date range cannot exceed 30 days."""
-        start_date = datetime.now(UTC).isoformat()
-        end_date = (datetime.now(UTC) + timedelta(days=35)).isoformat()
+        start_date = utc_now().isoformat()
+        end_date = (utc_now() + timedelta(days=35)).isoformat()
 
         response = client.get(
             f"/api/v1/tutors/{tutor_user.tutor_profile.id}/available-slots",

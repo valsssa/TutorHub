@@ -1,7 +1,7 @@
 """Student Packages API - Decision tracking for package purchases."""
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -281,7 +281,7 @@ async def use_package_credit(
                 )
                 .values(
                     status="expired",
-                    updated_at=datetime.now(UTC),
+                    updated_at=utc_now(),
                 )
             )
             db.commit()
@@ -295,7 +295,7 @@ async def use_package_credit(
         update_values = {
             "sessions_remaining": StudentPackage.sessions_remaining - 1,
             "sessions_used": StudentPackage.sessions_used + 1,
-            "updated_at": datetime.now(UTC),
+            "updated_at": utc_now(),
         }
 
         # Rolling expiry: extend validity on each use if enabled
@@ -306,7 +306,7 @@ async def use_package_credit(
             and pricing_option.extend_on_use
             and pricing_option.validity_days
         ):
-            new_expires_at = datetime.now(UTC) + timedelta(days=pricing_option.validity_days)
+            new_expires_at = utc_now() + timedelta(days=pricing_option.validity_days)
             # Only extend if the new date is later than current expiration
             if package.expires_at is None or new_expires_at > package.expires_at:
                 update_values["expires_at"] = new_expires_at
@@ -351,7 +351,7 @@ async def use_package_credit(
             "sessions_used": package.sessions_used,
             "status": package.status,
             "decision": "used_credit_for_booking",
-            "used_at": datetime.now(UTC).isoformat(),
+            "used_at": utc_now().isoformat(),
         }
         if new_expires_at and "expires_at" in update_values:
             audit_new_data["expires_at_extended_to"] = new_expires_at.isoformat()
@@ -384,7 +384,7 @@ async def use_package_credit(
             )
             .values(
                 status="exhausted",
-                updated_at=datetime.now(UTC),
+                updated_at=utc_now(),
             )
         )
 

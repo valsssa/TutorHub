@@ -6,7 +6,9 @@ Provides configurable freebusy responses and event tracking for assertions.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from core.ports.calendar import (
@@ -43,7 +45,7 @@ class StoredEvent:
     attendees: list[tuple[str, str]] = field(default_factory=list)
     meeting_url: str | None = None
     timezone: str = "UTC"
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: utc_now())
 
 
 @dataclass
@@ -82,7 +84,7 @@ class FakeCalendar:
         self.operations.append(
             CalendarOperation(
                 operation=operation,
-                timestamp=datetime.now(UTC),
+                timestamp=utc_now(),
                 args=args,
                 result=result,
             )

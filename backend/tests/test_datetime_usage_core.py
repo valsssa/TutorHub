@@ -23,6 +23,6 @@ def test_no_utcnow_in_entire_codebase():
                     pass
 
     assert not violations, (
-        f"Found datetime.utcnow() in: {violations}. "
+        f"Found utc_now() in: {violations}. "
         "Use core.datetime_utils.utc_now() instead."
     )

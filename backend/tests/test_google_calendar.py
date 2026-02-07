@@ -10,7 +10,9 @@ Tests cover:
 - Error handling and edge cases
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -322,7 +324,7 @@ class TestCreateBookingEvent:
         mock_events.insert.return_value = mock_insert
         mock_service.events.return_value = mock_events
 
-        start_time = datetime.now(UTC) + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
 
         result = await calendar_service.create_booking_event(
@@ -365,7 +367,7 @@ class TestCreateBookingEvent:
         mock_events.insert.return_value = mock_insert
         mock_service.events.return_value = mock_events
 
-        start_time = datetime.now(UTC) + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
 
         result = await calendar_service.create_booking_event(
@@ -407,7 +409,7 @@ class TestCreateBookingEvent:
         mock_events.insert.return_value.execute.side_effect = http_error
         mock_service.events.return_value = mock_events
 
-        start_time = datetime.now(UTC) + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
 
         result = await calendar_service.create_booking_event(
@@ -441,7 +443,7 @@ class TestCreateBookingEvent:
         mock_events.insert.return_value.execute.side_effect = Exception("Network error")
         mock_service.events.return_value = mock_events
 
-        start_time = datetime.now(UTC) + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
 
         result = await calendar_service.create_booking_event(
@@ -493,7 +495,7 @@ class TestUpdateBookingEvent:
         mock_events.update.return_value.execute.return_value = None
         mock_service.events.return_value = mock_events
 
-        new_start = datetime.now(UTC) + timedelta(days=2)
+        new_start = utc_now() + timedelta(days=2)
         new_end = new_start + timedelta(hours=2)
 
         result = await calendar_service.update_booking_event(
@@ -820,7 +822,7 @@ class TestCheckBusyTimes:
         mock_freebusy.query.return_value.execute.return_value = freebusy_response
         mock_service.freebusy.return_value = mock_freebusy
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(days=1)
 
         result = await calendar_service.check_busy_times(
@@ -850,7 +852,7 @@ class TestCheckBusyTimes:
         mock_freebusy.query.return_value.execute.return_value = freebusy_response
         mock_service.freebusy.return_value = mock_freebusy
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=2)
 
         result = await calendar_service.check_busy_times(
@@ -886,7 +888,7 @@ class TestCheckBusyTimes:
         mock_freebusy.query.return_value.execute.return_value = freebusy_response
         mock_service.freebusy.return_value = mock_freebusy
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(days=1)
 
         result = await calendar_service.check_busy_times(
@@ -918,7 +920,7 @@ class TestCheckBusyTimes:
         mock_freebusy.query.return_value.execute.side_effect = http_error
         mock_service.freebusy.return_value = mock_freebusy
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=2)
 
         result = await calendar_service.check_busy_times(
@@ -945,7 +947,7 @@ class TestCheckBusyTimes:
         mock_freebusy.query.return_value.execute.side_effect = Exception("Network error")
         mock_service.freebusy.return_value = mock_freebusy
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=2)
 
         result = await calendar_service.check_busy_times(
@@ -998,7 +1000,7 @@ class TestGetEventsInRange:
         mock_events.list.return_value.execute.return_value = events_response
         mock_service.events.return_value = mock_events
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(days=1)
 
         result = await calendar_service.get_events_in_range(
@@ -1026,7 +1028,7 @@ class TestGetEventsInRange:
         mock_events.list.return_value.execute.return_value = {"items": []}
         mock_service.events.return_value = mock_events
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=2)
 
         result = await calendar_service.get_events_in_range(
@@ -1057,7 +1059,7 @@ class TestGetEventsInRange:
         mock_events.list.return_value.execute.return_value = events_response
         mock_service.events.return_value = mock_events
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(days=1)
 
         result = await calendar_service.get_events_in_range(
@@ -1090,7 +1092,7 @@ class TestGetEventsInRange:
         mock_events.list.return_value.execute.side_effect = http_error
         mock_service.events.return_value = mock_events
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=2)
 
         result = await calendar_service.get_events_in_range(
@@ -1117,7 +1119,7 @@ class TestGetEventsInRange:
         mock_events.list.return_value.execute.side_effect = Exception("Network error")
         mock_service.events.return_value = mock_events
 
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=2)
 
         result = await calendar_service.get_events_in_range(

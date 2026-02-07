@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
@@ -161,7 +163,7 @@ class MessageRepositoryImpl(MessageRepository):
         Returns:
             Created message with populated ID and timestamps
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         model = self._to_model(message)
         model.created_at = now
         model.updated_at = now
@@ -210,8 +212,8 @@ class MessageRepositoryImpl(MessageRepository):
 
         if not message.is_read:
             message.is_read = True
-            message.read_at = read_at or datetime.now(UTC)
-            message.updated_at = datetime.now(UTC)
+            message.read_at = read_at or utc_now()
+            message.updated_at = utc_now()
             self.db.commit()
             self.db.refresh(message)
 
@@ -245,7 +247,7 @@ class MessageRepositoryImpl(MessageRepository):
         if booking_id is not None:
             query = query.filter(Message.booking_id == booking_id)
 
-        now = datetime.now(UTC)
+        now = utc_now()
         count = query.update(
             {"is_read": True, "read_at": now, "updated_at": now},
             synchronize_session=False,
@@ -284,7 +286,7 @@ class MessageRepositoryImpl(MessageRepository):
         if not model:
             raise ValueError(f"Message with ID {message.id} not found")
 
-        now = datetime.now(UTC)
+        now = utc_now()
         model.message = message.content
         model.is_read = message.is_read
         model.read_at = message.read_at
@@ -322,7 +324,7 @@ class MessageRepositoryImpl(MessageRepository):
         if not message:
             return False
 
-        now = datetime.now(UTC)
+        now = utc_now()
         message.deleted_at = now
         message.deleted_by = deleted_by
         message.updated_at = now
@@ -570,7 +572,7 @@ class ConversationRepositoryImpl(ConversationRepository):
         Returns:
             Created conversation with populated ID and timestamps
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         model = self._to_model(conversation)
         model.created_at = now
         model.updated_at = now
@@ -608,7 +610,7 @@ class ConversationRepositoryImpl(ConversationRepository):
         if not model:
             raise ValueError(f"Conversation with ID {conversation.id} not found")
 
-        now = datetime.now(UTC)
+        now = utc_now()
         model.last_message_at = conversation.last_message_at
         model.student_unread_count = conversation.student_unread_count
         model.tutor_unread_count = conversation.tutor_unread_count
@@ -645,7 +647,7 @@ class ConversationRepositoryImpl(ConversationRepository):
         if not conversation:
             return None
 
-        now = datetime.now(UTC)
+        now = utc_now()
         conversation.last_message_at = last_message_at
         conversation.updated_at = now
 
@@ -721,7 +723,7 @@ class ConversationRepositoryImpl(ConversationRepository):
         if not conversation:
             return False
 
-        now = datetime.now(UTC)
+        now = utc_now()
         if user_id == conversation.student_id:
             conversation.student_unread_count = 0
         elif user_id == conversation.tutor_id:
@@ -857,7 +859,7 @@ class MessageAttachmentRepositoryImpl(MessageAttachmentRepository):
         Returns:
             Created attachment with populated ID and timestamps
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         model = self._to_model(attachment)
         model.created_at = now
         model.updated_at = now
@@ -901,7 +903,7 @@ class MessageAttachmentRepositoryImpl(MessageAttachmentRepository):
         if not attachment:
             return False
 
-        now = datetime.now(UTC)
+        now = utc_now()
         attachment.scan_result = scan_result
         attachment.is_scanned = True
         attachment.updated_at = now
@@ -935,7 +937,7 @@ class MessageAttachmentRepositoryImpl(MessageAttachmentRepository):
         if not attachment:
             return False
 
-        now = datetime.now(UTC)
+        now = utc_now()
         attachment.deleted_at = now
         attachment.updated_at = now
         self.db.commit()

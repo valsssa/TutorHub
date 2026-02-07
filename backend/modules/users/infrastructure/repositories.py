@@ -7,7 +7,9 @@ defined in the domain layer.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -153,7 +155,7 @@ class UserRepositoryImpl:
             updated = True
 
         if updated:
-            model.updated_at = datetime.now(UTC)
+            model.updated_at = utc_now()
             self.db.flush()
             logger.info(
                 f"Updated preferences for user {user_id}: "
@@ -185,7 +187,7 @@ class UserRepositoryImpl:
             return None
 
         model.avatar_key = str(avatar_key) if avatar_key else None
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
         self.db.flush()
 
         action = "updated" if avatar_key else "removed"

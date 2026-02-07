@@ -18,6 +18,7 @@ export function useUser() {
     queryFn: authApi.me,
     retry: false,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   return {
@@ -52,6 +53,7 @@ export function useAuth() {
     queryFn: authApi.me,
     retry: false,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const loginMutation = useMutation({

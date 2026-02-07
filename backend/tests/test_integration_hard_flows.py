@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -87,7 +89,7 @@ def create_test_booking_with_states(
     """Helper to create a booking with specific states for testing."""
     from models import Booking
 
-    now = datetime.now(UTC)
+    now = utc_now()
     start_time = now + timedelta(hours=hours_from_now)
     end_time = start_time + timedelta(hours=1)
 
@@ -191,7 +193,7 @@ class TestFullBookingLifecycleEdgeCases:
             "Connection to Stripe failed"
         )
 
-        now = datetime.now(UTC)
+        now = utc_now()
         start_time = (now + timedelta(days=2)).replace(hour=14, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=1)
 
@@ -388,8 +390,8 @@ class TestCalendarIntegrationFailures:
                 booking_id=1,
                 title="Test Session",
                 description="Test description",
-                start_time=datetime.now(UTC),
-                end_time=datetime.now(UTC) + timedelta(hours=1),
+                start_time=utc_now(),
+                end_time=utc_now() + timedelta(hours=1),
                 tutor_email="tutor@test.com",
                 student_email="student@test.com",
                 tutor_name="Test Tutor",
@@ -453,7 +455,7 @@ class TestCalendarIntegrationFailures:
 
         with patch.object(service, "check_busy_times") as mock_busy:
             # Simulate conflicting busy times
-            now = datetime.now(UTC)
+            now = utc_now()
             mock_busy.return_value = [
                 {
                     "start": now.isoformat(),
@@ -923,7 +925,7 @@ class TestDataConsistencyAcrossServices:
 
         # Soft delete the student
         student.is_active = False
-        student.deleted_at = datetime.now(UTC)
+        student.deleted_at = utc_now()
         db_session.commit()
 
         # Booking should still reference the student (soft delete)
@@ -1044,7 +1046,7 @@ class TestDataConsistencyAcrossServices:
         )
 
         # Soft delete subject
-        subject.deleted_at = datetime.now(UTC)
+        subject.deleted_at = utc_now()
         db_session.commit()
 
         # Booking should still have subject reference
@@ -1171,8 +1173,8 @@ class TestRecoveryAndRollbackScenarios:
                     tutor_profile_id=profile.id,
                     student_id=student_user.id,
                     subject_id=subject.id,
-                    start_time=datetime.now(UTC) + timedelta(days=1),
-                    end_time=datetime.now(UTC) + timedelta(days=1, hours=1),
+                    start_time=utc_now() + timedelta(days=1),
+                    end_time=utc_now() + timedelta(days=1, hours=1),
                     session_state="REQUESTED",
                     payment_state="PENDING",
                     dispute_state="NONE",
@@ -1363,11 +1365,11 @@ class TestRecoveryAndRollbackScenarios:
             payment_state="PENDING",
             hours_from_now=-48,  # 48 hours ago
         )
-        expired_booking.created_at = datetime.now(UTC) - timedelta(days=3)
+        expired_booking.created_at = utc_now() - timedelta(days=3)
         db_session.commit()
 
         # Reconciliation: fix ACTIVE sessions that should have ended
-        now = datetime.now(UTC)
+        now = utc_now()
         stale_active = db_session.query(Booking).filter(
             Booking.session_state == SessionState.ACTIVE.value,
             Booking.end_time < now - timedelta(hours=1),  # Grace period

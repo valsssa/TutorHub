@@ -3,7 +3,9 @@
 import contextlib
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -87,7 +89,7 @@ async def create_review(
         )
 
         # Create review with decision tracking
-        review_created_at = datetime.now(UTC)
+        review_created_at = utc_now()
         review = Review(
             booking_id=review_data.booking_id,
             tutor_profile_id=booking.tutor_profile_id,
@@ -137,7 +139,7 @@ async def create_review(
 
             tutor_profile.average_rating = Decimal(str(round(float(avg_rating), 2))) if avg_rating else Decimal("0.00")
             tutor_profile.total_reviews = total_reviews or 0
-            tutor_profile.updated_at = datetime.now(UTC)
+            tutor_profile.updated_at = utc_now()
 
         # Capture values for response and logging
         review_id = review.id

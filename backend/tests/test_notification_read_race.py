@@ -6,6 +6,7 @@ and is idempotent (safe to call multiple times).
 
 from pathlib import Path
 from unittest.mock import MagicMock, call
+from core.datetime_utils import utc_now
 
 import pytest
 
@@ -87,9 +88,9 @@ class TestMarkAllReadIsIdempotent:
         mock_db.query.return_value.filter.return_value.update.return_value = 0
 
         # The operation should complete without error
-        from datetime import UTC, datetime
+        from datetime import datetime
 
-        now = datetime.now(UTC)
+        now = utc_now()
         result = mock_db.query().filter(
             # Filtering for unread only
         ).update({"is_read": True, "read_at": now})
@@ -112,9 +113,9 @@ class TestMarkAllReadIsIdempotent:
         # First call updates 5 notifications
         mock_db.query.return_value.filter.return_value.update.return_value = 5
 
-        from datetime import UTC, datetime
+        from datetime import datetime
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         # First concurrent request
         result1 = mock_db.query().filter().update({"is_read": True, "read_at": now})

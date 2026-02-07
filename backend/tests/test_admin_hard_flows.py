@@ -22,6 +22,8 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -163,7 +165,7 @@ class TestTutorApprovalWorkflowEdgeCases:
             hourly_rate=50.00,
             is_approved=False,
             profile_status="under_review",
-            created_at=datetime.now(UTC) - timedelta(days=30),
+            created_at=utc_now() - timedelta(days=30),
         )
         db_session.add(profile)
         db_session.commit()
@@ -316,8 +318,8 @@ class TestUserManagementComplexities:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
             subject_id=test_subject.id,
-            start_time=datetime.now(UTC) + timedelta(days=1),
-            end_time=datetime.now(UTC) + timedelta(days=1, hours=1),
+            start_time=utc_now() + timedelta(days=1),
+            end_time=utc_now() + timedelta(days=1, hours=1),
             topic="Test Session",
             hourly_rate=50.00,
             total_amount=50.00,
@@ -374,8 +376,8 @@ class TestUserManagementComplexities:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
             subject_id=test_subject.id,
-            start_time=datetime.now(UTC) + timedelta(hours=2),
-            end_time=datetime.now(UTC) + timedelta(hours=3),
+            start_time=utc_now() + timedelta(hours=2),
+            end_time=utc_now() + timedelta(hours=3),
             topic="Active Session",
             hourly_rate=50.00,
             total_amount=50.00,
@@ -893,8 +895,8 @@ class TestFinancialAdministration:
         """Test payout hold and release workflow."""
         payout = Payout(
             tutor_id=tutor_user.id,
-            period_start=datetime.now(UTC).date() - timedelta(days=30),
-            period_end=datetime.now(UTC).date(),
+            period_start=utc_now().date() - timedelta(days=30),
+            period_end=utc_now().date(),
             amount_cents=10000,
             currency="USD",
             status="PENDING",
@@ -944,8 +946,8 @@ class TestFinancialAdministration:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
             subject_id=test_subject.id,
-            start_time=datetime.now(UTC) + timedelta(days=1),
-            end_time=datetime.now(UTC) + timedelta(days=1, hours=1),
+            start_time=utc_now() + timedelta(days=1),
+            end_time=utc_now() + timedelta(days=1, hours=1),
             topic="Fee Test Session",
             hourly_rate=Decimal("100.00"),
             total_amount=Decimal("100.00"),
@@ -987,7 +989,7 @@ class TestPlatformConfiguration:
         ff = FeatureFlags()
         ff._local_cache["test_feature"] = (
             FeatureFlag(name="test_feature", state=FeatureState.ENABLED),
-            datetime.utcnow(),
+            utc_now(),
         )
 
         assert "test_feature" in ff._local_cache
@@ -1001,11 +1003,11 @@ class TestPlatformConfiguration:
         ff = FeatureFlags()
         ff._local_cache["feature1"] = (
             FeatureFlag(name="feature1"),
-            datetime.utcnow(),
+            utc_now(),
         )
         ff._local_cache["feature2"] = (
             FeatureFlag(name="feature2"),
-            datetime.utcnow(),
+            utc_now(),
         )
 
         ff.invalidate_cache()
@@ -1060,8 +1062,8 @@ class TestSupportToolsEdgeCases:
                 tutor_profile_id=tutor_user.tutor_profile.id,
                 student_id=student_user.id,
                 subject_id=test_subject.id,
-                start_time=datetime.now(UTC) + timedelta(days=i + 1),
-                end_time=datetime.now(UTC) + timedelta(days=i + 1, hours=1),
+                start_time=utc_now() + timedelta(days=i + 1),
+                end_time=utc_now() + timedelta(days=i + 1, hours=1),
                 topic=f"Support Review Session {i}",
                 hourly_rate=50.00,
                 total_amount=50.00,
@@ -1138,7 +1140,7 @@ class TestSupportToolsEdgeCases:
             hashed_password=get_password_hash("TestPass123!"),
             role="student",
             is_active=True,
-            deleted_at=datetime.now(UTC),
+            deleted_at=utc_now(),
         )
         db_session.add(user)
         db_session.commit()

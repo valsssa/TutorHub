@@ -5,7 +5,8 @@ DDD + KISS: Simple endpoints with comprehensive features + File Attachments.
 
 import contextlib
 import logging
-from datetime import UTC
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
@@ -508,7 +509,7 @@ async def send_message_with_attachment(
             scan_result="pending",  # Placeholder for virus scanning
             is_public=False,  # Private by default
         )
-        attachment.updated_at = datetime.now(UTC)
+        attachment.updated_at = utc_now()
 
         db.add(attachment)
         db.commit()

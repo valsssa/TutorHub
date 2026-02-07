@@ -1,8 +1,15 @@
+import { GraduationCap } from 'lucide-react';
 import { Skeleton, SkeletonCard } from '@/components/ui';
 
 export default function DashboardLoading() {
   return (
     <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
+      {/* Branding */}
+      <div className="flex items-center justify-center gap-2 py-4">
+        <GraduationCap className="h-6 w-6 text-primary-600 animate-pulse" />
+        <span className="text-lg font-bold text-slate-900 dark:text-white">EduStream</span>
+      </div>
+
       {/* Page header skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
         <div className="space-y-2">

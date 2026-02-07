@@ -18,7 +18,9 @@ Tests cover:
 """
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -82,8 +84,8 @@ def confirmed_booking(db_session: Session, tutor_user: User, student_user: User,
         tutor_profile_id=tutor_user.tutor_profile.id,
         student_id=student_user.id,
         subject_id=test_subject.id,
-        start_time=datetime.now(UTC) + timedelta(days=1),
-        end_time=datetime.now(UTC) + timedelta(days=1, hours=1),
+        start_time=utc_now() + timedelta(days=1),
+        end_time=utc_now() + timedelta(days=1, hours=1),
         topic="Calculus basics",
         hourly_rate=50.00,
         total_amount=50.00,
@@ -634,7 +636,7 @@ class TestMessageEdit:
 
         # Modify created_at to be 16 minutes ago
         message = db_session.query(Message).filter(Message.id == message_id).first()
-        message.created_at = datetime.now(UTC) - timedelta(minutes=16)
+        message.created_at = utc_now() - timedelta(minutes=16)
         db_session.commit()
 
         # Try to edit
@@ -981,7 +983,7 @@ class TestFileAttachments:
             message="Test with attachment",
             is_read=False,
         )
-        message.updated_at = datetime.now(UTC)
+        message.updated_at = utc_now()
         db_session.add(message)
         db_session.commit()
         db_session.refresh(message)
@@ -996,7 +998,7 @@ class TestFileAttachments:
             uploaded_by=student_user.id,
             scan_result="clean",
         )
-        attachment.updated_at = datetime.now(UTC)
+        attachment.updated_at = utc_now()
         db_session.add(attachment)
         db_session.commit()
         db_session.refresh(attachment)
@@ -1027,7 +1029,7 @@ class TestFileAttachments:
             message="Private attachment",
             is_read=False,
         )
-        message.updated_at = datetime.now(UTC)
+        message.updated_at = utc_now()
         db_session.add(message)
         db_session.commit()
         db_session.refresh(message)
@@ -1042,7 +1044,7 @@ class TestFileAttachments:
             uploaded_by=student_user.id,
             scan_result="clean",
         )
-        attachment.updated_at = datetime.now(UTC)
+        attachment.updated_at = utc_now()
         db_session.add(attachment)
         db_session.commit()
         db_session.refresh(attachment)
@@ -1065,7 +1067,7 @@ class TestFileAttachments:
             message="Infected file",
             is_read=False,
         )
-        message.updated_at = datetime.now(UTC)
+        message.updated_at = utc_now()
         db_session.add(message)
         db_session.commit()
         db_session.refresh(message)
@@ -1080,7 +1082,7 @@ class TestFileAttachments:
             uploaded_by=student_user.id,
             scan_result="infected",  # Marked as infected
         )
-        attachment.updated_at = datetime.now(UTC)
+        attachment.updated_at = utc_now()
         db_session.add(attachment)
         db_session.commit()
         db_session.refresh(attachment)

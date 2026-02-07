@@ -6,7 +6,9 @@ Provides configurable success/failure and meeting tracking for assertions.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from core.ports.meeting import (
@@ -39,7 +41,7 @@ class StoredMeeting:
     host_url: str
     status: MeetingStatus = MeetingStatus.SCHEDULED
     provider: MeetingProvider = MeetingProvider.ZOOM
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: utc_now())
 
 
 @dataclass
@@ -65,7 +67,7 @@ class FakeMeeting:
         self.calls.append(
             FakeMeetingCall(
                 method=method,
-                timestamp=datetime.now(UTC),
+                timestamp=utc_now(),
                 args=args,
                 result=result,
             )

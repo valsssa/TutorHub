@@ -1,7 +1,9 @@
 """Tutor student notes API routes."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -89,7 +91,7 @@ async def update_student_note(
         if note:
             # Update existing note
             note.notes = note_data.notes
-            note.updated_at = datetime.now(UTC)
+            note.updated_at = utc_now()
         else:
             # Create new note
             note = StudentNote(

@@ -10,7 +10,9 @@ Tests cover:
 - Edge cases and error handling
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 import pytest
@@ -246,8 +248,8 @@ class TestPackagePurchase:
         active_booking = Booking(
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
-            start_time=datetime.now(UTC) - timedelta(minutes=30),
-            end_time=datetime.now(UTC) + timedelta(minutes=30),
+            start_time=utc_now() - timedelta(minutes=30),
+            end_time=utc_now() + timedelta(minutes=30),
             session_state="ACTIVE",
             payment_state="AUTHORIZED",
             hourly_rate=Decimal("50.00"),
@@ -307,7 +309,7 @@ class TestPackageCreditUsage:
             sessions_remaining=sessions_remaining,
             sessions_used=5 - sessions_remaining,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add(package)
@@ -430,7 +432,7 @@ class TestPackageCreditUsage:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add(package)
@@ -482,7 +484,7 @@ class TestPackageExpiration:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=60),
+            purchased_at=utc_now() - timedelta(days=60),
             expires_at=expires_at,
             status="active",
         )
@@ -499,7 +501,7 @@ class TestPackageExpiration:
             db_session,
             student_user.id,
             tutor_user.tutor_profile.id,
-            expires_at=datetime.now(UTC) - timedelta(days=1),
+            expires_at=utc_now() - timedelta(days=1),
         )
 
         response = client.patch(
@@ -532,8 +534,8 @@ class TestPackageExpiration:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=60),
-            expires_at=datetime.now(UTC) - timedelta(days=5),
+            purchased_at=utc_now() - timedelta(days=60),
+            expires_at=utc_now() - timedelta(days=5),
             status="active",
         )
         db_session.add(package)
@@ -569,8 +571,8 @@ class TestPackageExpiration:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=30),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=30),
             status="active",
         )
         db_session.add(package)
@@ -603,8 +605,8 @@ class TestPackageExpiration:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=30),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=30),
             status="active",
         )
         db_session.add(package)
@@ -637,8 +639,8 @@ class TestPackageExpiration:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=60),
-            expires_at=datetime.now(UTC) - timedelta(days=1),
+            purchased_at=utc_now() - timedelta(days=60),
+            expires_at=utc_now() - timedelta(days=1),
             status="active",
         )
         db_session.add(package)
@@ -671,7 +673,7 @@ class TestPackageExpiration:
             sessions_remaining=0,
             sessions_used=5,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add(package)
@@ -710,7 +712,7 @@ class TestPackageListing:
                 sessions_remaining=3 if pkg_status == "active" else 0,
                 sessions_used=2 if pkg_status == "active" else 5,
                 purchase_price=Decimal("225.00"),
-                purchased_at=datetime.now(UTC) - timedelta(days=i * 10),
+                purchased_at=utc_now() - timedelta(days=i * 10),
                 status=pkg_status,
             )
             db_session.add(package)
@@ -804,7 +806,7 @@ class TestPackageListing:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         package2 = StudentPackage(
@@ -815,7 +817,7 @@ class TestPackageListing:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add_all([package1, package2])
@@ -857,8 +859,8 @@ class TestGetActivePackages:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=30),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=30),
             status="active",
         )
         expired_pkg = StudentPackage(
@@ -869,8 +871,8 @@ class TestGetActivePackages:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=60),
-            expires_at=datetime.now(UTC) - timedelta(days=1),
+            purchased_at=utc_now() - timedelta(days=60),
+            expires_at=utc_now() - timedelta(days=1),
             status="active",
         )
         db_session.add_all([active_pkg, expired_pkg])
@@ -907,8 +909,8 @@ class TestGetActivePackages:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=60),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=60),
             status="active",
         )
         pkg_sooner = StudentPackage(
@@ -919,8 +921,8 @@ class TestGetActivePackages:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("225.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=10),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=10),
             status="active",
         )
         db_session.add_all([pkg_later, pkg_sooner])
@@ -960,7 +962,7 @@ class TestConcurrentCreditUsage:
             sessions_remaining=1,
             sessions_used=0,
             purchase_price=Decimal("50.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add(package)

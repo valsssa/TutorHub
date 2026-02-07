@@ -28,7 +28,7 @@ services:
       - /app/.next
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.valsa.solutions/api/v1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
       NEXT_TELEMETRY_DISABLED: "1"
       WATCHPACK_POLLING: "true"  # Enable polling for file watching in Docker
     restart: unless-stopped

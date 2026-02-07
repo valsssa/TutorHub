@@ -1,7 +1,8 @@
 """Event handlers for user domain events."""
 
 import logging
-from datetime import UTC
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -52,7 +53,7 @@ class RoleChangeEventHandler:
             if existing.profile_status == "archived":
                 existing.profile_status = "incomplete"
                 existing.is_approved = False
-                existing.updated_at = datetime.now(UTC)  # Update timestamp in code
+                existing.updated_at = utc_now()  # Update timestamp in code
                 db.flush()
                 logger.info(
                     "Reactivated archived tutor_profiles for user %s (role change by admin %s)",
@@ -118,7 +119,7 @@ class RoleChangeEventHandler:
         old_status = profile.profile_status
         profile.is_approved = False
         profile.profile_status = "archived"
-        profile.updated_at = datetime.now(UTC)  # Update timestamp in code
+        profile.updated_at = utc_now()  # Update timestamp in code
         db.flush()
 
         logger.info(

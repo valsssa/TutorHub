@@ -7,7 +7,9 @@ defined in the domain layer.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from sqlalchemy import and_, func, update
@@ -183,7 +185,7 @@ class NotificationRepositoryImpl:
         Returns:
             True if marked, False if not found or not owned by user
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         result = (
             self.db.execute(
                 update(Notification)
@@ -215,7 +217,7 @@ class NotificationRepositoryImpl:
         Returns:
             Number of notifications marked as read
         """
-        now = datetime.now(UTC)
+        now = utc_now()
 
         conditions = [
             Notification.user_id == user_id,
@@ -249,7 +251,7 @@ class NotificationRepositoryImpl:
         Returns:
             True if dismissed, False if not found or not owned by user
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         result = (
             self.db.execute(
                 update(Notification)
@@ -404,7 +406,7 @@ class NotificationRepositoryImpl:
         # For now, we don't have a direct expires_at column in the model.
         # This would need to be implemented based on business requirements.
         # A common pattern is to delete very old notifications.
-        cutoff = datetime.now(UTC) - timedelta(days=90)
+        cutoff = utc_now() - timedelta(days=90)
 
         result = (
             self.db.query(Notification)
@@ -581,7 +583,7 @@ class NotificationPreferenceRepositoryImpl:
         )
         model.max_daily_notifications = preference.max_daily_notifications
         model.max_weekly_nudges = preference.max_weekly_nudges
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
 
         self.db.flush()
         return self._to_entity(model)
@@ -694,7 +696,7 @@ class NotificationPreferenceRepositoryImpl:
         Returns:
             NotificationPreferences SQLAlchemy model
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         return NotificationPreferences(
             id=entity.id,
             user_id=entity.user_id,
@@ -832,7 +834,7 @@ class NotificationDeliveryRepositoryImpl:
         Returns:
             List of delivery attempts to retry
         """
-        cutoff = datetime.now(UTC) - timedelta(minutes=older_than_minutes)
+        cutoff = utc_now() - timedelta(minutes=older_than_minutes)
 
         eligible = [
             a for a in self._attempts.values()
@@ -905,7 +907,7 @@ class NotificationBatchRepositoryImpl:
             sent_count=batch.sent_count,
             failed_count=batch.failed_count,
             status=batch.status,
-            created_at=batch.created_at or datetime.now(UTC),
+            created_at=batch.created_at or utc_now(),
             completed_at=batch.completed_at,
             extra_data=batch.extra_data,
         )

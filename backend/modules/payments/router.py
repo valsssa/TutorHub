@@ -42,6 +42,8 @@ For cancelled/refunded sessions, we can recover the funds from their Stripe bala
 
 import logging
 from datetime import UTC, datetime
+
+from core.datetime_utils import utc_now
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, status
@@ -232,7 +234,7 @@ async def create_checkout(
                 f"(status: {existing_session.status}) for booking {booking.id}"
             )
             booking.stripe_checkout_session_id = None
-            booking.updated_at = datetime.now(UTC)
+            booking.updated_at = utc_now()
             db.commit()
 
         except HTTPException as e:
@@ -249,7 +251,7 @@ async def create_checkout(
                 f"clearing reference and creating new session"
             )
             booking.stripe_checkout_session_id = None
-            booking.updated_at = datetime.now(UTC)
+            booking.updated_at = utc_now()
             db.commit()
 
     # Get tutor's Connect account (if they have one and it's fully verified)
@@ -299,7 +301,7 @@ async def create_checkout(
 
     # Store checkout session ID on booking for reference
     booking.stripe_checkout_session_id = session.id
-    booking.updated_at = datetime.now(UTC)
+    booking.updated_at = utc_now()
     db.commit()
 
     logger.info(
@@ -690,7 +692,7 @@ async def _handle_checkout_completed(db: Session, session: dict):
         )
 
         if package:
-            now = datetime.now(UTC)
+            now = utc_now()
             if package.expires_at and package.expires_at < now:
                 # Package expired during checkout - honor the booking anyway
                 package_expired_during_checkout = True
@@ -722,13 +724,13 @@ async def _handle_checkout_completed(db: Session, session: dict):
             status="completed",
             stripe_checkout_session_id=session.get("id"),
             stripe_payment_intent_id=session.get("payment_intent"),
-            paid_at=datetime.now(UTC),
+            paid_at=utc_now(),
         )
         db.add(payment)
     else:
         payment.status = "completed"
         payment.stripe_payment_intent_id = session.get("payment_intent")
-        payment.paid_at = datetime.now(UTC)
+        payment.paid_at = utc_now()
 
     # Update booking state via state machine if in REQUESTED state
     if booking.session_state == "REQUESTED":
@@ -770,7 +772,7 @@ async def _handle_payment_succeeded(db: Session, payment_intent: dict):
 
     if payment:
         payment.status = "completed"
-        payment.paid_at = datetime.now(UTC)
+        payment.paid_at = utc_now()
         db.commit()
 
     logger.info(f"Payment intent succeeded for booking {booking_id}")
@@ -820,13 +822,13 @@ async def _handle_charge_refunded(db: Session, charge: dict):
         else:
             payment.status = "partially_refunded"
 
-        payment.refunded_at = datetime.now(UTC)
+        payment.refunded_at = utc_now()
         payment.refund_amount_cents = refund_amount
 
         # Update booking payment state
         if payment.booking:
             payment.booking.payment_state = "REFUNDED"
-            payment.booking.updated_at = datetime.now(UTC)
+            payment.booking.updated_at = utc_now()
 
         db.commit()
 
@@ -853,7 +855,7 @@ async def _handle_account_updated(db: Session, account: dict):
 
         tutor_profile.stripe_charges_enabled = charges_enabled
         tutor_profile.stripe_payouts_enabled = payouts_enabled
-        tutor_profile.updated_at = datetime.now(UTC)
+        tutor_profile.updated_at = utc_now()
 
         db.commit()
 
@@ -1011,13 +1013,13 @@ async def request_refund(
     else:
         payment.status = "partially_refunded"
 
-    payment.refunded_at = datetime.now(UTC)
+    payment.refunded_at = utc_now()
     payment.refund_amount_cents = new_total_refunded
 
     # Update booking payment state only for full refunds
     if new_remaining_refundable == 0:
         booking.payment_state = "REFUNDED"
-        booking.updated_at = datetime.now(UTC)
+        booking.updated_at = utc_now()
 
         # Restore package credit if this was a package booking (only on full refund)
         if booking.package_id:
@@ -1074,7 +1076,7 @@ async def _handle_wallet_topup(db: Session, session: dict):
         .where(StudentProfile.id == int(student_profile_id))
         .values(
             credit_balance_cents=StudentProfile.credit_balance_cents + amount_cents,
-            updated_at=datetime.now(UTC),
+            updated_at=utc_now(),
         )
     )
 
@@ -1088,7 +1090,7 @@ async def _handle_wallet_topup(db: Session, session: dict):
     if payment:
         payment.status = "completed"
         payment.stripe_payment_intent_id = session.get("payment_intent")
-        payment.paid_at = datetime.now(UTC)
+        payment.paid_at = utc_now()
 
     db.commit()
 
@@ -1181,7 +1183,7 @@ async def poll_payment_status(
             refunded=False,
             amount_cents=booking.rate_cents or 0,
             currency=booking.currency or "usd",
-            last_checked=datetime.now(UTC),
+            last_checked=utc_now(),
             synced_with_db=False,
             error="No checkout session found for this booking",
         )
@@ -1216,18 +1218,18 @@ async def poll_payment_status(
                     status="completed",
                     stripe_checkout_session_id=session_id,
                     stripe_payment_intent_id=status_info.payment_intent_id,
-                    paid_at=datetime.now(UTC),
+                    paid_at=utc_now(),
                 )
                 db.add(payment)
             else:
                 payment.status = "completed"
                 payment.stripe_payment_intent_id = status_info.payment_intent_id
-                payment.paid_at = datetime.now(UTC)
+                payment.paid_at = utc_now()
 
             # Update booking state if needed
             if booking.session_state == "REQUESTED":
                 booking.session_state = "SCHEDULED"
-                booking.updated_at = datetime.now(UTC)
+                booking.updated_at = utc_now()
 
             db.commit()
             synced = True

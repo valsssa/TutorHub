@@ -19,6 +19,17 @@ from core.csrf import validate_csrf_token
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
+def _is_websocket_upgrade(scope: dict) -> bool:
+    """Check if request is a WebSocket upgrade (BaseHTTPMiddleware breaks for these)."""
+    if scope.get("type") == "websocket":
+        return True
+    if scope.get("type") != "http":
+        return False
+    headers = dict(scope.get("headers", []))
+    upgrade = headers.get(b"upgrade", b"").decode("latin-1").lower()
+    return upgrade == "websocket"
+
+
 class CSRFMiddleware(BaseHTTPMiddleware):
     """Middleware that validates CSRF tokens for unsafe HTTP methods.
 
@@ -46,6 +57,13 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.exempt_paths = set(exempt_paths or [])
         self.config = get_cookie_config()
+
+    async def __call__(self, scope: dict, receive: object, send: object) -> None:
+        """Bypass BaseHTTPMiddleware for WebSocket - it breaks on upgrade (no response returned)."""
+        if _is_websocket_upgrade(scope):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]

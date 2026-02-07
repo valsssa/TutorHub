@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import contextlib
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -172,7 +174,7 @@ class SubjectRepositoryImpl(SubjectRepository):
         if self.exists_by_name(subject.name):
             raise DuplicateSubjectError(subject.name)
 
-        now = datetime.now(UTC)
+        now = utc_now()
         model = self._to_model(subject)
         model.created_at = now
 

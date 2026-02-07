@@ -9,7 +9,9 @@ Handles email verification flow:
 
 import logging
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr
@@ -86,11 +88,11 @@ async def send_verification_email(
         _verification_tokens[token] = {
             "user_id": user.id,
             "email": email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         # Clean up old tokens
-        cutoff = datetime.now(UTC) - timedelta(hours=48)
+        cutoff = utc_now() - timedelta(hours=48)
         for t, data in list(_verification_tokens.items()):
             if data["created_at"] < cutoff:
                 del _verification_tokens[t]
@@ -132,7 +134,7 @@ async def verify_email(
         )
 
     # Check if expired (24 hours)
-    if datetime.now(UTC) - token_data["created_at"] > timedelta(hours=24):
+    if utc_now() - token_data["created_at"] > timedelta(hours=24):
         del _verification_tokens[request.token]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -157,7 +159,7 @@ async def verify_email(
         return MessageResponse(message="Email has already been verified")
 
     # Mark email as verified
-    now = datetime.now(UTC)
+    now = utc_now()
     user.is_verified = True
     user.updated_at = now
     db.commit()

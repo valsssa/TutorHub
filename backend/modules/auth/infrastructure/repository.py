@@ -8,6 +8,8 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
+from core.datetime_utils import utc_now
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -161,7 +163,7 @@ class UserRepositoryImpl:
         db_user.is_verified = user.is_verified
         db_user.timezone = user.timezone
         db_user.currency = user.currency
-        db_user.updated_at = datetime.now(UTC)
+        db_user.updated_at = utc_now()
 
         self.db.commit()
         self.db.refresh(db_user)
@@ -187,7 +189,7 @@ class UserRepositoryImpl:
         if not db_user:
             return False
 
-        db_user.deleted_at = datetime.now(UTC)
+        db_user.deleted_at = utc_now()
         self.db.commit()
 
         logger.info(f"Soft deleted user with ID {user_id}")
@@ -275,7 +277,7 @@ class UserRepositoryImpl:
         if not db_user:
             return False
 
-        now = datetime.now(UTC)
+        now = utc_now()
         db_user.hashed_password = hashed_password
         db_user.password_changed_at = now
         db_user.updated_at = now
@@ -307,7 +309,7 @@ class UserRepositoryImpl:
         if not db_user:
             return False
 
-        db_user.updated_at = datetime.now(UTC)
+        db_user.updated_at = utc_now()
         self.db.commit()
 
         logger.debug(f"Updated last login for user ID {user_id}")
@@ -332,7 +334,7 @@ class UserRepositoryImpl:
             return False
 
         db_user.is_verified = True
-        db_user.updated_at = datetime.now(UTC)
+        db_user.updated_at = utc_now()
 
         self.db.commit()
 

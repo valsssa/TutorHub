@@ -8,19 +8,9 @@ interface BookingStatusBadgeProps {
 }
 
 const statusConfig: Record<
-  string,
+  SessionState,
   { label: string; variant: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info' }
 > = {
-  // Legacy lowercase states
-  pending_tutor: { label: 'Awaiting Tutor', variant: 'warning' },
-  pending_student: { label: 'Awaiting You', variant: 'info' },
-  confirmed: { label: 'Confirmed', variant: 'success' },
-  in_progress: { label: 'In Progress', variant: 'primary' },
-  completed: { label: 'Completed', variant: 'success' },
-  cancelled: { label: 'Cancelled', variant: 'danger' },
-  expired: { label: 'Expired', variant: 'default' },
-  no_show: { label: 'No Show', variant: 'danger' },
-  // New uppercase states
   REQUESTED: { label: 'Requested', variant: 'warning' },
   SCHEDULED: { label: 'Scheduled', variant: 'info' },
   ACTIVE: { label: 'Active', variant: 'primary' },

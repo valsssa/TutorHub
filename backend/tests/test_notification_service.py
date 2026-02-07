@@ -12,7 +12,9 @@ Tests cover:
 - Error handling and edge cases
 """
 
-from datetime import UTC, datetime, time, timedelta
+from datetime import datetime, time, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -120,7 +122,7 @@ def sample_notifications(db_session: Session, student_user: User) -> list[Notifi
             category=category,
             priority=3,
             is_read=False,
-            sent_at=datetime.now(UTC),
+            sent_at=utc_now(),
         )
         db_session.add(notification)
         notifications.append(notification)
@@ -796,7 +798,7 @@ class TestUnreadCount:
     ):
         """Test that dismissed notifications are excluded from count."""
         # Dismiss one notification
-        sample_notifications[0].dismissed_at = datetime.now(UTC)
+        sample_notifications[0].dismissed_at = utc_now()
         db_session.commit()
 
         count = notification_svc.get_unread_count(db_session, student_user.id)

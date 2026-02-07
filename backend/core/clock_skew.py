@@ -21,6 +21,8 @@ Usage:
 
 import logging
 from datetime import UTC, datetime
+
+from core.datetime_utils import utc_now
 from typing import NamedTuple
 
 from sqlalchemy import text
@@ -83,7 +85,7 @@ def check_clock_skew(
     Returns:
         ClockSkewResult with app_time, db_time, offset_seconds, and is_within_threshold
     """
-    app_time = datetime.now(UTC)
+    app_time = utc_now()
     db_time = get_db_time(db)
 
     # Calculate offset (positive = app ahead of db, negative = app behind db)
@@ -146,7 +148,7 @@ class ClockSkewMonitor:
         if self._last_check_time is None:
             return True
 
-        elapsed = (datetime.now(UTC) - self._last_check_time).total_seconds()
+        elapsed = (utc_now() - self._last_check_time).total_seconds()
         return elapsed >= self.check_interval_seconds
 
     def check_and_warn(self, db: Session) -> ClockSkewResult | None:
@@ -163,7 +165,7 @@ class ClockSkewMonitor:
             return self._last_skew_result
 
         result = check_clock_skew(db, self.threshold_seconds)
-        self._last_check_time = datetime.now(UTC)
+        self._last_check_time = utc_now()
         self._last_skew_result = result
 
         # Log info level if within threshold for monitoring purposes

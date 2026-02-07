@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta
 
+from core.datetime_utils import utc_now
+
 import pytest
 from fastapi import status
 
@@ -11,7 +13,7 @@ class TestCreateBooking:
 
     def test_student_create_booking_success(self, client, student_token, tutor_user, test_subject):
         """Test successful booking creation by student."""
-        start_time = datetime.utcnow() + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
         end_time = start_time + timedelta(hours=2)
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
@@ -36,7 +38,7 @@ class TestCreateBooking:
 
     def test_tutor_cannot_create_booking(self, client, tutor_token, tutor_user, test_subject):
         """Test tutor cannot create booking."""
-        start_time = datetime.utcnow() + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
@@ -54,7 +56,7 @@ class TestCreateBooking:
 
     def test_create_booking_invalid_duration(self, client, student_token, tutor_user, test_subject):
         """Test booking with invalid (too short) duration."""
-        start_time = datetime.utcnow() + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
 
         response = client.post(
             "/api/v1/bookings",
@@ -70,7 +72,7 @@ class TestCreateBooking:
 
     def test_create_booking_too_long(self, client, student_token, tutor_user, test_subject):
         """Test booking exceeding 8 hours."""
-        start_time = datetime.utcnow() + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
         end_time = start_time + timedelta(hours=9)  # Too long
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
@@ -88,7 +90,7 @@ class TestCreateBooking:
 
     def test_create_booking_nonexistent_tutor(self, client, student_token, test_subject):
         """Test booking with nonexistent tutor."""
-        start_time = datetime.utcnow() + timedelta(days=1)
+        start_time = utc_now() + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
         duration_minutes = int((end_time - start_time).total_seconds() / 60)
 
@@ -229,8 +231,8 @@ class TestUpdateBookingStatus:
             tutor_profile_id=another_profile.id,
             student_id=student.id,
             subject_id=subject.id,
-            start_time=datetime.utcnow() + timedelta(days=1),
-            end_time=datetime.utcnow() + timedelta(days=1, hours=1),
+            start_time=utc_now() + timedelta(days=1),
+            end_time=utc_now() + timedelta(days=1, hours=1),
             hourly_rate=40.00,
             total_amount=40.00,
             session_state="REQUESTED",

@@ -1,7 +1,8 @@
 """User profiles API routes."""
 
 import logging
-from datetime import UTC
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -77,7 +78,7 @@ async def update_my_profile(
         # Update timestamp in application code (no DB triggers)
         from datetime import datetime
 
-        profile.updated_at = datetime.now(UTC)
+        profile.updated_at = utc_now()
 
         db.commit()
         db.refresh(profile)

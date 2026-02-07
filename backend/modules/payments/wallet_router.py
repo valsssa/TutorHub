@@ -5,7 +5,9 @@ Handles wallet credit top-ups via Stripe Checkout.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
@@ -121,7 +123,7 @@ async def create_wallet_checkout(
         currency=checkout_request.currency.lower(),
         status="pending",
         stripe_checkout_session_id=session.id,
-        created_at=datetime.now(UTC),
+        created_at=utc_now(),
     )
     db.add(payment)
     db.commit()

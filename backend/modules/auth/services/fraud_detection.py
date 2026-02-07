@@ -2,7 +2,9 @@
 
 import logging
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from sqlalchemy import func
@@ -74,7 +76,7 @@ class FraudDetectionService:
         restrict_trial = False
 
         # Check registrations in last 7 days from this IP
-        seven_days_ago = datetime.now(UTC) - timedelta(days=7)
+        seven_days_ago = utc_now() - timedelta(days=7)
         recent_registrations_7d = (
             self.db.query(User)
             .filter(
@@ -97,7 +99,7 @@ class FraudDetectionService:
             )
 
         # Check registrations in last 24 hours from this IP
-        one_day_ago = datetime.now(UTC) - timedelta(hours=24)
+        one_day_ago = utc_now() - timedelta(hours=24)
         recent_registrations_24h = (
             self.db.query(User)
             .filter(
@@ -172,7 +174,7 @@ class FraudDetectionService:
             # Remove trailing numbers to find base pattern
             base_pattern = local_part.rstrip("0123456789")
             if base_pattern and len(base_pattern) < len(local_part):
-                seven_days_ago = datetime.now(UTC) - timedelta(days=7)
+                seven_days_ago = utc_now() - timedelta(days=7)
                 similar_emails = (
                     self.db.query(User)
                     .filter(
@@ -220,7 +222,7 @@ class FraudDetectionService:
         restrict_trial = False
 
         # Check for same device fingerprint registering multiple accounts
-        seven_days_ago = datetime.now(UTC) - timedelta(days=7)
+        seven_days_ago = utc_now() - timedelta(days=7)
         same_fingerprint_count = (
             self.db.query(RegistrationFraudSignal)
             .filter(
@@ -425,7 +427,7 @@ class FraudDetectionService:
         if not signal:
             return None
 
-        signal.reviewed_at = datetime.now(UTC)
+        signal.reviewed_at = utc_now()
         signal.reviewed_by = reviewer_id
         signal.review_outcome = outcome
         signal.review_notes = notes
@@ -456,7 +458,7 @@ class FraudDetectionService:
             return False
 
         user.trial_restricted = False
-        user.updated_at = datetime.now(UTC)
+        user.updated_at = utc_now()
 
         # Mark all pending signals as reviewed
         pending_signals = (
@@ -469,7 +471,7 @@ class FraudDetectionService:
         )
 
         for signal in pending_signals:
-            signal.reviewed_at = datetime.now(UTC)
+            signal.reviewed_at = utc_now()
             signal.reviewed_by = admin_id
             signal.review_outcome = "legitimate"
             signal.review_notes = "Trial restriction cleared by admin"

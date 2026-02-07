@@ -13,6 +13,8 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
+
+from core.datetime_utils import utc_now
 from enum import Enum
 
 from sqlalchemy.orm import Session
@@ -208,7 +210,7 @@ class VideoMeetingService:
             from datetime import UTC, timedelta
             if (
                 tutor_user.google_calendar_token_expires
-                and datetime.now(UTC) >= tutor_user.google_calendar_token_expires - timedelta(minutes=5)
+                and utc_now() >= tutor_user.google_calendar_token_expires - timedelta(minutes=5)
             ):
                 try:
                     tokens = await google_calendar.refresh_access_token(
@@ -217,7 +219,7 @@ class VideoMeetingService:
                     access_token = tokens["access_token"]
                     # Update token in database
                     tutor_user.google_calendar_access_token = access_token
-                    tutor_user.google_calendar_token_expires = datetime.now(UTC) + timedelta(
+                    tutor_user.google_calendar_token_expires = utc_now() + timedelta(
                         seconds=tokens.get("expires_in", 3600)
                     )
                     self.db.flush()

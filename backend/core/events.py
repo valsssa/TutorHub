@@ -34,7 +34,9 @@ import uuid
 from collections import defaultdict
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -50,7 +52,7 @@ class DomainEvent:
     """
 
     event_id: str = field(default_factory=lambda: uuid.uuid4().hex)
-    occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    occurred_at: datetime = field(default_factory=lambda: utc_now())
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @property

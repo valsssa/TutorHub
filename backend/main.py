@@ -6,7 +6,9 @@ import os
 # Configure logging to stderr
 import sys
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from io import BytesIO
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -264,7 +266,7 @@ async def create_default_users():
 
                 # Update user role
                 tutor.role = "tutor"
-                tutor.updated_at = datetime.now(UTC)
+                tutor.updated_at = utc_now()
 
                 db.flush()
 
@@ -281,7 +283,7 @@ async def create_default_users():
                     tutor_profile.video_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Demo intro video
                     tutor_profile.is_approved = True
                     tutor_profile.profile_status = "approved"
-                    tutor_profile.updated_at = datetime.now(UTC)
+                    tutor_profile.updated_at = utc_now()
                 # atomic_operation commits all changes together
 
             logger.info(f"Created default tutor with approved profile: {tutor_email}")
@@ -291,7 +293,7 @@ async def create_default_users():
             tutor_profile = db.query(TutorProfile).filter(TutorProfile.user_id == existing_tutor.id).first()
             if tutor_profile and not tutor_profile.video_url:
                 tutor_profile.video_url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"  # Demo intro video
-                tutor_profile.updated_at = datetime.now(UTC)
+                tutor_profile.updated_at = utc_now()
                 db.commit()
                 logger.info(f"Updated existing tutor profile with demo video URL: {tutor_email}")
 
@@ -785,7 +787,7 @@ def health_check(db: Session = Depends(get_db)):
         logger.debug("Database connection successful")
         return {
             "status": "healthy",
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": utc_now().isoformat(),
             "database": "connected",
         }
     except Exception as e:
@@ -794,7 +796,7 @@ def health_check(db: Session = Depends(get_db)):
             status_code=503,
             content={
                 "status": "unhealthy",
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": utc_now().isoformat(),
                 "database": "disconnected",
             },
         )

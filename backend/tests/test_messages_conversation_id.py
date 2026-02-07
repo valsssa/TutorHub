@@ -2,6 +2,7 @@
 
 import pytest
 from pydantic import BaseModel
+from core.datetime_utils import utc_now
 
 
 def test_message_response_includes_conversation_id():
@@ -28,7 +29,7 @@ def test_message_response_conversation_id_is_optional():
 
 def test_message_response_serialization_with_conversation_id():
     """Verify MessageResponse serializes conversation_id correctly."""
-    from datetime import UTC, datetime
+    from datetime import datetime
 
     from schemas import MessageResponse
 
@@ -40,8 +41,8 @@ def test_message_response_serialization_with_conversation_id():
         conversation_id=42,
         message="Test message",
         is_read=False,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
+        created_at=utc_now(),
+        updated_at=utc_now(),
     )
 
     # Serialize to dict
@@ -52,7 +53,7 @@ def test_message_response_serialization_with_conversation_id():
 
 def test_message_response_serialization_without_conversation_id():
     """Verify MessageResponse works without conversation_id (None)."""
-    from datetime import UTC, datetime
+    from datetime import datetime
 
     from schemas import MessageResponse
 
@@ -64,8 +65,8 @@ def test_message_response_serialization_without_conversation_id():
         conversation_id=None,
         message="Test message",
         is_read=False,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
+        created_at=utc_now(),
+        updated_at=utc_now(),
     )
 
     # Serialize to dict

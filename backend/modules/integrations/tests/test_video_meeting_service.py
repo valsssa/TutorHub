@@ -4,7 +4,9 @@ Tests for Video Meeting Service
 Tests the multi-provider video meeting creation functionality.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -32,8 +34,8 @@ def mock_booking():
     booking.subject_name = "Math"
     booking.student_name = "John Student"
     booking.tutor_name = "Jane Tutor"
-    booking.start_time = datetime.now(UTC) + timedelta(hours=1)
-    booking.end_time = datetime.now(UTC) + timedelta(hours=2)
+    booking.start_time = utc_now() + timedelta(hours=1)
+    booking.end_time = utc_now() + timedelta(hours=2)
     booking.tutor_tz = "America/New_York"
     booking.student = MagicMock()
     booking.student.email = "student@example.com"

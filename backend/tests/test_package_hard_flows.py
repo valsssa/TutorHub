@@ -18,6 +18,8 @@ import calendar
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -83,7 +85,7 @@ def package_factory(db_session, student_user, tutor_user, pricing_option_factory
             sessions_remaining=sessions_remaining,
             sessions_used=sessions_used,
             purchase_price=pricing_option.price * sessions_purchased,
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             expires_at=expires_at,
             status=status,
         )
@@ -105,7 +107,7 @@ def booking_factory(db_session, student_user, tutor_user):
         package_id: int | None = None,
     ) -> Booking:
         if start_time is None:
-            start_time = datetime.now(UTC) + timedelta(hours=1)
+            start_time = utc_now() + timedelta(hours=1)
         if end_time is None:
             end_time = start_time + timedelta(hours=1)
 
@@ -204,7 +206,7 @@ class TestPackageExpirationEdgeCases:
         Expected: The active session should continue; package marked expired after.
         """
         # Create package expiring very soon
-        expires_at = datetime.now(UTC) + timedelta(seconds=1)
+        expires_at = utc_now() + timedelta(seconds=1)
         package = package_factory(
             sessions_remaining=3,
             expires_at=expires_at,
@@ -215,8 +217,8 @@ class TestPackageExpirationEdgeCases:
             session_state=SessionState.ACTIVE.value,
             payment_state=PaymentState.AUTHORIZED.value,
             package_id=package.id,
-            start_time=datetime.now(UTC) - timedelta(minutes=30),
-            end_time=datetime.now(UTC) + timedelta(minutes=30),
+            start_time=utc_now() - timedelta(minutes=30),
+            end_time=utc_now() + timedelta(minutes=30),
         )
 
         # Simulate time passing - package expires
@@ -257,8 +259,8 @@ class TestPackageExpirationEdgeCases:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=29, hours=23, minutes=59, seconds=58),
-            expires_at=datetime.now(UTC) + timedelta(seconds=2),
+            purchased_at=utc_now() - timedelta(days=29, hours=23, minutes=59, seconds=58),
+            expires_at=utc_now() + timedelta(seconds=2),
             status="active",
         )
         db_session.add(package)
@@ -300,7 +302,7 @@ class TestPackageExpirationEdgeCases:
         db_session.commit()
 
         # Create package expiring in 5 days
-        old_expires_at = datetime.now(UTC) + timedelta(days=5)
+        old_expires_at = utc_now() + timedelta(days=5)
         package = StudentPackage(
             student_id=student_user.id,
             tutor_profile_id=tutor_user.tutor_profile.id,
@@ -309,7 +311,7 @@ class TestPackageExpirationEdgeCases:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=25),
+            purchased_at=utc_now() - timedelta(days=25),
             expires_at=old_expires_at,
             status="active",
         )
@@ -328,8 +330,8 @@ class TestPackageExpirationEdgeCases:
         db_session.refresh(package)
 
         # Expiration should be extended to ~30 days from now
-        expected_min = datetime.now(UTC) + timedelta(days=29)
-        expected_max = datetime.now(UTC) + timedelta(days=31)
+        expected_min = utc_now() + timedelta(days=29)
+        expected_max = utc_now() + timedelta(days=31)
 
         assert package.expires_at > old_expires_at
         assert expected_min < package.expires_at < expected_max
@@ -354,8 +356,8 @@ class TestPackageExpirationEdgeCases:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=60),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=60),
             status="active",
         )
         pkg_sooner = StudentPackage(
@@ -366,8 +368,8 @@ class TestPackageExpirationEdgeCases:
             sessions_remaining=3,
             sessions_used=0,
             purchase_price=Decimal("150.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=10),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=10),
             status="active",
         )
         pkg_no_expiry = StudentPackage(
@@ -378,7 +380,7 @@ class TestPackageExpirationEdgeCases:
             sessions_remaining=10,
             sessions_used=0,
             purchase_price=Decimal("500.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             expires_at=None,  # No expiration
             status="active",
         )
@@ -427,7 +429,7 @@ class TestSessionDeductionComplexities:
             sessions_remaining=1,  # Only one credit left!
             sessions_used=4,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add(package)
@@ -493,7 +495,7 @@ class TestSessionDeductionComplexities:
             sessions_remaining=0,  # Already exhausted
             sessions_used=5,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="exhausted",
         )
         db_session.add(package)
@@ -578,8 +580,8 @@ class TestPackagePurchaseFlows:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=10),
-            expires_at=datetime.now(UTC) + timedelta(days=20),
+            purchased_at=utc_now() - timedelta(days=10),
+            expires_at=utc_now() + timedelta(days=20),
             status="active",
         )
         db_session.add(existing_package)
@@ -618,8 +620,8 @@ class TestPackagePurchaseFlows:
         # Create active session
         active_booking = booking_factory(
             session_state=SessionState.ACTIVE.value,
-            start_time=datetime.now(UTC) - timedelta(minutes=30),
-            end_time=datetime.now(UTC) + timedelta(minutes=30),
+            start_time=utc_now() - timedelta(minutes=30),
+            end_time=utc_now() + timedelta(minutes=30),
         )
 
         # Purchase package
@@ -704,7 +706,7 @@ class TestValidityPeriodCalculations:
         db_session.add(pricing_option)
         db_session.commit()
 
-        before_purchase = datetime.now(UTC)
+        before_purchase = utc_now()
 
         response = client.post(
             "/api/v1/packages",
@@ -715,7 +717,7 @@ class TestValidityPeriodCalculations:
             headers={"Authorization": f"Bearer {student_token}"},
         )
 
-        after_purchase = datetime.now(UTC)
+        after_purchase = utc_now()
 
         assert response.status_code == status.HTTP_201_CREATED
 
@@ -752,7 +754,7 @@ class TestValidityPeriodCalculations:
         db_session.commit()
 
         # Package with 60 days remaining (longer than 30-day extension would give)
-        far_future = datetime.now(UTC) + timedelta(days=60)
+        far_future = utc_now() + timedelta(days=60)
         package = StudentPackage(
             student_id=student_user.id,
             tutor_profile_id=tutor_user.tutor_profile.id,
@@ -761,7 +763,7 @@ class TestValidityPeriodCalculations:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             expires_at=far_future,
             status="active",
         )
@@ -803,8 +805,8 @@ class TestValidityPeriodCalculations:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=30),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=30),
             status="active",
         )
         db_session.add(package)
@@ -906,7 +908,7 @@ class TestBackgroundJobEdgeCases:
         # Package that's already expired
         expired_package = package_factory(
             sessions_remaining=3,
-            expires_at=datetime.now(UTC) - timedelta(hours=1),
+            expires_at=utc_now() - timedelta(hours=1),
         )
 
         # Create active booking
@@ -943,8 +945,8 @@ class TestBackgroundJobEdgeCases:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=60),
-            expires_at=datetime.now(UTC) - timedelta(days=5),  # Already expired
+            purchased_at=utc_now() - timedelta(days=60),
+            expires_at=utc_now() - timedelta(days=5),  # Already expired
             status="active",  # Not yet marked by job
             expiry_warning_sent=False,
         )
@@ -966,10 +968,10 @@ class TestBackgroundJobEdgeCases:
         """
         # Create packages to expire
         pkg1 = package_factory(
-            expires_at=datetime.now(UTC) - timedelta(hours=1),
+            expires_at=utc_now() - timedelta(hours=1),
         )
         pkg2 = package_factory(
-            expires_at=datetime.now(UTC) - timedelta(hours=2),
+            expires_at=utc_now() - timedelta(hours=2),
         )
 
         # First run - succeeds
@@ -1056,8 +1058,8 @@ class TestMultiPackageScenarios:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=30),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=30),
             status="active",
         )
         pkg_tutor_b = StudentPackage(
@@ -1068,8 +1070,8 @@ class TestMultiPackageScenarios:
             sessions_remaining=3,
             sessions_used=0,
             purchase_price=Decimal("180.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=60),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=60),
             status="active",
         )
         db_session.add_all([pkg_tutor_a, pkg_tutor_b])
@@ -1104,7 +1106,7 @@ class TestMultiPackageScenarios:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         pkg_student2 = StudentPackage(
@@ -1115,7 +1117,7 @@ class TestMultiPackageScenarios:
             sessions_remaining=3,
             sessions_used=0,
             purchase_price=Decimal("150.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add_all([pkg_student1, pkg_student2])
@@ -1163,8 +1165,8 @@ class TestMultiPackageScenarios:
                 sessions_remaining=pd["remaining"],
                 sessions_used=pd["used"],
                 purchase_price=Decimal("250.00"),
-                purchased_at=datetime.now(UTC),
-                expires_at=datetime.now(UTC) + timedelta(days=pd["days_until_expiry"]),
+                purchased_at=utc_now(),
+                expires_at=utc_now() + timedelta(days=pd["days_until_expiry"]),
                 status="active",
             )
             db_session.add(pkg)
@@ -1243,7 +1245,7 @@ class TestTransactionIntegrity:
             sessions_remaining=1,  # Last credit
             sessions_used=0,
             purchase_price=Decimal("50.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add(package)
@@ -1268,7 +1270,7 @@ class TestTransactionIntegrity:
         Test that expiration updates rollback properly on error.
         """
         package = package_factory(
-            expires_at=datetime.now(UTC) - timedelta(hours=1),
+            expires_at=utc_now() - timedelta(hours=1),
         )
         original_status = package.status
 
@@ -1308,8 +1310,8 @@ class TestValidityCheckoutRaceConditions:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=25),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=25),
             status="active",
         )
         db_session.add(package)
@@ -1337,8 +1339,8 @@ class TestValidityCheckoutRaceConditions:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=31),
-            expires_at=datetime.now(UTC) - timedelta(minutes=5),  # Just expired
+            purchased_at=utc_now() - timedelta(days=31),
+            expires_at=utc_now() - timedelta(minutes=5),  # Just expired
             status="active",  # Not yet marked by job
         )
         db_session.add(package)
@@ -1366,7 +1368,7 @@ class TestValidityCheckoutRaceConditions:
             sessions_remaining=0,  # No credits
             sessions_used=5,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db_session.add(package)
@@ -1404,8 +1406,8 @@ class TestExpiryWarnings:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=27),
-            expires_at=datetime.now(UTC) + timedelta(days=3),
+            purchased_at=utc_now() - timedelta(days=27),
+            expires_at=utc_now() + timedelta(days=3),
             status="active",
             expiry_warning_sent=False,
         )
@@ -1419,8 +1421,8 @@ class TestExpiryWarnings:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + timedelta(days=15),
+            purchased_at=utc_now(),
+            expires_at=utc_now() + timedelta(days=15),
             status="active",
             expiry_warning_sent=False,
         )
@@ -1434,8 +1436,8 @@ class TestExpiryWarnings:
             sessions_remaining=2,
             sessions_used=3,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=25),
-            expires_at=datetime.now(UTC) + timedelta(days=5),
+            purchased_at=utc_now() - timedelta(days=25),
+            expires_at=utc_now() + timedelta(days=5),
             status="active",
             expiry_warning_sent=True,  # Already warned
         )
@@ -1468,8 +1470,8 @@ class TestExpiryWarnings:
             sessions_remaining=0,  # No credits left
             sessions_used=5,
             purchase_price=Decimal("250.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=27),
-            expires_at=datetime.now(UTC) + timedelta(days=3),
+            purchased_at=utc_now() - timedelta(days=27),
+            expires_at=utc_now() + timedelta(days=3),
             status="active",  # Could be 'exhausted', testing active with 0
             expiry_warning_sent=False,
         )

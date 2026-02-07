@@ -2,6 +2,8 @@
 
 from datetime import UTC, datetime, timedelta, timezone
 
+from core.datetime_utils import utc_now
+
 from fastapi import status
 from jose import jwt
 
@@ -123,7 +125,7 @@ class TestJWTTokens:
 
         # Check expiration is in the future
         exp_time = datetime.fromtimestamp(decoded["exp"], tz=UTC)
-        assert exp_time > datetime.now(UTC)
+        assert exp_time > utc_now()
 
     def test_token_custom_expiration(self):
         """Test token with custom expiration."""
@@ -135,7 +137,7 @@ class TestJWTTokens:
         exp_time = datetime.fromtimestamp(decoded["exp"], tz=UTC)
 
         # Should expire roughly 2 hours from now (within 5 seconds tolerance)
-        expected_exp = datetime.now(UTC) + custom_delta
+        expected_exp = utc_now() + custom_delta
         time_diff = abs((exp_time - expected_exp).total_seconds())
         assert time_diff < 5
 

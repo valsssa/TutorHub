@@ -15,6 +15,8 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
+from core.datetime_utils import utc_now
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -177,7 +179,7 @@ class UserProfileRepositoryImpl:
             .first()
         )
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         if profile is None:
             profile = UserProfile(
@@ -237,7 +239,7 @@ class UserProfileRepositoryImpl:
             return False
 
         user.avatar_key = avatar_key
-        user.updated_at = datetime.now(UTC)
+        user.updated_at = utc_now()
         self.db.flush()
 
         if avatar_key:

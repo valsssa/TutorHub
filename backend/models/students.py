@@ -7,10 +7,12 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -29,7 +31,7 @@ class StudentProfile(Base):
     grade_level = Column(String(50))
     school_name = Column(String(200))
     learning_goals = Column(Text)
-    interests = Column(Text)
+    interests = Column(ARRAY(String), default=list, nullable=True)
     total_sessions = Column(Integer, default=0)
     credit_balance_cents = Column(Integer, default=0)
     preferred_language = Column(String(10))
@@ -61,6 +63,19 @@ class FavoriteTutor(Base):
     # Relationships
     student = relationship("User", foreign_keys=[student_id])
     tutor_profile = relationship("TutorProfile", back_populates="favorites")
+
+    __table_args__ = (
+        # Partial unique index: one active favorite per student-tutor pair
+        # Matches migration 002 (idx_favorite_tutors_unique_active)
+        Index(
+            "idx_favorite_tutors_unique_active",
+            "student_id",
+            "tutor_profile_id",
+            unique=True,
+            postgresql_where=deleted_at.is_(None),
+        ),
+        Index("idx_favorite_tutors_tutor", "tutor_profile_id"),
+    )
 
 
 class StudentNote(Base):

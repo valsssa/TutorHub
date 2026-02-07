@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta
 
+from core.datetime_utils import utc_now
+
 import pytest
 from fastapi import status
 
@@ -134,7 +136,7 @@ class TestAPIDataConsistency:
         """Test that booking amount is calculated correctly."""
         headers = {"Authorization": f"Bearer {student_token}"}
 
-        start_time = (datetime.utcnow() + timedelta(days=2)).isoformat()
+        start_time = (utc_now() + timedelta(days=2)).isoformat()
         duration_minutes = 120  # 2 hours
 
         response = client.post(

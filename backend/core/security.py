@@ -2,7 +2,9 @@
 
 import logging
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Literal
 
 import bcrypt
@@ -61,13 +63,13 @@ class TokenManager:
         to_encode = data.copy()
 
         if expires_delta:
-            expire = datetime.now(UTC) + expires_delta
+            expire = utc_now() + expires_delta
         else:
-            expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            expire = utc_now() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
         to_encode.update({
             "exp": expire,
-            "iat": datetime.now(UTC),
+            "iat": utc_now(),
             "type": "access",
         })
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -85,16 +87,16 @@ class TokenManager:
         to_encode = data.copy()
 
         if expires_delta:
-            expire = datetime.now(UTC) + expires_delta
+            expire = utc_now() + expires_delta
         else:
-            expire = datetime.now(UTC) + timedelta(days=TokenManager.REFRESH_TOKEN_EXPIRE_DAYS)
+            expire = utc_now() + timedelta(days=TokenManager.REFRESH_TOKEN_EXPIRE_DAYS)
 
         # Add unique token ID for potential revocation tracking
         jti = secrets.token_urlsafe(32)
 
         to_encode.update({
             "exp": expire,
-            "iat": datetime.now(UTC),
+            "iat": utc_now(),
             "type": "refresh",
             "jti": jti,
         })

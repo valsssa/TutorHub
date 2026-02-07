@@ -187,13 +187,13 @@ function RegisterForm() {
           />
 
           {form.formState.errors.root && (
-            <p className="text-sm text-red-500">
+            <p className="text-sm text-red-500" role="alert">
               {form.formState.errors.root.message}
             </p>
           )}
 
           {registerError && (
-            <div className="text-sm text-red-500">
+            <div className="text-sm text-red-500" role="alert">
               {registerError instanceof Error &&
               /already (exists|registered)/i.test(registerError.message) ? (
                 <p>

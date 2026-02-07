@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import contextlib
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -114,7 +116,7 @@ class WalletRepositoryImpl:
                 )
             model.balance_cents = new_balance
 
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
         self.db.flush()
         self.db.refresh(model)
         return self._to_entity(model)
@@ -278,7 +280,7 @@ class TransactionRepositoryImpl:
         if completed_at:
             model.completed_at = completed_at
         elif status == TransactionStatus.COMPLETED and not model.completed_at:
-            model.completed_at = datetime.now(UTC)
+            model.completed_at = utc_now()
 
         self.db.flush()
         self.db.refresh(model)
@@ -312,7 +314,7 @@ class TransactionRepositoryImpl:
         older_than_minutes: int = 30,
     ) -> list[TransactionEntity]:
         """Get pending transactions that may need cleanup."""
-        cutoff = datetime.now(UTC) - timedelta(minutes=older_than_minutes)
+        cutoff = utc_now() - timedelta(minutes=older_than_minutes)
         models = (
             self.db.query(WalletTransaction)
             .filter(
@@ -394,8 +396,8 @@ class PayoutRepositoryImpl:
             amount_cents=payout.amount_cents,
             currency=payout.currency,
             status=self._payout_status_to_db(payout.status),
-            period_start=payout.created_at.date() if payout.created_at else datetime.now(UTC).date(),
-            period_end=payout.created_at.date() if payout.created_at else datetime.now(UTC).date(),
+            period_start=payout.created_at.date() if payout.created_at else utc_now().date(),
+            period_end=payout.created_at.date() if payout.created_at else utc_now().date(),
             transfer_reference=payout.stripe_transfer_id,
             payout_metadata={
                 "stripe_payout_id": payout.stripe_payout_id,
@@ -426,7 +428,7 @@ class PayoutRepositoryImpl:
             return None
 
         model.status = self._payout_status_to_db(status)
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
 
         metadata = model.payout_metadata or {}
         if stripe_payout_id:
@@ -453,7 +455,7 @@ class PayoutRepositoryImpl:
         query = self.db.query(Payout).filter(Payout.status == "PENDING")
 
         if older_than_hours:
-            cutoff = datetime.now(UTC) - timedelta(hours=older_than_hours)
+            cutoff = utc_now() - timedelta(hours=older_than_hours)
             query = query.filter(Payout.created_at < cutoff)
 
         models = query.order_by(Payout.created_at.asc()).all()
@@ -660,7 +662,7 @@ class PaymentRepositoryImpl:
         model.refunded_at = payment.refunded_at
         model.refund_amount_cents = payment.refund_amount_cents
         model.error_message = payment.error_message
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
 
         self.db.flush()
         self.db.refresh(model)

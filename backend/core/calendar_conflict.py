@@ -14,6 +14,8 @@ Features:
 import logging
 import time
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -162,7 +164,7 @@ class CalendarConflictService:
 
         # Consider expired if within 5 minutes of expiry
         buffer = timedelta(minutes=5)
-        return datetime.now(UTC) >= user.google_calendar_token_expires - buffer
+        return utc_now() >= user.google_calendar_token_expires - buffer
 
     async def _refresh_token(self, user: User) -> str:
         """
@@ -182,10 +184,10 @@ class CalendarConflictService:
 
         # Update user with new token
         user.google_calendar_access_token = new_access_token
-        user.google_calendar_token_expires = datetime.now(UTC) + timedelta(
+        user.google_calendar_token_expires = utc_now() + timedelta(
             seconds=expires_in
         )
-        user.updated_at = datetime.now(UTC)
+        user.updated_at = utc_now()
         self.db.flush()  # Persist changes without committing
 
         logger.info(f"Refreshed calendar token for user {user.id}")

@@ -9,7 +9,9 @@ Handles business logic for notifications including:
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from enum import Enum
 from typing import Any
 
@@ -136,7 +138,7 @@ class NotificationService:
         # Check quiet hours for email (handles midnight rollover, e.g., 22:00-06:00)
         should_email = prefs.email_enabled
         if should_email and prefs.quiet_hours_start and prefs.quiet_hours_end:
-            current_time = datetime.now(UTC).time()
+            current_time = utc_now().time()
             if prefs.quiet_hours_start <= prefs.quiet_hours_end:
                 # Normal range (e.g., 08:00-17:00)
                 if prefs.quiet_hours_start <= current_time <= prefs.quiet_hours_end:
@@ -214,7 +216,7 @@ class NotificationService:
             action_url=action_url,
             action_label=action_label,
             extra_data=metadata,  # Column renamed from 'metadata' which is reserved in SQLAlchemy
-            sent_at=datetime.now(UTC),
+            sent_at=utc_now(),
         )
         db.add(notification)
         db.flush()
@@ -347,7 +349,7 @@ class NotificationService:
         analytics = NotificationAnalytics(
             template_key=f"email_delivery_{status.value}",
             user_id=user_id,
-            sent_at=datetime.now(UTC),
+            sent_at=utc_now(),
             delivery_channel="email",
             was_actionable=False,
             action_taken=success,  # Use action_taken to indicate success/failure
@@ -366,7 +368,7 @@ class NotificationService:
         analytics = NotificationAnalytics(
             template_key=template_key,
             user_id=user_id,
-            sent_at=datetime.now(UTC),
+            sent_at=utc_now(),
             delivery_channel=delivery_channel,
             was_actionable=was_actionable,
         )
@@ -399,7 +401,7 @@ class NotificationService:
             return False
 
         notification.is_read = True
-        notification.read_at = datetime.now(UTC)
+        notification.read_at = utc_now()
         return True
 
     def mark_all_read(self, db: Session, user_id: int) -> int:
@@ -416,7 +418,7 @@ class NotificationService:
         Returns:
             Number of notifications that were marked as read
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         updated_count = (
             db.query(Notification)
             .filter(
@@ -441,7 +443,7 @@ class NotificationService:
         if not notification:
             return False
 
-        notification.dismissed_at = datetime.now(UTC)
+        notification.dismissed_at = utc_now()
         return True
 
     def get_user_preferences(self, db: Session, user_id: int) -> NotificationPreferences:
@@ -478,7 +480,7 @@ class NotificationService:
             if key in valid_fields and value is not None:
                 setattr(prefs, key, value)
 
-        prefs.updated_at = datetime.now(UTC)
+        prefs.updated_at = utc_now()
         return prefs
 
     # Convenience methods for common notification types

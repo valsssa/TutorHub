@@ -7,7 +7,9 @@ Tests cover:
 - Error handling and edge cases
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -40,7 +42,7 @@ class TestCalendarConnectionStatus:
         """Test getting status when calendar is connected."""
         tutor_user.google_calendar_refresh_token = "test_refresh_token"
         tutor_user.google_calendar_email = "tutor@gmail.com"
-        tutor_user.google_calendar_connected_at = datetime.now(UTC)
+        tutor_user.google_calendar_connected_at = utc_now()
         db_session.commit()
 
         response = client.get(
@@ -347,7 +349,7 @@ class TestZoomClient:
 
         # Set a valid cached token
         zoom_client._access_token = "cached_token"
-        zoom_client._token_expires = datetime.now(UTC) + timedelta(hours=1)
+        zoom_client._token_expires = utc_now() + timedelta(hours=1)
 
         token = await zoom_client._get_access_token()
         assert token == "cached_token"
@@ -550,7 +552,7 @@ class TestZoomAutoCreateMeetings:
         """Test successful auto-creation of meetings."""
         test_booking.session_state = "SCHEDULED"
         test_booking.join_url = None
-        test_booking.start_time = datetime.now(UTC) + timedelta(hours=12)
+        test_booking.start_time = utc_now() + timedelta(hours=12)
         db_session.commit()
 
         mock_zoom_client.create_meeting = AsyncMock(
@@ -620,7 +622,7 @@ class TestZoomClientRetryLogic:
         with patch.object(zoom_client, "_create_meeting_attempt", side_effect=mock_attempt):
             result = await zoom_client.create_meeting(
                 topic="Test",
-                start_time=datetime.now(UTC),
+                start_time=utc_now(),
                 duration_minutes=60,
                 max_retries=3,
             )
@@ -640,7 +642,7 @@ class TestZoomClientRetryLogic:
             with pytest.raises(ZoomAuthError):
                 await zoom_client.create_meeting(
                     topic="Test",
-                    start_time=datetime.now(UTC),
+                    start_time=utc_now(),
                     duration_minutes=60,
                     max_retries=3,
                 )
@@ -657,7 +659,7 @@ class TestZoomClientRetryLogic:
             with pytest.raises(ZoomServiceError):
                 await zoom_client.create_meeting(
                     topic="Test",
-                    start_time=datetime.now(UTC),
+                    start_time=utc_now(),
                     duration_minutes=60,
                     max_retries=2,
                 )
@@ -678,7 +680,7 @@ class TestCalendarSchemas:
         status = CalendarConnectionStatus(
             is_connected=True,
             calendar_email="test@gmail.com",
-            connected_at=datetime.now(UTC),
+            connected_at=utc_now(),
             can_create_events=True,
         )
         assert status.is_connected is True
@@ -722,7 +724,7 @@ class TestZoomSchemas:
         status = ZoomConnectionStatus(
             is_connected=True,
             zoom_email="test@zoom.us",
-            connected_at=datetime.now(UTC),
+            connected_at=utc_now(),
         )
         assert status.is_connected is True
 

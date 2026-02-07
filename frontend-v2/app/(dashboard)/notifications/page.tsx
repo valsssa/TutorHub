@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Bell, CheckCheck, Filter } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Bell, CheckCheck, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import {
   useNotifications,
   useMarkNotificationAsRead,
@@ -72,18 +72,27 @@ function groupNotificationsByDate(notifications: Notification[]) {
   return groups.filter((group) => group.notifications.length > 0);
 }
 
+const PAGE_SIZE = 20;
+
 export default function NotificationsPage() {
   const [selectedFilter, setSelectedFilter] = useState<NotificationType | 'all'>('all');
+  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
 
-  const { data: apiData, isLoading } = useNotifications(
+  const { data: apiData, isLoading, error, refetch } = useNotifications(
     selectedFilter === 'all' ? undefined : { type: selectedFilter }
   );
   const { data: countData } = useUnreadNotificationCount();
   const markAsRead = useMarkNotificationAsRead();
   const markAllAsRead = useMarkAllNotificationsAsRead();
 
-  const notifications = apiData?.items ?? [];
-  const unreadCount = countData?.unread_count ?? notifications.filter((n) => !n.is_read).length;
+  const allNotifications = apiData?.items ?? [];
+  const notifications = allNotifications.slice(0, displayCount);
+  const hasMore = allNotifications.length > displayCount;
+  const unreadCount = countData?.unread_count ?? allNotifications.filter((n) => !n.is_read).length;
+
+  const handleLoadMore = useCallback(() => {
+    setDisplayCount((prev) => prev + PAGE_SIZE);
+  }, []);
 
   const groupedNotifications = useMemo(
     () => groupNotificationsByDate(notifications),
@@ -136,7 +145,10 @@ export default function NotificationsPage() {
             {filterOptions.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setSelectedFilter(option.value)}
+                onClick={() => {
+                  setSelectedFilter(option.value);
+                  setDisplayCount(PAGE_SIZE);
+                }}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
                   selectedFilter === option.value
                     ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
@@ -166,6 +178,24 @@ export default function NotificationsPage() {
               <NotificationSkeleton />
               <NotificationSkeleton />
               <NotificationSkeleton />
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
+              <p className="text-slate-700 dark:text-slate-300 font-medium">
+                Failed to load notifications
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {error instanceof Error ? error.message : 'An unexpected error occurred'}
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => refetch()}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
             </div>
           ) : notifications.length === 0 ? (
             <div className="text-center py-12">
@@ -197,6 +227,14 @@ export default function NotificationsPage() {
                   </div>
                 </div>
               ))}
+
+              {hasMore && (
+                <div className="text-center pt-2">
+                  <Button variant="outline" onClick={handleLoadMore}>
+                    Load More
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

@@ -9,6 +9,8 @@ Comprehensive tests for Celery tasks that handle booking state transitions:
 
 import contextlib
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -41,7 +43,7 @@ class TestExpireRequests:
         booking = MagicMock()
         booking.id = 1
         booking.session_state = "REQUESTED"
-        booking.created_at = datetime.now(UTC) - timedelta(hours=25)
+        booking.created_at = utc_now() - timedelta(hours=25)
         return booking
 
     @pytest.fixture
@@ -76,7 +78,7 @@ class TestExpireRequests:
     ):
         """Test that requested bookings older than 24h are expired."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         # Mock query to return expired booking IDs
@@ -115,7 +117,7 @@ class TestExpireRequests:
     ):
         """Test that already expired bookings are skipped (idempotent)."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [
@@ -149,7 +151,7 @@ class TestExpireRequests:
     ):
         """Test that locked bookings are skipped (row locked by another transaction)."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [(1,)]
@@ -183,7 +185,7 @@ class TestExpireRequests:
     ):
         """Test that missing bookings are handled gracefully."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [(1,)]
@@ -235,7 +237,7 @@ class TestExpireRequests:
     ):
         """Test that database server time is used for cutoff calculation."""
         mock_session_local.return_value = mock_db
-        db_time = datetime.now(UTC)
+        db_time = utc_now()
         mock_get_db_time.return_value = db_time
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
@@ -271,7 +273,7 @@ class TestStartSessions:
         booking = MagicMock()
         booking.id = 1
         booking.session_state = "SCHEDULED"
-        booking.start_time = datetime.now(UTC) - timedelta(minutes=5)
+        booking.start_time = utc_now() - timedelta(minutes=5)
         return booking
 
     @pytest.fixture
@@ -298,7 +300,7 @@ class TestStartSessions:
     ):
         """Test that scheduled sessions are started when start_time passes."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [
@@ -333,7 +335,7 @@ class TestStartSessions:
     ):
         """Test that already started sessions are skipped (idempotent)."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [
@@ -369,7 +371,7 @@ class TestStartSessions:
     ):
         """Test handling of transition failures."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [
@@ -405,7 +407,7 @@ class TestStartSessions:
     ):
         """Test that locked bookings are skipped."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [(1,)]
@@ -440,7 +442,7 @@ class TestEndSessions:
         booking = MagicMock()
         booking.id = 1
         booking.session_state = "ACTIVE"
-        booking.end_time = datetime.now(UTC) - timedelta(minutes=10)
+        booking.end_time = utc_now() - timedelta(minutes=10)
         return booking
 
     @pytest.fixture
@@ -469,7 +471,7 @@ class TestEndSessions:
     ):
         """Test that active sessions are ended after end_time + grace period."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
         mock_session_outcome.COMPLETED = MagicMock()
 
@@ -508,7 +510,7 @@ class TestEndSessions:
     ):
         """Test that COMPLETED outcome is used for auto-ended sessions."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         completed_outcome = MagicMock()
@@ -546,7 +548,7 @@ class TestEndSessions:
     ):
         """Test that already ended sessions are skipped (idempotent)."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
         mock_session_outcome.COMPLETED = MagicMock()
 
@@ -585,7 +587,7 @@ class TestEndSessions:
     ):
         """Test handling of transition failures."""
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
         mock_session_outcome.COMPLETED = MagicMock()
 
@@ -652,7 +654,7 @@ class TestClockSkewHandling:
         """Test that clock skew is checked before processing bookings."""
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
 
         mock_monitor = MagicMock()
         mock_skew_monitor.return_value = mock_monitor
@@ -710,7 +712,7 @@ class TestRaceConditionPrevention:
         """Test that SELECT FOR UPDATE NOWAIT is used for locking."""
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [(1,)]
@@ -739,7 +741,7 @@ class TestRaceConditionPrevention:
         """Test that each booking is processed in its own transaction."""
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         # Return 3 bookings
@@ -784,7 +786,7 @@ class TestTaskLogging:
         """Test that expired count is logged."""
         mock_db = MagicMock()
         mock_session_local.return_value = mock_db
-        mock_get_db_time.return_value = datetime.now(UTC)
+        mock_get_db_time.return_value = utc_now()
         mock_skew_monitor.return_value.check_and_warn = MagicMock()
 
         mock_db.query.return_value.filter.return_value.all.return_value = [(1,)]

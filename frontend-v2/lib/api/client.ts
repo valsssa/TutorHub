@@ -34,12 +34,20 @@ export function getCsrfToken(): string | null {
     return null;
   }
 
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'csrf_token' && value) {
-      return value;
+  try {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const trimmed = cookie.trim();
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex === -1) continue;
+      const name = trimmed.slice(0, eqIndex);
+      const rawValue = trimmed.slice(eqIndex + 1);
+      if (name === 'csrf_token' && rawValue) {
+        return decodeURIComponent(rawValue);
+      }
     }
+  } catch {
+    // Malformed cookie - return null gracefully
   }
   return null;
 }

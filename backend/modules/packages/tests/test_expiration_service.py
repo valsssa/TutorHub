@@ -9,7 +9,9 @@ Comprehensive tests for PackageExpirationService including:
 - Sending expiry warnings
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,7 +37,7 @@ class TestMarkExpiredPackages:
         package = MagicMock()
         package.id = 1
         package.status = "active"
-        package.expires_at = datetime.now(UTC) - timedelta(days=1)
+        package.expires_at = utc_now() - timedelta(days=1)
         package.updated_at = None
         return package
 
@@ -45,7 +47,7 @@ class TestMarkExpiredPackages:
         package = MagicMock()
         package.id = 2
         package.status = "active"
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
         package.updated_at = None
         return package
 
@@ -78,7 +80,7 @@ class TestMarkExpiredPackages:
             pkg = MagicMock()
             pkg.id = i
             pkg.status = "active"
-            pkg.expires_at = datetime.now(UTC) - timedelta(days=i + 1)
+            pkg.expires_at = utc_now() - timedelta(days=i + 1)
             packages.append(pkg)
 
         mock_db.query.return_value.filter.return_value.all.return_value = packages
@@ -122,7 +124,7 @@ class TestCheckPackageValidity:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
         return package
 
     def test_valid_package_returns_true(self, valid_package):
@@ -137,7 +139,7 @@ class TestCheckPackageValidity:
         package = MagicMock()
         package.status = "expired"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, error = PackageExpirationService.check_package_validity(package)
 
@@ -149,7 +151,7 @@ class TestCheckPackageValidity:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 0
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, error = PackageExpirationService.check_package_validity(package)
 
@@ -161,7 +163,7 @@ class TestCheckPackageValidity:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) - timedelta(days=1)
+        package.expires_at = utc_now() - timedelta(days=1)
 
         is_valid, error = PackageExpirationService.check_package_validity(package)
 
@@ -190,7 +192,7 @@ class TestCheckPackageValidityForCheckout:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
         return package
 
     def test_valid_package_returns_true(self, valid_package):
@@ -208,7 +210,7 @@ class TestCheckPackageValidityForCheckout:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 0
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, expired_during, error = (
             PackageExpirationService.check_package_validity_for_checkout(package)
@@ -223,7 +225,7 @@ class TestCheckPackageValidityForCheckout:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) - timedelta(hours=1)
+        package.expires_at = utc_now() - timedelta(hours=1)
 
         is_valid, expired_during, error = (
             PackageExpirationService.check_package_validity_for_checkout(package)
@@ -238,7 +240,7 @@ class TestCheckPackageValidityForCheckout:
         package = MagicMock()
         package.status = "expired"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, expired_during, error = (
             PackageExpirationService.check_package_validity_for_checkout(package)
@@ -253,7 +255,7 @@ class TestCheckPackageValidityForCheckout:
         package = MagicMock()
         package.status = "exhausted"
         package.sessions_remaining = 0
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, expired_during, error = (
             PackageExpirationService.check_package_validity_for_checkout(package)
@@ -325,7 +327,7 @@ class TestGetExpiringPackages:
         package.id = 1
         package.status = "active"
         package.sessions_remaining = 3
-        package.expires_at = datetime.now(UTC) + timedelta(days=5)
+        package.expires_at = utc_now() + timedelta(days=5)
         package.expiry_warning_sent = False
         package.tutor_profile = MagicMock()
         return package
@@ -399,7 +401,7 @@ class TestSendExpiryWarnings:
         package.student_id = 1
         package.status = "active"
         package.sessions_remaining = 3
-        package.expires_at = datetime.now(UTC) + timedelta(days=5)
+        package.expires_at = utc_now() + timedelta(days=5)
         package.expiry_warning_sent = False
         package.tutor_profile = MagicMock()
         package.tutor_profile_id = 1
@@ -471,7 +473,7 @@ class TestSendExpiryWarnings:
         pkg1.id = 1
         pkg1.student_id = 1
         pkg1.sessions_remaining = 3
-        pkg1.expires_at = datetime.now(UTC) + timedelta(days=5)
+        pkg1.expires_at = utc_now() + timedelta(days=5)
         pkg1.expiry_warning_sent = False
         pkg1.tutor_profile = None
         pkg1.tutor_profile_id = 1
@@ -480,7 +482,7 @@ class TestSendExpiryWarnings:
         pkg2.id = 2
         pkg2.student_id = 2
         pkg2.sessions_remaining = 2
-        pkg2.expires_at = datetime.now(UTC) + timedelta(days=3)
+        pkg2.expires_at = utc_now() + timedelta(days=3)
         pkg2.expiry_warning_sent = False
         pkg2.tutor_profile = None
         pkg2.tutor_profile_id = 2
@@ -523,7 +525,7 @@ class TestSendExpiryWarnings:
         self, mock_notification_service, mock_db, expiring_package
     ):
         """Test that days_left calculation is correct."""
-        expiring_package.expires_at = datetime.now(UTC) + timedelta(days=5)
+        expiring_package.expires_at = utc_now() + timedelta(days=5)
 
         with patch.object(
             PackageExpirationService,
@@ -589,7 +591,7 @@ class TestPackageStatusValues:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, _ = PackageExpirationService.check_package_validity(package)
         assert is_valid is True
@@ -599,7 +601,7 @@ class TestPackageStatusValues:
         package = MagicMock()
         package.status = "expired"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, _ = PackageExpirationService.check_package_validity(package)
         assert is_valid is False
@@ -609,7 +611,7 @@ class TestPackageStatusValues:
         package = MagicMock()
         package.status = "exhausted"
         package.sessions_remaining = 0
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, _ = PackageExpirationService.check_package_validity(package)
         assert is_valid is False
@@ -619,7 +621,7 @@ class TestPackageStatusValues:
         package = MagicMock()
         package.status = "refunded"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, _ = PackageExpirationService.check_package_validity(package)
         assert is_valid is False
@@ -633,7 +635,7 @@ class TestEdgeCases:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC)
+        package.expires_at = utc_now()
 
         is_valid, error = PackageExpirationService.check_package_validity(package)
 
@@ -645,7 +647,7 @@ class TestEdgeCases:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = -1
-        package.expires_at = datetime.now(UTC) + timedelta(days=30)
+        package.expires_at = utc_now() + timedelta(days=30)
 
         is_valid, error = PackageExpirationService.check_package_validity(package)
 
@@ -656,7 +658,7 @@ class TestEdgeCases:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) - timedelta(days=365)
+        package.expires_at = utc_now() - timedelta(days=365)
 
         is_valid, error = PackageExpirationService.check_package_validity(package)
 
@@ -668,7 +670,7 @@ class TestEdgeCases:
         package = MagicMock()
         package.status = "active"
         package.sessions_remaining = 5
-        package.expires_at = datetime.now(UTC) + timedelta(days=3650)  # 10 years
+        package.expires_at = utc_now() + timedelta(days=3650)  # 10 years
 
         is_valid, error = PackageExpirationService.check_package_validity(package)
 

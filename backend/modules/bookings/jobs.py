@@ -32,7 +32,9 @@ Multi-Instance Safety:
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import and_
 from sqlalchemy.exc import OperationalError
@@ -562,7 +564,7 @@ async def retry_zoom_meetings() -> None:
                             booking.meeting_url = meeting.get("start_url")
                             booking.zoom_meeting_id = str(meeting["id"])
                             booking.zoom_meeting_pending = False
-                            booking.updated_at = datetime.now(UTC)
+                            booking.updated_at = utc_now()
 
                             db.commit()
                             success_count += 1

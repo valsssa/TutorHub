@@ -4,7 +4,9 @@ import functools
 import inspect
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Any, TypeVar
 
 from fastapi import HTTPException, status
@@ -114,7 +116,7 @@ class DateTimeUtils:
     @staticmethod
     def now() -> datetime:
         """Get current UTC datetime."""
-        return datetime.now(UTC)
+        return utc_now()
 
     @staticmethod
     def add_minutes(dt: datetime, minutes: int) -> datetime:
@@ -130,12 +132,12 @@ class DateTimeUtils:
     @staticmethod
     def is_in_future(dt: datetime) -> bool:
         """Check if datetime is in the future."""
-        return dt > datetime.now(UTC)
+        return dt > utc_now()
 
     @staticmethod
     def is_in_past(dt: datetime) -> bool:
         """Check if datetime is in the past."""
-        return dt < datetime.now(UTC)
+        return dt < utc_now()
 
 
 class StringUtils:

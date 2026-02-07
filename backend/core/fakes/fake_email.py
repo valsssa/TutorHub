@@ -6,7 +6,9 @@ Logs all email calls and stores sent emails for test assertions.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from core.ports.email import (
@@ -28,7 +30,7 @@ class SentEmail:
     text_content: str | None = None
     template_type: str | None = None
     context: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime = field(default_factory=lambda: utc_now())
 
 
 @dataclass

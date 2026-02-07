@@ -5,7 +5,9 @@ Tests for payment processing, refunds, Stripe integration, and webhook handling.
 Comprehensive test coverage for all payment scenarios.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from unittest.mock import MagicMock
 
@@ -65,8 +67,8 @@ class TestRefundPolicy:
     def test_refund_policy_greater_than_12h(self):
         """Test full refund when cancelled >12h before session"""
         # Given
-        start_time = datetime.now(UTC) + timedelta(hours=24)
-        current_time = datetime.now(UTC)
+        start_time = utc_now() + timedelta(hours=24)
+        current_time = utc_now()
         total_amount = Decimal("100.00")
 
         # When
@@ -81,8 +83,8 @@ class TestRefundPolicy:
     def test_refund_policy_less_than_12h(self):
         """Test no refund when cancelled <12h before session"""
         # Given
-        start_time = datetime.now(UTC) + timedelta(hours=6)
-        current_time = datetime.now(UTC)
+        start_time = utc_now() + timedelta(hours=6)
+        current_time = utc_now()
         total_amount = Decimal("100.00")
 
         # When
@@ -97,8 +99,8 @@ class TestRefundPolicy:
     def test_refund_policy_exactly_12h(self):
         """Test refund at exactly 12h boundary"""
         # Given
-        start_time = datetime.now(UTC) + timedelta(hours=12)
-        current_time = datetime.now(UTC)
+        start_time = utc_now() + timedelta(hours=12)
+        current_time = utc_now()
         total_amount = Decimal("100.00")
 
         # When
@@ -242,7 +244,7 @@ class TestPaymentWorkflows:
             json={
                 "tutor_profile_id": test_tutor_profile.id,
                 "subject_id": 1,
-                "start_time": (datetime.now(UTC) + timedelta(days=7)).isoformat(),
+                "start_time": (utc_now() + timedelta(days=7)).isoformat(),
                 "duration_minutes": 60,
                 "notes_student": "Test booking",
             },

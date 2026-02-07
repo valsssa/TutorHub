@@ -18,7 +18,9 @@ import time
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from enum import Enum
 from typing import Any, TypeVar
 
@@ -318,7 +320,7 @@ class WebhookRetryTracker:
         error_message: str | None = None,
     ) -> WebhookRetryInfo:
         """Record a webhook attempt."""
-        now = datetime.now(UTC)
+        now = utc_now()
 
         with self._lock:
             if event_id in self._entries:
@@ -381,7 +383,7 @@ class WebhookRetryTracker:
 
     def _cleanup_old_entries(self) -> None:
         """Remove old entries to prevent memory growth."""
-        cutoff = datetime.now(UTC) - timedelta(hours=24)
+        cutoff = utc_now() - timedelta(hours=24)
         keys_to_remove = [
             key
             for key, entry in self._entries.items()
@@ -440,7 +442,7 @@ class PaymentStatusPoller:
         with self._lock:
             if cache_key in self._cache:
                 cached = self._cache[cache_key]
-                age = (datetime.now(UTC) - cached.last_checked).total_seconds()
+                age = (utc_now() - cached.last_checked).total_seconds()
                 if age < self._cache_ttl:
                     return cached
 
@@ -462,7 +464,7 @@ class PaymentStatusPoller:
                 currency=session.currency or "usd",
                 paid=session.payment_status == "paid",
                 refunded=False,  # Check payment intent for refund status
-                last_checked=datetime.now(UTC),
+                last_checked=utc_now(),
             )
 
             with self._lock:
@@ -480,7 +482,7 @@ class PaymentStatusPoller:
                 currency="usd",
                 paid=False,
                 refunded=False,
-                last_checked=datetime.now(UTC),
+                last_checked=utc_now(),
                 error=str(e),
             )
         except CircuitOpenError:
@@ -498,7 +500,7 @@ class PaymentStatusPoller:
         with self._lock:
             if cache_key in self._cache:
                 cached = self._cache[cache_key]
-                age = (datetime.now(UTC) - cached.last_checked).total_seconds()
+                age = (utc_now() - cached.last_checked).total_seconds()
                 if age < self._cache_ttl:
                     return cached
 
@@ -525,7 +527,7 @@ class PaymentStatusPoller:
                 currency=intent.currency,
                 paid=intent.status == "succeeded",
                 refunded=refunded,
-                last_checked=datetime.now(UTC),
+                last_checked=utc_now(),
             )
 
             with self._lock:
@@ -543,7 +545,7 @@ class PaymentStatusPoller:
                 currency="usd",
                 paid=False,
                 refunded=False,
-                last_checked=datetime.now(UTC),
+                last_checked=utc_now(),
                 error=str(e),
             )
         except CircuitOpenError:
@@ -604,5 +606,5 @@ def get_payment_reliability_status() -> dict[str, Any]:
     return {
         "circuit_breaker": stripe_circuit_breaker.get_status(),
         "webhook_tracker": webhook_retry_tracker.get_stats(),
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": utc_now().isoformat(),
     }

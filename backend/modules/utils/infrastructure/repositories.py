@@ -6,7 +6,9 @@ Contains concrete implementations of the health check repository protocols.
 
 import logging
 import time
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -88,7 +90,7 @@ class HealthCheckRepositoryImpl:
                     service_name=service_name,
                     status=ServiceStatus.UNHEALTHY,
                     message="Database session not configured",
-                    checked_at=datetime.now(UTC),
+                    checked_at=utc_now(),
                 )
 
             # Execute simple query to verify connectivity
@@ -109,7 +111,7 @@ class HealthCheckRepositoryImpl:
                 status=status,
                 latency_ms=round(elapsed_ms, 2),
                 message=message,
-                checked_at=datetime.now(UTC),
+                checked_at=utc_now(),
             )
 
         except Exception as e:
@@ -121,7 +123,7 @@ class HealthCheckRepositoryImpl:
                 status=ServiceStatus.UNHEALTHY,
                 latency_ms=round(elapsed_ms, 2),
                 message=f"Connection failed: {type(e).__name__}",
-                checked_at=datetime.now(UTC),
+                checked_at=utc_now(),
             )
 
     async def check_redis(self) -> HealthCheckEntity:
@@ -148,7 +150,7 @@ class HealthCheckRepositoryImpl:
                     status=ServiceStatus.UNHEALTHY,
                     latency_ms=round(elapsed_ms, 2),
                     message="Ping returned false",
-                    checked_at=datetime.now(UTC),
+                    checked_at=utc_now(),
                 )
 
             status = _determine_status_from_latency(elapsed_ms)
@@ -165,7 +167,7 @@ class HealthCheckRepositoryImpl:
                 status=status,
                 latency_ms=round(elapsed_ms, 2),
                 message=message,
-                checked_at=datetime.now(UTC),
+                checked_at=utc_now(),
             )
 
         except Exception as e:
@@ -177,7 +179,7 @@ class HealthCheckRepositoryImpl:
                 status=ServiceStatus.UNHEALTHY,
                 latency_ms=round(elapsed_ms, 2),
                 message=f"Connection failed: {type(e).__name__}",
-                checked_at=datetime.now(UTC),
+                checked_at=utc_now(),
             )
 
     async def check_storage(self) -> HealthCheckEntity:
@@ -205,7 +207,7 @@ class HealthCheckRepositoryImpl:
                     status=ServiceStatus.UNHEALTHY,
                     latency_ms=round(elapsed_ms, 2),
                     message=result.error_message or "Bucket check failed",
-                    checked_at=datetime.now(UTC),
+                    checked_at=utc_now(),
                 )
 
             status = _determine_status_from_latency(elapsed_ms)
@@ -222,7 +224,7 @@ class HealthCheckRepositoryImpl:
                 status=status,
                 latency_ms=round(elapsed_ms, 2),
                 message=message,
-                checked_at=datetime.now(UTC),
+                checked_at=utc_now(),
             )
 
         except Exception as e:
@@ -234,7 +236,7 @@ class HealthCheckRepositoryImpl:
                 status=ServiceStatus.UNHEALTHY,
                 latency_ms=round(elapsed_ms, 2),
                 message=f"Connection failed: {type(e).__name__}",
-                checked_at=datetime.now(UTC),
+                checked_at=utc_now(),
             )
 
     async def get_system_health(self) -> SystemHealthEntity:
@@ -256,7 +258,7 @@ class HealthCheckRepositoryImpl:
         health_checks = [db_health, redis_health, storage_health]
         system_health = SystemHealthEntity.from_checks(
             health_checks=health_checks,
-            timestamp=datetime.now(UTC),
+            timestamp=utc_now(),
         )
 
         # Log overall health status

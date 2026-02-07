@@ -6,7 +6,7 @@ import pytest
 from fastapi import Request
 from starlette.responses import Response
 
-from core.csrf_middleware import CSRFMiddleware
+from core.csrf_middleware import CSRFMiddleware, _is_websocket_upgrade
 
 
 @pytest.fixture
@@ -301,6 +301,51 @@ class TestCSRFMiddlewareErrorResponse:
 
         assert response.status_code == 403
         assert "access-control-allow-origin" not in response.headers
+
+
+class TestCSRFMiddlewareWebSocketBypass:
+    """Tests for WebSocket upgrade bypass (BaseHTTPMiddleware breaks on WebSocket)."""
+
+    @pytest.mark.asyncio
+    async def test_websocket_scope_bypasses_middleware(self, mock_app):
+        """WebSocket scope should pass through to app without CSRF middleware."""
+        scope = {"type": "websocket", "headers": []}
+        receive = AsyncMock()
+        send = AsyncMock()
+
+        middleware = CSRFMiddleware(mock_app)
+        await middleware(scope, receive, send)
+
+        mock_app.assert_called_once_with(scope, receive, send)
+
+    @pytest.mark.asyncio
+    async def test_websocket_upgrade_http_request_bypasses_middleware(self, mock_app):
+        """HTTP request with Upgrade: websocket should pass through to app."""
+        scope = {
+            "type": "http",
+            "headers": [[b"upgrade", b"websocket"], [b"connection", b"Upgrade"]],
+        }
+        receive = AsyncMock()
+        send = AsyncMock()
+
+        middleware = CSRFMiddleware(mock_app)
+        await middleware(scope, receive, send)
+
+        mock_app.assert_called_once_with(scope, receive, send)
+
+    def test_is_websocket_upgrade_websocket_scope(self):
+        """_is_websocket_upgrade returns True for websocket scope."""
+        assert _is_websocket_upgrade({"type": "websocket"}) is True
+
+    def test_is_websocket_upgrade_http_with_upgrade_header(self):
+        """_is_websocket_upgrade returns True for HTTP with Upgrade: websocket."""
+        scope = {"type": "http", "headers": [[b"upgrade", b"websocket"]]}
+        assert _is_websocket_upgrade(scope) is True
+
+    def test_is_websocket_upgrade_http_without_upgrade(self):
+        """_is_websocket_upgrade returns False for normal HTTP."""
+        scope = {"type": "http", "headers": [[b"content-type", b"application/json"]]}
+        assert _is_websocket_upgrade(scope) is False
 
 
 class TestCSRFMiddlewareConfiguration:

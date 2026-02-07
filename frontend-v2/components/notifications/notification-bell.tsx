@@ -13,10 +13,10 @@ export function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: countData } = useUnreadNotificationCount();
-  const { data: notificationsData, isLoading } = useNotifications({ page_size: 5 });
+  const { data: notificationsData, isLoading } = useNotifications({ limit: 5 });
   const markAsRead = useMarkNotificationAsRead();
 
-  const unreadCount = countData?.unread_count ?? 0;
+  const unreadCount = countData?.unread_count ?? countData?.count ?? 0;
   const notifications = notificationsData?.items ?? [];
 
   useEffect(() => {
@@ -104,11 +104,11 @@ export function NotificationBell() {
           </div>
 
           <div className="p-3 border-t border-slate-100 dark:border-slate-800">
-            <Link href="/notifications" onClick={() => setIsOpen(false)}>
-              <Button variant="ghost" className="w-full">
+            <Button asChild variant="ghost" className="w-full">
+              <Link href="/notifications" onClick={() => setIsOpen(false)}>
                 View all notifications
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       )}

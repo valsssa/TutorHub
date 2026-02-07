@@ -1,6 +1,8 @@
 """Tests for cookie-based token extraction in dependencies."""
 
 from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -230,14 +232,14 @@ class TestGetCurrentUserFromRequest:
         """Token invalidated after password change."""
         mock_request.cookies = {"access_token": "valid_token"}
         mock_request.headers = {}
-        mock_user.password_changed_at = datetime.utcnow()
+        mock_user.password_changed_at = utc_now()
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
 
         with patch("core.dependencies.TokenManager") as mock_tm:
             mock_tm.decode_token.return_value = {
                 "sub": "test@example.com",
                 "role": "student",
-                "pwd_ts": (datetime.utcnow() - timedelta(hours=1)).timestamp(),
+                "pwd_ts": (utc_now() - timedelta(hours=1)).timestamp(),
             }
 
             with pytest.raises(HTTPException) as exc_info:
@@ -251,7 +253,7 @@ class TestGetCurrentUserFromRequest:
         """Old token without pwd_ts invalidated after password change."""
         mock_request.cookies = {"access_token": "valid_token"}
         mock_request.headers = {}
-        mock_user.password_changed_at = datetime.utcnow()
+        mock_user.password_changed_at = utc_now()
         mock_db.query.return_value.filter.return_value.first.return_value = mock_user
 
         with patch("core.dependencies.TokenManager") as mock_tm:

@@ -4,7 +4,9 @@ Package Service Tests
 Tests for session package purchase, credit usage, and expiration management.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 import pytest
@@ -127,7 +129,7 @@ class TestPackageCreditUsage:
             sessions_remaining=5,
             sessions_used=0,
             purchase_price=pricing_option_5_sessions.price,
-            purchased_at=datetime.now(UTC),
+            purchased_at=utc_now(),
             status="active",
         )
         db.add(package)
@@ -185,7 +187,7 @@ class TestPackageCreditUsage:
         """Test error when trying to use credit from expired package"""
         # Given - package expired
         student_package_with_credits.status = "expired"
-        student_package_with_credits.expires_at = datetime.now(UTC) - timedelta(days=1)
+        student_package_with_credits.expires_at = utc_now() - timedelta(days=1)
         db.commit()
 
         # When/Then
@@ -224,8 +226,8 @@ class TestPackageExpiration:
             sessions_remaining=3,  # Still has unused credits
             sessions_used=2,
             purchase_price=pricing_option_5_sessions.price,
-            purchased_at=datetime.now(UTC) - timedelta(days=400),
-            expires_at=datetime.now(UTC) - timedelta(days=35),  # Expired 35 days ago
+            purchased_at=utc_now() - timedelta(days=400),
+            expires_at=utc_now() - timedelta(days=35),  # Expired 35 days ago
             status="active",  # Should be expired
         )
         db.add(package)
@@ -237,8 +239,8 @@ class TestPackageExpiration:
     def test_package_expiration_12_months(self, db: Session, student_package_with_credits):
         """Test package expires after 12 months"""
         # Given - package purchased 13 months ago
-        student_package_with_credits.purchased_at = datetime.now(UTC) - timedelta(days=395)
-        student_package_with_credits.expires_at = datetime.now(UTC) - timedelta(days=5)
+        student_package_with_credits.purchased_at = utc_now() - timedelta(days=395)
+        student_package_with_credits.expires_at = utc_now() - timedelta(days=5)
         db.commit()
 
         # When - run expiration check job

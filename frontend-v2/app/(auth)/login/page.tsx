@@ -124,7 +124,7 @@ function LoginForm() {
           />
 
           {loginError && (
-            <p className="text-sm text-red-500">
+            <p className="text-sm text-red-500" role="alert">
               {loginError instanceof Error ? loginError.message : 'Login failed'}
             </p>
           )}

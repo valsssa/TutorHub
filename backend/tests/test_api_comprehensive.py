@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta
 
+from core.datetime_utils import utc_now
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -302,7 +304,7 @@ def test_update_tutor_about(client, tutor_token):
 @pytest.mark.skip(reason="Requires tutor availability setup - covered in test_bookings.py")
 def test_create_booking(client, student_token, tutor_user, test_subject):
     """Test creating a booking."""
-    start_time = datetime.utcnow() + timedelta(days=1)
+    start_time = utc_now() + timedelta(days=1)
     duration_minutes = 60
 
     response = client.post(
@@ -326,7 +328,7 @@ def test_create_booking(client, student_token, tutor_user, test_subject):
 @pytest.mark.skip(reason="Requires tutor availability setup - covered in test_bookings.py")
 def test_create_booking_past_time(client, student_token, tutor_user, test_subject):
     """Test creating booking with past time fails."""
-    start_time = datetime.utcnow() - timedelta(days=1)
+    start_time = utc_now() - timedelta(days=1)
     duration_minutes = 60
 
     response = client.post(
@@ -360,7 +362,7 @@ def test_list_bookings(client, student_token):
 def test_update_booking_status_tutor(client, tutor_token, test_db, tutor_user, student_user, test_subject):
     """Test tutor confirming booking."""
     # Create a booking
-    start_time = datetime.utcnow() + timedelta(days=1)
+    start_time = utc_now() + timedelta(days=1)
     end_time = start_time + timedelta(hours=1)
 
     booking = Booking(
@@ -467,7 +469,7 @@ def test_approve_tutor_admin(client, admin_token, test_db):
 def test_create_review(client, student_token, test_db, tutor_user, student_user, test_subject):
     """Test creating a review."""
     # Create completed booking
-    start_time = datetime.utcnow() - timedelta(days=1)
+    start_time = utc_now() - timedelta(days=1)
     end_time = start_time + timedelta(hours=1)
 
     booking = Booking(

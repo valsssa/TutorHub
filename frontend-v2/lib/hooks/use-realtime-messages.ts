@@ -109,7 +109,6 @@ export function useRealtimeMessages(
                       sender_id: newMsg.sender_id,
                       recipient_id: newMsg.recipient_id,
                       message: newMsg.content,
-                      content: newMsg.content,
                       booking_id: newMsg.booking_id,
                       conversation_id: newMsg.conversation_id,
                       is_read: false,

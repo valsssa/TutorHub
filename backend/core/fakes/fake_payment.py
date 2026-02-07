@@ -7,7 +7,9 @@ for test assertions.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from core.ports.payment import (
@@ -56,7 +58,7 @@ class FakePayment:
         self.calls.append(
             FakePaymentCall(
                 method=method,
-                timestamp=datetime.now(UTC),
+                timestamp=utc_now(),
                 args=args,
                 result=result,
             )

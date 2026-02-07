@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 from sqlalchemy import case, func
@@ -153,7 +155,7 @@ class ReviewRepositoryImpl(ReviewRepository):
                 existing_review_id=int(existing.id) if existing and existing.id else None,
             )
 
-        now = datetime.now(UTC)
+        now = utc_now()
         model = self._to_model(review)
         model.created_at = now
 

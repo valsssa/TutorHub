@@ -6,7 +6,9 @@ Handles configuration of video meeting provider preferences for tutors.
 
 import logging
 import re
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
@@ -234,7 +236,7 @@ async def update_video_settings(
     tutor_profile.preferred_video_provider = provider
     tutor_profile.custom_meeting_url_template = url_template
     tutor_profile.video_provider_configured = is_configured
-    tutor_profile.updated_at = datetime.now(UTC)
+    tutor_profile.updated_at = utc_now()
 
     db.commit()
     db.refresh(tutor_profile)

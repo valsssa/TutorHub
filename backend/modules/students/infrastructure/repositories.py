@@ -7,7 +7,9 @@ defined in the domain layer.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
@@ -126,7 +128,7 @@ class StudentProfileRepositoryImpl:
         model.preferred_language = profile.preferred_language
         model.total_sessions = profile.total_sessions
         model.credit_balance_cents = profile.credit_balance_cents
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
 
         self.db.flush()
         logger.info(f"Updated student profile {profile.id}")
@@ -241,7 +243,7 @@ class StudentProfileRepositoryImpl:
             return False
 
         model.credit_balance_cents = amount_cents
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
         self.db.flush()
 
         logger.info(
@@ -268,7 +270,7 @@ class StudentProfileRepositoryImpl:
             return False
 
         model.total_sessions = (model.total_sessions or 0) + 1
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
         self.db.flush()
 
         logger.info(

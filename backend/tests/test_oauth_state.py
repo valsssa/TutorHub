@@ -1,7 +1,9 @@
 """Tests for the OAuth state storage."""
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -102,7 +104,7 @@ class TestOAuthStateStore:
         stored_data = {
             "action": "login",
             "user_id": None,
-            "created_at": datetime.now(UTC).isoformat(),
+            "created_at": utc_now().isoformat(),
         }
         mock_redis = AsyncMock()
         mock_redis.get.return_value = json.dumps(stored_data)
@@ -139,7 +141,7 @@ class TestOAuthStateStore:
         """Test state validation from fallback storage."""
         store._fallback_states["test_state"] = {
             "action": "login",
-            "created_at": datetime.now(UTC).isoformat(),
+            "created_at": utc_now().isoformat(),
         }
 
         with patch.object(store, "_get_redis", return_value=None):
@@ -151,7 +153,7 @@ class TestOAuthStateStore:
     @pytest.mark.asyncio
     async def test_validate_state_fallback_expired(self, store):
         """Test state validation when fallback state is expired."""
-        expired_time = datetime.now(UTC) - timedelta(
+        expired_time = utc_now() - timedelta(
             seconds=OAUTH_STATE_TTL_SECONDS + 100
         )
         store._fallback_states["test_state"] = {
@@ -172,7 +174,7 @@ class TestOAuthStateStore:
         mock_redis.get.return_value = json.dumps(
             {
                 "action": "login",
-                "created_at": datetime.now(UTC).isoformat(),
+                "created_at": utc_now().isoformat(),
             }
         )
         mock_redis.delete = AsyncMock()
@@ -184,7 +186,7 @@ class TestOAuthStateStore:
 
     def test_cleanup_expired_fallback_states(self, store):
         """Test cleanup of expired fallback states."""
-        now = datetime.now(UTC)
+        now = utc_now()
         expired_time = now - timedelta(seconds=OAUTH_STATE_TTL_SECONDS + 100)
 
         store._fallback_states["expired1"] = {

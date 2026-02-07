@@ -1,16 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
+import { useAuth } from '@/lib/hooks';
 import { forgotPasswordSchema, type ForgotPasswordFormData } from '@/lib/validators';
-import { Card, CardContent, Button, Input } from '@/components/ui';
+import { Card, CardContent, Button, Input, Skeleton } from '@/components/ui';
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (user && !authLoading) {
+      const getRoleBasedRedirect = (role?: string) => {
+        switch (role) {
+          case 'admin': return '/admin';
+          case 'tutor': return '/tutor';
+          case 'owner': return '/owner';
+          default: return '/student';
+        }
+      };
+      router.push(getRoleBasedRedirect(user.role));
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading || user) {
+    return (
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <Skeleton className="h-7 w-48 mb-2" />
+          <Skeleton className="h-5 w-64 mb-6" />
+          <Skeleton className="h-16 w-full mb-4" />
+          <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   const form = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),

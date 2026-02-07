@@ -6,7 +6,9 @@ Preserves circuit breaker pattern, idempotency keys, and error handling.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 import stripe
@@ -113,7 +115,7 @@ class StripeAdapter:
             "checkout_session",
             amount_cents,
             currency,
-            datetime.now(UTC).date().isoformat(),
+            utc_now().date().isoformat(),
             booking_id=booking_id,
         )
 
@@ -184,7 +186,7 @@ class StripeAdapter:
         idempotency_key = generate_idempotency_key(
             "refund",
             payment_intent_id,
-            datetime.now(UTC).date().isoformat(),
+            utc_now().date().isoformat(),
         )
 
         refund_params: dict[str, Any] = {

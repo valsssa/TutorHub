@@ -24,7 +24,9 @@ Usage:
 import json
 import logging
 import secrets
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 import redis.asyncio as redis
@@ -110,7 +112,7 @@ class OAuthStateStore:
         data: dict[str, Any] = {
             "action": action,
             "user_id": user_id,
-            "created_at": datetime.now(UTC).isoformat(),
+            "created_at": utc_now().isoformat(),
         }
 
         if extra_data:
@@ -172,7 +174,7 @@ class OAuthStateStore:
             data = self._fallback_states.pop(state)
             # Check expiration
             created_at = datetime.fromisoformat(data["created_at"])
-            age_seconds = (datetime.now(UTC) - created_at).total_seconds()
+            age_seconds = (utc_now() - created_at).total_seconds()
             if age_seconds > OAUTH_STATE_TTL_SECONDS:
                 logger.warning("OAuth state expired (in-memory fallback)")
                 return None
@@ -184,7 +186,7 @@ class OAuthStateStore:
 
     def _cleanup_expired_fallback_states(self) -> None:
         """Clean up expired states from in-memory fallback storage."""
-        now = datetime.now(UTC)
+        now = utc_now()
         expired = []
         for state, data in self._fallback_states.items():
             created_at = datetime.fromisoformat(data["created_at"])

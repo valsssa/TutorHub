@@ -14,7 +14,9 @@ Uses pytest with mocked Redis, JWT utilities, and time manipulation.
 
 import asyncio
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -156,7 +158,7 @@ class TestTokenEdgeCases:
 
         # Change password (updates password_changed_at)
         student_user.hashed_password = PasswordHasher.hash("NewPassword123!")
-        password_change_time = datetime.now(UTC)
+        password_change_time = utc_now()
         student_user.password_changed_at = password_change_time
         db_session.commit()
 
@@ -690,7 +692,7 @@ class TestSessionManagement:
         token = TokenManager.create_access_token({"sub": student_user.email})
 
         # Soft delete user
-        student_user.deleted_at = datetime.now(UTC)
+        student_user.deleted_at = utc_now()
         db_session.commit()
 
         # Session should be invalid
@@ -758,7 +760,7 @@ class TestPasswordResetEdgeCases:
     ):
         """Test handling of token that expires during the reset process."""
         # Create token that's already expired
-        expired_time = datetime.now(UTC) - timedelta(hours=2)
+        expired_time = utc_now() - timedelta(hours=2)
         test_token = "expired_during_reset_token"
         _reset_tokens[test_token] = {
             "user_id": student_user.id,
@@ -786,7 +788,7 @@ class TestPasswordResetEdgeCases:
         _reset_tokens[old_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         # Second reset request (new token)
@@ -794,7 +796,7 @@ class TestPasswordResetEdgeCases:
         _reset_tokens[new_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         try:
@@ -830,7 +832,7 @@ class TestPasswordResetEdgeCases:
         _reset_tokens[test_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         try:
@@ -883,12 +885,12 @@ class TestPasswordResetEdgeCases:
         _reset_tokens[expired_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC) - timedelta(hours=3),
+            "created_at": utc_now() - timedelta(hours=3),
         }
         _reset_tokens[valid_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         try:
@@ -1191,7 +1193,7 @@ class TestIntegrationScenarios:
         TokenManager.create_access_token({"sub": student_user.email})
 
         # Simulate account compromise detection - change password
-        password_change_time = datetime.now(UTC)
+        password_change_time = utc_now()
         student_user.password_changed_at = password_change_time
         student_user.hashed_password = PasswordHasher.hash("SecureNewPassword123!")
         db_session.commit()
@@ -1238,7 +1240,7 @@ class TestIntegrationScenarios:
         _reset_tokens[test_token] = {
             "user_id": oauth_user.id,
             "email": oauth_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         try:

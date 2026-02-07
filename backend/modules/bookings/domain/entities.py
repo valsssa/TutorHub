@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 
+from core.datetime_utils import utc_now
 from modules.bookings.domain.status import (
     DisputeState,
     PaymentState,
@@ -169,4 +170,4 @@ class BookingStatusChange:
     to_state: SessionState
     changed_by_user_id: int | None
     reason: str | None = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=utc_now)

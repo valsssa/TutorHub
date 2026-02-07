@@ -110,4 +110,72 @@ describe('Button', () => {
     const button = screen.getByRole('button');
     expect(button).toHaveClass('custom-class');
   });
+
+  describe('asChild', () => {
+    it('renders child element instead of button when asChild is true', () => {
+      render(
+        <Button asChild>
+          <a href="/test">Link text</a>
+        </Button>
+      );
+      const link = screen.getByRole('link', { name: /link text/i });
+      expect(link).toBeInTheDocument();
+      expect(link.tagName).toBe('A');
+      expect(link).toHaveAttribute('href', '/test');
+      // Should not render a button element
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('applies button variant classes to child element', () => {
+      render(
+        <Button asChild variant="primary" size="md">
+          <a href="/test">Styled link</a>
+        </Button>
+      );
+      const link = screen.getByRole('link');
+      expect(link).toHaveClass('bg-primary-500');
+    });
+
+    it('applies aria-disabled when loading with asChild', () => {
+      render(
+        <Button asChild loading>
+          <a href="/test">Loading link</a>
+        </Button>
+      );
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-disabled', 'true');
+      expect(link).toHaveClass('pointer-events-none', 'opacity-50');
+    });
+
+    it('shows spinner when loading with asChild', () => {
+      render(
+        <Button asChild loading>
+          <a href="/test">Loading link</a>
+        </Button>
+      );
+      const link = screen.getByRole('link');
+      expect(link.querySelector('svg')).toHaveClass('animate-spin');
+    });
+
+    it('does not forward button-only attributes to child element', () => {
+      render(
+        <Button asChild type="submit">
+          <a href="/test">Link</a>
+        </Button>
+      );
+      const link = screen.getByRole('link');
+      expect(link).not.toHaveAttribute('type');
+    });
+
+    it('merges className from both Button and child', () => {
+      render(
+        <Button asChild className="button-class">
+          <a href="/test" className="child-class">Both classes</a>
+        </Button>
+      );
+      const link = screen.getByRole('link');
+      expect(link).toHaveClass('button-class');
+      expect(link).toHaveClass('child-class');
+    });
+  });
 });

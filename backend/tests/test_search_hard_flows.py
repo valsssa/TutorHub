@@ -19,6 +19,8 @@ import hashlib
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -47,7 +49,7 @@ def mock_search_index():
     """Create a mock search index for testing."""
     index = MagicMock()
     index.version = 1
-    index.last_updated = datetime.now(UTC)
+    index.last_updated = utc_now()
     index.documents = []
     index.is_rebuilding = False
     index.rebuild_progress = 0.0
@@ -55,7 +57,7 @@ def mock_search_index():
     def add_document(doc):
         index.documents.append(doc)
         index.version += 1
-        index.last_updated = datetime.now(UTC)
+        index.last_updated = utc_now()
 
     def search(query, filters=None, limit=20):
         results = index.documents.copy()
@@ -1138,13 +1140,13 @@ class TestAutocompleteAndSuggestions:
         """
         # Simulate suggestion ranking algorithm
         suggestions = [
-            {"term": "math", "searches": 1000, "last_searched": datetime.now(UTC)},
-            {"term": "mathematics", "searches": 500, "last_searched": datetime.now(UTC) - timedelta(days=30)},
-            {"term": "maths", "searches": 2000, "last_searched": datetime.now(UTC) - timedelta(days=90)},
+            {"term": "math", "searches": 1000, "last_searched": utc_now()},
+            {"term": "mathematics", "searches": 500, "last_searched": utc_now() - timedelta(days=30)},
+            {"term": "maths", "searches": 2000, "last_searched": utc_now() - timedelta(days=90)},
         ]
 
         def rank_suggestions(suggestions, recency_weight=0.3):
-            now = datetime.now(UTC)
+            now = utc_now()
             scored = []
             for s in suggestions:
                 age_days = (now - s["last_searched"]).days

@@ -15,6 +15,8 @@ import asyncio
 import threading
 import time
 from datetime import UTC, date, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from datetime import time as dt_time
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -56,7 +58,7 @@ def mock_user():
     user.timezone = "America/New_York"
     user.google_calendar_refresh_token = "mock_refresh_token"
     user.google_calendar_access_token = "mock_access_token"
-    user.google_calendar_token_expires = datetime.now(UTC) + timedelta(hours=1)
+    user.google_calendar_token_expires = utc_now() + timedelta(hours=1)
     return user
 
 

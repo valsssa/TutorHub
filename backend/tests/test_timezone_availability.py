@@ -1,6 +1,8 @@
 """Tests for timezone handling in availability system."""
 
 from datetime import UTC, date, datetime, time, timedelta
+
+from core.datetime_utils import utc_now
 from datetime import timezone as dt_timezone
 
 import pytest
@@ -375,8 +377,8 @@ class TestTimezoneInBookingSnapshot:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
             subject_id=test_subject.id,
-            start_time=datetime.now(UTC) + timedelta(days=2),
-            end_time=datetime.now(UTC) + timedelta(days=2, hours=1),
+            start_time=utc_now() + timedelta(days=2),
+            end_time=utc_now() + timedelta(days=2, hours=1),
             hourly_rate=50.00,
             total_amount=50.00,
             currency="USD",
@@ -407,8 +409,8 @@ class TestTimezoneInBookingSnapshot:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
             subject_id=test_subject.id,
-            start_time=datetime.now(UTC) + timedelta(days=3),
-            end_time=datetime.now(UTC) + timedelta(days=3, hours=1),
+            start_time=utc_now() + timedelta(days=3),
+            end_time=utc_now() + timedelta(days=3, hours=1),
             hourly_rate=50.00,
             total_amount=50.00,
             currency="USD",

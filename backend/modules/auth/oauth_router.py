@@ -13,7 +13,9 @@ Security:
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Annotated
 from urllib.parse import urlencode
 
@@ -194,7 +196,7 @@ async def google_callback(
             # Update Google ID if not set
             if not user.google_id:
                 user.google_id = google_id
-                user.updated_at = datetime.now(UTC)
+                user.updated_at = utc_now()
 
             # Update name if empty (use Google's name if available)
             if not user.first_name and first_name:
@@ -321,7 +323,7 @@ async def link_google_account(
 
         # Link account
         current_user.google_id = google_id
-        current_user.updated_at = datetime.now(UTC)
+        current_user.updated_at = utc_now()
         db.commit()
 
         return {"message": "Google account linked successfully", "google_email": google_email}
@@ -367,7 +369,7 @@ async def unlink_google_account(
         )
 
     current_user.google_id = None
-    current_user.updated_at = datetime.now(UTC)
+    current_user.updated_at = utc_now()
     db.commit()
 
     return {"message": "Google account unlinked successfully"}

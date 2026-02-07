@@ -12,7 +12,9 @@ Tokens are stored in Redis via CachePort for multi-instance safety.
 import json
 import logging
 import secrets
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
@@ -98,7 +100,7 @@ async def request_password_reset(
         token_data = {
             "user_id": user.id,
             "email": email,
-            "created_at": datetime.now(UTC).isoformat(),
+            "created_at": utc_now().isoformat(),
         }
 
         # Store in Redis with 1-hour TTL (auto-expires, no cleanup needed)
@@ -185,7 +187,7 @@ async def reset_password(
         )
 
     # Update password and track change time for token invalidation
-    now = datetime.now(UTC)
+    now = utc_now()
     user.hashed_password = PasswordHasher.hash(request.new_password)
     user.password_changed_at = now
     user.updated_at = now

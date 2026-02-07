@@ -24,8 +24,9 @@ def _is_valid_sentry_dsn(dsn: str | None) -> bool:
 
     dsn = dsn.strip()
 
-    # Check for placeholder values
-    if dsn.lower() in ("your_sentry_dsn", "your-sentry-dsn", "placeholder", "none", "null", ""):
+    # Check for placeholder values (lowercase for case-insensitive match)
+    _placeholders = ("your_sentry_dsn", "your-sentry-dsn", "placeholder", "none", "null", "")
+    if dsn.lower() in _placeholders:
         return False
 
     # Must start with https:// and contain @ and a numeric project ID
@@ -56,11 +57,18 @@ def init_sentry() -> bool:
         return False
 
     if not _is_valid_sentry_dsn(settings.SENTRY_DSN):
-        logger.warning(
-            "Invalid Sentry DSN format detected: '%s'. Error tracking disabled. "
-            "Set a valid DSN (https://<key>@<host>/<project_id>) or remove SENTRY_DSN to disable.",
-            settings.SENTRY_DSN[:20] + "..." if len(settings.SENTRY_DSN) > 20 else settings.SENTRY_DSN,
+        dsn_val = settings.SENTRY_DSN or ""
+        is_placeholder = dsn_val.strip().lower() in (
+            "your_sentry_dsn", "your-sentry-dsn", "placeholder", "none", "null", ""
         )
+        if is_placeholder:
+            logger.debug("Sentry disabled (placeholder or empty DSN configured)")
+        else:
+            logger.warning(
+                "Invalid Sentry DSN format detected: '%s'. Error tracking disabled. "
+                "Set a valid DSN (https://<key>@<host>/<project_id>) or remove SENTRY_DSN to disable.",
+                dsn_val[:20] + "..." if len(dsn_val) > 20 else dsn_val,
+            )
         return False
 
     # Configure Sentry logging integration

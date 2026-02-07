@@ -7,6 +7,8 @@ and verify complete booking workflows from profile setup to booking lifecycle.
 
 from datetime import UTC, datetime, timedelta
 
+from core.datetime_utils import utc_now
+
 import pytest
 
 # All fixtures are automatically available from consolidated conftest.py
@@ -61,7 +63,7 @@ def test_tutor_profile_setup_and_booking_lifecycle(client, tutor_token, student_
     assert profile_id in tutor_ids, f"Tutor profile {profile_id} not found in search results"
 
     # Step 3: Student creates booking
-    now = datetime.now(UTC)
+    now = utc_now()
     start_time = (now + timedelta(days=1)).replace(hour=14, minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=1)
 
@@ -151,7 +153,7 @@ def test_booking_validation_subject_not_offered(client, tutor_token, student_tok
     profile_id = profile_response.json()["id"]
 
     # Step 2: Student attempts to book for subject tutor doesn't offer
-    now = datetime.now(UTC)
+    now = utc_now()
     start_time = (now + timedelta(days=2)).replace(hour=10, minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=1)
 
@@ -195,7 +197,7 @@ def test_booking_cancellation_workflow(client, tutor_user, student_user, tutor_t
     profile_id = profile_response.json()["id"]
 
     # Step 2: Create booking far in future (free cancellation)
-    now = datetime.now(UTC)
+    now = utc_now()
     start_time = (now + timedelta(days=5)).replace(hour=10, minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=1)
 
@@ -252,7 +254,7 @@ def test_booking_time_conflict_prevention(client, tutor_token, student_token, db
     profile_id = profile_response.json()["id"]
 
     # Step 2: Create first booking
-    now = datetime.now(UTC)
+    now = utc_now()
     start_time = (now + timedelta(days=3)).replace(hour=15, minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=1)
 
@@ -339,7 +341,7 @@ def test_booking_timezone_handling(client, tutor_token, student_token, db_sessio
     profile_id = profile_response.json()["id"]
 
     # Create booking in UTC
-    now = datetime.now(UTC)
+    now = utc_now()
     start_time = (now + timedelta(days=1)).replace(hour=16, minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=1)
 

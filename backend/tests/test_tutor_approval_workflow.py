@@ -10,7 +10,9 @@ Tests cover:
 - Edge cases and error handling
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 import pytest
 from fastapi import status
@@ -475,7 +477,7 @@ class TestRejectTutor:
         user, profile = self._create_pending_tutor(
             db_session, email="clear_approval@test.com"
         )
-        profile.approved_at = datetime.now(UTC)
+        profile.approved_at = utc_now()
         profile.approved_by = 1
         db_session.commit()
 
@@ -529,7 +531,7 @@ class TestListApprovedTutors:
             hourly_rate=50.00,
             is_approved=True,
             profile_status="approved",
-            approved_at=datetime.now(UTC),
+            approved_at=utc_now(),
         )
         db_session.add(profile)
         db_session.commit()

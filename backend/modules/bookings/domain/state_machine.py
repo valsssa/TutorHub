@@ -11,7 +11,6 @@ Race Condition Prevention:
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from core.datetime_utils import utc_now
@@ -729,7 +728,7 @@ class BookingStateMachine:
 
         if session_ended_at:
             # Ensure we're comparing timezone-aware datetimes
-            now = datetime.now(UTC)
+            now = utc_now()
             # Handle both timezone-aware and naive datetimes from the database
             if session_ended_at.tzinfo is None:
                 # Treat naive datetime as UTC

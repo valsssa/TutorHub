@@ -8,7 +8,9 @@ Tests cover:
 - Unique constraint handling
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 import pytest
@@ -58,7 +60,7 @@ class TestCascadeDeletions:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -75,7 +77,7 @@ class TestCascadeDeletions:
         booking_id = booking.id
 
         # Soft-delete the profile (preferred approach for data integrity)
-        profile.deleted_at = datetime.now(UTC)
+        profile.deleted_at = utc_now()
         db_session.commit()
 
         # Booking should be preserved for audit trail
@@ -143,7 +145,7 @@ class TestCascadeDeletions:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -206,7 +208,7 @@ class TestCascadeDeletions:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -256,7 +258,7 @@ class TestSoftDeleteConsistency:
         db_session.commit()
 
         if hasattr(user, "deleted_at"):
-            user.deleted_at = datetime.now(UTC)
+            user.deleted_at = utc_now()
             db_session.commit()
 
             active_users = (
@@ -307,7 +309,7 @@ class TestSoftDeleteConsistency:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -329,7 +331,7 @@ class TestSoftDeleteConsistency:
         original_amount = booking.total_amount
 
         if hasattr(booking, "deleted_at"):
-            booking.deleted_at = datetime.now(UTC)
+            booking.deleted_at = utc_now()
             booking.deleted_by = tutor.id  # Use the tutor created in the test
             db_session.commit()
 
@@ -368,7 +370,7 @@ class TestSoftDeleteConsistency:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -384,7 +386,7 @@ class TestSoftDeleteConsistency:
         db_session.commit()
 
         if hasattr(booking, "deleted_at") and hasattr(booking, "deleted_by"):
-            booking.deleted_at = datetime.now(UTC)
+            booking.deleted_at = utc_now()
             booking.deleted_by = admin_user.id
             db_session.commit()
 
@@ -406,7 +408,7 @@ class TestForeignKeyIntegrity:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=99999,
             student_id=student_user.id,
@@ -454,7 +456,7 @@ class TestForeignKeyIntegrity:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=99999,
@@ -609,7 +611,7 @@ class TestUniqueConstraintHandling:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -734,7 +736,7 @@ class TestCheckConstraintValidation:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         booking = Booking(
             tutor_profile_id=profile.id,
@@ -783,7 +785,7 @@ class TestCheckConstraintValidation:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -842,7 +844,7 @@ class TestCheckConstraintValidation:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -904,7 +906,7 @@ class TestDataConsistencyAcrossRelations:
         db_session.add(subject)
         db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,

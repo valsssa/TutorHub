@@ -2,6 +2,8 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -77,7 +79,7 @@ async def get_available_slots(
     # Set cache control headers to reduce stale slot data
     # Private: only browser cache (not CDN), max-age: 30 seconds
     response.headers["Cache-Control"] = "private, max-age=30"
-    response.headers["X-Slots-Generated-At"] = datetime.now(UTC).isoformat()
+    response.headers["X-Slots-Generated-At"] = utc_now().isoformat()
     # Verify tutor exists and is approved
     tutor = db.query(TutorProfile).filter(TutorProfile.id == tutor_id, TutorProfile.is_approved.is_(True)).first()
     if not tutor:
@@ -168,7 +170,7 @@ async def get_available_slots(
                 slot_end = current_slot + timedelta(minutes=30)
 
                 # Skip past slots (use UTC for comparison)
-                now_utc = datetime.now(UTC)
+                now_utc = utc_now()
                 if current_slot < now_utc:
                     current_slot = slot_end
                     continue

@@ -9,7 +9,9 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from core.ports.cache import LockResult
@@ -43,7 +45,7 @@ class CacheOperation:
 
     operation: str
     key: str
-    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime = field(default_factory=lambda: utc_now())
     metadata: dict = field(default_factory=dict)
 
 

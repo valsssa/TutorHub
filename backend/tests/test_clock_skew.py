@@ -1,6 +1,8 @@
 """Tests for clock skew detection and monitoring."""
 
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,8 +23,8 @@ class TestClockSkewResult:
 
     def test_create_result(self):
         """Test creating a ClockSkewResult."""
-        app_time = datetime.now(UTC)
-        db_time = datetime.now(UTC)
+        app_time = utc_now()
+        db_time = utc_now()
         result = ClockSkewResult(
             app_time=app_time,
             db_time=db_time,
@@ -38,8 +40,8 @@ class TestClockSkewResult:
     def test_result_is_named_tuple(self):
         """Test ClockSkewResult is a named tuple."""
         result = ClockSkewResult(
-            app_time=datetime.now(UTC),
-            db_time=datetime.now(UTC),
+            app_time=utc_now(),
+            db_time=utc_now(),
             offset_seconds=0.0,
             is_within_threshold=True,
         )
@@ -83,7 +85,7 @@ class TestCheckClockSkew:
     def test_check_within_threshold(self):
         """Test clock skew within threshold."""
         mock_db = MagicMock()
-        now = datetime.now(UTC)
+        now = utc_now()
         mock_db.execute.return_value.scalar.return_value = now
 
         with patch("core.clock_skew.datetime") as mock_datetime:
@@ -133,7 +135,7 @@ class TestCheckClockSkew:
     def test_check_uses_default_threshold(self):
         """Test default threshold is used."""
         mock_db = MagicMock()
-        now = datetime.now(UTC)
+        now = utc_now()
         mock_db.execute.return_value.scalar.return_value = now
 
         with patch("core.clock_skew.datetime") as mock_datetime:
@@ -185,14 +187,14 @@ class TestClockSkewMonitor:
     def test_should_check_after_interval(self):
         """Test should_check returns True after interval elapsed."""
         monitor = ClockSkewMonitor(check_interval_seconds=60)
-        monitor._last_check_time = datetime.now(UTC) - timedelta(seconds=120)
+        monitor._last_check_time = utc_now() - timedelta(seconds=120)
 
         assert monitor.should_check() is True
 
     def test_should_check_before_interval(self):
         """Test should_check returns False before interval elapsed."""
         monitor = ClockSkewMonitor(check_interval_seconds=60)
-        monitor._last_check_time = datetime.now(UTC) - timedelta(seconds=30)
+        monitor._last_check_time = utc_now() - timedelta(seconds=30)
 
         assert monitor.should_check() is False
 
@@ -203,8 +205,8 @@ class TestClockSkewMonitor:
 
         with patch("core.clock_skew.check_clock_skew") as mock_check:
             mock_result = ClockSkewResult(
-                app_time=datetime.now(UTC),
-                db_time=datetime.now(UTC),
+                app_time=utc_now(),
+                db_time=utc_now(),
                 offset_seconds=0.5,
                 is_within_threshold=True,
             )
@@ -218,10 +220,10 @@ class TestClockSkewMonitor:
     def test_check_and_warn_skips_when_not_due(self):
         """Test check_and_warn skips check when not due."""
         monitor = ClockSkewMonitor(check_interval_seconds=60)
-        monitor._last_check_time = datetime.now(UTC) - timedelta(seconds=30)
+        monitor._last_check_time = utc_now() - timedelta(seconds=30)
         monitor._last_skew_result = ClockSkewResult(
-            app_time=datetime.now(UTC),
-            db_time=datetime.now(UTC),
+            app_time=utc_now(),
+            db_time=utc_now(),
             offset_seconds=0.5,
             is_within_threshold=True,
         )
@@ -241,15 +243,15 @@ class TestClockSkewMonitor:
 
         with patch("core.clock_skew.check_clock_skew") as mock_check:
             mock_check.return_value = ClockSkewResult(
-                app_time=datetime.now(UTC),
-                db_time=datetime.now(UTC),
+                app_time=utc_now(),
+                db_time=utc_now(),
                 offset_seconds=0.5,
                 is_within_threshold=True,
             )
 
-            before = datetime.now(UTC)
+            before = utc_now()
             monitor.check_and_warn(mock_db)
-            after = datetime.now(UTC)
+            after = utc_now()
 
             assert monitor._last_check_time >= before
             assert monitor._last_check_time <= after
@@ -260,8 +262,8 @@ class TestClockSkewMonitor:
         mock_db = MagicMock()
 
         expected_result = ClockSkewResult(
-            app_time=datetime.now(UTC),
-            db_time=datetime.now(UTC),
+            app_time=utc_now(),
+            db_time=utc_now(),
             offset_seconds=2.5,
             is_within_threshold=True,
         )
@@ -281,8 +283,8 @@ class TestClockSkewMonitor:
         """Test last_offset returns stored value."""
         monitor = ClockSkewMonitor()
         monitor._last_skew_result = ClockSkewResult(
-            app_time=datetime.now(UTC),
-            db_time=datetime.now(UTC),
+            app_time=utc_now(),
+            db_time=utc_now(),
             offset_seconds=3.5,
             is_within_threshold=True,
         )
@@ -327,7 +329,7 @@ class TestIntegration:
         """Test monitor integration with check_clock_skew."""
         monitor = ClockSkewMonitor(threshold_seconds=10)
         mock_db = MagicMock()
-        now = datetime.now(UTC)
+        now = utc_now()
         mock_db.execute.return_value.scalar.return_value = now
 
         with patch("core.clock_skew.datetime") as mock_datetime:
@@ -345,7 +347,7 @@ class TestIntegration:
         """Test typical usage pattern in background jobs."""
         monitor = ClockSkewMonitor(threshold_seconds=5, check_interval_seconds=300)
         mock_db = MagicMock()
-        now = datetime.now(UTC)
+        now = utc_now()
         mock_db.execute.return_value.scalar.return_value = now
 
         with patch("core.clock_skew.datetime") as mock_datetime:

@@ -11,7 +11,9 @@ Tests cover:
 
 import threading
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -62,7 +64,7 @@ class TestConcurrentBookingConflicts:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         start_time = (now + timedelta(days=1)).replace(hour=14, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=1)
 
@@ -149,7 +151,7 @@ class TestConcurrentBookingConflicts:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         base_time = (now + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
 
         booking1 = Booking(
@@ -212,7 +214,7 @@ class TestConcurrentBookingConflicts:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         slot1_start = (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
         slot1_end = slot1_start + timedelta(hours=1)
 
@@ -494,7 +496,7 @@ class TestNetworkTimeouts:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         start_time = now + timedelta(days=1)
         end_time = start_time + timedelta(hours=1)
 
@@ -551,7 +553,7 @@ class TestStateTransitionEdgeCases:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -605,7 +607,7 @@ class TestStateTransitionEdgeCases:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -655,7 +657,7 @@ class TestStateTransitionEdgeCases:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -725,7 +727,7 @@ class TestOptimisticLocking:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -780,7 +782,7 @@ class TestOptimisticLocking:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,

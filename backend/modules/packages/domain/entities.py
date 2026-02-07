@@ -6,7 +6,9 @@ No SQLAlchemy or infrastructure dependencies.
 """
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 from modules.packages.domain.value_objects import (
@@ -90,7 +92,7 @@ class PricingOptionEntity:
         """
         if self.validity_days is None:
             return None
-        base_date = from_date or datetime.now(UTC)
+        base_date = from_date or utc_now()
         return base_date + timedelta(days=self.validity_days)
 
 
@@ -155,7 +157,7 @@ class StudentPackageEntity:
             return True
         if self.expires_at is None:
             return False
-        return datetime.now(UTC) > self.expires_at
+        return utc_now() > self.expires_at
 
     @property
     def is_exhausted(self) -> bool:
@@ -177,7 +179,7 @@ class StudentPackageEntity:
         """Calculate days until package expires."""
         if self.expires_at is None:
             return None
-        delta = self.expires_at - datetime.now(UTC)
+        delta = self.expires_at - utc_now()
         return max(0, delta.days)
 
     @property
@@ -243,7 +245,7 @@ class StudentPackageEntity:
             expires_at=new_expires_at,
             purchased_at=self.purchased_at,
             created_at=self.created_at,
-            updated_at=datetime.now(UTC),
+            updated_at=utc_now(),
             payment_intent_id=self.payment_intent_id,
             expiry_warning_sent=new_expiry_warning_sent,
             pricing_option=self.pricing_option,
@@ -270,7 +272,7 @@ class StudentPackageEntity:
             expires_at=self.expires_at,
             purchased_at=self.purchased_at,
             created_at=self.created_at,
-            updated_at=datetime.now(UTC),
+            updated_at=utc_now(),
             payment_intent_id=self.payment_intent_id,
             expiry_warning_sent=self.expiry_warning_sent,
             pricing_option=self.pricing_option,
@@ -297,7 +299,7 @@ class StudentPackageEntity:
             expires_at=self.expires_at,
             purchased_at=self.purchased_at,
             created_at=self.created_at,
-            updated_at=datetime.now(UTC),
+            updated_at=utc_now(),
             payment_intent_id=self.payment_intent_id,
             expiry_warning_sent=self.expiry_warning_sent,
             pricing_option=self.pricing_option,
@@ -316,7 +318,7 @@ class StudentPackageEntity:
         if self.expires_at is None:
             return self
 
-        new_expires_at = datetime.now(UTC) + timedelta(days=days)
+        new_expires_at = utc_now() + timedelta(days=days)
 
         return StudentPackageEntity(
             id=self.id,
@@ -332,7 +334,7 @@ class StudentPackageEntity:
             expires_at=new_expires_at,
             purchased_at=self.purchased_at,
             created_at=self.created_at,
-            updated_at=datetime.now(UTC),
+            updated_at=utc_now(),
             payment_intent_id=self.payment_intent_id,
             expiry_warning_sent=False,  # Reset warning flag
             pricing_option=self.pricing_option,

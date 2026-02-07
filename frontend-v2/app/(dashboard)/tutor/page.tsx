@@ -340,10 +340,7 @@ export default function TutorDashboard() {
   const upcomingCount = allUpcoming.length;
   const pendingCount = pendingRequests.length;
 
-  // Calculate earnings (approximation - multiplies ALL-TIME sessions by current rate)
-  // TODO: replace with real earnings data from a dedicated earnings API endpoint
   const hourlyRate = tutorProfile?.hourly_rate ?? 0;
-  const estimatedMonthlyEarnings = Math.round(totalSessions * hourlyRate * 0.8); // 80% after fees
 
   return (
     <div className="space-y-6">
@@ -378,8 +375,8 @@ export default function TutorDashboard() {
           isLoading={profileLoading}
         />
         <StatCard
-          label="Est. Earnings"
-          value={formatCurrency(estimatedMonthlyEarnings)}
+          label="Hourly Rate"
+          value={hourlyRate > 0 ? formatCurrency(hourlyRate) : 'N/A'}
           icon={DollarSign}
           isLoading={profileLoading}
         />

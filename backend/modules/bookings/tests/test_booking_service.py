@@ -5,6 +5,8 @@ Updated for four-field status system.
 """
 
 from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 import pytest
@@ -175,7 +177,7 @@ class TestBookingCreation:
         """Test creating a basic booking."""
         service = BookingService(db_session)
 
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -202,7 +204,7 @@ class TestBookingCreation:
         db_session.commit()
 
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
 
         booking = service.create_booking(
             student_id=test_student.id,
@@ -223,7 +225,7 @@ class TestBookingCreation:
         db_session.commit()
 
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
 
         booking = service.create_booking(
             student_id=test_student.id,
@@ -240,7 +242,7 @@ class TestBookingCreation:
     def test_create_booking_calculates_30min_rate(self, db_session, test_student, test_tutor):
         """Test pro-rated pricing for 30-minute session."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -259,7 +261,7 @@ class TestBookingCreation:
         db_session.commit()
 
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
 
         booking = service.create_booking(
             student_id=test_student.id,
@@ -275,7 +277,7 @@ class TestBookingCreation:
     def test_create_booking_in_past_fails(self, db_session, test_student, test_tutor):
         """Cannot create booking in the past."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() - timedelta(hours=1)  # Past
+        start_at = utc_now() - timedelta(hours=1)  # Past
 
         from fastapi import HTTPException
 
@@ -302,7 +304,7 @@ class TestConflictChecking:
     def test_no_conflict_empty_schedule(self, db_session, test_student, test_tutor):
         """No conflict when tutor schedule is empty."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         end_at = start_at + timedelta(hours=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
@@ -317,7 +319,7 @@ class TestConflictChecking:
     def test_conflict_with_existing_booking(self, db_session, test_student, test_tutor):
         """Detect conflict with existing booking."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         # Create first booking
@@ -342,7 +344,7 @@ class TestConflictChecking:
     def test_no_conflict_adjacent_bookings(self, db_session, test_student, test_tutor):
         """Adjacent bookings should not conflict."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         # Create first booking
@@ -366,7 +368,7 @@ class TestConflictChecking:
     def test_check_conflicts_with_locking(self, db_session, test_student, test_tutor):
         """Verify check_conflicts supports row-level locking to prevent race conditions."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         start_at + timedelta(hours=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
@@ -394,7 +396,7 @@ class TestConflictChecking:
     def test_check_conflicts_without_locking_backward_compatible(self, db_session, test_student, test_tutor):
         """Verify check_conflicts works without locking (backward compatible)."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         # Default call without use_lock should still work
@@ -418,7 +420,7 @@ class TestCancellation:
     def test_student_cancels_early(self, db_session, test_student, test_tutor):
         """Student cancels 24h before: allowed with refund."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=2)  # 48h away - well outside window
+        start_at = utc_now() + timedelta(days=2)  # 48h away - well outside window
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -444,7 +446,7 @@ class TestCancellation:
     def test_tutor_cancels_late_gets_strike(self, db_session, test_student, test_tutor):
         """Tutor cancels < 24h: gets penalty strike."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(hours=6)  # 6h away
+        start_at = utc_now() + timedelta(hours=6)  # 6h away
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -489,7 +491,7 @@ class TestNoShow:
     def test_mark_student_no_show_after_grace(self, db_session, test_student, test_tutor):
         """Tutor marks student no-show after 10min grace."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() - timedelta(minutes=15)  # Started 15 min ago
+        start_at = utc_now() - timedelta(minutes=15)  # Started 15 min ago
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -517,7 +519,7 @@ class TestNoShow:
     def test_mark_tutor_no_show_after_grace(self, db_session, test_student, test_tutor):
         """Student marks tutor no-show after 10min grace."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() - timedelta(minutes=15)  # Started 15 min ago
+        start_at = utc_now() - timedelta(minutes=15)  # Started 15 min ago
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -554,7 +556,7 @@ class TestStateMachineMethods:
     def test_accept_booking(self, db_session, test_student, test_tutor):
         """Test accepting a booking request."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -577,7 +579,7 @@ class TestStateMachineMethods:
     def test_decline_booking(self, db_session, test_student, test_tutor):
         """Test declining a booking request."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -599,7 +601,7 @@ class TestStateMachineMethods:
     def test_expire_booking(self, db_session, test_student, test_tutor):
         """Test expiring a booking request (24h timeout)."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -620,7 +622,7 @@ class TestStateMachineMethods:
     def test_start_session(self, db_session, test_student, test_tutor):
         """Test starting a scheduled session."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(
@@ -640,7 +642,7 @@ class TestStateMachineMethods:
     def test_end_session(self, db_session, test_student, test_tutor):
         """Test ending an active session."""
         service = BookingService(db_session)
-        start_at = datetime.utcnow() + timedelta(days=1)
+        start_at = utc_now() + timedelta(days=1)
         tutor_profile = _get_tutor_profile(db_session, test_tutor)
 
         booking = service.create_booking(

@@ -9,6 +9,8 @@ Tests cover:
 """
 
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 import pytest
@@ -91,7 +93,7 @@ class TestFullBookingFlow:
         profile_data = profile_response.json()
         assert profile_data["title"] == "Expert Math Tutor"
 
-        now = datetime.now(UTC)
+        now = utc_now()
         start_time = (now + timedelta(days=2)).replace(hour=14, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=1)
 
@@ -151,7 +153,7 @@ class TestFullBookingFlow:
 
         TokenManager.create_access_token({"sub": tutor_user.email})
 
-        now = datetime.now(UTC)
+        now = utc_now()
         start_time = (now + timedelta(days=3)).replace(hour=10, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=1)
 
@@ -187,7 +189,7 @@ class TestFullBookingFlow:
             db_session, email="cancel_tutor@test.com"
         )
 
-        now = datetime.now(UTC)
+        now = utc_now()
         start_time = (now + timedelta(days=7)).replace(hour=15, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=1)
 
@@ -435,7 +437,7 @@ class TestPackageFlow:
 
         from models import Booking
 
-        now = datetime.now(UTC)
+        now = utc_now()
         for i in range(2):
             start_time = (now + timedelta(days=i + 1)).replace(hour=10, minute=0, second=0, microsecond=0)
             booking = Booking(
@@ -501,14 +503,14 @@ class TestPackageFlow:
             sessions_remaining=3,
             sessions_used=2,
             purchase_price=Decimal("200.00"),
-            purchased_at=datetime.now(UTC) - timedelta(days=400),
-            expires_at=datetime.now(UTC) - timedelta(days=35),
+            purchased_at=utc_now() - timedelta(days=400),
+            expires_at=utc_now() - timedelta(days=35),
             status="active",
         )
         db_session.add(expired_package)
         db_session.commit()
 
-        if expired_package.expires_at and expired_package.expires_at < datetime.now(UTC):
+        if expired_package.expires_at and expired_package.expires_at < utc_now():
             expired_package.status = "expired"
             db_session.commit()
 
@@ -557,8 +559,8 @@ class TestDisputeFlow:
             tutor_profile_id=profile.id,
             student_id=student_user.id,
             subject_id=subject.id,
-            start_time=datetime.now(UTC) - timedelta(hours=2),
-            end_time=datetime.now(UTC) - timedelta(hours=1),
+            start_time=utc_now() - timedelta(hours=2),
+            end_time=utc_now() - timedelta(hours=1),
             session_state="ENDED",
             session_outcome="COMPLETED",
             payment_state="CAPTURED",
@@ -645,8 +647,8 @@ class TestDisputeFlow:
             tutor_profile_id=profile.id,
             student_id=student_user.id,
             subject_id=subject.id,
-            start_time=datetime.now(UTC) - timedelta(days=45),
-            end_time=datetime.now(UTC) - timedelta(days=45) + timedelta(hours=1),
+            start_time=utc_now() - timedelta(days=45),
+            end_time=utc_now() - timedelta(days=45) + timedelta(hours=1),
             session_state="ENDED",
             session_outcome="COMPLETED",
             payment_state="CAPTURED",
@@ -729,7 +731,7 @@ class TestCrossModuleIntegration:
             db_session.add(subject)
             db_session.commit()
 
-        now = datetime.now(UTC)
+        now = utc_now()
         booking = Booking(
             tutor_profile_id=profile.id,
             student_id=student_user.id,
@@ -798,8 +800,8 @@ class TestCrossModuleIntegration:
             tutor_profile_id=profile.id,
             student_id=student_user.id,
             subject_id=subject.id,
-            start_time=datetime.now(UTC) - timedelta(hours=3),
-            end_time=datetime.now(UTC) - timedelta(hours=2),
+            start_time=utc_now() - timedelta(hours=3),
+            end_time=utc_now() - timedelta(hours=2),
             session_state="ENDED",
             session_outcome="COMPLETED",
             payment_state="CAPTURED",

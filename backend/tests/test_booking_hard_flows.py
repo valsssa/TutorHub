@@ -14,6 +14,8 @@ import contextlib
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -59,10 +61,10 @@ def mock_booking():
     booking.tutor_profile.id = 1
     booking.student_id = 2
     booking.version = 1
-    booking.updated_at = datetime.now(UTC)
-    booking.created_at = datetime.now(UTC) - timedelta(hours=1)
-    booking.start_time = datetime.now(UTC) + timedelta(hours=24)
-    booking.end_time = datetime.now(UTC) + timedelta(hours=25)
+    booking.updated_at = utc_now()
+    booking.created_at = utc_now() - timedelta(hours=1)
+    booking.start_time = utc_now() + timedelta(hours=24)
+    booking.end_time = utc_now() + timedelta(hours=25)
     booking.tutor_joined_at = None
     booking.student_joined_at = None
     booking.zoom_meeting_id = None
@@ -111,7 +113,7 @@ class TestRaceConditions:
         The first to acquire the lock should succeed, the second should fail.
         """
         # Setup: Create two concurrent booking attempts
-        slot_start = datetime.now(UTC) + timedelta(days=1)
+        slot_start = utc_now() + timedelta(days=1)
         slot_end = slot_start + timedelta(hours=1)
 
         # Mock the database query to simulate overlap check
@@ -404,7 +406,7 @@ class TestStateMachineEdgeCases:
         """
         mock_booking.session_state = SessionState.REQUESTED.value
         mock_booking.payment_state = PaymentState.PENDING.value
-        mock_booking.created_at = datetime.now(UTC) - timedelta(hours=25)  # Past 24h
+        mock_booking.created_at = utc_now() - timedelta(hours=25)  # Past 24h
 
         # Expire the booking
         result = BookingStateMachine.expire_booking(mock_booking)
@@ -514,8 +516,8 @@ class TestCancellationComplexities:
         """
         mock_booking.session_state = SessionState.ACTIVE.value
         mock_booking.zoom_meeting_id = "zoom_123"
-        mock_booking.tutor_joined_at = datetime.now(UTC) - timedelta(minutes=10)
-        mock_booking.student_joined_at = datetime.now(UTC) - timedelta(minutes=8)
+        mock_booking.tutor_joined_at = utc_now() - timedelta(minutes=10)
+        mock_booking.student_joined_at = utc_now() - timedelta(minutes=8)
 
         # Try to cancel active session
         result = BookingStateMachine.cancel_booking(
@@ -535,7 +537,7 @@ class TestCancellationComplexities:
         mock_booking.session_state = SessionState.SCHEDULED.value
         mock_booking.payment_state = PaymentState.AUTHORIZED.value
         # Session starts in 2 hours (inside 24h window)
-        mock_booking.start_time = datetime.now(UTC) + timedelta(hours=2)
+        mock_booking.start_time = utc_now() + timedelta(hours=2)
 
         # Late cancellation - no refund
         result = BookingStateMachine.cancel_booking(
@@ -836,7 +838,7 @@ class TestComplexMultiStepScenarios:
         If tutor accepts first, expiry should be idempotent.
         """
         mock_booking.session_state = SessionState.REQUESTED.value
-        mock_booking.created_at = datetime.now(UTC) - timedelta(hours=25)  # Past 24h
+        mock_booking.created_at = utc_now() - timedelta(hours=25)  # Past 24h
 
         # Scenario 1: Tutor accepts first
         accept_result = BookingStateMachine.accept_booking(mock_booking)

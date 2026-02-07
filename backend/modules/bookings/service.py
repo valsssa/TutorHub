@@ -5,6 +5,8 @@ Implements core booking business logic per booking_detail.md spec.
 
 import logging
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Literal
 
@@ -85,7 +87,7 @@ class BookingService:
             start_at = start_at.replace(tzinfo=UTC)
 
         end_at = start_at + timedelta(minutes=duration_minutes)
-        now = datetime.now(UTC)
+        now = utc_now()
 
         if start_at <= now:
             raise HTTPException(
@@ -192,7 +194,7 @@ class BookingService:
 
         # 9. If auto-confirm, set confirmed timestamp and generate join URL
         if is_auto_confirm:
-            booking.confirmed_at = datetime.now(UTC)
+            booking.confirmed_at = utc_now()
             booking.join_url = self._generate_join_url(booking.id)
 
         self.db.add(booking)
@@ -486,7 +488,7 @@ class BookingService:
             cancelled_by_role: "STUDENT" or "TUTOR"
             reason: Optional cancellation reason
         """
-        now = datetime.now(UTC)
+        now = utc_now()
 
         # Check if booking can be cancelled using state machine
         if not BookingStateMachine.is_cancellable(booking.session_state):
@@ -535,7 +537,7 @@ class BookingService:
         # Set cancellation reason
         booking.cancellation_reason = reason
         booking.notes = (booking.notes or "") + f"\n[Cancelled: {decision.message}]"
-        booking.updated_at = datetime.now(UTC)
+        booking.updated_at = utc_now()
 
         # Apply penalties/compensations
         if decision.apply_strike_to_tutor and booking.tutor_profile:
@@ -580,7 +582,7 @@ class BookingService:
         Raises:
             HTTPException: If validation fails or state transition is invalid
         """
-        now = datetime.now(UTC)
+        now = utc_now()
 
         # Validate with policy
         decision = NoShowPolicy.evaluate_no_show_report(
@@ -625,7 +627,7 @@ class BookingService:
         elif notes:
             booking.notes = (booking.notes or "") + f"\n[No-show reported by {reporter_role}: {notes}]"
 
-        booking.updated_at = datetime.now(UTC)
+        booking.updated_at = utc_now()
 
         # Apply penalties only if not escalated (let admin decide if escalated)
         if not result.escalated_to_dispute:
@@ -724,7 +726,7 @@ class BookingService:
             .values(
                 sessions_remaining=StudentPackage.sessions_remaining - 1,
                 sessions_used=StudentPackage.sessions_used + 1,
-                updated_at=datetime.now(UTC),
+                updated_at=utc_now(),
             )
         )
 
@@ -761,7 +763,7 @@ class BookingService:
             )
             .values(
                 status="exhausted",
-                updated_at=datetime.now(UTC),
+                updated_at=utc_now(),
             )
         )
 
@@ -795,7 +797,7 @@ class BookingService:
             .values(
                 sessions_remaining=StudentPackage.sessions_remaining + 1,
                 sessions_used=StudentPackage.sessions_used - 1,
-                updated_at=datetime.now(UTC),
+                updated_at=utc_now(),
             )
         )
 
@@ -813,7 +815,7 @@ class BookingService:
             )
             .values(
                 status="active",
-                updated_at=datetime.now(UTC),
+                updated_at=utc_now(),
             )
         )
 

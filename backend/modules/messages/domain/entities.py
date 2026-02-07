@@ -8,6 +8,8 @@ No SQLAlchemy or infrastructure dependencies.
 from dataclasses import dataclass
 from datetime import datetime
 
+from core.datetime_utils import utc_now
+
 from modules.messages.domain.value_objects import AttachmentInfo
 
 
@@ -93,7 +95,7 @@ class MessageEntity:
 
         from datetime import UTC, timedelta
 
-        now = datetime.now(UTC)
+        now = utc_now()
         created = self.created_at.replace(tzinfo=UTC) if self.created_at.tzinfo is None else self.created_at
         time_since_created = now - created
 

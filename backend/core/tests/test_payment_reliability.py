@@ -6,7 +6,9 @@ and payment status polling functionality.
 """
 
 import time
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from unittest.mock import patch
 
 import pytest
@@ -401,7 +403,7 @@ class TestPaymentStatusPoller:
             currency="usd",
             paid=True,
             refunded=False,
-            last_checked=datetime.now(UTC),
+            last_checked=utc_now(),
         )
         poller._cache["session:cs_123"] = cached
 

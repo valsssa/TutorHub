@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
+from core.datetime_utils import utc_now
+
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
@@ -101,7 +103,7 @@ class StudentNoteRepositoryImpl:
         Returns:
             Created note with populated ID
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         model = StudentNote(
             tutor_id=entity.tutor_id,
             student_id=entity.student_id,
@@ -142,7 +144,7 @@ class StudentNoteRepositoryImpl:
             raise ValueError(f"Student note with ID {entity.id} not found")
 
         model.notes = entity.content
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
 
         self.db.flush()
 
@@ -370,7 +372,7 @@ class VideoSettingsRepositoryImpl:
         profile.preferred_video_provider = entity.preferred_provider.value
         profile.custom_meeting_url_template = entity.custom_meeting_url
         profile.video_provider_configured = entity.is_configured
-        profile.updated_at = datetime.now(UTC)
+        profile.updated_at = utc_now()
 
         self.db.flush()
 
@@ -409,7 +411,7 @@ class VideoSettingsRepositoryImpl:
         profile.preferred_video_provider = entity.preferred_provider.value
         profile.custom_meeting_url_template = entity.custom_meeting_url
         profile.video_provider_configured = entity.is_configured
-        profile.updated_at = datetime.now(UTC)
+        profile.updated_at = utc_now()
 
         self.db.flush()
 
@@ -556,7 +558,7 @@ class AvailabilityRepositoryImpl:
                 conflicting_end=str(conflict.end_time),
             )
 
-        now = datetime.now(UTC)
+        now = utc_now()
         model = TutorAvailability(
             tutor_profile_id=entity.tutor_profile_id,
             day_of_week=entity.day_of_week,
@@ -687,7 +689,7 @@ class AvailabilityRepositoryImpl:
         self.clear_availability(tutor_profile_id)
 
         created: list[AvailabilityEntity] = []
-        now = datetime.now(UTC)
+        now = utc_now()
 
         for entity in availabilities:
             model = TutorAvailability(

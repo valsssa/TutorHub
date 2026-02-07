@@ -6,7 +6,9 @@ Stores files in memory and tracks operations for test assertions.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import BinaryIO
 
 from core.ports.storage import (
@@ -25,8 +27,8 @@ class StoredFile:
     data: bytes
     content_type: str
     metadata: dict[str, str]
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    last_modified: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: utc_now())
+    last_modified: datetime = field(default_factory=lambda: utc_now())
 
 
 @dataclass
@@ -36,7 +38,7 @@ class StorageOperation:
     operation: str
     bucket: str
     key: str
-    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime = field(default_factory=lambda: utc_now())
     metadata: dict = field(default_factory=dict)
 
 

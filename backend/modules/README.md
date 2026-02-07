@@ -223,7 +223,7 @@ class TutorProfile:
     bio: str
     hourly_rate: Money
     status: ApprovalStatus = ApprovalStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=utc_now)  # from core.datetime_utils
 ```
 
 ### 4. Dependency Injection via FastAPI Depends

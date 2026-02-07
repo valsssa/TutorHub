@@ -45,6 +45,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 export default function WalletPage() {
   const [topUpAmount, setTopUpAmount] = useState('');
+  const [topUpError, setTopUpError] = useState('');
   const [showTopUpForm, setShowTopUpForm] = useState(false);
 
   const router = useRouter();
@@ -83,8 +84,14 @@ export default function WalletPage() {
   const handleTopUp = async () => {
     const amount = parseFloat(topUpAmount);
     if (!amount || amount <= 0) {
+      setTopUpError('Amount must be greater than $0');
       return;
     }
+    if (amount > 10000) {
+      setTopUpError('Amount cannot exceed $10,000');
+      return;
+    }
+    setTopUpError('');
 
     try {
       const result = await createCheckout.mutateAsync({
@@ -206,7 +213,7 @@ export default function WalletPage() {
                         key={preset}
                         variant={topUpAmount === String(preset) ? 'primary' : 'outline'}
                         size="sm"
-                        onClick={() => setTopUpAmount(String(preset))}
+                        onClick={() => { setTopUpAmount(String(preset)); setTopUpError(''); }}
                       >
                         ${preset}
                       </Button>
@@ -216,10 +223,15 @@ export default function WalletPage() {
                     type="number"
                     label="Amount"
                     value={topUpAmount}
-                    onChange={(e) => setTopUpAmount(e.target.value)}
+                    onChange={(e) => {
+                      setTopUpAmount(e.target.value);
+                      setTopUpError('');
+                    }}
                     placeholder="0.00"
-                    min="1"
+                    min="0.01"
+                    max="10000"
                     step="0.01"
+                    error={topUpError}
                   />
 
                   <div className="flex gap-2">

@@ -7,7 +7,9 @@ StudentPackageRepository protocols defined in the domain layer.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Any
 
@@ -143,7 +145,7 @@ class PricingOptionRepositoryImpl:
         model.price = Decimal(pricing_option.price_cents) / 100
         model.validity_days = pricing_option.validity_days
         model.extend_on_use = pricing_option.extend_on_use
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
 
         self.db.flush()
         return self._to_entity(model)
@@ -227,7 +229,7 @@ class PricingOptionRepositoryImpl:
         Returns:
             TutorPricingOption SQLAlchemy model
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         return TutorPricingOption(
             id=entity.id,
             tutor_profile_id=entity.tutor_profile_id,
@@ -380,7 +382,7 @@ class StudentPackageRepositoryImpl:
         Returns:
             List of usable packages, ordered by expiration (soonest first)
         """
-        now = datetime.now(UTC)
+        now = utc_now()
 
         query = self.db.query(StudentPackage).filter(
             and_(
@@ -448,7 +450,7 @@ class StudentPackageRepositoryImpl:
         model.status = package.status.value
         model.expires_at = package.expires_at
         model.expiry_warning_sent = package.expiry_warning_sent
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
 
         self.db.flush()
         return self._to_entity(model)
@@ -503,7 +505,7 @@ class StudentPackageRepositoryImpl:
             logger.warning(f"Package {package_id} has no remaining sessions")
             return None
 
-        now = datetime.now(UTC)
+        now = utc_now()
         if model.expires_at and model.expires_at < now:
             logger.warning(f"Package {package_id} has expired")
             return None
@@ -543,7 +545,7 @@ class StudentPackageRepositoryImpl:
         Returns:
             List of packages expiring soon
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         expiry_threshold = now + timedelta(days=days_until_expiry)
 
         query = self.db.query(StudentPackage).filter(
@@ -573,7 +575,7 @@ class StudentPackageRepositoryImpl:
         Returns:
             List of expired packages
         """
-        now = datetime.now(UTC)
+        now = utc_now()
 
         query = self.db.query(StudentPackage).filter(
             and_(
@@ -601,7 +603,7 @@ class StudentPackageRepositoryImpl:
         if not package_ids:
             return 0
 
-        now = datetime.now(UTC)
+        now = utc_now()
         result = (
             self.db.execute(
                 update(StudentPackage)
@@ -624,7 +626,7 @@ class StudentPackageRepositoryImpl:
         if not package_ids:
             return 0
 
-        now = datetime.now(UTC)
+        now = utc_now()
         result = (
             self.db.execute(
                 update(StudentPackage)
@@ -804,7 +806,7 @@ class StudentPackageRepositoryImpl:
         Returns:
             StudentPackage SQLAlchemy model
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         return StudentPackage(
             id=entity.id,
             student_id=entity.student_id,

@@ -1,7 +1,9 @@
 """Sample data seeding script for development and testing."""
 
 import random
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -142,7 +144,7 @@ def seed_users_and_profiles(db: Session):
                 tutor_profile.languages = random.choice([["English"], ["English", "Spanish"], ["English", "Chinese"]])
                 tutor_profile.is_approved = True
                 tutor_profile.profile_status = "approved"
-                tutor_profile.approved_at = datetime.now(UTC) - timedelta(days=random.randint(30, 365))
+                tutor_profile.approved_at = utc_now() - timedelta(days=random.randint(30, 365))
                 tutor_profile.average_rating = Decimal(random.uniform(4.5, 5.0))
                 tutor_profile.total_reviews = random.randint(10, 50)
                 tutor_profile.total_sessions = random.randint(50, 200)
@@ -159,7 +161,7 @@ def seed_bookings(db: Session):
     if not students or not tutors or not subjects:
         return
 
-    now = datetime.now(UTC)
+    now = utc_now()
 
     # Create past bookings (completed)
     for _i in range(20):

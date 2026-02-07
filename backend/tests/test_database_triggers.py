@@ -2,7 +2,9 @@
 Tests for database triggers and automatic behavior.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 
 import pytest
 
@@ -214,7 +216,7 @@ def test_updated_at_set_on_changes(db_session, test_data):
 
     # Update profile and explicitly set updated_at (application responsibility)
     test_data["tutor_profile"].bio = "Updated bio"
-    test_data["tutor_profile"].updated_at = datetime.now(UTC)
+    test_data["tutor_profile"].updated_at = utc_now()
     db_session.commit()
     db_session.refresh(test_data["tutor_profile"])
 

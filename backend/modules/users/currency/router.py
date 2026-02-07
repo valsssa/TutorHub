@@ -1,7 +1,8 @@
 """User currency management API."""
 
 import logging
-from datetime import UTC
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -57,7 +58,7 @@ def update_currency(
     # Update timestamp in application code (no DB triggers)
     from datetime import datetime
 
-    current_user.updated_at = datetime.now(UTC)
+    current_user.updated_at = utc_now()
 
     db.commit()
     db.refresh(current_user)

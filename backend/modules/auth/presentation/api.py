@@ -4,6 +4,8 @@ import logging
 import os
 from datetime import UTC, datetime
 
+from core.datetime_utils import utc_now
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -566,7 +568,7 @@ async def update_me(
                 setattr(current_user, field, value)
 
         # Update timestamp
-        current_user.updated_at = datetime.now(UTC)
+        current_user.updated_at = utc_now()
 
         db.commit()
         db.refresh(current_user)

@@ -14,6 +14,8 @@ Security:
 
 import logging
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
@@ -195,10 +197,10 @@ async def calendar_callback(
 
         user.google_calendar_access_token = access_token
         user.google_calendar_refresh_token = refresh_token
-        user.google_calendar_token_expires = datetime.now(UTC) + timedelta(seconds=expires_in)
+        user.google_calendar_token_expires = utc_now() + timedelta(seconds=expires_in)
         user.google_calendar_email = calendar_email
-        user.google_calendar_connected_at = datetime.now(UTC)
-        user.updated_at = datetime.now(UTC)
+        user.google_calendar_connected_at = utc_now()
+        user.updated_at = utc_now()
         db.commit()
 
         logger.info(f"User {user_id} connected Google Calendar: {calendar_email}")
@@ -240,7 +242,7 @@ async def disconnect_calendar(
     user.google_calendar_token_expires = None
     user.google_calendar_email = None
     user.google_calendar_connected_at = None
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = utc_now()
     db.commit()
 
     logger.info(f"User {current_user.id} disconnected Google Calendar")
@@ -299,7 +301,7 @@ async def create_booking_event(
     access_token = current_user.google_calendar_access_token
     if (
         current_user.google_calendar_token_expires
-        and datetime.now(UTC) >= current_user.google_calendar_token_expires - timedelta(minutes=5)
+        and utc_now() >= current_user.google_calendar_token_expires - timedelta(minutes=5)
     ):
         try:
             tokens = await google_calendar.refresh_access_token(
@@ -308,7 +310,7 @@ async def create_booking_event(
             access_token = tokens["access_token"]
             user = db.query(User).filter(User.id == current_user.id).first()
             user.google_calendar_access_token = access_token
-            user.google_calendar_token_expires = datetime.now(UTC) + timedelta(
+            user.google_calendar_token_expires = utc_now() + timedelta(
                 seconds=tokens.get("expires_in", 3600)
             )
             db.commit()
@@ -350,7 +352,7 @@ async def create_booking_event(
 
     # Store event ID on booking
     booking.google_calendar_event_id = event_data["event_id"]
-    booking.updated_at = datetime.now(UTC)
+    booking.updated_at = utc_now()
     db.commit()
 
     return CalendarEventResponse(
@@ -411,7 +413,7 @@ async def delete_booking_event(
 
     if success:
         booking.google_calendar_event_id = None
-        booking.updated_at = datetime.now(UTC)
+        booking.updated_at = utc_now()
         db.commit()
 
     return {"message": "Calendar event deleted" if success else "Event may have been already deleted"}

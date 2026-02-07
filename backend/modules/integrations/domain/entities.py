@@ -239,7 +239,7 @@ class IntegrationSyncResult:
     items_synced: int = 0
     items_failed: int = 0
     error_message: str | None = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=utc_now)
 
     @property
     def has_errors(self) -> bool:

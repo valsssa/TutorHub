@@ -8,6 +8,8 @@ No SQLAlchemy or infrastructure dependencies.
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+from core.datetime_utils import utc_now
+
 from modules.reviews.domain.exceptions import ReviewEditWindowExpiredError
 from modules.reviews.domain.value_objects import (
     EDIT_WINDOW_HOURS,
@@ -90,7 +92,7 @@ class ReviewEntity:
         """Check if review is within the edit window."""
         if self.created_at is None:
             return True
-        now = datetime.now(UTC)
+        now = utc_now()
         created = self.created_at.replace(tzinfo=UTC) if self.created_at.tzinfo is None else self.created_at
         edit_deadline = created + timedelta(hours=EDIT_WINDOW_HOURS)
         return now <= edit_deadline
@@ -100,7 +102,7 @@ class ReviewEntity:
         """Calculate hours since review was created."""
         if self.created_at is None:
             return None
-        now = datetime.now(UTC)
+        now = utc_now()
         created = self.created_at.replace(tzinfo=UTC) if self.created_at.tzinfo is None else self.created_at
         delta = now - created
         return delta.total_seconds() / 3600
@@ -162,7 +164,7 @@ class ReviewEntity:
             content=content if content is not None else self.content,
             is_public=self.is_public,
             created_at=self.created_at,
-            updated_at=datetime.now(UTC),
+            updated_at=utc_now(),
             response=self.response,
             responded_at=self.responded_at,
             booking_snapshot=self.booking_snapshot,
@@ -188,9 +190,9 @@ class ReviewEntity:
             content=self.content,
             is_public=self.is_public,
             created_at=self.created_at,
-            updated_at=datetime.now(UTC),
+            updated_at=utc_now(),
             response=response.strip() if response else None,
-            responded_at=datetime.now(UTC) if response else None,
+            responded_at=utc_now() if response else None,
             booking_snapshot=self.booking_snapshot,
         )
 
@@ -211,7 +213,7 @@ class ReviewEntity:
             content=self.content,
             is_public=not self.is_public,
             created_at=self.created_at,
-            updated_at=datetime.now(UTC),
+            updated_at=utc_now(),
             response=self.response,
             responded_at=self.responded_at,
             booking_snapshot=self.booking_snapshot,

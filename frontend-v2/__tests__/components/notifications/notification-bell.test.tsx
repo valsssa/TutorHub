@@ -298,6 +298,15 @@ describe('NotificationBell', () => {
       expect(screen.getByText('3 new')).toBeInTheDocument();
     });
 
+    it('falls back to count field when unread_count is absent', () => {
+      mockUseUnreadNotificationCount.mockReturnValue({
+        data: { count: 7 },
+      });
+
+      render(<NotificationBell />, { wrapper: createWrapper() });
+      expect(screen.getByText('7')).toBeInTheDocument();
+    });
+
     it('does not show "new" indicator when unread count is 0', async () => {
       const user = userEvent.setup();
       mockUseUnreadNotificationCount.mockReturnValue({

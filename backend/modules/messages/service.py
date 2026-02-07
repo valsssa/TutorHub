@@ -11,7 +11,9 @@ Principles:
 
 import logging
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
@@ -124,7 +126,7 @@ class MessageService:
             # Set updated_at explicitly (no DB triggers - all logic in code)
             from datetime import datetime
 
-            message.updated_at = datetime.now(UTC)
+            message.updated_at = utc_now()
 
             self.db.add(message)
             self.db.commit()
@@ -377,8 +379,8 @@ class MessageService:
 
         if not message.is_read:
             message.is_read = True
-            message.read_at = datetime.now(UTC)
-            message.updated_at = datetime.now(UTC)  # Update timestamp in code
+            message.read_at = utc_now()
+            message.updated_at = utc_now()  # Update timestamp in code
             self.db.commit()
             self.db.refresh(message)
 
@@ -396,7 +398,7 @@ class MessageService:
         if booking_id is not None:
             query = query.filter(Message.booking_id == booking_id)
 
-        now = datetime.now(UTC)
+        now = utc_now()
         count = query.update(
             {"is_read": True, "read_at": now, "updated_at": now},  # Update timestamp in code
             synchronize_session=False,
@@ -464,7 +466,7 @@ class MessageService:
             raise ValidationError("Message not found or not authorized")
 
         # Check 15-minute window
-        time_since_sent = datetime.now(UTC) - message.created_at.replace(tzinfo=UTC)
+        time_since_sent = utc_now() - message.created_at.replace(tzinfo=UTC)
         if time_since_sent > timedelta(minutes=15):
             raise ValidationError("Cannot edit messages older than 15 minutes")
 
@@ -481,8 +483,8 @@ class MessageService:
 
         message.message = new_content
         message.is_edited = True
-        message.edited_at = datetime.now(UTC)
-        message.updated_at = datetime.now(UTC)  # Update timestamp in code
+        message.edited_at = utc_now()
+        message.updated_at = utc_now()  # Update timestamp in code
         self.db.commit()
         self.db.refresh(message)
 
@@ -510,9 +512,9 @@ class MessageService:
         if not message:
             raise ValidationError("Message not found or not authorized")
 
-        message.deleted_at = datetime.now(UTC)
+        message.deleted_at = utc_now()
         message.deleted_by = user_id
-        message.updated_at = datetime.now(UTC)  # Update timestamp in code
+        message.updated_at = utc_now()  # Update timestamp in code
         self.db.commit()
         self.db.refresh(message)
 

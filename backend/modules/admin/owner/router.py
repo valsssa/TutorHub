@@ -5,7 +5,9 @@ Provides high-level business metrics and KPIs for platform owners.
 Requires 'owner' role (highest privilege level).
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Annotated
 
 from fastapi import APIRouter, Query
@@ -115,7 +117,7 @@ async def get_owner_dashboard(
 ) -> OwnerDashboard:
     """Get complete owner dashboard with business metrics."""
 
-    now = datetime.now(UTC)
+    now = utc_now()
     period_start = now - timedelta(days=period_days)
 
     # Revenue metrics
@@ -150,7 +152,7 @@ async def get_revenue_metrics(
     period_days: Annotated[int, Query(ge=1, le=365)] = 30,
 ) -> RevenueMetrics:
     """Get platform revenue metrics."""
-    period_start = datetime.now(UTC) - timedelta(days=period_days)
+    period_start = utc_now() - timedelta(days=period_days)
     return _calculate_revenue_metrics(db, period_start, period_days)
 
 
@@ -165,7 +167,7 @@ async def get_growth_metrics(
     period_days: Annotated[int, Query(ge=1, le=365)] = 30,
 ) -> GrowthMetrics:
     """Get user and booking growth metrics."""
-    period_start = datetime.now(UTC) - timedelta(days=period_days)
+    period_start = utc_now() - timedelta(days=period_days)
     return _calculate_growth_metrics(db, period_start, period_days)
 
 

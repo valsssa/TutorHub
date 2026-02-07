@@ -6,6 +6,8 @@ response format matching the frontend's expected structure.
 
 from datetime import UTC, datetime
 
+from core.datetime_utils import utc_now
+
 import pytest
 
 from modules.payments.wallet_router import (
@@ -27,8 +29,8 @@ class TestTransactionResponseSchema:
             description="Wallet top-up",
             status="COMPLETED",
             reference_id="pi_test123",
-            created_at=datetime.now(UTC),
-            completed_at=datetime.now(UTC),
+            created_at=utc_now(),
+            completed_at=utc_now(),
         )
 
         assert response.id == 1
@@ -50,7 +52,7 @@ class TestTransactionResponseSchema:
             currency="USD",
             description=None,
             status="PENDING",
-            created_at=datetime.now(UTC),
+            created_at=utc_now(),
         )
 
         assert response.description is None
@@ -59,7 +61,7 @@ class TestTransactionResponseSchema:
 
     def test_transaction_response_serialization(self):
         """Verify response serializes to correct JSON format."""
-        now = datetime.now(UTC)
+        now = utc_now()
         response = TransactionResponse(
             id=3,
             type="REFUND",
@@ -113,7 +115,7 @@ class TestTransactionResponseSchema:
     def test_all_transaction_types_valid(self):
         """Verify all transaction types from the database can be serialized."""
         valid_types = ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "REFUND", "PAYOUT", "PAYMENT", "FEE"]
-        now = datetime.now(UTC)
+        now = utc_now()
 
         for tx_type in valid_types:
             response = TransactionResponse(
@@ -130,7 +132,7 @@ class TestTransactionResponseSchema:
     def test_all_transaction_statuses_valid(self):
         """Verify all transaction statuses from the database can be serialized."""
         valid_statuses = ["PENDING", "COMPLETED", "FAILED", "CANCELLED"]
-        now = datetime.now(UTC)
+        now = utc_now()
 
         for status in valid_statuses:
             response = TransactionResponse(
@@ -150,7 +152,7 @@ class TestTransactionListResponseSchema:
 
     def test_transaction_list_response_structure(self):
         """Verify paginated response has correct structure."""
-        now = datetime.now(UTC)
+        now = utc_now()
         items = [
             TransactionResponse(
                 id=1,
@@ -202,7 +204,7 @@ class TestTransactionListResponseSchema:
 
     def test_transaction_list_serialization(self):
         """Verify paginated response serializes correctly."""
-        now = datetime.now(UTC)
+        now = utc_now()
         items = [
             TransactionResponse(
                 id=1,
@@ -256,7 +258,7 @@ class TestWalletTransactionResponseConsistency:
         - created_at: string (ISO format)
         - completed_at?: string | null
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         response = TransactionResponse(
             id=1,
             type="DEPOSIT",

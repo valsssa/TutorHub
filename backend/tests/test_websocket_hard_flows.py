@@ -16,7 +16,9 @@ import contextlib
 import time
 import uuid
 from collections import defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -559,7 +561,7 @@ class TestReconnectionScenarios:
 
         # Disconnect
         await ws_manager.disconnect(ws1, user_id)
-        disconnect_time = datetime.now(UTC)
+        disconnect_time = utc_now()
 
         # Messages sent during disconnect (simulate)
         missed_messages = [
@@ -635,7 +637,7 @@ class TestRealtimeEventSynchronization:
                 "type": "message_read",
                 "message_id": msg_id,
                 "reader_id": reader_id,
-                "read_at": datetime.now(UTC).isoformat(),
+                "read_at": utc_now().isoformat(),
             }
             await ws_manager.send_personal_message(receipt, sender_id)
 
@@ -1202,7 +1204,7 @@ class TestConversationEdgeCases:
         # Simulate user status check
         user_status = {
             1: {"active": True},
-            2: {"active": False, "deactivated_at": datetime.now(UTC).isoformat()},
+            2: {"active": False, "deactivated_at": utc_now().isoformat()},
         }
 
         # Should not deliver to deactivated users
@@ -1236,7 +1238,7 @@ class TestConversationEdgeCases:
         conversation = {
             "id": "conv_123",
             "participants": [user1_id, user2_id],
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         # User 2 is deleted from system
@@ -1496,7 +1498,7 @@ class TestWebSocketIntegration:
             "sender_id": sender_id,
             "recipient_id": recipient_id,
             "content": "Hello!",
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": utc_now().isoformat(),
         }
 
         result = await ws_manager.send_personal_message(message, recipient_id)

@@ -11,7 +11,9 @@ Tests cover:
 """
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -95,7 +97,7 @@ class TestPaymentCheckout:
             amount_cents=5000,
             currency="usd",
             status="completed",
-            paid_at=datetime.now(UTC),
+            paid_at=utc_now(),
         )
         db_session.add(payment)
         db_session.commit()
@@ -149,7 +151,7 @@ class TestPaymentStatus:
             currency="usd",
             status="completed",
             stripe_payment_intent_id="pi_test_123",
-            paid_at=datetime.now(UTC),
+            paid_at=utc_now(),
         )
         db_session.add(payment)
         db_session.commit()
@@ -342,7 +344,7 @@ class TestWebhookHandling:
             currency="usd",
             status="completed",
             stripe_payment_intent_id="pi_test_refund",
-            paid_at=datetime.now(UTC),
+            paid_at=utc_now(),
         )
         db_session.add(payment)
         db_session.commit()
@@ -379,7 +381,7 @@ class TestWebhookHandling:
             currency="usd",
             status="completed",
             stripe_payment_intent_id="pi_test_partial",
-            paid_at=datetime.now(UTC),
+            paid_at=utc_now(),
         )
         db_session.add(payment)
         db_session.commit()
@@ -465,7 +467,7 @@ class TestRefunds:
             currency="usd",
             status="completed",
             stripe_payment_intent_id="pi_test_admin_refund",
-            paid_at=datetime.now(UTC),
+            paid_at=utc_now(),
         )
         db_session.add(payment)
         db_session.commit()

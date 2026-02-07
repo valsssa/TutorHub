@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 
 from sqlalchemy.orm import Session, joinedload
@@ -199,7 +201,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         profile.languages = languages or []
 
         # NOTE: first_name/last_name sync removed - names now stored directly in users table
-        profile.updated_at = datetime.now(UTC)
+        profile.updated_at = utc_now()
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
@@ -213,7 +215,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         profile = self._ensure_profile(db, user_id)
         db.query(TutorCertification).filter(TutorCertification.tutor_profile_id == profile.id).delete()
-        now = datetime.now(UTC)
+        now = utc_now()
         for item in certifications:
             cert = TutorCertification(tutor_profile_id=profile.id, **item)
             cert.updated_at = now  # Set timestamp in application code
@@ -232,7 +234,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         profile = self._ensure_profile(db, user_id)
         db.query(TutorEducation).filter(TutorEducation.tutor_profile_id == profile.id).delete()
-        now = datetime.now(UTC)
+        now = utc_now()
         for item in educations:
             edu = TutorEducation(tutor_profile_id=profile.id, **item)
             edu.updated_at = now  # Set timestamp in application code
@@ -251,7 +253,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         profile = self._ensure_profile(db, user_id)
         db.query(TutorSubject).filter(TutorSubject.tutor_profile_id == profile.id).delete()
-        now = datetime.now(UTC)
+        now = utc_now()
         for item in subjects:
             subj = TutorSubject(tutor_profile_id=profile.id, **item)
             # Note: TutorSubject may not have updated_at column, check model
@@ -267,7 +269,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         profile = self._ensure_profile(db, user_id)
         profile.description = description.strip()
-        profile.updated_at = datetime.now(UTC)  # Update in code
+        profile.updated_at = utc_now()  # Update in code
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
@@ -276,7 +278,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         profile = self._ensure_profile(db, user_id)
         profile.video_url = video_url
-        profile.updated_at = datetime.now(UTC)  # Update in code
+        profile.updated_at = utc_now()  # Update in code
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
@@ -288,8 +290,8 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
         user = db.query(User).filter(User.id == user_id).first()
         if user:
             user.avatar_key = photo_url
-            user.updated_at = datetime.now(UTC)  # Update in code
-        profile.updated_at = datetime.now(UTC)  # Update in code
+            user.updated_at = utc_now()  # Update in code
+        profile.updated_at = utc_now()  # Update in code
         db.commit()
         return self._aggregate_from_db(db, profile.id)
 
@@ -315,7 +317,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         from datetime import datetime
 
-        now = datetime.now(UTC)
+        now = utc_now()
         profile.hourly_rate = hourly_rate
 
         # Atomic update: delete old and insert new pricing options
@@ -361,7 +363,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
                 db.add(user_profile)
             else:
                 user_profile.timezone = timezone
-                user_profile.updated_at = datetime.now(UTC)  # Update in code
+                user_profile.updated_at = utc_now()  # Update in code
 
         # Atomic update: delete old and insert new
         db.query(TutorAvailability).filter(TutorAvailability.tutor_profile_id == profile.id).delete()
@@ -382,7 +384,7 @@ class SqlAlchemyTutorProfileRepository(TutorProfileRepository):
 
         # Increment version after successful update
         profile.version += 1
-        profile.updated_at = datetime.now(UTC)  # Update in code
+        profile.updated_at = utc_now()  # Update in code
 
         db.commit()
         return self._aggregate_from_db(db, profile.id)

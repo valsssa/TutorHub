@@ -1,7 +1,9 @@
 """Package expiration service - Mark expired packages automatically."""
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, joinedload
@@ -23,7 +25,7 @@ class PackageExpirationService:
             int: Number of packages marked as expired
         """
         try:
-            now = datetime.now(UTC)
+            now = utc_now()
             # Find active packages that have passed their expiration date
             expired_packages = (
                 db.query(StudentPackage)
@@ -42,7 +44,7 @@ class PackageExpirationService:
             if count > 0:
                 for package in expired_packages:
                     package.status = "expired"
-                    package.updated_at = datetime.now(UTC)
+                    package.updated_at = utc_now()
 
                 db.commit()
 
@@ -77,7 +79,7 @@ class PackageExpirationService:
             return False, "No credits remaining in package"
 
         # Check expiration
-        if package.expires_at and package.expires_at < datetime.now(UTC):
+        if package.expires_at and package.expires_at < utc_now():
             return False, "Package has expired"
 
         return True, None
@@ -104,7 +106,7 @@ class PackageExpirationService:
                   checkout started but expired since then
                 - error_message: Description of the issue if not valid
         """
-        now = datetime.now(UTC)
+        now = utc_now()
 
         # Check sessions remaining - this wouldn't change during checkout
         if package.sessions_remaining <= 0:
@@ -143,7 +145,7 @@ class PackageExpirationService:
                     StudentPackage.sessions_remaining > 0,
                     (
                         StudentPackage.expires_at.is_(None)
-                        | (StudentPackage.expires_at > datetime.now(UTC))
+                        | (StudentPackage.expires_at > utc_now())
                     ),
                 )
             )
@@ -167,7 +169,7 @@ class PackageExpirationService:
             list: StudentPackage instances expiring soon that haven't had
                   a warning notification sent yet
         """
-        now = datetime.now(UTC)
+        now = utc_now()
         cutoff = now + timedelta(days=days_until_expiry)
 
         return (
@@ -214,7 +216,7 @@ class PackageExpirationService:
                 return 0
 
             warnings_sent = 0
-            now = datetime.now(UTC)
+            now = utc_now()
 
             for package in expiring_packages:
                 try:
@@ -250,7 +252,7 @@ class PackageExpirationService:
 
                     # Mark warning as sent
                     package.expiry_warning_sent = True
-                    package.updated_at = datetime.now(UTC)
+                    package.updated_at = utc_now()
                     warnings_sent += 1
 
                     logger.info(

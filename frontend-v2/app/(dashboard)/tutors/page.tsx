@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { useTutors, useSubjects } from '@/lib/hooks';
 import { useFiltersStore } from '@/lib/stores';
@@ -38,6 +39,8 @@ const RATING_OPTIONS = [
 ] as const;
 
 export default function TutorsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { tutorFilters, setTutorFilters, resetTutorFilters } = useFiltersStore();
   const { data: tutorsData, isLoading } = useTutors(tutorFilters);
   const { data: subjects } = useSubjects();
@@ -47,18 +50,77 @@ export default function TutorsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedPriceRange, setSelectedPriceRange] = useState(0);
 
+  // Task 39: Restore filters from URL on mount
+  useEffect(() => {
+    const subject = searchParams.get('subject');
+    const query = searchParams.get('q');
+    const rating = searchParams.get('rating');
+    const priceMin = searchParams.get('price_min');
+    const priceMax = searchParams.get('price_max');
+    const sortBy = searchParams.get('sort') as typeof tutorFilters.sort_by;
+    const page = searchParams.get('page');
+
+    const hasUrlFilters = subject || query || rating || priceMin || priceMax || sortBy || page;
+    if (!hasUrlFilters) return;
+
+    const filters: Partial<typeof tutorFilters> = {};
+    if (subject) { filters.subject = subject; setSearchQuery(subject); }
+    if (query) { filters.search_query = query; setNameQuery(query); }
+    if (rating) filters.min_rating = Number(rating);
+    if (priceMin) filters.price_min = Number(priceMin);
+    if (priceMax) filters.price_max = Number(priceMax);
+    if (sortBy) filters.sort_by = sortBy;
+    if (page) filters.page = Number(page);
+
+    // Sync price range selector
+    if (priceMin || priceMax) {
+      const idx = PRICE_RANGES.findIndex(
+        (r) =>
+          String(r.min ?? '') === (priceMin ?? '') &&
+          String(r.max ?? '') === (priceMax ?? '')
+      );
+      if (idx >= 0) setSelectedPriceRange(idx);
+    }
+
+    setTutorFilters(filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Task 39: Sync filter state to URL when filters change
+  const syncFiltersToUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (tutorFilters.subject) params.set('subject', tutorFilters.subject);
+    if (tutorFilters.search_query) params.set('q', tutorFilters.search_query);
+    if (tutorFilters.min_rating !== undefined) params.set('rating', String(tutorFilters.min_rating));
+    if (tutorFilters.price_min !== undefined) params.set('price_min', String(tutorFilters.price_min));
+    if (tutorFilters.price_max !== undefined) params.set('price_max', String(tutorFilters.price_max));
+    if (tutorFilters.sort_by && tutorFilters.sort_by !== 'rating') params.set('sort', tutorFilters.sort_by);
+    if (tutorFilters.page && tutorFilters.page > 1) params.set('page', String(tutorFilters.page));
+
+    const qs = params.toString();
+    const newUrl = qs ? `/tutors?${qs}` : '/tutors';
+    router.replace(newUrl, { scroll: false });
+  }, [tutorFilters, router]);
+
+  useEffect(() => {
+    syncFiltersToUrl();
+  }, [syncFiltersToUrl]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    const sanitizedSubject = searchQuery.trim().slice(0, 100);
+    const sanitizedName = nameQuery.trim().slice(0, 100);
     setTutorFilters({
-      subject: searchQuery || undefined,
-      search_query: nameQuery || undefined,
+      subject: sanitizedSubject || undefined,
+      search_query: sanitizedName || undefined,
       page: 1,
     });
   };
 
   const handleNameSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setTutorFilters({ search_query: nameQuery || undefined, page: 1 });
+    const sanitized = nameQuery.trim().slice(0, 100);
+    setTutorFilters({ search_query: sanitized || undefined, page: 1 });
   };
 
   const handleSubjectClick = (subjectName: string) => {
@@ -168,7 +230,8 @@ export default function TutorsPage() {
                     type="text"
                     placeholder="Search by tutor name..."
                     value={nameQuery}
-                    onChange={(e) => setNameQuery(e.target.value)}
+                    onChange={(e) => setNameQuery(e.target.value.slice(0, 100))}
+                    maxLength={100}
                     className="pl-9"
                   />
                 </div>
@@ -180,7 +243,8 @@ export default function TutorsPage() {
                     type="text"
                     placeholder="Search by subject..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value.slice(0, 100))}
+                    maxLength={100}
                     className="pl-9"
                   />
                 </div>

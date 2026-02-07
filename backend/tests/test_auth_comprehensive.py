@@ -9,7 +9,9 @@ Tests cover:
 - Edge cases and error handling
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -68,7 +70,7 @@ class TestTokenExpiration:
         from core.config import settings
 
         token_without_sub = jwt.encode(
-            {"exp": datetime.now(UTC) + timedelta(hours=1)},
+            {"exp": utc_now() + timedelta(hours=1)},
             settings.SECRET_KEY,
             algorithm=settings.ALGORITHM,
         )
@@ -98,7 +100,7 @@ class TestTokenInvalidationOnPasswordChange:
         assert response.status_code == status.HTTP_200_OK
 
         student_user.hashed_password = PasswordHasher.hash("NewPassword123!")
-        password_change_time = datetime.now(UTC)
+        password_change_time = utc_now()
         student_user.password_changed_at = password_change_time
         db_session.commit()
 
@@ -169,7 +171,7 @@ class TestPasswordResetFlow:
         _reset_tokens[test_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         try:
@@ -202,7 +204,7 @@ class TestPasswordResetFlow:
         _reset_tokens[test_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC) - timedelta(hours=2),
+            "created_at": utc_now() - timedelta(hours=2),
         }
 
         try:
@@ -225,7 +227,7 @@ class TestPasswordResetFlow:
         _reset_tokens[test_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         try:
@@ -255,7 +257,7 @@ class TestPasswordResetFlow:
         _reset_tokens[test_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         try:
@@ -277,7 +279,7 @@ class TestPasswordResetFlow:
         _reset_tokens[test_token] = {
             "user_id": student_user.id,
             "email": student_user.email,
-            "created_at": datetime.now(UTC),
+            "created_at": utc_now(),
         }
 
         response1 = client.post(

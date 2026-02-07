@@ -16,7 +16,9 @@ import hashlib
 import json
 import threading
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
@@ -65,7 +67,7 @@ def completed_payment(db_session: Session, test_booking: Booking) -> Payment:
         status="completed",
         stripe_checkout_session_id="cs_test_completed",
         stripe_payment_intent_id="pi_test_completed",
-        paid_at=datetime.now(UTC),
+        paid_at=utc_now(),
     )
     db_session.add(payment)
     db_session.commit()
@@ -622,7 +624,7 @@ class TestConcurrentWalletDeductions:
             .where(StudentProfile.id == student_with_balance.id)
             .values(
                 credit_balance_cents=StudentProfile.credit_balance_cents + topup_amount,
-                updated_at=datetime.now(UTC),
+                updated_at=utc_now(),
             )
         )
         db_session.commit()
@@ -676,7 +678,7 @@ class TestInsufficientBalanceDuringConfirmation:
             json={
                 "tutor_profile_id": tutor_user.tutor_profile.id,
                 "subject_id": test_subject.id,
-                "start_time": (datetime.now(UTC) + timedelta(days=7)).isoformat(),
+                "start_time": (utc_now() + timedelta(days=7)).isoformat(),
                 "duration_minutes": 60,
                 "payment_method": "wallet",
             },
@@ -1269,7 +1271,7 @@ class TestPaymentStatusPolling:
             currency="usd",
             paid=True,
             refunded=False,
-            last_checked=datetime.now(UTC),
+            last_checked=utc_now(),
         )
         poller._cache["session:cs_test"] = status_info
 

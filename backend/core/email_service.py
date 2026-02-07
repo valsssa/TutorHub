@@ -17,7 +17,9 @@ Features:
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from enum import Enum
 from typing import Any
 
@@ -49,7 +51,7 @@ class EmailDeliveryResult:
 
     def __post_init__(self) -> None:
         if self.timestamp is None:
-            self.timestamp = datetime.now(UTC)
+            self.timestamp = utc_now()
 
 
 # ============================================================================

@@ -4,6 +4,8 @@ Tests state transitions, dispute handling, and edge cases.
 """
 
 from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import MagicMock
 
 import pytest
@@ -506,7 +508,7 @@ class TestDisputes:
         mock_booking.session_state = SessionState.ENDED.value
         mock_booking.payment_state = PaymentState.CAPTURED.value
         # Set end_time to 45 days ago
-        mock_booking.end_time = datetime.utcnow() - timedelta(days=45)
+        mock_booking.end_time = utc_now() - timedelta(days=45)
         mock_booking.cancelled_at = None
 
         result = BookingStateMachine.open_dispute(
@@ -524,7 +526,7 @@ class TestDisputes:
         mock_booking.session_state = SessionState.ENDED.value
         mock_booking.payment_state = PaymentState.CAPTURED.value
         # Set end_time to 15 days ago
-        mock_booking.end_time = datetime.utcnow() - timedelta(days=15)
+        mock_booking.end_time = utc_now() - timedelta(days=15)
         mock_booking.cancelled_at = None
 
         result = BookingStateMachine.open_dispute(
@@ -541,7 +543,7 @@ class TestDisputes:
         mock_booking.session_state = SessionState.CANCELLED.value
         mock_booking.payment_state = PaymentState.CAPTURED.value
         # Set cancelled_at to 60 days ago
-        mock_booking.cancelled_at = datetime.utcnow() - timedelta(days=60)
+        mock_booking.cancelled_at = utc_now() - timedelta(days=60)
         mock_booking.end_time = None
 
         result = BookingStateMachine.open_dispute(
@@ -559,9 +561,9 @@ class TestDisputes:
         mock_booking.session_state = SessionState.CANCELLED.value
         mock_booking.payment_state = PaymentState.CAPTURED.value
         # Set cancelled_at to 5 days ago
-        mock_booking.cancelled_at = datetime.utcnow() - timedelta(days=5)
+        mock_booking.cancelled_at = utc_now() - timedelta(days=5)
         # Set end_time far in the past (should be ignored)
-        mock_booking.end_time = datetime.utcnow() - timedelta(days=100)
+        mock_booking.end_time = utc_now() - timedelta(days=100)
 
         result = BookingStateMachine.open_dispute(
             mock_booking,
@@ -579,7 +581,7 @@ class TestDisputes:
         mock_booking.end_time = None
         mock_booking.cancelled_at = None
         # Set updated_at to 35 days ago
-        mock_booking.updated_at = datetime.utcnow() - timedelta(days=35)
+        mock_booking.updated_at = utc_now() - timedelta(days=35)
 
         result = BookingStateMachine.open_dispute(
             mock_booking,
@@ -595,7 +597,7 @@ class TestDisputes:
         mock_booking.session_state = SessionState.ENDED.value
         mock_booking.payment_state = PaymentState.CAPTURED.value
         # Set end_time to exactly 30 days ago
-        mock_booking.end_time = datetime.utcnow() - timedelta(days=30)
+        mock_booking.end_time = utc_now() - timedelta(days=30)
         mock_booking.cancelled_at = None
 
         result = BookingStateMachine.open_dispute(
@@ -945,8 +947,8 @@ class TestAttendanceBasedOutcome:
         """Both parties joined should result in COMPLETED."""
         from modules.bookings.jobs import _determine_session_outcome_from_attendance
 
-        mock_booking.tutor_joined_at = datetime.utcnow()
-        mock_booking.student_joined_at = datetime.utcnow()
+        mock_booking.tutor_joined_at = utc_now()
+        mock_booking.student_joined_at = utc_now()
 
         outcome = _determine_session_outcome_from_attendance(mock_booking)
 
@@ -968,7 +970,7 @@ class TestAttendanceBasedOutcome:
         from modules.bookings.jobs import _determine_session_outcome_from_attendance
 
         mock_booking.tutor_joined_at = None
-        mock_booking.student_joined_at = datetime.utcnow()
+        mock_booking.student_joined_at = utc_now()
 
         outcome = _determine_session_outcome_from_attendance(mock_booking)
 
@@ -978,7 +980,7 @@ class TestAttendanceBasedOutcome:
         """Only tutor joined should result in NO_SHOW_STUDENT."""
         from modules.bookings.jobs import _determine_session_outcome_from_attendance
 
-        mock_booking.tutor_joined_at = datetime.utcnow()
+        mock_booking.tutor_joined_at = utc_now()
         mock_booking.student_joined_at = None
 
         outcome = _determine_session_outcome_from_attendance(mock_booking)

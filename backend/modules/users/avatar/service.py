@@ -5,7 +5,9 @@ from __future__ import annotations
 import os
 import tempfile
 from contextlib import suppress
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
@@ -52,7 +54,7 @@ class AvatarService:
             from datetime import datetime
 
             user.avatar_key = new_key
-            user.updated_at = datetime.now(UTC)  # Update timestamp in code
+            user.updated_at = utc_now()  # Update timestamp in code
             self._db.commit()
         except Exception as exc:
             self._db.rollback()
@@ -88,7 +90,7 @@ class AvatarService:
             from datetime import datetime
 
             user.avatar_key = None
-            user.updated_at = datetime.now(UTC)  # Update timestamp in code
+            user.updated_at = utc_now()  # Update timestamp in code
             self._db.commit()
         except Exception as exc:
             self._db.rollback()
@@ -173,11 +175,11 @@ class AvatarService:
 
     async def _build_response(self, key: str) -> AvatarResponse:
         signed_url = await self._storage.generate_presigned_url(key)
-        expires_at = datetime.now(UTC) + timedelta(seconds=self._storage.url_ttl())
+        expires_at = utc_now() + timedelta(seconds=self._storage.url_ttl())
         return AvatarResponse(avatar_url=signed_url, expires_at=expires_at)
 
     def _default_response(self) -> AvatarResponse:
-        expires_at = datetime.now(UTC) + timedelta(seconds=self._storage.url_ttl())
+        expires_at = utc_now() + timedelta(seconds=self._storage.url_ttl())
         return AvatarResponse(avatar_url=settings.AVATAR_STORAGE_DEFAULT_URL, expires_at=expires_at)
 
     def _build_object_key(self, *, user_id: int) -> str:

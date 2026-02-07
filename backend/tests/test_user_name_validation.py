@@ -10,7 +10,9 @@ Tests cover:
 - profile_incomplete flag is set correctly
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -204,8 +206,8 @@ class TestUserResponseComputation:
             role="student",
             is_active=True,
             is_verified=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
         assert response.full_name == "John Doe"
         assert response.profile_incomplete is False
@@ -220,8 +222,8 @@ class TestUserResponseComputation:
             role="student",
             is_active=True,
             is_verified=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
         assert response.profile_incomplete is True
         assert response.full_name == "Doe"
@@ -236,8 +238,8 @@ class TestUserResponseComputation:
             role="student",
             is_active=True,
             is_verified=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
         assert response.profile_incomplete is True
         assert response.full_name == "John"
@@ -252,8 +254,8 @@ class TestUserResponseComputation:
             role="student",
             is_active=True,
             is_verified=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
         assert response.profile_incomplete is True
         assert response.full_name is None

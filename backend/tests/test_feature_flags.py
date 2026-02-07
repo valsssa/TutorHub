@@ -2,6 +2,8 @@
 
 import json
 from datetime import datetime
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -49,7 +51,7 @@ class TestFeatureFlag:
 
     def test_create_flag_with_all_fields(self):
         """Test creating a feature flag with all fields."""
-        now = datetime.utcnow()
+        now = utc_now()
         flag = FeatureFlag(
             name="full_feature",
             state=FeatureState.PERCENTAGE,
@@ -71,7 +73,7 @@ class TestFeatureFlag:
 
     def test_to_dict(self):
         """Test converting feature flag to dictionary."""
-        now = datetime.utcnow()
+        now = utc_now()
         flag = FeatureFlag(
             name="test",
             state=FeatureState.ENABLED,
@@ -99,7 +101,7 @@ class TestFeatureFlag:
 
     def test_from_dict(self):
         """Test creating feature flag from dictionary."""
-        now = datetime.utcnow()
+        now = utc_now()
         data = {
             "name": "from_dict_feature",
             "state": "percentage",
@@ -134,7 +136,7 @@ class TestFeatureFlag:
 
     def test_roundtrip_conversion(self):
         """Test converting to dict and back preserves data."""
-        now = datetime.utcnow()
+        now = utc_now()
         original = FeatureFlag(
             name="roundtrip",
             state=FeatureState.ALLOWLIST,
@@ -228,7 +230,7 @@ class TestFeatureFlags:
     async def test_get_flag_uses_cache(self, ff_manager):
         """Test that cache is used for subsequent calls."""
         flag = FeatureFlag(name="cached_flag", state=FeatureState.ENABLED)
-        ff_manager._local_cache["cached_flag"] = (flag, datetime.utcnow())
+        ff_manager._local_cache["cached_flag"] = (flag, utc_now())
 
         mock_redis = AsyncMock()
         with patch.object(ff_manager, "_get_redis", return_value=mock_redis):
@@ -254,7 +256,7 @@ class TestFeatureFlags:
         """Test that setting a flag invalidates the cache."""
         ff_manager._local_cache["cached"] = (
             FeatureFlag(name="cached"),
-            datetime.utcnow(),
+            utc_now(),
         )
         mock_redis = AsyncMock()
 
@@ -460,11 +462,11 @@ class TestFeatureFlags:
         """Test invalidating specific cache entry."""
         ff_manager._local_cache["flag1"] = (
             FeatureFlag(name="flag1"),
-            datetime.utcnow(),
+            utc_now(),
         )
         ff_manager._local_cache["flag2"] = (
             FeatureFlag(name="flag2"),
-            datetime.utcnow(),
+            utc_now(),
         )
 
         ff_manager.invalidate_cache("flag1")
@@ -476,11 +478,11 @@ class TestFeatureFlags:
         """Test invalidating all cache entries."""
         ff_manager._local_cache["flag1"] = (
             FeatureFlag(name="flag1"),
-            datetime.utcnow(),
+            utc_now(),
         )
         ff_manager._local_cache["flag2"] = (
             FeatureFlag(name="flag2"),
-            datetime.utcnow(),
+            utc_now(),
         )
 
         ff_manager.invalidate_cache()

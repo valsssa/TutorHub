@@ -18,7 +18,9 @@ import re
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -105,14 +107,14 @@ class MockContentModerationService:
         self.moderation_history.append({
             "text": text[:100],
             "result": result,
-            "timestamp": datetime.now(UTC),
+            "timestamp": utc_now(),
         })
 
         if requires_manual:
             self.manual_review_queue.append({
                 "text": text,
                 "flagged": flagged,
-                "timestamp": datetime.now(UTC),
+                "timestamp": utc_now(),
             })
 
         return result
@@ -145,7 +147,7 @@ class MockReviewBombingDetector:
         account_created_at: datetime,
     ) -> None:
         """Record a review for bombing detection."""
-        now = datetime.now(UTC)
+        now = utc_now()
 
         self.ip_review_counts[ip_address].append(now)
         self.user_review_counts[user_id].append(now)
@@ -161,7 +163,7 @@ class MockReviewBombingDetector:
 
     def check_rapid_submission(self, ip_address: str, window_minutes: int = 60) -> bool:
         """Check for rapid review submissions from same IP."""
-        now = datetime.now(UTC)
+        now = utc_now()
         cutoff = now - timedelta(minutes=window_minutes)
 
         recent = [t for t in self.ip_review_counts.get(ip_address, []) if t > cutoff]
@@ -174,7 +176,7 @@ class MockReviewBombingDetector:
         threshold: int = 10,
     ) -> ReviewBombingSignal:
         """Check for coordinated negative review attack on a tutor."""
-        now = datetime.now(UTC)
+        now = utc_now()
         cutoff = now - timedelta(hours=window_hours)
 
         recent_negative = [
@@ -226,7 +228,7 @@ class MockReviewBombingDetector:
         min_age_days: int = 1,
     ) -> bool:
         """Check if account meets minimum age requirement for reviewing."""
-        age = datetime.now(UTC) - account_created_at
+        age = utc_now() - account_created_at
         return age.days >= min_age_days
 
     def check_review_velocity(
@@ -235,7 +237,7 @@ class MockReviewBombingDetector:
         max_reviews_per_day: int = 10,
     ) -> bool:
         """Check if user exceeds review velocity limit."""
-        now = datetime.now(UTC)
+        now = utc_now()
         day_ago = now - timedelta(days=1)
 
         recent = [
@@ -256,7 +258,7 @@ class MockAnalyticsService:
         self.events.append({
             "event": event_name,
             "properties": properties,
-            "timestamp": datetime.now(UTC),
+            "timestamp": utc_now(),
         })
 
     def get_events(self, event_name: str) -> list[dict]:
@@ -294,8 +296,8 @@ def completed_booking(db_session: Session, tutor_user: User, student_user: User,
         tutor_profile_id=tutor_user.tutor_profile.id,
         student_id=student_user.id,
         subject_id=test_subject.id,
-        start_time=datetime.now(UTC) - timedelta(hours=2),
-        end_time=datetime.now(UTC) - timedelta(hours=1),
+        start_time=utc_now() - timedelta(hours=2),
+        end_time=utc_now() - timedelta(hours=1),
         session_state="ENDED",
         session_outcome="COMPLETED",
         payment_state="CAPTURED",
@@ -320,11 +322,11 @@ def cancelled_booking(db_session: Session, tutor_user: User, student_user: User,
         tutor_profile_id=tutor_user.tutor_profile.id,
         student_id=student_user.id,
         subject_id=test_subject.id,
-        start_time=datetime.now(UTC) + timedelta(hours=24),
-        end_time=datetime.now(UTC) + timedelta(hours=25),
+        start_time=utc_now() + timedelta(hours=24),
+        end_time=utc_now() + timedelta(hours=25),
         session_state="CANCELLED",
         cancelled_by_role="STUDENT",
-        cancelled_at=datetime.now(UTC),
+        cancelled_at=utc_now(),
         payment_state="VOIDED",
         dispute_state="NONE",
         hourly_rate=Decimal("50.00"),
@@ -344,13 +346,13 @@ def disputed_booking(db_session: Session, tutor_user: User, student_user: User, 
         tutor_profile_id=tutor_user.tutor_profile.id,
         student_id=student_user.id,
         subject_id=test_subject.id,
-        start_time=datetime.now(UTC) - timedelta(hours=2),
-        end_time=datetime.now(UTC) - timedelta(hours=1),
+        start_time=utc_now() - timedelta(hours=2),
+        end_time=utc_now() - timedelta(hours=1),
         session_state="ENDED",
         session_outcome="COMPLETED",
         payment_state="CAPTURED",
         dispute_state="OPEN",
-        disputed_at=datetime.now(UTC),
+        disputed_at=utc_now(),
         disputed_by=student_user.id,
         dispute_reason="Tutor was late and unprepared",
         hourly_rate=Decimal("50.00"),
@@ -637,8 +639,8 @@ class TestRatingCalculationComplexities:
                 tutor_profile_id=tutor_profile.id,
                 student_id=student_user.id,
                 subject_id=test_subject.id,
-                start_time=datetime.now(UTC) - timedelta(days=i + 1, hours=2),
-                end_time=datetime.now(UTC) - timedelta(days=i + 1, hours=1),
+                start_time=utc_now() - timedelta(days=i + 1, hours=2),
+                end_time=utc_now() - timedelta(days=i + 1, hours=1),
                 session_state="ENDED",
                 session_outcome="COMPLETED",
                 payment_state="CAPTURED",
@@ -852,7 +854,7 @@ class TestReviewModerationFlow:
         # In real system, admin would review and approve
         appeal.status = "approved"
         appeal.reviewer_notes = "User's usage was metaphorical, reinstating review"
-        appeal.resolved_at = datetime.now(UTC)
+        appeal.resolved_at = utc_now()
 
         # Restore review visibility
         review.is_public = True
@@ -929,8 +931,8 @@ class TestReviewModerationFlow:
                 tutor_profile_id=tutor_user.tutor_profile.id,
                 student_id=student.id,
                 subject_id=test_subject.id,
-                start_time=datetime.now(UTC) - timedelta(days=i + 1, hours=2),
-                end_time=datetime.now(UTC) - timedelta(days=i + 1, hours=1),
+                start_time=utc_now() - timedelta(days=i + 1, hours=2),
+                end_time=utc_now() - timedelta(days=i + 1, hours=1),
                 session_state="ENDED",
                 session_outcome="COMPLETED",
                 payment_state="CAPTURED",
@@ -993,7 +995,7 @@ class TestReviewBombingPrevention:
                 tutor_id=1,
                 rating=1,
                 ip_address=test_ip,
-                account_created_at=datetime.now(UTC) - timedelta(days=30),
+                account_created_at=utc_now() - timedelta(days=30),
             )
 
         is_suspicious = bombing_detector.check_rapid_submission(test_ip)
@@ -1013,7 +1015,7 @@ class TestReviewBombingPrevention:
                 tutor_id=tutor_id,
                 rating=1,  # All negative
                 ip_address=f"10.0.0.{i % 5}",  # /24 clustering
-                account_created_at=datetime.now(UTC) - timedelta(days=3),  # New accounts
+                account_created_at=utc_now() - timedelta(days=3),  # New accounts
             )
 
         signal = bombing_detector.check_coordinated_attack(tutor_id)
@@ -1037,7 +1039,7 @@ class TestReviewBombingPrevention:
                 tutor_id=tutor_id,
                 rating=1,
                 ip_address=f"172.16.1.{i}",  # Same /24
-                account_created_at=datetime.now(UTC) - timedelta(days=60),
+                account_created_at=utc_now() - timedelta(days=60),
             )
 
         signal = bombing_detector.check_coordinated_attack(tutor_id)
@@ -1051,7 +1053,7 @@ class TestReviewBombingPrevention:
     ):
         """Test account age requirements for reviewing."""
         # New account (less than 1 day old)
-        new_account_created = datetime.now(UTC) - timedelta(hours=12)
+        new_account_created = utc_now() - timedelta(hours=12)
         can_review = bombing_detector.check_account_age_requirement(
             new_account_created,
             min_age_days=1
@@ -1059,7 +1061,7 @@ class TestReviewBombingPrevention:
         assert can_review is False
 
         # Old enough account
-        old_account_created = datetime.now(UTC) - timedelta(days=7)
+        old_account_created = utc_now() - timedelta(days=7)
         can_review = bombing_detector.check_account_age_requirement(
             old_account_created,
             min_age_days=1
@@ -1080,7 +1082,7 @@ class TestReviewBombingPrevention:
                 tutor_id=i + 1,  # Different tutors
                 rating=5,
                 ip_address="1.2.3.4",
-                account_created_at=datetime.now(UTC) - timedelta(days=30),
+                account_created_at=utc_now() - timedelta(days=30),
             )
 
         exceeds_velocity = bombing_detector.check_review_velocity(
@@ -1136,7 +1138,7 @@ class TestResponseAndReplyEdgeCases:
             review_id=review.id,
             tutor_id=tutor_user.id,
             content="I apologize for any issues. The technical difficulties were unexpected.",
-            created_at=datetime.now(UTC),
+            created_at=utc_now(),
         )
 
         # Student edits review
@@ -1147,7 +1149,7 @@ class TestResponseAndReplyEdgeCases:
 
         # Response should be marked as potentially outdated
         # In real system, might add a flag like response.review_edited_since = True
-        review_edit_time = datetime.now(UTC)
+        review_edit_time = utc_now()
         is_response_outdated = response.created_at < review_edit_time
 
         assert is_response_outdated is True
@@ -1178,7 +1180,7 @@ class TestResponseAndReplyEdgeCases:
             review_id=review.id,
             tutor_id=tutor_user.id,
             content="I'm sorry you feel that way...",
-            created_at=datetime.now(UTC),
+            created_at=utc_now(),
         )
 
         # Simulate student account deletion (soft delete)
@@ -1258,7 +1260,7 @@ class TestResponseAndReplyEdgeCases:
             review_id=review.id,
             tutor_id=tutor_user.id,
             content="Response to bad review",
-            created_at=datetime.now(UTC),
+            created_at=utc_now(),
             is_visible=True,
         )
 
@@ -1299,7 +1301,7 @@ class TestResponseAndReplyEdgeCases:
                     return False, "Version conflict - response was modified"
 
                 self.responses[response_id].content = new_content
-                self.responses[response_id].updated_at = datetime.now(UTC)
+                self.responses[response_id].updated_at = utc_now()
                 self.versions[response_id] += 1
 
                 return True, "Success"
@@ -1312,7 +1314,7 @@ class TestResponseAndReplyEdgeCases:
             review_id=100,
             tutor_id=1,
             content="Original response",
-            created_at=datetime.now(UTC),
+            created_at=utc_now(),
         )
         manager.add_response(response)
 
@@ -1368,8 +1370,8 @@ class TestReviewVisibilityRules:
                 tutor_profile_id=tutor_profile.id,
                 student_id=student.id,
                 subject_id=test_subject.id,
-                start_time=datetime.now(UTC) - timedelta(days=i + 1, hours=2),
-                end_time=datetime.now(UTC) - timedelta(days=i + 1, hours=1),
+                start_time=utc_now() - timedelta(days=i + 1, hours=2),
+                end_time=utc_now() - timedelta(days=i + 1, hours=1),
                 session_state="ENDED",
                 session_outcome="COMPLETED",
                 payment_state="CAPTURED",
@@ -1507,10 +1509,10 @@ class TestReviewVisibilityRules:
 
         # Create reviews at different times
         reviews_data = [
-            (5, datetime.now(UTC) - timedelta(days=365)),  # Old 5-star
-            (4, datetime.now(UTC) - timedelta(days=180)),  # 6-month old 4-star
-            (3, datetime.now(UTC) - timedelta(days=30)),   # Recent 3-star
-            (4, datetime.now(UTC) - timedelta(days=7)),    # Very recent 4-star
+            (5, utc_now() - timedelta(days=365)),  # Old 5-star
+            (4, utc_now() - timedelta(days=180)),  # 6-month old 4-star
+            (3, utc_now() - timedelta(days=30)),   # Recent 3-star
+            (4, utc_now() - timedelta(days=7)),    # Very recent 4-star
         ]
 
         for i, (rating, created_at) in enumerate(reviews_data):
@@ -1552,7 +1554,7 @@ class TestReviewVisibilityRules:
         # Calculate time-weighted average
         def calculate_weighted_rating(reviews: list[tuple[int, datetime]]) -> float:
             """Calculate time-weighted rating where recent reviews matter more."""
-            now = datetime.now(UTC)
+            now = utc_now()
             total_weight = 0.0
             weighted_sum = 0.0
 
@@ -1607,8 +1609,8 @@ class TestReviewVisibilityRules:
                 tutor_profile_id=tutor_profile.id,
                 student_id=student.id,
                 subject_id=test_subject.id,
-                start_time=datetime.now(UTC) - timedelta(days=i + 1, hours=2),
-                end_time=datetime.now(UTC) - timedelta(days=i + 1, hours=1),
+                start_time=utc_now() - timedelta(days=i + 1, hours=2),
+                end_time=utc_now() - timedelta(days=i + 1, hours=1),
                 session_state="ENDED",
                 session_outcome="COMPLETED",
                 payment_state="CAPTURED",
@@ -1708,8 +1710,8 @@ class TestAggregateStatistics:
                 tutor_profile_id=tutor_profile.id,
                 student_id=student.id,
                 subject_id=test_subject.id,
-                start_time=datetime.now(UTC) - timedelta(days=i + 1, hours=2),
-                end_time=datetime.now(UTC) - timedelta(days=i + 1, hours=1),
+                start_time=utc_now() - timedelta(days=i + 1, hours=2),
+                end_time=utc_now() - timedelta(days=i + 1, hours=1),
                 session_state="ENDED",
                 session_outcome="COMPLETED",
                 payment_state="CAPTURED",
@@ -1827,8 +1829,8 @@ class TestAggregateStatistics:
                 tutor_profile_id=tutor_profile.id,
                 student_id=student.id,
                 subject_id=test_subject.id,
-                start_time=datetime.now(UTC) - timedelta(days=i + 1, hours=2),
-                end_time=datetime.now(UTC) - timedelta(days=i + 1, hours=1),
+                start_time=utc_now() - timedelta(days=i + 1, hours=2),
+                end_time=utc_now() - timedelta(days=i + 1, hours=1),
                 session_state="ENDED",
                 session_outcome="COMPLETED",
                 payment_state="CAPTURED",
@@ -1904,7 +1906,7 @@ class TestAggregateStatistics:
             (2, 7),     # 2-star from 1 week ago
         ]
 
-        now = datetime.now(UTC)
+        now = utc_now()
 
         for i, (rating, days_ago) in enumerate(reviews_data):
             student = create_test_user(
@@ -2012,8 +2014,8 @@ class TestAggregateStatistics:
                     tutor_profile_id=profile.id,
                     student_id=student.id,
                     subject_id=test_subject.id,
-                    start_time=datetime.now(UTC) - timedelta(days=i + 1, hours=2),
-                    end_time=datetime.now(UTC) - timedelta(days=i + 1, hours=1),
+                    start_time=utc_now() - timedelta(days=i + 1, hours=2),
+                    end_time=utc_now() - timedelta(days=i + 1, hours=1),
                     session_state="ENDED",
                     session_outcome="COMPLETED",
                     payment_state="CAPTURED",
@@ -2197,7 +2199,7 @@ class TestReviewFlowIntegration:
                 tutor_id=tutor_profile.id,
                 rating=1,
                 ip_address=f"10.0.0.{i % 5}",
-                account_created_at=datetime.now(UTC) - timedelta(days=2),
+                account_created_at=utc_now() - timedelta(days=2),
             )
 
             attack_reviews.append({

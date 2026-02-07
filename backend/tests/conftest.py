@@ -11,6 +11,7 @@ import os
 import sys
 from collections.abc import Generator
 from pathlib import Path
+from core.datetime_utils import utc_now
 
 import pytest
 
@@ -448,8 +449,8 @@ def test_booking(db_session: Session, tutor_user: User, student_user: User, test
         tutor_profile_id=tutor_user.tutor_profile.id,
         student_id=student_user.id,
         subject_id=test_subject.id,
-        start_time=datetime.now(UTC) + timedelta(days=1),
-        end_time=datetime.now(UTC) + timedelta(days=1, hours=1),
+        start_time=utc_now() + timedelta(days=1),
+        end_time=utc_now() + timedelta(days=1, hours=1),
         topic="Calculus basics",
         hourly_rate=50.00,
         total_amount=50.00,

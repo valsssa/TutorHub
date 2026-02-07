@@ -13,29 +13,29 @@ class TestUtcNow:
         assert result.tzinfo == UTC
 
     def test_returns_current_time(self):
-        before = datetime.now(UTC)
+        before = utc_now()
         result = utc_now()
-        after = datetime.now(UTC)
+        after = utc_now()
         assert before <= result <= after
 
 
 class TestIsAware:
     def test_aware_datetime_returns_true(self):
-        aware = datetime.now(UTC)
+        aware = utc_now()
         assert is_aware(aware) is True
 
     def test_naive_datetime_returns_false(self):
-        naive = datetime.utcnow()
+        naive = datetime.now()
         assert is_aware(naive) is False
 
 
 class TestEnsureUtc:
     def test_aware_utc_returns_unchanged(self):
-        dt = datetime.now(UTC)
+        dt = utc_now()
         result = ensure_utc(dt)
         assert result == dt
 
     def test_naive_datetime_raises_error(self):
-        naive = datetime.utcnow()
+        naive = datetime.now()
         with pytest.raises(ValueError, match="naive datetime"):
             ensure_utc(naive)

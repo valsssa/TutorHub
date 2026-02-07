@@ -1,7 +1,8 @@
 """User preferences API router."""
 
 import logging
-from datetime import UTC
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, field_validator
@@ -58,7 +59,7 @@ async def update_preferences(
         # Update timestamp in application code (no DB triggers)
         from datetime import datetime
 
-        current_user.updated_at = datetime.now(UTC)
+        current_user.updated_at = utc_now()
 
     db.commit()
     db.refresh(current_user)

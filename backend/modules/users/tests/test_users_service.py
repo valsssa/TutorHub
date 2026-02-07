@@ -10,6 +10,8 @@ Tests cover:
 """
 
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock
@@ -96,7 +98,7 @@ class TestAvatarService:
         result = await avatar_service.upload_for_user(student_user, valid_image_upload)
 
         assert result.avatar_url is not None
-        assert result.expires_at > datetime.now(UTC)
+        assert result.expires_at > utc_now()
         mock_storage.upload_file.assert_called_once()
         assert student_user.avatar_key is not None
 
@@ -180,7 +182,7 @@ class TestAvatarService:
         result = await avatar_service.fetch_for_user(student_user)
 
         assert result.avatar_url is not None
-        assert result.expires_at > datetime.now(UTC)
+        assert result.expires_at > utc_now()
 
     @pytest.mark.asyncio
     async def test_delete_avatar_success(
@@ -588,8 +590,8 @@ class TestRoleChangeEventHandler:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=student_user.id,
             subject_id=test_subject.id,
-            start_time=datetime.now(UTC) + timedelta(days=1),
-            end_time=datetime.now(UTC) + timedelta(days=1, hours=1),
+            start_time=utc_now() + timedelta(days=1),
+            end_time=utc_now() + timedelta(days=1, hours=1),
             topic="Test",
             hourly_rate=50.00,
             total_amount=50.00,
@@ -621,7 +623,7 @@ class TestAvatarSchemas:
 
         response = AvatarResponse(
             avatar_url="https://example.com/avatar.webp",
-            expires_at=datetime.now(UTC) + timedelta(hours=1),
+            expires_at=utc_now() + timedelta(hours=1),
         )
         assert str(response.avatar_url) == "https://example.com/avatar.webp"
 

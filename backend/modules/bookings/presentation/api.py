@@ -3,8 +3,9 @@ Clean booking API endpoints following presentation layer pattern.
 Consolidates all booking routes with shared error handling and authorization.
 """
 
+import asyncio
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
@@ -57,7 +58,7 @@ def _add_booking_cache_headers(response: Response, booking: Booking) -> None:
     """
     response.headers["X-Booking-Version"] = str(booking.version or 1)
     response.headers["X-Booking-Updated-At"] = (
-        booking.updated_at.isoformat() if booking.updated_at else datetime.now(UTC).isoformat()
+        booking.updated_at.isoformat() if booking.updated_at else utc_now().isoformat()
     )
     # Prevent intermediate caching of booking state
     response.headers["Cache-Control"] = "no-store"
@@ -175,7 +176,7 @@ async def get_booking_stats(
         # Admin/owner can see all (or restrict as needed)
         base_filter = True
 
-    now = datetime.now(UTC)
+    now = utc_now()
 
     # Count by status
     total = db.query(func.count(Booking.id)).filter(base_filter).scalar() or 0
@@ -309,11 +310,20 @@ async def create_booking(
         )
         if tutor_profile and tutor_profile.user:
             end_at = request.start_at + timedelta(minutes=request.duration_minutes)
-            await service.check_external_calendar_conflict(
-                tutor_user=tutor_profile.user,
-                start_at=request.start_at,
-                end_at=end_at,
-            )
+            try:
+                await asyncio.wait_for(
+                    service.check_external_calendar_conflict(
+                        tutor_user=tutor_profile.user,
+                        start_at=request.start_at,
+                        end_at=end_at,
+                    ),
+                    timeout=5.0,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "External calendar check timed out for tutor %d, allowing booking to proceed",
+                    tutor_profile.user_id,
+                )
 
         booking = service.create_booking(
             student_id=current_user.id,
@@ -397,6 +407,8 @@ async def create_booking(
 async def list_bookings(
     status_filter: str | None = Query(None, alias="status"),
     role: str | None = Query("student", pattern="^(student|tutor)$"),
+    from_date: datetime | None = Query(None, description="Filter bookings starting from this date (inclusive)"),
+    to_date: datetime | None = Query(None, description="Filter bookings up to this date (inclusive)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -462,6 +474,12 @@ async def list_bookings(
             query = query.filter(Booking.session_state == SessionState.ACTIVE.value)
         elif status_filter.lower() == "scheduled":
             query = query.filter(Booking.session_state == SessionState.SCHEDULED.value)
+
+    # Apply date range filters
+    if from_date:
+        query = query.filter(Booking.start_time >= from_date)
+    if to_date:
+        query = query.filter(Booking.start_time <= to_date)
 
     # Pagination
     total = query.count()
@@ -585,65 +603,89 @@ async def reschedule_booking(
     - Must be >= 12h before original time
     - Checks new time for tutor availability conflicts
     """
-    booking = get_or_404(
+    # Verify ownership first (without lock)
+    get_or_404(
         db, Booking,
         {"id": booking_id, "student_id": current_user.id},
         detail="Booking not found"
     )
 
     try:
-        service = BookingService(db)
+        from core.transactions import atomic_operation
 
-        # Validate reschedule timing
-        decision = ReschedulePolicy.evaluate_reschedule(
-            booking_start_at=booking.start_time,
-            now=utc_now(),
-            new_start_at=request.new_start_at,
-        )
+        with atomic_operation(db):
+            # Acquire row-level lock to prevent race conditions
+            booking = BookingStateMachine.get_booking_with_lock(db, booking_id, nowait=False)
 
-        if not decision.allow:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=decision.message,
-            )
-
-        # Calculate new end time
-        duration = (booking.end_time - booking.start_time).total_seconds() / 60
-        new_end_at = request.new_start_at + timedelta(minutes=duration)
-
-        # Check conflicts at new time (internal bookings and availability)
-        if booking.tutor_profile:
-            conflicts = service.check_conflicts(
-                tutor_profile_id=booking.tutor_profile.id,
-                start_at=request.new_start_at,
-                end_at=new_end_at,
-                exclude_booking_id=booking.id,
-            )
-            if conflicts:
+            if not booking:
                 raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail={
-                        "error": "slot_no_longer_available",
-                        "message": "This time slot is no longer available. Please refresh and select a different time.",
-                        "suggested_action": "refresh_slots",
-                        "conflict_reason": conflicts,
-                    },
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Booking not found",
                 )
 
-            # Check external calendar for conflicts at new time
-            if booking.tutor_profile.user:
-                await service.check_external_calendar_conflict(
-                    tutor_user=booking.tutor_profile.user,
+            service = BookingService(db)
+
+            # Validate reschedule timing
+            decision = ReschedulePolicy.evaluate_reschedule(
+                booking_start_at=booking.start_time,
+                now=utc_now(),
+                new_start_at=request.new_start_at,
+            )
+
+            if not decision.allow:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=decision.message,
+                )
+
+            # Calculate new end time
+            duration = (booking.end_time - booking.start_time).total_seconds() / 60
+            new_end_at = request.new_start_at + timedelta(minutes=duration)
+
+            # Check conflicts at new time (internal bookings and availability)
+            if booking.tutor_profile:
+                conflicts = service.check_conflicts(
+                    tutor_profile_id=booking.tutor_profile.id,
                     start_at=request.new_start_at,
                     end_at=new_end_at,
+                    exclude_booking_id=booking.id,
                 )
+                if conflicts:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "error": "slot_no_longer_available",
+                            "message": "This time slot is no longer available. Please refresh and select a different time.",
+                            "suggested_action": "refresh_slots",
+                            "conflict_reason": conflicts,
+                        },
+                    )
 
-        # Update booking
-        booking.start_time = request.new_start_at
-        booking.end_time = new_end_at
-        booking.notes = (booking.notes or "") + f"\n[Rescheduled at {utc_now()}]"
+                # Check external calendar for conflicts at new time
+                if booking.tutor_profile.user:
+                    try:
+                        await asyncio.wait_for(
+                            service.check_external_calendar_conflict(
+                                tutor_user=booking.tutor_profile.user,
+                                start_at=request.new_start_at,
+                                end_at=new_end_at,
+                            ),
+                            timeout=5.0,
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning(
+                            "External calendar check timed out for tutor %d during reschedule, allowing to proceed",
+                            booking.tutor_profile.user_id,
+                        )
 
-        db.commit()
+            # Update booking
+            booking.start_time = request.new_start_at
+            booking.end_time = new_end_at
+            booking.notes = (booking.notes or "") + f"\n[Rescheduled at {utc_now()}]"
+
+            # atomic_operation commits all changes together on context exit
+
+        # Refresh after commit to get updated state
         db.refresh(booking)
 
         await _broadcast_availability_update(
@@ -1044,7 +1086,7 @@ async def open_dispute(
                     detail=result.error_message or "Cannot open dispute",
                 )
 
-            booking.updated_at = datetime.now(UTC)
+            booking.updated_at = utc_now()
             # atomic_operation commits all changes together on context exit
 
         # Refresh after commit to get updated state
@@ -1113,7 +1155,7 @@ async def resolve_dispute(
                 service = BookingService(db)
                 service._restore_package_credit(booking.package_id)
 
-            booking.updated_at = datetime.now(UTC)
+            booking.updated_at = utc_now()
             # atomic_operation commits all changes together on context exit
 
         # Refresh after commit to get updated state
@@ -1188,7 +1230,7 @@ async def regenerate_meeting(
             elif meeting_result.provider == "google_meet" and meeting_result.join_url:
                 booking.google_meet_link = meeting_result.join_url
 
-            booking.updated_at = datetime.now(UTC)
+            booking.updated_at = utc_now()
             db.commit()
             db.refresh(booking)
 
@@ -1271,7 +1313,7 @@ async def record_session_join(
         )
 
     try:
-        now = datetime.now(UTC)
+        now = utc_now()
         updated = False
 
         # Determine which field to update based on user role

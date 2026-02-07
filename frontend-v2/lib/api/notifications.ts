@@ -34,6 +34,8 @@ export const notificationsApi = {
     if (filters?.unread_only) params.unread_only = filters.unread_only;
     if (filters?.skip !== undefined) params.skip = filters.skip;
     if (filters?.limit !== undefined) params.limit = filters.limit;
+    if (filters?.page_size !== undefined && filters?.limit === undefined)
+      params.limit = filters.page_size;
     const query = Object.keys(params).length ? `?${toQueryString(params)}` : '';
     const response = await api.get<NotificationListResponse>(`/notifications${query}`);
     return normalizeListResponse(response);

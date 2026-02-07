@@ -579,7 +579,7 @@ describe('getCsrfToken', () => {
       value: 'csrf_token=abc%3D%3D123',
     });
     const { getCsrfToken } = await import('@/lib/api/client');
-    expect(getCsrfToken()).toBe('abc%3D%3D123');
+    expect(getCsrfToken()).toBe('abc==123');
   });
 
   it('extracts csrf token from multiple cookies', async () => {

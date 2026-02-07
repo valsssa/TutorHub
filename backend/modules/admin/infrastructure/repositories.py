@@ -11,7 +11,9 @@ import contextlib
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -664,7 +666,7 @@ class AdminActionLogRepositoryImpl:
         Returns:
             Dictionary mapping action types to counts
         """
-        from_date = datetime.now(UTC) - timedelta(days=days)
+        from_date = utc_now() - timedelta(days=days)
 
         query = self.db.query(AuditLog).filter(
             AuditLog.changed_by == int(admin_id),

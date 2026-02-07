@@ -1,7 +1,9 @@
 """Admin API routes."""
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
@@ -232,7 +234,7 @@ async def update_user(
                 setattr(user, field, value)
 
             # Update timestamp in application code (no DB triggers)
-            user.updated_at = datetime.now(UTC)
+            user.updated_at = utc_now()
 
             # Handle role change side effects (maintain role-profile consistency)
             # Profile creation/archival happens atomically with user role update
@@ -463,7 +465,7 @@ async def approve_tutor(
         # Update profile status
         tutor_profile.is_approved = True
         tutor_profile.profile_status = "approved"
-        tutor_profile.approved_at = datetime.now(UTC)
+        tutor_profile.approved_at = utc_now()
         tutor_profile.approved_by = current_user.id
         tutor_profile.rejection_reason = None
 
@@ -692,7 +694,7 @@ async def get_recent_activities(
             student_name = booking.student.email.split("@")[0] if booking.student else "Unknown"
             is_completed = booking.session_state == "ENDED" and booking.session_outcome == "COMPLETED"
             action = "completed a session" if is_completed else "scheduled a session"
-            time_diff = datetime.now(UTC) - booking.created_at
+            time_diff = utc_now() - booking.created_at
             time_str = format_time_ago(time_diff)
 
             activities.append(
@@ -718,7 +720,7 @@ async def get_recent_activities(
         for user in recent_users:
             user_name = user.email.split("@")[0]
             action = "joined as new tutor" if user.role == "tutor" else "registered as student"
-            time_diff = datetime.now(UTC) - user.created_at
+            time_diff = utc_now() - user.created_at
             time_str = format_time_ago(time_diff)
 
             activities.append(
@@ -760,7 +762,7 @@ async def get_upcoming_sessions(
 ):
     """Get upcoming sessions (admin only)."""
     try:
-        now = datetime.now(UTC)
+        now = utc_now()
         upcoming = (
             db.query(Booking)
             .filter(
@@ -791,7 +793,7 @@ async def get_session_metrics(
     """Get session metrics (admin only)."""
     try:
         # Calculate current month and previous month
-        now = datetime.now(UTC)
+        now = utc_now()
         current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         previous_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
 
@@ -938,7 +940,7 @@ async def get_monthly_revenue(
 ):
     """Get monthly revenue and sessions data (admin only)."""
     try:
-        now = datetime.now(UTC)
+        now = utc_now()
         data = []
 
         for i in range(months - 1, -1, -1):
@@ -998,7 +1000,7 @@ async def get_user_growth(
 ):
     """Get user growth data (admin only)."""
     try:
-        now = datetime.now(UTC)
+        now = utc_now()
         data = []
 
         for i in range(months - 1, -1, -1):

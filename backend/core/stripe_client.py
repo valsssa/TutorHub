@@ -38,7 +38,9 @@ Admin endpoints in connect_router.py allow batch migration of existing accounts.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from decimal import Decimal
 from typing import Any
 
@@ -200,7 +202,7 @@ def create_checkout_session(
         "checkout_session",
         amount_cents,
         currency,
-        datetime.now(UTC).date().isoformat(),
+        utc_now().date().isoformat(),
         booking_id=booking_id,
         user_id=user_id,
     )
@@ -626,7 +628,7 @@ def create_refund(
     if booking_id:
         idempotency_key = generate_idempotency_key(
             "refund",
-            datetime.now(UTC).date().isoformat(),
+            utc_now().date().isoformat(),
             booking_id=booking_id,
         )
     else:
@@ -634,7 +636,7 @@ def create_refund(
         idempotency_key = generate_idempotency_key(
             "refund",
             payment_intent_id,
-            datetime.now(UTC).date().isoformat(),
+            utc_now().date().isoformat(),
         )
 
     refund_params: dict[str, Any] = {

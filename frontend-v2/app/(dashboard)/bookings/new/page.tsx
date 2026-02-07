@@ -82,6 +82,7 @@ export default function NewBookingPage() {
   const watchTutorId = watch('tutor_id');
   const watchDuration = watch('duration');
   const watchSubjectId = watch('subject_id');
+  const watchStartTime = watch('start_time');
 
   useEffect(() => {
     if (watchTutorId && watchTutorId !== selectedTutorId) {
@@ -108,13 +109,17 @@ export default function NewBookingPage() {
     setShowConfirmDialog(true);
   };
 
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   const handleConfirmBooking = () => {
     if (!pendingFormData) return;
+    // Convert local datetime to UTC ISO string for the backend
+    const startAtUtc = new Date(pendingFormData.start_time).toISOString();
     createBooking.mutate(
       {
         tutor_profile_id: pendingFormData.tutor_id,
         subject_id: pendingFormData.subject_id,
-        start_at: pendingFormData.start_time,
+        start_at: startAtUtc,
         duration_minutes: Number(pendingFormData.duration),
         notes_student: pendingFormData.message,
       },
@@ -300,13 +305,18 @@ export default function NewBookingPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Input
-                  type="datetime-local"
-                  label="Select Date & Time"
-                  min={minDateTime}
-                  {...register('start_time')}
-                  error={errors.start_time?.message}
-                />
+                <div>
+                  <Input
+                    type="datetime-local"
+                    label="Select Date & Time"
+                    min={minDateTime}
+                    {...register('start_time')}
+                    error={errors.start_time?.message}
+                  />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Your timezone: {userTimezone}
+                  </p>
+                </div>
 
                 <div>
                   <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
@@ -446,7 +456,7 @@ export default function NewBookingPage() {
                   type="submit"
                   className="w-full"
                   loading={createBooking.isPending}
-                  disabled={!selectedTutorId || !watchSubjectId}
+                  disabled={!selectedTutorId || !watchSubjectId || !watchStartTime}
                 >
                   Confirm Booking
                 </Button>

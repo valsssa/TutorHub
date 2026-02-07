@@ -2,6 +2,8 @@
 
 import time
 from datetime import UTC, datetime, timedelta
+
+from core.datetime_utils import utc_now
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -49,7 +51,7 @@ class TestCalendarConflictService:
         user.id = 123
         user.google_calendar_refresh_token = "refresh_token_123"
         user.google_calendar_access_token = "access_token_123"
-        user.google_calendar_token_expires = datetime.now(UTC) + timedelta(hours=1)
+        user.google_calendar_token_expires = utc_now() + timedelta(hours=1)
         return user
 
     def test_init(self, service, mock_db):
@@ -64,8 +66,8 @@ class TestCalendarConflictService:
 
         has_conflict, error = await service.check_calendar_conflict(
             user,
-            datetime.now(UTC),
-            datetime.now(UTC) + timedelta(hours=1),
+            utc_now(),
+            utc_now() + timedelta(hours=1),
         )
 
         assert has_conflict is False
@@ -74,7 +76,7 @@ class TestCalendarConflictService:
     @pytest.mark.asyncio
     async def test_check_no_conflict(self, service, mock_tutor_user):
         """Test check when there's no calendar conflict."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         with patch.object(service, "_fetch_busy_times", return_value=[]):
@@ -89,7 +91,7 @@ class TestCalendarConflictService:
     @pytest.mark.asyncio
     async def test_check_with_conflict(self, service, mock_tutor_user):
         """Test check when there is a calendar conflict."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -111,7 +113,7 @@ class TestCalendarConflictService:
     @pytest.mark.asyncio
     async def test_check_uses_cache(self, service, mock_tutor_user):
         """Test check uses cached busy times."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
         cached_busy = []
 
@@ -126,7 +128,7 @@ class TestCalendarConflictService:
         self, service, mock_tutor_user
     ):
         """Test graceful degradation on API error."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         with patch.object(
@@ -146,7 +148,7 @@ class TestCalendarConflictService:
         self, service, mock_tutor_user
     ):
         """Test that naive datetimes get UTC timezone."""
-        start = datetime.utcnow()
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         with patch.object(service, "_fetch_busy_times", return_value=[]):
@@ -170,21 +172,21 @@ class TestTokenExpiry:
     def test_token_not_expired(self, service):
         """Test token is not expired."""
         user = MagicMock()
-        user.google_calendar_token_expires = datetime.now(UTC) + timedelta(hours=1)
+        user.google_calendar_token_expires = utc_now() + timedelta(hours=1)
 
         assert service._is_token_expired(user) is False
 
     def test_token_expired(self, service):
         """Test token is expired."""
         user = MagicMock()
-        user.google_calendar_token_expires = datetime.now(UTC) - timedelta(minutes=1)
+        user.google_calendar_token_expires = utc_now() - timedelta(minutes=1)
 
         assert service._is_token_expired(user) is True
 
     def test_token_near_expiry(self, service):
         """Test token is considered expired within 5 minute buffer."""
         user = MagicMock()
-        user.google_calendar_token_expires = datetime.now(UTC) + timedelta(minutes=3)
+        user.google_calendar_token_expires = utc_now() + timedelta(minutes=3)
 
         assert service._is_token_expired(user) is True
 
@@ -211,7 +213,7 @@ class TestOverlapDetection:
 
     def test_no_overlap_before(self, service):
         """Test no overlap when busy time is before booking."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -225,7 +227,7 @@ class TestOverlapDetection:
 
     def test_no_overlap_after(self, service):
         """Test no overlap when busy time is after booking."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -239,7 +241,7 @@ class TestOverlapDetection:
 
     def test_overlap_partial_start(self, service):
         """Test overlap when busy time overlaps start."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -253,7 +255,7 @@ class TestOverlapDetection:
 
     def test_overlap_partial_end(self, service):
         """Test overlap when busy time overlaps end."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -267,7 +269,7 @@ class TestOverlapDetection:
 
     def test_overlap_contained(self, service):
         """Test overlap when booking is contained in busy time."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -281,7 +283,7 @@ class TestOverlapDetection:
 
     def test_overlap_contains(self, service):
         """Test overlap when busy time is contained in booking."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -295,7 +297,7 @@ class TestOverlapDetection:
 
     def test_no_overlap_adjacent_before(self, service):
         """Test no overlap when busy ends exactly at booking start."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -309,7 +311,7 @@ class TestOverlapDetection:
 
     def test_no_overlap_adjacent_after(self, service):
         """Test no overlap when busy starts exactly at booking end."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -323,7 +325,7 @@ class TestOverlapDetection:
 
     def test_malformed_busy_times(self, service):
         """Test handling of malformed busy times."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -336,7 +338,7 @@ class TestOverlapDetection:
 
     def test_multiple_busy_times_one_overlaps(self, service):
         """Test with multiple busy times where one overlaps."""
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         busy_times = [
@@ -559,7 +561,7 @@ class TestTokenRefresh:
             await service._refresh_token(user)
 
             assert user.google_calendar_token_expires is not None
-            assert user.google_calendar_token_expires > datetime.now(UTC)
+            assert user.google_calendar_token_expires > utc_now()
 
 
 class TestFetchBusyTimes:
@@ -582,7 +584,7 @@ class TestFetchBusyTimes:
         user.id = 123
         user.google_calendar_access_token = "access_token"
         user.google_calendar_refresh_token = "refresh_token"
-        user.google_calendar_token_expires = datetime.now(UTC) + timedelta(hours=1)
+        user.google_calendar_token_expires = utc_now() + timedelta(hours=1)
         return user
 
     @pytest.mark.asyncio
@@ -591,7 +593,7 @@ class TestFetchBusyTimes:
         expected_busy = [
             {"start": "2024-01-15T10:00:00Z", "end": "2024-01-15T11:00:00Z"}
         ]
-        start = datetime.now(UTC)
+        start = utc_now()
         end = start + timedelta(hours=1)
 
         with patch(
@@ -608,7 +610,7 @@ class TestFetchBusyTimes:
         self, service, mock_user
     ):
         """Test that expired token is refreshed before fetch."""
-        mock_user.google_calendar_token_expires = datetime.now(UTC) - timedelta(
+        mock_user.google_calendar_token_expires = utc_now() - timedelta(
             minutes=10
         )
 
@@ -625,8 +627,8 @@ class TestFetchBusyTimes:
             ):
                 await service._fetch_busy_times(
                     mock_user,
-                    datetime.now(UTC),
-                    datetime.now(UTC) + timedelta(hours=1),
+                    utc_now(),
+                    utc_now() + timedelta(hours=1),
                 )
 
                 mock_refresh.assert_called_once()
@@ -641,8 +643,8 @@ class TestFetchBusyTimes:
         ), pytest.raises(CalendarAPIError):
             await service._fetch_busy_times(
                 mock_user,
-                datetime.now(UTC),
-                datetime.now(UTC) + timedelta(hours=1),
+                utc_now(),
+                utc_now() + timedelta(hours=1),
             )
 
     @pytest.mark.asyncio
@@ -656,6 +658,6 @@ class TestFetchBusyTimes:
         ), pytest.raises(CalendarAPIError, match="Token refresh failed"):
             await service._fetch_busy_times(
                 mock_user,
-                datetime.now(UTC),
-                datetime.now(UTC) + timedelta(hours=1),
+                utc_now(),
+                utc_now() + timedelta(hours=1),
             )

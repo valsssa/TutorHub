@@ -1,6 +1,7 @@
 """Tests for review endpoints."""
 
 from fastapi import status
+from core.datetime_utils import utc_now
 
 from tests.conftest import STUDENT_PASSWORD
 
@@ -162,7 +163,7 @@ class TestGetTutorReviews:
 
     def test_only_public_reviews_shown(self, client, student_token, tutor_user, test_booking, test_subject, db_session):
         """Test only public reviews are shown."""
-        from datetime import UTC, datetime, timedelta
+        from datetime import datetime, timedelta
 
         from models import Booking, Review
 
@@ -171,8 +172,8 @@ class TestGetTutorReviews:
             tutor_profile_id=tutor_user.tutor_profile.id,
             student_id=test_booking.student_id,
             subject_id=test_subject.id,
-            start_time=datetime.now(UTC) + timedelta(days=2),
-            end_time=datetime.now(UTC) + timedelta(days=2, hours=1),
+            start_time=utc_now() + timedelta(days=2),
+            end_time=utc_now() + timedelta(days=2, hours=1),
             topic="Second booking",
             hourly_rate=50.00,
             total_amount=50.00,

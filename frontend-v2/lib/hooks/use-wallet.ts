@@ -20,6 +20,7 @@ export function useWalletBalance(enabled = true) {
     queryKey: walletKeys.balance(),
     queryFn: walletApi.getBalance,
     enabled,
+    refetchOnWindowFocus: true,
   });
 }
 

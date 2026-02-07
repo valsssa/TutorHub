@@ -1,7 +1,9 @@
 """Favorites API endpoints."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -222,7 +224,7 @@ async def remove_favorite(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Favorite not found")
 
     # Soft delete: set deleted_at and deleted_by
-    favorite.deleted_at = datetime.now(UTC)
+    favorite.deleted_at = utc_now()
     favorite.deleted_by = current_user.id
     db.commit()
     logger.info(f"User {current_user.id} removed tutor {tutor_profile_id} from favorites (soft delete)")

@@ -5,7 +5,9 @@ Provides basic platform metrics for the public homepage without requiring authen
 Statistics are cached for performance and to prevent database load from unauthenticated requests.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
+
+from core.datetime_utils import utc_now
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
@@ -131,7 +133,7 @@ async def get_platform_stats(db: DatabaseSession) -> PlatformStats:
         student_count=student_count,
         average_rating=round(float(avg_rating), 1) if avg_rating else 0.0,
         completed_sessions=completed_sessions,
-        generated_at=datetime.now(UTC),
+        generated_at=utc_now(),
     )
 
 

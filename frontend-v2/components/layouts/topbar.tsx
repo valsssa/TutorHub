@@ -33,7 +33,11 @@ export function Topbar() {
   }, []);
 
   const getProfileLink = () => {
-    return '/profile';
+    switch (user?.role) {
+      case 'admin': return '/admin';
+      case 'owner': return '/owner';
+      default: return '/profile';
+    }
   };
 
   return (
