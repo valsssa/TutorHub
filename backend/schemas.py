@@ -514,6 +514,8 @@ class TutorProfileResponse(BaseModel):
 
     id: int
     user_id: int
+    first_name: str
+    last_name: str
     name: str
     title: str
     headline: str | None
@@ -762,6 +764,7 @@ class ReviewResponse(BaseModel):
     comment: str | None
     is_public: bool
     booking_snapshot: str | None = None  # JSON string
+    student_name: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

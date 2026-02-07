@@ -4,3 +4,4 @@ export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 export { Avatar } from './avatar';
 export { Badge, badgeVariants } from './badge';
 export { Skeleton, SkeletonText, SkeletonCard } from './skeleton';
+export { ThemeToggle } from './theme-toggle';

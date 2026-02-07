@@ -114,13 +114,15 @@ export default function AvailabilityPage() {
 
   const handleSave = async () => {
     try {
-      await updateAvailability.mutateAsync(
-        slots.map((slot) => ({
+      await updateAvailability.mutateAsync({
+        availability: slots.map((slot) => ({
           day_of_week: slot.day_of_week,
           start_time: slot.start_time,
           end_time: slot.end_time,
-        }))
-      );
+        })),
+        timezone,
+        version: tutorProfile?.version ?? 1,
+      });
       setHasChanges(false);
       router.push('/profile');
     } catch (error) {
@@ -148,9 +150,9 @@ export default function AvailabilityPage() {
             <p className="text-slate-500">
               Only tutors can manage availability.
             </p>
-            <Link href="/profile">
-              <Button className="mt-4">Back to Profile</Button>
-            </Link>
+            <Button asChild className="mt-4">
+              <Link href="/profile">Back to Profile</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -174,9 +176,9 @@ export default function AvailabilityPage() {
           </div>
         </div>
         <div className="flex gap-2 ml-11 sm:ml-0">
-          <Link href="/profile">
-            <Button variant="outline">Cancel</Button>
-          </Link>
+          <Button asChild variant="outline">
+            <Link href="/profile">Cancel</Link>
+          </Button>
           <Button
             onClick={handleSave}
             loading={updateAvailability.isPending}

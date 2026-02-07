@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -11,6 +11,8 @@ import {
   User,
   BookOpen,
   MessageSquare,
+  X,
+  CheckCircle,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +33,7 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { formatCurrency } from '@/lib/utils';
+import { useToast } from '@/lib/stores/ui-store';
 
 const durationOptions = [
   { value: '30', label: '30 minutes' },
@@ -44,9 +47,12 @@ export default function NewBookingPage() {
   const searchParams = useSearchParams();
   const tutorIdParam = searchParams.get('tutor');
 
+  const toast = useToast();
   const [selectedTutorId, setSelectedTutorId] = useState<number | null>(
     tutorIdParam ? Number(tutorIdParam) : null
   );
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<CreateBookingFormData | null>(null);
 
   const { data: tutors, isLoading: tutorsLoading } = useTutors({ page_size: 100 });
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
@@ -83,26 +89,70 @@ export default function NewBookingPage() {
     }
   }, [watchTutorId, selectedTutorId]);
 
+  const minDateTime = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }, []);
+
   const hourlyRate = selectedTutor?.hourly_rate ?? 0;
   const durationMinutes = Number(watchDuration) || 60;
   const estimatedPrice = (hourlyRate * durationMinutes) / 60;
 
   const onSubmit = (data: CreateBookingFormData) => {
+    setPendingFormData(data);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmBooking = () => {
+    if (!pendingFormData) return;
     createBooking.mutate(
       {
-        tutor_profile_id: data.tutor_id,
-        subject_id: data.subject_id,
-        start_at: data.start_time,
-        duration_minutes: Number(data.duration),
-        notes_student: data.message,
+        tutor_profile_id: pendingFormData.tutor_id,
+        subject_id: pendingFormData.subject_id,
+        start_at: pendingFormData.start_time,
+        duration_minutes: Number(pendingFormData.duration),
+        notes_student: pendingFormData.message,
       },
       {
         onSuccess: () => {
+          setShowConfirmDialog(false);
+          toast.success('Booking request submitted successfully!');
           router.push('/bookings');
+        },
+        onError: () => {
+          setShowConfirmDialog(false);
         },
       }
     );
   };
+
+  const selectedSubjectName = useMemo(() => {
+    const subjectId = Number(pendingFormData?.subject_id);
+    const allSubjects = selectedTutor?.subjects ?? subjects ?? [];
+    return allSubjects.find((s) => s.id === subjectId)?.name ?? '-';
+  }, [pendingFormData?.subject_id, selectedTutor?.subjects, subjects]);
+
+  const confirmDurationLabel = useMemo(() => {
+    return durationOptions.find((d) => d.value === pendingFormData?.duration)?.label ?? '-';
+  }, [pendingFormData?.duration]);
+
+  const confirmStartTime = useMemo(() => {
+    if (!pendingFormData?.start_time) return '-';
+    const date = new Date(pendingFormData.start_time);
+    return date.toLocaleString(undefined, {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, [pendingFormData?.start_time]);
 
   return (
     <div className="space-y-6">
@@ -253,6 +303,7 @@ export default function NewBookingPage() {
                 <Input
                   type="datetime-local"
                   label="Select Date & Time"
+                  min={minDateTime}
                   {...register('start_time')}
                   error={errors.start_time?.message}
                 />
@@ -426,6 +477,104 @@ export default function NewBookingPage() {
           </div>
         </div>
       </form>
+
+      {showConfirmDialog && pendingFormData && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm booking"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Confirm Your Booking
+              </h2>
+              <button
+                onClick={() => setShowConfirmDialog(false)}
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Close confirmation dialog"
+              >
+                <X className="h-5 w-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Please review your booking details before confirming.
+              </p>
+
+              {selectedTutor && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                  <Avatar
+                    src={selectedTutor.avatar_url}
+                    name={selectedTutor.display_name}
+                    size="md"
+                  />
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {selectedTutor.display_name}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {formatCurrency(selectedTutor.hourly_rate, selectedTutor.currency)}/hr
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Subject</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {selectedSubjectName}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Date & Time</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {confirmStartTime}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Duration</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {confirmDurationLabel}
+                  </span>
+                </div>
+
+                <hr className="border-slate-200 dark:border-slate-700" />
+
+                <div className="flex justify-between text-base">
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    Estimated Total
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {selectedTutor
+                      ? formatCurrency(estimatedPrice, selectedTutor.currency)
+                      : '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+              <Button
+                variant="ghost"
+                onClick={() => setShowConfirmDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmBooking}
+                loading={createBooking.isPending}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Confirm Booking
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

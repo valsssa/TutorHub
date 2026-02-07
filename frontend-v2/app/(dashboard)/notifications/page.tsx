@@ -83,20 +83,15 @@ export default function NotificationsPage() {
   const markAllAsRead = useMarkAllNotificationsAsRead();
 
   const notifications = apiData?.items ?? [];
-  const unreadCount = countData?.unread_count ?? notifications.filter((n) => !n.read).length;
-
-  const filteredNotifications = useMemo(() => {
-    if (selectedFilter === 'all') return notifications;
-    return notifications.filter((n) => n.type === selectedFilter);
-  }, [notifications, selectedFilter]);
+  const unreadCount = countData?.unread_count ?? notifications.filter((n) => !n.is_read).length;
 
   const groupedNotifications = useMemo(
-    () => groupNotificationsByDate(filteredNotifications),
-    [filteredNotifications]
+    () => groupNotificationsByDate(notifications),
+    [notifications]
   );
 
   const handleNotificationClick = (notification: Notification) => {
-    if (!notification.read) {
+    if (!notification.is_read) {
       markAsRead.mutate(notification.id);
     }
   };
@@ -172,7 +167,7 @@ export default function NotificationsPage() {
               <NotificationSkeleton />
               <NotificationSkeleton />
             </div>
-          ) : filteredNotifications.length === 0 ? (
+          ) : notifications.length === 0 ? (
             <div className="text-center py-12">
               <Bell className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
               <p className="text-slate-500 dark:text-slate-400">

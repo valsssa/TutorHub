@@ -54,14 +54,7 @@ export function MessageBubble({ message, showAvatar = true }: MessageBubbleProps
             {message.message}
           </p>
         </div>
-        <span
-          className={cn(
-            'text-xs mt-1 px-1',
-            isSent
-              ? 'text-slate-400 dark:text-slate-500'
-              : 'text-slate-400 dark:text-slate-500'
-          )}
-        >
+        <span className="text-xs mt-1 px-1 text-slate-400 dark:text-slate-500">
           {formattedTime}
         </span>
       </div>

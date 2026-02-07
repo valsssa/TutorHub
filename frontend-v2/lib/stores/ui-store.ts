@@ -28,9 +28,7 @@ function applyThemeToDOM(theme: Theme) {
 }
 
 interface UIState {
-  sidebarOpen: boolean;
   sidebarCollapsed: boolean;
-  toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
 
   activeModal: string | null;
@@ -51,9 +49,7 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
   sidebarCollapsed: false,
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 
   activeModal: null,

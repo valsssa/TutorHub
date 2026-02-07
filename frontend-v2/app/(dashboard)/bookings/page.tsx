@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, Calendar, Filter, Search } from 'lucide-react';
+import { Plus, Calendar, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   useBookings,
   useCancelBooking,
@@ -21,6 +21,8 @@ import { BookingCard } from '@/components/bookings';
 import type { SessionState } from '@/types';
 
 type TabKey = 'upcoming' | 'past' | 'cancelled';
+
+const BOOKINGS_PER_PAGE = 10;
 
 const tabs: { key: TabKey; label: string; states: SessionState[] }[] = [
   {
@@ -45,6 +47,7 @@ export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('upcoming');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const currentTabStates = tabs.find((t) => t.key === activeTab)?.states ?? [];
 
@@ -58,8 +61,37 @@ export default function BookingsPage() {
   const confirmBooking = useConfirmBooking();
 
   const bookingItems = bookings?.bookings ?? [];
-  const filteredBookings =
-    bookingItems.filter((b) => currentTabStates.includes(b.session_state));
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<TabKey, number> = { upcoming: 0, past: 0, cancelled: 0 };
+    for (const b of bookingItems) {
+      for (const tab of tabs) {
+        if (tab.states.includes(b.session_state)) {
+          counts[tab.key]++;
+          break;
+        }
+      }
+    }
+    return counts;
+  }, [bookingItems]);
+
+  const filteredBookings = useMemo(
+    () => bookingItems.filter((b) => currentTabStates.includes(b.session_state)),
+    [bookingItems, currentTabStates]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / BOOKINGS_PER_PAGE));
+  const paginatedBookings = useMemo(() => {
+    const start = (currentPage - 1) * BOOKINGS_PER_PAGE;
+    return filteredBookings.slice(start, start + BOOKINGS_PER_PAGE);
+  }, [filteredBookings, currentPage]);
+
+  const handleTabChange = useCallback((tabKey: TabKey) => {
+    setActiveTab(tabKey);
+    setFromDate('');
+    setToDate('');
+    setCurrentPage(1);
+  }, []);
 
   const handleCancel = (id: number) => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
@@ -72,6 +104,7 @@ export default function BookingsPage() {
   };
 
   const userRole = user?.role === 'tutor' ? 'tutor' : 'student';
+  const isStudent = user?.role === 'student';
 
   return (
     <div className="space-y-6">
@@ -82,12 +115,14 @@ export default function BookingsPage() {
           </h1>
           <p className="text-slate-500">Manage your tutoring sessions</p>
         </div>
-        <Button asChild>
-          <Link href="/bookings/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Booking
-          </Link>
-        </Button>
+        {isStudent && (
+          <Button asChild>
+            <Link href="/bookings/new">
+              <Plus className="h-4 w-4 mr-2" />
+              New Booking
+            </Link>
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -96,7 +131,7 @@ export default function BookingsPage() {
             {tabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => handleTabChange(tab.key)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   activeTab === tab.key
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
@@ -104,6 +139,15 @@ export default function BookingsPage() {
                 }`}
               >
                 {tab.label}
+                {!isLoading && tabCounts[tab.key] > 0 && (
+                  <span className={`ml-1.5 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-medium ${
+                    activeTab === tab.key
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                      : 'bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-300'
+                  }`}>
+                    {tabCounts[tab.key]}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -114,7 +158,7 @@ export default function BookingsPage() {
               <Input
                 type="date"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                onChange={(e) => { setFromDate(e.target.value); setCurrentPage(1); }}
                 className="w-full sm:w-36"
                 placeholder="From"
               />
@@ -122,7 +166,7 @@ export default function BookingsPage() {
               <Input
                 type="date"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
+                onChange={(e) => { setToDate(e.target.value); setCurrentPage(1); }}
                 className="w-full sm:w-36"
                 placeholder="To"
               />
@@ -155,7 +199,7 @@ export default function BookingsPage() {
               <p className="text-slate-500 mb-4">
                 No {activeTab} bookings found
               </p>
-              {activeTab === 'upcoming' && (
+              {activeTab === 'upcoming' && isStudent && (
                 <Button asChild variant="outline">
                   <Link href="/tutors">
                     <Search className="h-4 w-4 mr-2" />
@@ -165,17 +209,51 @@ export default function BookingsPage() {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredBookings.map((booking) => (
-                <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  userRole={userRole}
-                  onCancel={handleCancel}
-                  onConfirm={handleConfirm}
-                />
-              ))}
-            </div>
+            <>
+              <div className="space-y-4">
+                {paginatedBookings.map((booking) => (
+                  <BookingCard
+                    key={booking.id}
+                    booking={booking}
+                    userRole={userRole}
+                    onCancel={handleCancel}
+                    onConfirm={handleConfirm}
+                  />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <p className="text-sm text-slate-500">
+                    Showing {(currentPage - 1) * BOOKINGS_PER_PAGE + 1}
+                    {' '}-{' '}
+                    {Math.min(currentPage * BOOKINGS_PER_PAGE, filteredBookings.length)}
+                    {' '}of {filteredBookings.length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((p) => p - 1)}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

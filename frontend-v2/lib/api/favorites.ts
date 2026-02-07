@@ -1,10 +1,20 @@
 import { api } from './client';
 import type { Favorite, PaginatedResponse } from '@/types';
 
+export interface FavoritesListParams {
+  page?: number;
+  page_size?: number;
+}
+
 export const favoritesApi = {
-  // Get all favorite tutors for current student (paginated)
-  list: () =>
-    api.get<PaginatedResponse<Favorite>>('/favorites'),
+  // Get favorite tutors for current student (paginated)
+  list: (params?: FavoritesListParams) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.page_size) searchParams.set('page_size', String(params.page_size));
+    const qs = searchParams.toString();
+    return api.get<PaginatedResponse<Favorite>>(`/favorites${qs ? `?${qs}` : ''}`);
+  },
 
   // Add a tutor to favorites
   add: (tutorProfileId: number) =>

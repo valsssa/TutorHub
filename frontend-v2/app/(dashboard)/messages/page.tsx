@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { MessageCircle, Search, AlertCircle } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { ArrowLeft, MessageCircle, Search, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useConversations } from '@/lib/hooks';
 import {
+  Button,
   Card,
   CardHeader,
   CardTitle,
@@ -27,7 +30,14 @@ function ConversationSkeleton() {
 
 export default function MessagesPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const pathname = usePathname();
   const { data: conversations, isLoading, error } = useConversations();
+
+  // Extract active conversation ID from URL (e.g. /messages/123)
+  const activeConversationId = useMemo(() => {
+    const match = pathname.match(/\/messages\/(\d+)/);
+    return match ? Number(match[1]) : null;
+  }, [pathname]);
 
   // Transform MessageThread[] to Conversation[] if needed
   const normalizedConversations = useMemo(() => {
@@ -93,13 +103,25 @@ export default function MessagesPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-          Messages
-        </h1>
-        <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400">
-          Chat with your tutors and students
-        </p>
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="lg:hidden shrink-0"
+        >
+          <Link href="/dashboard">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+            Messages
+          </h1>
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400">
+            Chat with your tutors and students
+          </p>
+        </div>
       </div>
 
       <Card>
@@ -156,6 +178,7 @@ export default function MessagesPage() {
                 <ConversationListItem
                   key={conversation.id}
                   conversation={conversation}
+                  isActive={conversation.id === activeConversationId}
                 />
               ))
             )}

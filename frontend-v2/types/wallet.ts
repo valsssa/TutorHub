@@ -129,3 +129,54 @@ export interface WalletCheckoutResponse {
   amount_cents: number;
   currency: string;
 }
+
+// Tutor Connect / Payout types (matches backend connect_router responses)
+export interface ConnectStatus {
+  has_account: boolean;
+  account_id: string | null;
+  is_ready: boolean;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  onboarding_completed: boolean;
+  status_message: string;
+}
+
+export interface PayoutBalance {
+  available_cents: number;
+  pending_cents: number;
+  currency: string;
+  next_payout_date: string | null;
+}
+
+export interface PayoutHistoryItem {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  arrival_date: string | null;
+  created_at: string;
+}
+
+export interface PayoutHistory {
+  payouts: PayoutHistoryItem[];
+  total_paid_cents: number;
+}
+
+export interface EarningsSummary {
+  total_sessions: number;
+  gross_earnings_cents: number;
+  platform_fees_cents: number;
+  net_earnings_cents: number;
+  currency: string;
+  commission_tier: string;
+  current_fee_percentage: number;
+}
+
+export interface ConnectOnboardingLink {
+  url: string;
+  expires_at: string | null;
+}
+
+export interface ConnectDashboardLink {
+  url: string;
+}

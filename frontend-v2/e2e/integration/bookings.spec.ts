@@ -182,7 +182,7 @@ test.describe('Bookings - Real Backend Integration', () => {
     });
 
     test('should show date/time picker in booking form', async ({ page }) => {
-      await page.goto('/bookings/new?tutor_id=1');
+      await page.goto('/bookings/new?tutor=1');
       await page.waitForLoadState('networkidle');
 
       const datePicker = page.locator('[data-testid="date-picker"]')
@@ -194,7 +194,7 @@ test.describe('Bookings - Real Backend Integration', () => {
     });
 
     test('should show available time slots', async ({ page }) => {
-      await page.goto('/bookings/new?tutor_id=1');
+      await page.goto('/bookings/new?tutor=1');
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(2000);
 
@@ -206,7 +206,7 @@ test.describe('Bookings - Real Backend Integration', () => {
     });
 
     test('should validate booking form', async ({ page }) => {
-      await page.goto('/bookings/new?tutor_id=1');
+      await page.goto('/bookings/new?tutor=1');
       await page.waitForLoadState('networkidle');
 
       const submitButton = page.getByRole('button', { name: /confirm|book|submit|create/i });

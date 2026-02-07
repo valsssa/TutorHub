@@ -56,21 +56,39 @@ export function StarRating({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, starValue: number) => {
+    if (!isInteractive) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const next = Math.min(starValue + 1, 5);
+      onChange(next);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const prev = Math.max(starValue - 1, 1);
+      onChange(prev);
+    }
+  };
+
   const renderStar = (starIndex: number) => {
     const starValue = starIndex + 1;
     const filled = displayValue >= starValue;
     const halfFilled = !filled && displayValue >= starValue - 0.5;
+    const isSelected = value === starValue;
 
     return (
       <button
         key={starIndex}
         type="button"
+        role={isInteractive ? 'radio' : undefined}
+        aria-checked={isInteractive ? isSelected : undefined}
+        tabIndex={isInteractive ? (isSelected || (value === 0 && starIndex === 0) ? 0 : -1) : undefined}
         onClick={() => handleClick(starValue)}
         onMouseEnter={() => handleMouseEnter(starValue)}
         onMouseLeave={handleMouseLeave}
+        onKeyDown={(e) => handleKeyDown(e, starValue)}
         disabled={readonly}
         className={cn(
-          'relative focus:outline-none p-1 -m-1 sm:p-0 sm:m-0',
+          'relative focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 rounded-sm p-1 -m-1 sm:p-0 sm:m-0',
           isInteractive && 'cursor-pointer transition-transform hover:scale-110 active:scale-95',
           readonly && 'cursor-default'
         )}

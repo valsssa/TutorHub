@@ -30,8 +30,8 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleNotificationClick = (id: number, read: boolean) => {
-    if (!read) {
+  const handleNotificationClick = (id: number, isRead: boolean) => {
+    if (!isRead) {
       markAsRead.mutate(id);
     }
     setIsOpen(false);
@@ -52,7 +52,7 @@ export function NotificationBell() {
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] flex items-center justify-center px-1 text-xs font-medium text-white bg-primary-500 rounded-full">
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
@@ -96,7 +96,7 @@ export function NotificationBell() {
                   <NotificationItem
                     key={notification.id}
                     notification={notification}
-                    onClick={() => handleNotificationClick(notification.id, notification.read ?? notification.is_read ?? false)}
+                    onClick={() => handleNotificationClick(notification.id, notification.is_read)}
                   />
                 ))}
               </div>

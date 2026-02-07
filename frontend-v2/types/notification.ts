@@ -14,7 +14,8 @@ export interface Notification {
   message: string;
   link?: string;
   is_read: boolean;
-  read?: boolean; // Alias for is_read, backward compat
+  /** @deprecated Use `is_read` instead. Kept for backward compat with older API responses. */
+  read?: boolean;
   category?: string;
   priority?: number;
   action_url?: string;

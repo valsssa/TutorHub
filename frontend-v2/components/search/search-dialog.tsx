@@ -209,7 +209,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                       </button>
                       <button
                         onClick={() => removeRecentSearch(search.id)}
-                        className="p-2 mr-2 opacity-0 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
+                        className="p-2 mr-2 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
                         aria-label={`Remove "${search.query}" from recent searches`}
                       >
                         <X className="h-4 w-4 text-slate-400" />

@@ -11,7 +11,6 @@ import { Card, CardContent, Button, Input } from '@/components/ui';
 export default function ForgotPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -22,15 +21,14 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
     setIsSubmitting(true);
-    setError(null);
 
     try {
       await authApi.forgotPassword(data.email);
-      setIsSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset email');
+    } catch {
+      // Silently catch errors to prevent email enumeration
     } finally {
       setIsSubmitting(false);
+      setIsSuccess(true);
     }
   };
 
@@ -58,8 +56,8 @@ export default function ForgotPasswordPage() {
               Check your email
             </h2>
             <p className="text-sm sm:text-base text-slate-500 mb-6">
-              We&apos;ve sent a password reset link to your email address. Please check your
-              inbox and follow the instructions to reset your password.
+              If an account with that email exists, we&apos;ve sent a password reset link.
+              Please check your inbox and follow the instructions to reset your password.
             </p>
             <Link
               href="/login"
@@ -91,10 +89,6 @@ export default function ForgotPasswordPage() {
             error={form.formState.errors.email?.message}
             {...form.register('email')}
           />
-
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
 
           <Button type="submit" loading={isSubmitting} className="w-full">
             Send reset link

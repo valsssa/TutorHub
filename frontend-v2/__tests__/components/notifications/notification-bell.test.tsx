@@ -115,13 +115,13 @@ describe('NotificationBell', () => {
       expect(screen.getByText('5')).toBeInTheDocument();
     });
 
-    it('renders "99+" when unread count exceeds 99', () => {
+    it('renders "9+" when unread count exceeds 9', () => {
       mockUseUnreadNotificationCount.mockReturnValue({
-        data: { unread_count: 150 },
+        data: { unread_count: 15 },
       });
 
       render(<NotificationBell />, { wrapper: createWrapper() });
-      expect(screen.getByText('99+')).toBeInTheDocument();
+      expect(screen.getByText('9+')).toBeInTheDocument();
     });
   });
 

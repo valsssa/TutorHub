@@ -20,7 +20,7 @@ const mockCheck = vi.fn();
 
 vi.mock('@/lib/api', () => ({
   favoritesApi: {
-    list: () => mockList(),
+    list: (params?: { page?: number; page_size?: number }) => mockList(params),
     add: (tutorId: number) => mockAdd(tutorId),
     remove: (tutorId: number) => mockRemove(tutorId),
     check: (tutorId: number) => mockCheck(tutorId),
@@ -107,7 +107,10 @@ describe('use-favorites hooks', () => {
   describe('favoriteKeys', () => {
     it('generates correct query keys', () => {
       expect(favoriteKeys.all).toEqual(['favorites']);
-      expect(favoriteKeys.list()).toEqual(['favorites', 'list']);
+      expect(favoriteKeys.list()).toEqual(['favorites', 'list', undefined]);
+      expect(favoriteKeys.list({ page: 2, page_size: 10 })).toEqual([
+        'favorites', 'list', { page: 2, page_size: 10 },
+      ]);
       expect(favoriteKeys.check(42)).toEqual(['favorites', 'check', 42]);
     });
   });
@@ -276,12 +279,14 @@ describe('use-favorites hooks', () => {
       expect(mockAdd).toHaveBeenCalledWith(102);
     });
 
-    it('updates favorites list cache on success', async () => {
+    it('invalidates favorites queries on success', async () => {
       mockAdd.mockResolvedValueOnce(mockNewFavorite);
 
       const queryClient = createTestQueryClient();
       // Pre-populate the cache with existing favorites (paginated format)
       queryClient.setQueryData(favoriteKeys.list(), mockPaginatedFavorites);
+
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
       const wrapper = ({ children }: { children: React.ReactNode }) =>
         React.createElement(
@@ -300,13 +305,9 @@ describe('use-favorites hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // Check that the cache was updated (paginated format)
-      const cachedFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(
-        favoriteKeys.list()
-      );
-      expect(cachedFavorites?.items).toHaveLength(3);
-      expect(cachedFavorites?.items).toContainEqual(mockNewFavorite);
-      expect(cachedFavorites?.total).toBe(3);
+      // Check that queries were invalidated
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: favoriteKeys.all });
+      invalidateSpy.mockRestore();
     });
 
     it('sets check cache to is_favorite: true on success', async () => {
@@ -357,11 +358,13 @@ describe('use-favorites hooks', () => {
       expect((result.current.error as Error).message).toBe(errorMessage);
     });
 
-    it('creates new list if cache is empty', async () => {
+    it('invalidates queries even if cache is empty', async () => {
       mockAdd.mockResolvedValueOnce(mockNewFavorite);
 
       const queryClient = createTestQueryClient();
       // Do NOT pre-populate the cache
+
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
       const wrapper = ({ children }: { children: React.ReactNode }) =>
         React.createElement(
@@ -380,11 +383,8 @@ describe('use-favorites hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const cachedFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(
-        favoriteKeys.list()
-      );
-      expect(cachedFavorites?.items).toEqual([mockNewFavorite]);
-      expect(cachedFavorites?.total).toBe(1);
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: favoriteKeys.all });
+      invalidateSpy.mockRestore();
     });
   });
 
@@ -416,7 +416,8 @@ describe('use-favorites hooks', () => {
       mockRemove.mockReturnValueOnce(removePromise);
 
       const queryClient = createTestQueryClient();
-      queryClient.setQueryData(favoriteKeys.list(), mockPaginatedFavorites);
+      const listKey = favoriteKeys.list();
+      queryClient.setQueryData(listKey, mockPaginatedFavorites);
 
       const wrapper = ({ children }: { children: React.ReactNode }) =>
         React.createElement(
@@ -434,9 +435,7 @@ describe('use-favorites hooks', () => {
 
       // Check optimistic update happened immediately (paginated format)
       await waitFor(() => {
-        const cachedFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(
-          favoriteKeys.list()
-        );
+        const cachedFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(listKey);
         expect(cachedFavorites?.items).toHaveLength(1);
         expect(cachedFavorites?.items[0].tutor_profile_id).toBe(101);
         expect(cachedFavorites?.total).toBe(1);
@@ -449,7 +448,7 @@ describe('use-favorites hooks', () => {
     });
 
     it('performs optimistic update on check cache', async () => {
-      let resolveRemove: () => void;
+      let resolveRemove!: () => void;
       const removePromise = new Promise<void>((resolve) => {
         resolveRemove = resolve;
       });
@@ -478,7 +477,7 @@ describe('use-favorites hooks', () => {
       });
 
       await act(async () => {
-        resolveRemove!();
+        resolveRemove();
       });
     });
 
@@ -486,7 +485,8 @@ describe('use-favorites hooks', () => {
       mockRemove.mockRejectedValueOnce(new Error('Remove failed'));
 
       const queryClient = createTestQueryClient();
-      queryClient.setQueryData(favoriteKeys.list(), mockPaginatedFavorites);
+      const listKey = favoriteKeys.list();
+      queryClient.setQueryData(listKey, mockPaginatedFavorites);
       queryClient.setQueryData(favoriteKeys.check(100), { is_favorite: true });
 
       const wrapper = ({ children }: { children: React.ReactNode }) =>
@@ -507,9 +507,7 @@ describe('use-favorites hooks', () => {
       });
 
       // Check that the cache was rolled back (paginated format)
-      const cachedFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(
-        favoriteKeys.list()
-      );
+      const cachedFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(listKey);
       expect(cachedFavorites).toEqual(mockPaginatedFavorites);
 
       const checkCache = queryClient.getQueryData(favoriteKeys.check(100));
@@ -539,12 +537,12 @@ describe('use-favorites hooks', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // Should return empty paginated response when cache was empty
+      // With no pre-populated cache, setQueriesData has nothing to update
+      // The cache should remain undefined since there was no matching query
       const cachedFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(
         favoriteKeys.list()
       );
-      expect(cachedFavorites?.items).toEqual([]);
-      expect(cachedFavorites?.total).toBe(0);
+      expect(cachedFavorites).toBeUndefined();
     });
   });
 

@@ -13,6 +13,7 @@ export interface User {
   profile_incomplete: boolean;
   role: UserRole;
   avatar_url?: string;
+  bio?: string | null;
   is_active: boolean;
   is_verified: boolean;
   timezone: string;

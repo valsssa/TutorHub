@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -13,11 +14,13 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
+  X,
 } from 'lucide-react';
 import {
   useBooking,
   useCancelBooking,
   useConfirmBooking,
+  useRescheduleBooking,
   useAuth,
 } from '@/lib/hooks';
 import {
@@ -29,9 +32,11 @@ import {
   Button,
   Avatar,
   Skeleton,
+  Input,
 } from '@/components/ui';
 import { BookingStatusBadge } from '@/components/bookings';
 import { formatDate, formatTime, formatCurrency } from '@/lib/utils';
+import { useToast } from '@/lib/stores/ui-store';
 import type { SessionState } from '@/types';
 
 interface TimelineStep {
@@ -81,11 +86,18 @@ export default function BookingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const toast = useToast();
   const bookingId = Number(params.id);
+
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleReason, setRescheduleReason] = useState('');
 
   const { data: booking, isLoading } = useBooking(bookingId);
   const cancelBooking = useCancelBooking();
   const confirmBooking = useConfirmBooking();
+  const rescheduleBooking = useRescheduleBooking();
 
   const handleCancel = () => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
@@ -100,6 +112,50 @@ export default function BookingDetailPage() {
 
   const handleConfirm = () => {
     confirmBooking.mutate(bookingId);
+  };
+
+  const handleJoinSession = () => {
+    if (booking?.join_url) {
+      window.open(booking.join_url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleOpenReschedule = () => {
+    setRescheduleDate('');
+    setRescheduleTime('');
+    setRescheduleReason('');
+    setShowRescheduleModal(true);
+  };
+
+  const handleSubmitReschedule = () => {
+    if (!rescheduleDate || !rescheduleTime) {
+      toast.error('Please select both a date and time.');
+      return;
+    }
+
+    const newStartAt = new Date(`${rescheduleDate}T${rescheduleTime}:00`);
+    if (isNaN(newStartAt.getTime())) {
+      toast.error('Invalid date or time selected.');
+      return;
+    }
+
+    if (newStartAt <= new Date()) {
+      toast.error('New session time must be in the future.');
+      return;
+    }
+
+    rescheduleBooking.mutate(
+      { id: bookingId, new_start_at: newStartAt.toISOString() },
+      {
+        onSuccess: () => {
+          toast.success('Reschedule request submitted successfully.');
+          setShowRescheduleModal(false);
+        },
+        onError: (error: Error) => {
+          toast.error(error.message || 'Failed to submit reschedule request.');
+        },
+      }
+    );
   };
 
   if (isLoading) {
@@ -141,10 +197,11 @@ export default function BookingDetailPage() {
   );
   const canConfirm =
     userRole === 'tutor' && booking.session_state === 'REQUESTED';
-  const canReschedule =
-    ['REQUESTED', 'SCHEDULED'].includes(
-      booking.session_state
-    );
+  const canReschedule = booking.session_state === 'SCHEDULED';
+  const canJoinSession = ['SCHEDULED', 'ACTIVE'].includes(
+    booking.session_state
+  );
+  const hasJoinUrl = !!booking.join_url;
 
   return (
     <div className="space-y-6">
@@ -258,15 +315,23 @@ export default function BookingDetailPage() {
                 </Button>
               )}
 
-              {booking.session_state === 'SCHEDULED' && (
-                <Button>
+              {canJoinSession && (
+                <Button
+                  onClick={handleJoinSession}
+                  disabled={!hasJoinUrl}
+                  title={
+                    hasJoinUrl
+                      ? 'Join the video session'
+                      : 'Meeting link not available yet'
+                  }
+                >
                   <Video className="h-4 w-4 mr-2" />
                   Join Session
                 </Button>
               )}
 
               {canReschedule && (
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleOpenReschedule}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Request Reschedule
                 </Button>
@@ -402,6 +467,83 @@ export default function BookingDetailPage() {
           </Card>
         </div>
       </div>
+
+      {showRescheduleModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Reschedule booking"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Request Reschedule
+              </h2>
+              <button
+                onClick={() => setShowRescheduleModal(false)}
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Close reschedule dialog"
+              >
+                <X className="h-5 w-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Propose a new date and time for this session. The tutor will
+                need to confirm the change.
+              </p>
+
+              <Input
+                type="date"
+                label="New Date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+
+              <Input
+                type="time"
+                label="New Time"
+                value={rescheduleTime}
+                onChange={(e) => setRescheduleTime(e.target.value)}
+              />
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Reason (optional)
+                </label>
+                <textarea
+                  value={rescheduleReason}
+                  onChange={(e) => setRescheduleReason(e.target.value)}
+                  placeholder="Why do you need to reschedule?"
+                  rows={3}
+                  maxLength={500}
+                  className="flex w-full rounded-xl border bg-white px-3 py-2 text-base sm:text-sm border-slate-200 dark:border-slate-700 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+              <Button
+                variant="ghost"
+                onClick={() => setShowRescheduleModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitReschedule}
+                loading={rescheduleBooking.isPending}
+                disabled={!rescheduleDate || !rescheduleTime}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Submit Request
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

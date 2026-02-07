@@ -37,13 +37,12 @@ export const passwordChangeSchema = z
 export type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
 
 export const notificationPreferencesSchema = z.object({
-  email_booking_confirmations: z.boolean(),
-  email_booking_reminders: z.boolean(),
-  email_messages: z.boolean(),
-  email_marketing: z.boolean(),
-  push_booking_confirmations: z.boolean(),
-  push_booking_reminders: z.boolean(),
-  push_messages: z.boolean(),
+  email_enabled: z.boolean(),
+  push_enabled: z.boolean(),
+  session_reminders_enabled: z.boolean(),
+  booking_requests_enabled: z.boolean(),
+  review_prompts_enabled: z.boolean(),
+  marketing_enabled: z.boolean(),
 });
 
 export type NotificationPreferencesFormData = z.infer<typeof notificationPreferencesSchema>;

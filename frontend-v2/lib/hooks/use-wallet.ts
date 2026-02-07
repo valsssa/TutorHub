@@ -8,12 +8,18 @@ export const walletKeys = {
   transactions: () => [...walletKeys.all, 'transactions'] as const,
   transactionList: (filters?: TransactionFilters) =>
     [...walletKeys.transactions(), filters ?? {}] as const,
+  connect: () => [...walletKeys.all, 'connect'] as const,
+  connectStatus: () => [...walletKeys.connect(), 'status'] as const,
+  payoutBalance: () => [...walletKeys.connect(), 'payout-balance'] as const,
+  payoutHistory: () => [...walletKeys.connect(), 'payout-history'] as const,
+  earnings: () => [...walletKeys.connect(), 'earnings'] as const,
 };
 
-export function useWalletBalance() {
+export function useWalletBalance(enabled = true) {
   return useQuery({
     queryKey: walletKeys.balance(),
     queryFn: walletApi.getBalance,
+    enabled,
   });
 }
 
@@ -33,5 +39,55 @@ export function useCreateWalletCheckout() {
       queryClient.invalidateQueries({ queryKey: walletKeys.balance() });
       queryClient.invalidateQueries({ queryKey: walletKeys.transactions() });
     },
+  });
+}
+
+// Tutor Connect hooks
+export function useConnectStatus(enabled = true) {
+  return useQuery({
+    queryKey: walletKeys.connectStatus(),
+    queryFn: walletApi.getConnectStatus,
+    enabled,
+  });
+}
+
+export function usePayoutBalance(enabled = true) {
+  return useQuery({
+    queryKey: walletKeys.payoutBalance(),
+    queryFn: walletApi.getPayoutBalance,
+    enabled,
+  });
+}
+
+export function usePayoutHistory(enabled = true) {
+  return useQuery({
+    queryKey: walletKeys.payoutHistory(),
+    queryFn: () => walletApi.getPayoutHistory(10),
+    enabled,
+  });
+}
+
+export function useEarningsSummary(enabled = true) {
+  return useQuery({
+    queryKey: walletKeys.earnings(),
+    queryFn: walletApi.getEarningsSummary,
+    enabled,
+  });
+}
+
+export function useCreateConnectAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (country: string | undefined) => walletApi.createConnectAccount(country),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: walletKeys.connectStatus() });
+    },
+  });
+}
+
+export function useGetDashboardLink() {
+  return useMutation({
+    mutationFn: () => walletApi.getDashboardLink(),
   });
 }

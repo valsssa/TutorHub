@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from core.audit import AuditLogger
 from core.cache import cache_with_ttl, invalidate_cache
@@ -31,6 +31,7 @@ def _get_cached_tutor_reviews(db: Session, tutor_id: int, page: int, page_size: 
     offset = (page - 1) * page_size
     return (
         db.query(Review)
+        .options(joinedload(Review.student))
         .filter(Review.tutor_profile_id == tutor_id, Review.is_public.is_(True))
         .order_by(Review.created_at.desc())
         .offset(offset)
@@ -146,6 +147,11 @@ async def create_review(
         # Commit all changes
         db.commit()
 
+        # Build student display name for response
+        student_first = current_user.first_name or ""
+        student_last = current_user.last_name or ""
+        student_display_name = f"{student_first} {student_last}".strip() or None
+
         # Build response after commit using local variables
         response_data = ReviewResponse(
             id=review_id,
@@ -156,6 +162,7 @@ async def create_review(
             comment=sanitized_comment,
             is_public=True,
             booking_snapshot=booking_snapshot,
+            student_name=student_display_name,
             created_at=review_created_at,
         )
 

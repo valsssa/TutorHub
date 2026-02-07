@@ -6,6 +6,9 @@ export const createBookingSchema = z.object({
   start_time: z.string().min(1, 'Please select a date and time').refine(
     (val) => !isNaN(Date.parse(val)),
     'Invalid date/time'
+  ).refine(
+    (val) => new Date(val) > new Date(),
+    'Session must be scheduled in the future'
   ),
   duration: z.enum(['30', '60', '90', '120'], {
     message: 'Please select a duration',

@@ -1,8 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, Calendar, Clock, Wallet, Package } from 'lucide-react';
-import { useAuth, useBookings, useBookingStats } from '@/lib/hooks';
+import { Search, Calendar, Clock, Wallet, Package, MessageSquare } from 'lucide-react';
+import {
+  useAuth,
+  useBookings,
+  useBookingStats,
+  useWalletBalance,
+  useMyPackages,
+} from '@/lib/hooks';
 import {
   Card,
   CardHeader,
@@ -12,15 +18,18 @@ import {
   Skeleton,
   SkeletonCard,
 } from '@/components/ui';
+import { formatCurrency } from '@/lib/utils';
 
 function StatCard({
   label,
   value,
   icon: Icon,
+  isLoading,
 }: {
   label: string;
   value: string | number;
   icon: React.ElementType;
+  isLoading?: boolean;
 }) {
   return (
     <Card>
@@ -30,9 +39,13 @@ function StatCard({
             <Icon className="h-5 w-5 text-primary-600" />
           </div>
           <div>
-            <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-              {value}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-7 w-16 mb-1" />
+            ) : (
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                {value}
+              </p>
+            )}
             <p className="text-xs sm:text-sm text-slate-500">{label}</p>
           </div>
         </div>
@@ -47,6 +60,10 @@ export default function StudentDashboard() {
   const { data: bookings, isLoading: bookingsLoading } = useBookings({
     status: 'confirmed',
     page_size: 3,
+  });
+  const { data: walletBalance, isLoading: walletLoading } = useWalletBalance();
+  const { data: activePackages, isLoading: packagesLoading } = useMyPackages({
+    status: 'active',
   });
 
   return (
@@ -88,8 +105,18 @@ export default function StudentDashboard() {
               value={stats?.total_hours ?? 0}
               icon={Clock}
             />
-            <StatCard label="Wallet Balance" value="$0" icon={Wallet} />
-            <StatCard label="Package Credits" value={0} icon={Package} />
+            <StatCard
+              label="Wallet Balance"
+              value={formatCurrency((walletBalance?.balance_cents ?? 0) / 100)}
+              icon={Wallet}
+              isLoading={walletLoading}
+            />
+            <StatCard
+              label="Active Packages"
+              value={activePackages?.length ?? 0}
+              icon={Package}
+              isLoading={packagesLoading}
+            />
           </>
         )}
       </div>
@@ -136,8 +163,8 @@ export default function StudentDashboard() {
                             with {booking.tutor?.name}
                           </p>
                         </div>
-                        <Button size="sm" variant="outline" className="shrink-0">
-                          View
+                        <Button size="sm" variant="outline" className="shrink-0" asChild>
+                          <Link href={`/bookings/${booking.id}`}>View</Link>
                         </Button>
                       </div>
                     </div>
@@ -168,7 +195,7 @@ export default function StudentDashboard() {
               </Button>
               <Button asChild variant="ghost" className="w-full justify-start">
                 <Link href="/messages">
-                  <Calendar className="h-4 w-4 mr-3" />
+                  <MessageSquare className="h-4 w-4 mr-3" />
                   Messages
                 </Link>
               </Button>

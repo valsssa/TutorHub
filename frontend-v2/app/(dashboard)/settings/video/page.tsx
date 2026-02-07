@@ -148,7 +148,8 @@ export default function VideoSettingsPage() {
         custom_meeting_url_template: settings.custom_meeting_url_template,
       });
     }
-  }, [settings, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
 
   const onSubmit = async (data: VideoSettingsFormData) => {
     setSaveSuccess(false);

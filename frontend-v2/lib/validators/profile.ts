@@ -11,7 +11,7 @@ export const editProfileSchema = z.object({
     .max(50, 'Last name must be 50 characters or less'),
   bio: z
     .string()
-    .max(1000, 'Bio must be 1000 characters or less')
+    .max(500, 'Bio must be 500 characters or less')
     .optional()
     .or(z.literal('')),
 });
@@ -29,7 +29,7 @@ export const tutorProfileSchema = z.object({
     .max(50, 'Last name must be 50 characters or less'),
   bio: z
     .string()
-    .max(1000, 'Bio must be 1000 characters or less')
+    .max(500, 'Bio must be 500 characters or less')
     .optional()
     .or(z.literal('')),
   headline: z

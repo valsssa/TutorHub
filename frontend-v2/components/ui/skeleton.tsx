@@ -5,12 +5,16 @@ type SkeletonProps = React.HTMLAttributes<HTMLDivElement>;
 function Skeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
+      role="status"
+      aria-busy="true"
       className={cn(
         'animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800',
         className
       )}
       {...props}
-    />
+    >
+      <span className="sr-only">Loading...</span>
+    </div>
   );
 }
 

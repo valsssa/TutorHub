@@ -12,7 +12,7 @@ import { Card, CardContent, Button, Input, Skeleton } from '@/components/ui';
 function LoginFormSkeleton() {
   return (
     <Card>
-      <CardContent className="p-4 sm:p-6">
+      <CardContent>
         <Skeleton className="h-7 sm:h-8 w-40 mb-4 sm:mb-6" />
         <div className="space-y-3 sm:space-y-4">
           <Skeleton className="h-16 w-full" />
@@ -62,9 +62,14 @@ function LoginForm() {
   // Redirect after successful login once user data is available
   useEffect(() => {
     if (user && !isLoggingIn) {
-      router.push(getRoleBasedRedirect(user.role));
+      const redirectTo = searchParams.get('redirect');
+      if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
+        router.push(redirectTo);
+      } else {
+        router.push(getRoleBasedRedirect(user.role));
+      }
     }
-  }, [user, isLoggingIn, router]);
+  }, [user, isLoggingIn, router, searchParams]);
 
   // Show loading skeleton while checking auth status
   if (isLoading) {
@@ -78,34 +83,28 @@ function LoginForm() {
 
   return (
     <Card>
-      <CardContent className="p-4 sm:p-6">
+      <CardContent>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-6">
           Welcome back
         </h2>
 
-        {registered && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-600 dark:text-green-400">
-              Account created successfully! Please sign in.
-            </p>
-          </div>
-        )}
-
-        {reset && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-600 dark:text-green-400">
-              Password reset successfully! Please sign in with your new password.
-            </p>
-          </div>
-        )}
-
-        {verified && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-600 dark:text-green-400">
-              Email verified successfully! Please sign in.
-            </p>
-          </div>
-        )}
+        {(() => {
+          const message = verified
+            ? 'Email verified successfully! Please sign in.'
+            : reset
+              ? 'Password reset successfully! Please sign in with your new password.'
+              : registered
+                ? 'Account created successfully! Please sign in.'
+                : null;
+          if (!message) return null;
+          return (
+            <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <p className="text-sm text-green-600 dark:text-green-400">
+                {message}
+              </p>
+            </div>
+          );
+        })()}
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
           <Input

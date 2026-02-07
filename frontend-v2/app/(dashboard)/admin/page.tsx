@@ -15,6 +15,7 @@ import {
   AlertCircle,
   ShieldAlert,
   RefreshCw,
+  X,
 } from 'lucide-react';
 import {
   Card,
@@ -236,6 +237,10 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   const [rejectingTutorId, setRejectingTutorId] = useState<number | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectModalTutorId, setRejectModalTutorId] = useState<number | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectionError, setRejectionError] = useState<string | null>(null);
 
   // Fetch data using hooks
   const { data: stats, isLoading: isStatsLoading, error: statsError } = useAdminDashboardStats();
@@ -262,19 +267,36 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleRejectTutor = async (tutorId: number) => {
-    const reason = window.prompt('Please provide a reason for rejection (min 10 characters):');
-    if (!reason || reason.length < 10) {
-      alert('Rejection reason must be at least 10 characters.');
+  const handleOpenRejectModal = (tutorId: number) => {
+    setRejectModalTutorId(tutorId);
+    setRejectionReason('');
+    setRejectionError(null);
+    setShowRejectModal(true);
+  };
+
+  const handleCloseRejectModal = () => {
+    setShowRejectModal(false);
+    setRejectModalTutorId(null);
+    setRejectionReason('');
+    setRejectionError(null);
+  };
+
+  const handleConfirmReject = async () => {
+    if (rejectionReason.trim().length < 10) {
+      setRejectionError('Rejection reason must be at least 10 characters.');
       return;
     }
 
-    setRejectingTutorId(tutorId);
+    if (!rejectModalTutorId) return;
+
+    setRejectionError(null);
+    setRejectingTutorId(rejectModalTutorId);
     try {
       await rejectMutation.mutateAsync({
-        tutorId,
-        data: { rejection_reason: reason },
+        tutorId: rejectModalTutorId,
+        data: { rejection_reason: rejectionReason.trim() },
       });
+      handleCloseRejectModal();
     } catch (error) {
       console.error('Failed to reject tutor:', error);
     } finally {
@@ -383,7 +405,7 @@ export default function AdminDashboard() {
                       key={tutor.id}
                       tutor={tutor}
                       onApprove={() => handleApproveTutor(tutor.id)}
-                      onReject={() => handleRejectTutor(tutor.id)}
+                      onReject={() => handleOpenRejectModal(tutor.id)}
                       isApproving={approveMutation.isPending && approveMutation.variables === tutor.id}
                       isRejecting={rejectingTutorId === tutor.id}
                     />
@@ -512,6 +534,77 @@ export default function AdminDashboard() {
           </Card>
         </div>
       </div>
+
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Reject tutor"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Reject Tutor
+              </h2>
+              <button
+                onClick={handleCloseRejectModal}
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Close rejection dialog"
+              >
+                <X className="h-5 w-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Please provide a reason for rejecting this tutor application.
+                The tutor will be notified with this reason.
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Rejection Reason
+                </label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => {
+                    setRejectionReason(e.target.value);
+                    if (rejectionError) setRejectionError(null);
+                  }}
+                  placeholder="Explain why this application is being rejected (min 10 characters)..."
+                  rows={4}
+                  maxLength={500}
+                  className="flex w-full rounded-xl border bg-white px-3 py-2 text-base sm:text-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
+                />
+                {rejectionError && (
+                  <p className="text-sm text-red-500">{rejectionError}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+              <Button
+                variant="ghost"
+                onClick={handleCloseRejectModal}
+                disabled={rejectingTutorId !== null}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950"
+                onClick={handleConfirmReject}
+                loading={rejectingTutorId !== null}
+                disabled={rejectionReason.trim().length < 10}
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Confirm Rejection
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

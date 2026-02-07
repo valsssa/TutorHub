@@ -310,7 +310,7 @@ export default function TutorPackagesPage({ params }: TutorPackagesPageProps) {
           <Link href={`/tutors/${tutorId}`}>View Profile</Link>
         </Button>
         <Button asChild variant="outline" className="w-full sm:w-auto">
-          <Link href={`/bookings/new?tutor_id=${tutorId}`}>Book Single Session</Link>
+          <Link href={`/bookings/new?tutor=${tutorId}`}>Book Single Session</Link>
         </Button>
       </div>
     </div>

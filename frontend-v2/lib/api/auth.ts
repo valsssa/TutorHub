@@ -29,6 +29,9 @@ export const authApi = {
   verifyEmail: (token: string) =>
     api.post<{ message: string }>('/auth/verify-email', { token }),
 
+  resendVerificationEmail: (email: string) =>
+    api.post<{ message: string }>('/auth/email/resend-verification', { email }),
+
   updateProfile: (data: Partial<User>) =>
     api.put<User>('/auth/me', data),
 

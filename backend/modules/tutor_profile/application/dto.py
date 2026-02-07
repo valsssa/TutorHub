@@ -94,10 +94,15 @@ def aggregate_to_profile_response(
     aggregate: TutorProfileAggregate,
 ) -> TutorProfileResponse:
     """Convert aggregate to TutorProfileResponse DTO."""
+    first_name = aggregate.first_name or ""
+    last_name = aggregate.last_name or ""
+
     data = {
         "id": aggregate.id,
         "user_id": aggregate.user_id,
-        "name": f"{aggregate.first_name or ''} {aggregate.last_name or ''}".strip() or "Unknown",
+        "first_name": first_name,
+        "last_name": last_name,
+        "name": f"{first_name} {last_name}".strip() or "Unknown",
         "title": aggregate.title or "",
         "headline": aggregate.headline,
         "bio": aggregate.bio,

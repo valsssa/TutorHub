@@ -1,12 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Save, Upload } from 'lucide-react';
-import { useAuth, useMyTutorProfile, useUpdateTutorAbout, useSubjects } from '@/lib/hooks';
+import {
+  useAuth,
+  useMyTutorProfile,
+  useUpdateTutorAbout,
+  useUpdateTutorPricing,
+  useReplaceTutorSubjects,
+  useSubjects,
+  useUploadAvatar,
+} from '@/lib/hooks';
 import {
   editProfileSchema,
   tutorProfileSchema,
@@ -52,6 +60,9 @@ function EditProfileSkeleton() {
 function StudentEditForm() {
   const { user, updateProfile, isUpdatingProfile } = useAuth();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const uploadAvatar = useUploadAvatar();
 
   const {
     register,
@@ -63,7 +74,7 @@ function StudentEditForm() {
     defaultValues: {
       first_name: user?.first_name ?? '',
       last_name: user?.last_name ?? '',
-      bio: '',
+      bio: user?.bio ?? '',
     },
   });
 
@@ -72,10 +83,30 @@ function StudentEditForm() {
       reset({
         first_name: user.first_name ?? '',
         last_name: user.last_name ?? '',
-        bio: '',
+        bio: user.bio ?? '',
       });
     }
   }, [user, reset]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      console.error('File size exceeds 2MB limit');
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+
+    try {
+      await uploadAvatar.mutateAsync(file);
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      setAvatarPreview(null);
+    }
+  };
 
   const onSubmit = async (data: EditProfileFormData) => {
     try {
@@ -95,16 +126,33 @@ function StudentEditForm() {
         <CardContent>
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6">
             <Avatar
-              src={user?.avatar_url}
+              src={avatarPreview || user?.avatar_url}
               name={`${user?.first_name} ${user?.last_name}`}
               size="xl"
               className="h-20 w-20 sm:h-24 sm:w-24"
             />
             <div className="text-center sm:text-left">
-              <Button type="button" variant="outline">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                loading={uploadAvatar.isPending}
+              >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Photo
               </Button>
+              {uploadAvatar.isError && (
+                <p className="text-xs text-red-500 mt-1">
+                  Upload failed. Please try again.
+                </p>
+              )}
               <p className="text-xs text-slate-500 mt-2">
                 JPG, PNG or GIF. Max size 2MB.
               </p>
@@ -149,11 +197,11 @@ function StudentEditForm() {
       </Card>
 
       <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4">
-        <Link href="/profile" className="w-full sm:w-auto">
-          <Button type="button" variant="outline" className="w-full sm:w-auto">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
+          <Link href="/profile">
             Cancel
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         <Button type="submit" loading={isUpdatingProfile} disabled={!isDirty} className="w-full sm:w-auto">
           <Save className="h-4 w-4 mr-2" />
           Save Changes
@@ -168,7 +216,12 @@ function TutorEditForm() {
   const { data: tutorProfile, isLoading: profileLoading } = useMyTutorProfile();
   const { data: subjects = [], isLoading: subjectsLoading } = useSubjects();
   const updateTutorProfile = useUpdateTutorAbout();
+  const updateTutorPricing = useUpdateTutorPricing();
+  const replaceTutorSubjects = useReplaceTutorSubjects();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const uploadAvatar = useUploadAvatar();
 
   const {
     register,
@@ -201,6 +254,26 @@ function TutorEditForm() {
     }
   }, [user, tutorProfile, reset]);
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      console.error('File size exceeds 2MB limit');
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+
+    try {
+      await uploadAvatar.mutateAsync(file);
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      setAvatarPreview(null);
+    }
+  };
+
   const onSubmit = async (data: TutorProfileFormData) => {
     try {
       await Promise.all([
@@ -212,6 +285,12 @@ function TutorEditForm() {
           bio: data.bio,
           headline: data.headline,
         }),
+        updateTutorPricing.mutateAsync({
+          hourly_rate: data.hourly_rate,
+        }),
+        replaceTutorSubjects.mutateAsync(
+          data.subject_ids.map((id) => ({ subject_id: id }))
+        ),
       ]);
       router.push('/profile');
     } catch (error) {
@@ -232,16 +311,33 @@ function TutorEditForm() {
         <CardContent>
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6">
             <Avatar
-              src={tutorProfile?.avatar_url || user?.avatar_url}
+              src={avatarPreview || tutorProfile?.avatar_url || user?.avatar_url}
               name={tutorProfile?.display_name || `${user?.first_name} ${user?.last_name}`}
               size="xl"
               className="h-20 w-20 sm:h-24 sm:w-24"
             />
             <div className="text-center sm:text-left">
-              <Button type="button" variant="outline">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                loading={uploadAvatar.isPending}
+              >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Photo
               </Button>
+              {uploadAvatar.isError && (
+                <p className="text-xs text-red-500 mt-1">
+                  Upload failed. Please try again.
+                </p>
+              )}
               <p className="text-xs text-slate-500 mt-2">
                 JPG, PNG or GIF. Max size 2MB.
               </p>
@@ -344,14 +440,14 @@ function TutorEditForm() {
       </Card>
 
       <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4">
-        <Link href="/profile" className="w-full sm:w-auto">
-          <Button type="button" variant="outline" className="w-full sm:w-auto">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
+          <Link href="/profile">
             Cancel
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         <Button
           type="submit"
-          loading={isUpdatingProfile || updateTutorProfile.isPending}
+          loading={isUpdatingProfile || updateTutorProfile.isPending || updateTutorPricing.isPending || replaceTutorSubjects.isPending}
           disabled={!isDirty}
           className="w-full sm:w-auto"
         >

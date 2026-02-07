@@ -116,7 +116,7 @@ function PendingRequestCard({
               {booking.student?.name || 'Student'}
             </p>
             <p className="text-sm text-slate-500 truncate">
-              {booking.subject_name || 'General'} - 60 min
+              {booking.subject_name || 'General'}{booking.duration_minutes ? ` - ${booking.duration_minutes} min` : ''}
             </p>
             <p className="text-xs text-slate-400 mt-1">
               <Clock className="h-3 w-3 inline mr-1" />
@@ -340,8 +340,8 @@ export default function TutorDashboard() {
   const upcomingCount = allUpcoming.length;
   const pendingCount = pendingRequests.length;
 
-  // Calculate earnings (placeholder - would need a real endpoint)
-  // For now, estimate based on hourly rate and completed sessions
+  // Calculate earnings (approximation - multiplies ALL-TIME sessions by current rate)
+  // TODO: replace with real earnings data from a dedicated earnings API endpoint
   const hourlyRate = tutorProfile?.hourly_rate ?? 0;
   const estimatedMonthlyEarnings = Math.round(totalSessions * hourlyRate * 0.8); // 80% after fees
 
@@ -356,12 +356,12 @@ export default function TutorDashboard() {
             Here&apos;s what&apos;s happening with your tutoring sessions.
           </p>
         </div>
-        <Link href="/profile/availability">
-          <Button>
+        <Button asChild>
+          <Link href="/profile/availability">
             <Settings className="h-4 w-4 mr-2" />
             Manage Availability
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -491,36 +491,36 @@ export default function TutorDashboard() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Link href="/bookings" className="block">
-                <Button variant="ghost" className="w-full justify-start">
+              <Button asChild variant="ghost" className="w-full justify-start">
+                <Link href="/bookings">
                   <Calendar className="h-4 w-4 mr-3" />
                   View Schedule
-                </Button>
-              </Link>
-              <Link href="/profile/availability" className="block">
-                <Button variant="ghost" className="w-full justify-start">
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full justify-start">
+                <Link href="/profile/availability">
                   <Settings className="h-4 w-4 mr-3" />
                   Manage Availability
-                </Button>
-              </Link>
-              <Link href="/wallet" className="block">
-                <Button variant="ghost" className="w-full justify-start">
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full justify-start">
+                <Link href="/wallet">
                   <TrendingUp className="h-4 w-4 mr-3" />
                   View Earnings
-                </Button>
-              </Link>
-              <Link href="/messages" className="block">
-                <Button variant="ghost" className="w-full justify-start">
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full justify-start">
+                <Link href="/messages">
                   <MessageSquare className="h-4 w-4 mr-3" />
                   Messages
-                </Button>
-              </Link>
-              <Link href="/tutor/students" className="block">
-                <Button variant="ghost" className="w-full justify-start">
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full justify-start">
+                <Link href="/tutor/students">
                   <User className="h-4 w-4 mr-3" />
                   My Students
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </CardContent>
           </Card>
 
@@ -547,13 +547,13 @@ export default function TutorDashboard() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-slate-500">Response Rate</span>
                       <span className="font-medium text-slate-900 dark:text-white">
-                        {pendingCount === 0 ? '100%' : 'Active'}
+                        N/A
                       </span>
                     </div>
                     <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary-500 rounded-full transition-all duration-500"
-                        style={{ width: pendingCount === 0 ? '100%' : '80%' }}
+                        style={{ width: '0%' }}
                       />
                     </div>
                   </div>
@@ -561,13 +561,13 @@ export default function TutorDashboard() {
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-slate-500">Completion Rate</span>
                       <span className="font-medium text-slate-900 dark:text-white">
-                        {totalSessions > 0 ? '95%' : 'N/A'}
+                        N/A
                       </span>
                     </div>
                     <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-green-500 rounded-full transition-all duration-500"
-                        style={{ width: totalSessions > 0 ? '95%' : '0%' }}
+                        style={{ width: '0%' }}
                       />
                     </div>
                   </div>

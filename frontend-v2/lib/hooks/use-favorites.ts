@@ -1,17 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { favoritesApi } from '@/lib/api';
+import type { FavoritesListParams } from '@/lib/api/favorites';
 import type { Favorite, PaginatedResponse } from '@/types';
 
 export const favoriteKeys = {
   all: ['favorites'] as const,
-  list: () => [...favoriteKeys.all, 'list'] as const,
+  list: (params?: FavoritesListParams) => [...favoriteKeys.all, 'list', params] as const,
   check: (tutorId: number) => [...favoriteKeys.all, 'check', tutorId] as const,
 };
 
-export function useFavorites() {
+export function useFavorites(params?: FavoritesListParams) {
   const query = useQuery({
-    queryKey: favoriteKeys.list(),
-    queryFn: favoritesApi.list,
+    queryKey: favoriteKeys.list(params),
+    queryFn: () => favoritesApi.list(params),
   });
 
   // Return the items array for backward compatibility, plus pagination metadata
@@ -43,24 +44,7 @@ export function useAddFavorite() {
   return useMutation({
     mutationFn: favoritesApi.add,
     onSuccess: (newFavorite) => {
-      queryClient.setQueryData<PaginatedResponse<Favorite>>(favoriteKeys.list(), (old) => {
-        if (!old) {
-          return {
-            items: [newFavorite],
-            total: 1,
-            page: 1,
-            page_size: 20,
-            total_pages: 1,
-            has_next: false,
-            has_prev: false,
-          };
-        }
-        return {
-          ...old,
-          items: [...old.items, newFavorite],
-          total: old.total + 1,
-        };
-      });
+      queryClient.invalidateQueries({ queryKey: favoriteKeys.all });
       queryClient.setQueryData(
         favoriteKeys.check(newFavorite.tutor_profile_id),
         { is_favorite: true }
@@ -72,49 +56,52 @@ export function useAddFavorite() {
 export function useRemoveFavorite() {
   const queryClient = useQueryClient();
 
+  // Partial key to match all list queries regardless of pagination params
+  const listKeyPrefix = ['favorites', 'list'] as const;
+
   return useMutation({
     mutationFn: favoritesApi.remove,
     onMutate: async (tutorProfileId) => {
-      await queryClient.cancelQueries({ queryKey: favoriteKeys.list() });
+      await queryClient.cancelQueries({ queryKey: listKeyPrefix });
       await queryClient.cancelQueries({ queryKey: favoriteKeys.check(tutorProfileId) });
 
-      const previousFavorites = queryClient.getQueryData<PaginatedResponse<Favorite>>(favoriteKeys.list());
+      // Snapshot all list query caches for rollback
+      const previousListCaches = queryClient.getQueriesData<PaginatedResponse<Favorite>>({
+        queryKey: listKeyPrefix,
+      });
 
-      queryClient.setQueryData<PaginatedResponse<Favorite>>(favoriteKeys.list(), (old) => {
-        if (!old) {
+      // Optimistically update all list caches (regardless of pagination params)
+      queryClient.setQueriesData<PaginatedResponse<Favorite>>(
+        { queryKey: listKeyPrefix },
+        (old) => {
+          if (!old) return old;
+          const newItems = old.items.filter((f) => f.tutor_profile_id !== tutorProfileId);
           return {
-            items: [],
-            total: 0,
-            page: 1,
-            page_size: 20,
-            total_pages: 0,
-            has_next: false,
-            has_prev: false,
+            ...old,
+            items: newItems,
+            total: Math.max(0, old.total - 1),
           };
         }
-        const newItems = old.items.filter((f) => f.tutor_profile_id !== tutorProfileId);
-        return {
-          ...old,
-          items: newItems,
-          total: Math.max(0, old.total - 1),
-        };
-      });
+      );
 
       queryClient.setQueryData(
         favoriteKeys.check(tutorProfileId),
         { is_favorite: false }
       );
 
-      return { previousFavorites };
+      return { previousListCaches };
     },
     onError: (_err, tutorProfileId, context) => {
-      if (context?.previousFavorites) {
-        queryClient.setQueryData(favoriteKeys.list(), context.previousFavorites);
-        queryClient.setQueryData(
-          favoriteKeys.check(tutorProfileId),
-          { is_favorite: true }
-        );
+      // Rollback all list caches
+      if (context?.previousListCaches) {
+        for (const [key, data] of context.previousListCaches) {
+          queryClient.setQueryData(key, data);
+        }
       }
+      queryClient.setQueryData(
+        favoriteKeys.check(tutorProfileId),
+        { is_favorite: true }
+      );
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: favoriteKeys.all });

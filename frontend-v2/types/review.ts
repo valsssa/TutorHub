@@ -6,6 +6,7 @@ export interface Review {
   rating: number;
   comment?: string | null;
   booking_snapshot?: string; // JSON string with session details at time of review
+  student_name?: string | null;
   is_public: boolean;
   created_at: string;
 }

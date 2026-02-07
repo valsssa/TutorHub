@@ -282,15 +282,18 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     [send]
   );
 
-  // Auto-connect on mount
+  // Auto-connect on mount (uses ref to avoid re-triggering when connect changes)
+  const hasAutoConnectedRef = useRef(false);
+
   useEffect(() => {
     mountedRef.current = true;
 
-    if (autoConnect) {
+    if (autoConnect && !hasAutoConnectedRef.current) {
+      hasAutoConnectedRef.current = true;
       // Small delay to allow cookies to be set after login
       const timer = setTimeout(() => {
         if (mountedRef.current) {
-          connect();
+          connectRef.current();
         }
       }, 100);
 
@@ -298,7 +301,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         clearTimeout(timer);
       };
     }
-  }, [autoConnect, connect]);
+
+    if (!autoConnect) {
+      hasAutoConnectedRef.current = false;
+    }
+  }, [autoConnect]);
 
   // Cleanup on unmount
   useEffect(() => {

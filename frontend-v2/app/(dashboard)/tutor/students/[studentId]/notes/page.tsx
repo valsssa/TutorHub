@@ -181,13 +181,14 @@ function NotesEditor({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              maxLength={500}
               placeholder="Write your notes here... (e.g., learning goals, progress, topics covered, areas needing improvement)"
-              className="w-full h-48 sm:h-64 p-3 sm:p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y text-sm sm:text-base"
+              className="w-full h-48 sm:h-64 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y text-sm sm:text-base"
               disabled={isSaving || isDeleting}
             />
             <div className="flex justify-between items-center text-sm text-slate-500">
-              <span>
-                {notes.length.toLocaleString()} / 10,000 characters
+              <span className={notes.length >= 500 ? 'text-red-500 font-medium' : ''}>
+                {notes.length}/500
               </span>
               {hasChanges && (
                 <span className="text-amber-600 dark:text-amber-400">

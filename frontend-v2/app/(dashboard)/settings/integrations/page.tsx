@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   Video,
   Calendar,
@@ -223,6 +223,7 @@ function GoogleCalendarCard() {
   const { data: status, isLoading, error } = useCalendarStatus();
   const connectMutation = useConnectCalendar();
   const disconnectMutation = useDisconnectCalendar();
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
   if (isLoading) {
     return (
@@ -275,9 +276,13 @@ function GoogleCalendarCard() {
   };
 
   const handleDisconnect = () => {
-    if (window.confirm('Are you sure you want to disconnect Google Calendar? Your existing calendar events will not be affected.')) {
-      disconnectMutation.mutate();
-    }
+    setShowDisconnectConfirm(true);
+  };
+
+  const confirmDisconnect = () => {
+    disconnectMutation.mutate(undefined, {
+      onSettled: () => setShowDisconnectConfirm(false),
+    });
   };
 
   return (
@@ -371,6 +376,45 @@ function GoogleCalendarCard() {
           </>
         )}
       </CardContent>
+
+      {showDisconnectConfirm && (
+        <div className="mx-4 mb-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700 dark:text-red-400">
+                Are you sure you want to disconnect Google Calendar? Your existing calendar events will not be affected.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDisconnectConfirm(false)}
+                disabled={disconnectMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={confirmDisconnect}
+                disabled={disconnectMutation.isPending}
+              >
+                {disconnectMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Disconnecting...
+                  </>
+                ) : (
+                  'Disconnect'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <CardFooter className="border-t border-slate-100 dark:border-slate-800 pt-4">
         {status?.is_connected ? (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
@@ -387,20 +431,11 @@ function GoogleCalendarCard() {
               variant="outline"
               size="sm"
               onClick={handleDisconnect}
-              disabled={disconnectMutation.isPending}
+              disabled={disconnectMutation.isPending || showDisconnectConfirm}
               className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
             >
-              {disconnectMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Disconnecting...
-                </>
-              ) : (
-                <>
-                  <Unplug className="h-4 w-4 mr-2" />
-                  Disconnect
-                </>
-              )}
+              <Unplug className="h-4 w-4 mr-2" />
+              Disconnect
             </Button>
           </div>
         ) : (
@@ -425,12 +460,20 @@ function GoogleCalendarCard() {
 
 export default function IntegrationsPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isLoading: isLoadingUser } = useAuth();
 
   // Handle OAuth callback messages
   const calendarStatus = searchParams.get('calendar');
   const errorStatus = searchParams.get('error');
+
+  // Clean OAuth callback params from URL after processing
+  useEffect(() => {
+    if (calendarStatus || errorStatus) {
+      router.replace(pathname);
+    }
+  }, [calendarStatus, errorStatus, pathname, router]);
 
   // Redirect non-tutors
   useEffect(() => {

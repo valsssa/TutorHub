@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,7 +15,22 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const roleParam = searchParams.get('role');
   const defaultRole = roleParam === 'student' || roleParam === 'tutor' ? roleParam : 'student';
-  const { register: registerUser, isRegistering, registerError } = useAuth();
+  const { user, isLoading, register: registerUser, isRegistering, registerError } = useAuth();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (user && !isLoading) {
+      const getRoleBasedRedirect = (role?: string) => {
+        switch (role) {
+          case 'admin': return '/admin';
+          case 'tutor': return '/tutor';
+          case 'owner': return '/owner';
+          default: return '/student';
+        }
+      };
+      router.push(getRoleBasedRedirect(user.role));
+    }
+  }, [user, isLoading, router]);
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -30,6 +45,7 @@ function RegisterForm() {
   });
 
   const selectedRole = form.watch('role');
+  const passwordValue = form.watch('password');
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
@@ -46,9 +62,14 @@ function RegisterForm() {
     }
   };
 
+  // Show skeleton while checking auth or if already authenticated
+  if (isLoading || user) {
+    return <RegisterFormSkeleton />;
+  }
+
   return (
     <Card>
-      <CardContent className="p-4 sm:p-6">
+      <CardContent>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-6">
           Create your account
         </h2>
@@ -61,9 +82,11 @@ function RegisterForm() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
+                disabled={isRegistering}
                 onClick={() => form.setValue('role', 'student')}
                 className={cn(
                   'p-3 rounded-xl border-2 text-center transition-colors',
+                  'disabled:pointer-events-none disabled:opacity-50',
                   selectedRole === 'student'
                     ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20'
                     : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
@@ -74,9 +97,11 @@ function RegisterForm() {
               </button>
               <button
                 type="button"
+                disabled={isRegistering}
                 onClick={() => form.setValue('role', 'tutor')}
                 className={cn(
                   'p-3 rounded-xl border-2 text-center transition-colors',
+                  'disabled:pointer-events-none disabled:opacity-50',
                   selectedRole === 'tutor'
                     ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20'
                     : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
@@ -91,11 +116,13 @@ function RegisterForm() {
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="First name"
+              placeholder="John"
               error={form.formState.errors.first_name?.message}
               {...form.register('first_name')}
             />
             <Input
               label="Last name"
+              placeholder="Doe"
               error={form.formState.errors.last_name?.message}
               {...form.register('last_name')}
             />
@@ -109,19 +136,52 @@ function RegisterForm() {
             {...form.register('email')}
           />
 
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            hint="Min 8 characters with uppercase, lowercase, and number"
-            error={form.formState.errors.password?.message}
-            {...form.register('password')}
-          />
+          <div>
+            <Input
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              autoComplete="new-password"
+              error={form.formState.errors.password?.message}
+              {...form.register('password')}
+            />
+            <ul className="mt-2 space-y-1 text-xs">
+              <li className={cn(
+                'flex items-center gap-1.5',
+                passwordValue.length >= 8 ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500'
+              )}>
+                <span>{passwordValue.length >= 8 ? '\u2713' : '\u2717'}</span>
+                At least 8 characters
+              </li>
+              <li className={cn(
+                'flex items-center gap-1.5',
+                /[A-Z]/.test(passwordValue) ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500'
+              )}>
+                <span>{/[A-Z]/.test(passwordValue) ? '\u2713' : '\u2717'}</span>
+                One uppercase letter
+              </li>
+              <li className={cn(
+                'flex items-center gap-1.5',
+                /[a-z]/.test(passwordValue) ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500'
+              )}>
+                <span>{/[a-z]/.test(passwordValue) ? '\u2713' : '\u2717'}</span>
+                One lowercase letter
+              </li>
+              <li className={cn(
+                'flex items-center gap-1.5',
+                /[0-9]/.test(passwordValue) ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500'
+              )}>
+                <span>{/[0-9]/.test(passwordValue) ? '\u2713' : '\u2717'}</span>
+                One number
+              </li>
+            </ul>
+          </div>
 
           <Input
             label="Confirm password"
             type="password"
             placeholder="••••••••"
+            autoComplete="new-password"
             error={form.formState.errors.confirmPassword?.message}
             {...form.register('confirmPassword')}
           />
@@ -133,9 +193,21 @@ function RegisterForm() {
           )}
 
           {registerError && (
-            <p className="text-sm text-red-500">
-              {registerError instanceof Error ? registerError.message : 'Registration failed'}
-            </p>
+            <div className="text-sm text-red-500">
+              {registerError instanceof Error &&
+              /already (exists|registered)/i.test(registerError.message) ? (
+                <p>
+                  An account with this email already exists.{' '}
+                  <Link href="/login" className="text-primary-600 hover:underline font-medium">
+                    Sign in instead
+                  </Link>
+                </p>
+              ) : (
+                <p>
+                  {registerError instanceof Error ? registerError.message : 'Registration failed'}
+                </p>
+              )}
+            </div>
           )}
 
           <Button type="submit" loading={isRegistering} className="w-full">
@@ -157,7 +229,7 @@ function RegisterForm() {
 function RegisterFormSkeleton() {
   return (
     <Card>
-      <CardContent className="p-4 sm:p-6">
+      <CardContent>
         <Skeleton className="h-7 sm:h-8 w-48 mb-4 sm:mb-6" />
         <div className="space-y-3 sm:space-y-4">
           <Skeleton className="h-20 w-full" />

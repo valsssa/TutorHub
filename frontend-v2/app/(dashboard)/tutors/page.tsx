@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, SlidersHorizontal, X, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { useTutors, useSubjects } from '@/lib/hooks';
 import { useFiltersStore } from '@/lib/stores';
 import {
@@ -26,7 +26,15 @@ const PRICE_RANGES = [
 const SORT_OPTIONS = [
   { value: 'rating', label: 'Top Rated' },
   { value: 'rate_asc', label: 'Lowest Price' },
+  { value: 'rate_desc', label: 'Highest Price' },
   { value: 'experience', label: 'Most Experience' },
+] as const;
+
+const RATING_OPTIONS = [
+  { value: undefined, label: 'Any Rating' },
+  { value: 4, label: '4+ Stars' },
+  { value: 3, label: '3+ Stars' },
+  { value: 2, label: '2+ Stars' },
 ] as const;
 
 export default function TutorsPage() {
@@ -35,12 +43,22 @@ export default function TutorsPage() {
   const { data: subjects } = useSubjects();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [nameQuery, setNameQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedPriceRange, setSelectedPriceRange] = useState(0);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setTutorFilters({ subject: searchQuery || undefined, page: 1 });
+    setTutorFilters({
+      subject: searchQuery || undefined,
+      search_query: nameQuery || undefined,
+      page: 1,
+    });
+  };
+
+  const handleNameSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setTutorFilters({ search_query: nameQuery || undefined, page: 1 });
   };
 
   const handleSubjectClick = (subjectName: string) => {
@@ -58,6 +76,10 @@ export default function TutorsPage() {
     });
   };
 
+  const handleRatingChange = (minRating: number | undefined) => {
+    setTutorFilters({ min_rating: minRating, page: 1 });
+  };
+
   const handleSortChange = (sortBy: 'rating' | 'rate_asc' | 'rate_desc' | 'experience') => {
     setTutorFilters({ sort_by: sortBy, page: 1 });
   };
@@ -69,13 +91,25 @@ export default function TutorsPage() {
   const clearFilters = () => {
     resetTutorFilters();
     setSearchQuery('');
+    setNameQuery('');
     setSelectedPriceRange(0);
   };
 
   const hasActiveFilters =
     tutorFilters.subject ||
+    tutorFilters.search_query ||
+    tutorFilters.min_rating !== undefined ||
     tutorFilters.price_min !== undefined ||
     tutorFilters.price_max !== undefined;
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (tutorFilters.subject) count++;
+    if (tutorFilters.search_query) count++;
+    if (tutorFilters.min_rating !== undefined) count++;
+    if (tutorFilters.price_min !== undefined || tutorFilters.price_max !== undefined) count++;
+    return count;
+  }, [tutorFilters.subject, tutorFilters.search_query, tutorFilters.min_rating, tutorFilters.price_min, tutorFilters.price_max]);
 
   return (
     <div className="space-y-6">
@@ -90,11 +124,16 @@ export default function TutorsPage() {
         </div>
         <Button
           variant="outline"
-          className="lg:hidden"
+          className="lg:hidden relative"
           onClick={() => setShowFilters(!showFilters)}
         >
           <SlidersHorizontal className="h-4 w-4 mr-2" />
           Filters
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary-600 text-white text-xs font-medium">
+              {activeFilterCount}
+            </span>
+          )}
         </Button>
       </div>
 
@@ -121,7 +160,19 @@ export default function TutorsPage() {
             <CardHeader>
               <CardTitle className="text-base">Search</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <form onSubmit={handleNameSearch}>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search by tutor name..."
+                    value={nameQuery}
+                    onChange={(e) => setNameQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </form>
               <form onSubmit={handleSearch}>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -186,6 +237,39 @@ export default function TutorsPage() {
 
           <Card>
             <CardHeader>
+              <CardTitle className="text-base">Minimum Rating</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {RATING_OPTIONS.map((option) => (
+                  <label
+                    key={option.label}
+                    className="flex items-center gap-3 cursor-pointer"
+                  >
+                    <input
+                      type="radio"
+                      name="min-rating"
+                      checked={tutorFilters.min_rating === option.value}
+                      onChange={() => handleRatingChange(option.value)}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="flex items-center gap-1 text-sm text-slate-700 dark:text-slate-300">
+                      {option.value ? (
+                        <>
+                          {option.value}+ <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        </>
+                      ) : (
+                        option.label
+                      )}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle className="text-base">Sort By</CardTitle>
             </CardHeader>
             <CardContent>
@@ -223,6 +307,11 @@ export default function TutorsPage() {
           {hasActiveFilters && (
             <div className="mb-4 flex items-center gap-2 flex-wrap">
               <span className="text-sm text-slate-500">Active filters:</span>
+              {tutorFilters.search_query && (
+                <Badge variant="primary">
+                  Name: {tutorFilters.search_query}
+                </Badge>
+              )}
               {tutorFilters.subject && (
                 <Badge variant="primary">
                   Subject: {tutorFilters.subject}
@@ -232,6 +321,11 @@ export default function TutorsPage() {
                 tutorFilters.price_max !== undefined) && (
                 <Badge variant="primary">
                   {PRICE_RANGES[selectedPriceRange].label}
+                </Badge>
+              )}
+              {tutorFilters.min_rating !== undefined && (
+                <Badge variant="primary">
+                  {tutorFilters.min_rating}+ Stars
                 </Badge>
               )}
             </div>

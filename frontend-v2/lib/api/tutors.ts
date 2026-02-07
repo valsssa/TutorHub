@@ -11,9 +11,17 @@ import type { TutorProfile, TutorFilters, AvailabilitySlot, Subject } from '@/ty
 function mapFiltersToBackend(filters: TutorFilters): Record<string, string | number | undefined> {
   const mapped: Record<string, string | number | undefined> = {};
 
-  // Map subject name to search_query for text search
+  // Build search_query by combining subject and name search terms.
+  // Backend search_query searches across title, headline, bio, and subject names.
+  const searchParts: string[] = [];
   if (filters.subject) {
-    mapped.search_query = filters.subject;
+    searchParts.push(filters.subject);
+  }
+  if (filters.search_query) {
+    searchParts.push(filters.search_query);
+  }
+  if (searchParts.length > 0) {
+    mapped.search_query = searchParts.join(' ');
   }
 
   // Map subject_id if provided directly
@@ -38,9 +46,6 @@ function mapFiltersToBackend(filters: TutorFilters): Record<string, string | num
   }
   if (filters.language) {
     mapped.language = filters.language;
-  }
-  if (filters.search_query) {
-    mapped.search_query = filters.search_query;
   }
 
   // Map sort_by - keep as-is since backend supports rating, rate_asc, rate_desc, experience
@@ -168,8 +173,12 @@ export const tutorsApi = {
     api.put<TutorProfile>('/tutors/me/subjects', subjects),
 
   // Replace tutor availability
-  updateAvailability: (slots: Omit<AvailabilitySlot, 'id' | 'tutor_id'>[]) =>
-    api.put<TutorProfile>('/tutors/me/availability', { slots }),
+  updateAvailability: (data: {
+    availability: Omit<AvailabilitySlot, 'id' | 'tutor_id'>[];
+    timezone?: string;
+    version: number;
+  }) =>
+    api.put<TutorProfile>('/tutors/me/availability', data),
 
   // Submit profile for admin review
   submitForReview: () =>

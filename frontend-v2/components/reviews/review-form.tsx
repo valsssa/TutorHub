@@ -38,15 +38,20 @@ export function ReviewForm({ onSubmit, isLoading, className }: ReviewFormProps) 
           control={control}
           name="rating"
           render={({ field }) => (
-            <StarRating
-              value={field.value}
-              onChange={field.onChange}
-              size="lg"
-            />
+            <div className={cn(
+              'inline-block rounded-lg p-1 -m-1 transition-colors',
+              errors.rating && 'ring-2 ring-red-500/40 bg-red-50 dark:bg-red-900/10'
+            )}>
+              <StarRating
+                value={field.value}
+                onChange={field.onChange}
+                size="lg"
+              />
+            </div>
           )}
         />
         {errors.rating && (
-          <p className="mt-1 text-sm text-red-500">{errors.rating.message}</p>
+          <p className="mt-1 text-sm text-red-500" role="alert">{errors.rating.message}</p>
         )}
       </div>
 

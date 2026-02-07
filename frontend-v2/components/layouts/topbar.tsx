@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, Bell, Sun, Moon, LogOut, User, Settings, ChevronDown, Search } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, User, Settings, ChevronDown, Search } from 'lucide-react';
 import { useAuth, useSearchShortcut } from '@/lib/hooks';
 import { useUIStore } from '@/lib/stores';
 import { Avatar } from '@/components/ui';
 import { SearchDialog } from '@/components/search';
+import { NotificationBell } from '@/components/notifications';
 import { cn } from '@/lib/utils';
 
 export function Topbar() {
@@ -32,10 +33,7 @@ export function Topbar() {
   }, []);
 
   const getProfileLink = () => {
-    if (user?.role === 'tutor') return '/profile';
-    if (user?.role === 'admin') return '/admin';
-    if (user?.role === 'owner') return '/owner';
-    return '/student';
+    return '/profile';
   };
 
   return (
@@ -55,7 +53,7 @@ export function Topbar() {
           >
             <Search className="h-4 w-4" />
             <span className="flex-1 text-left">Search tutors, subjects...</span>
-            <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-xs text-slate-400 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 font-mono">
+            <kbd className="max-sm:hidden inline-flex items-center gap-1 px-2 py-0.5 text-xs text-slate-400 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600 font-mono">
               <span className="text-xs">Cmd</span>K
             </kbd>
           </button>
@@ -72,7 +70,8 @@ export function Topbar() {
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Toggle theme"
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? (
               <Sun className="h-5 w-5 text-slate-600 dark:text-slate-400" />
@@ -81,13 +80,7 @@ export function Topbar() {
             )}
           </button>
 
-          <Link
-            href="/notifications"
-            className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <Bell className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full" aria-label="Unread notifications" />
-          </Link>
+          <NotificationBell />
 
           <div className="relative ml-2 pl-4 border-l border-slate-200 dark:border-slate-700" ref={menuRef}>
             <button

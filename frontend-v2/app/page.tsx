@@ -13,7 +13,7 @@ import {
   MessageCircle,
   CreditCard,
 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, ThemeToggle } from '@/components/ui';
 
 const features = [
   {
@@ -66,6 +66,7 @@ const howItWorks = [
   },
 ];
 
+/* TODO: fetch real stats from API */
 const stats = [
   { value: '500+', label: 'Expert Tutors' },
   { value: '10,000+', label: 'Sessions Completed' },
@@ -87,15 +88,16 @@ export default function HomePage() {
               </span>
             </Link>
             <div className="flex items-center gap-2 sm:gap-4">
+              <ThemeToggle />
               <Link
                 href="/login"
                 className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
               >
                 Sign in
               </Link>
-              <Link href="/register">
-                <Button size="sm">Get Started</Button>
-              </Link>
+              <Button asChild size="sm">
+                <Link href="/register">Get Started</Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -116,17 +118,17 @@ export default function HomePage() {
               Master any subject with guidance tailored to your learning style.
             </p>
             <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-              <Link href="/register">
-                <Button size="lg" className="w-full sm:w-auto px-8">
+              <Button asChild size="lg" className="w-full sm:w-auto px-8">
+                <Link href="/register">
                   Start Learning Today
                   <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href="/register?role=tutor">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto px-8">
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto px-8">
+                <Link href="/register?role=tutor">
                   Become a Tutor
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:gap-6 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1 whitespace-nowrap">
@@ -179,7 +181,7 @@ export default function HomePage() {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+                className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/50"
               >
                 <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center mb-4">
                   <feature.icon className="h-6 w-6 text-primary-600" />
@@ -251,16 +253,17 @@ export default function HomePage() {
                   Build your reputation
                 </span>
               </div>
-              <Link href="/register?role=tutor">
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="bg-white text-primary-600 hover:bg-primary-50"
-                >
+              <Button
+                asChild
+                variant="secondary"
+                size="lg"
+                className="bg-white text-primary-600 hover:bg-primary-50"
+              >
+                <Link href="/register?role=tutor">
                   Apply as a Tutor
                   <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -275,12 +278,12 @@ export default function HomePage() {
           <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 mb-6 sm:mb-8">
             Join thousands of students who are already achieving their goals with EduStream.
           </p>
-          <Link href="/register">
-            <Button size="lg" className="px-8">
+          <Button asChild size="lg" className="px-8">
+            <Link href="/register">
               Create Free Account
               <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </section>
 
@@ -294,7 +297,7 @@ export default function HomePage() {
                 EduStream
               </span>
             </div>
-            <div className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-600 dark:text-slate-400">
               <Link href="/login" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                 Sign In
               </Link>
@@ -303,6 +306,15 @@ export default function HomePage() {
               </Link>
               <Link href="/register?role=tutor" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                 Become a Tutor
+              </Link>
+              <Link href="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                Terms of Service
+              </Link>
+              <Link href="/contact" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                Contact
               </Link>
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-500">

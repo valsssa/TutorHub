@@ -7,6 +7,12 @@ import type {
   Transaction,
   TransactionFilters,
   BackendTransaction,
+  ConnectStatus,
+  PayoutBalance,
+  PayoutHistory,
+  EarningsSummary,
+  ConnectOnboardingLink,
+  ConnectDashboardLink,
 } from '@/types/wallet';
 import { transformTransaction } from '@/types/wallet';
 
@@ -46,4 +52,26 @@ export const walletApi = {
       items: response.items.map(transformTransaction),
     };
   },
+
+  // Tutor Connect endpoints
+  getConnectStatus: () =>
+    api.get<ConnectStatus>('/tutor/connect/status'),
+
+  getPayoutBalance: () =>
+    api.get<PayoutBalance>('/tutor/connect/balance'),
+
+  getPayoutHistory: (limit = 10) =>
+    api.get<PayoutHistory>(`/tutor/connect/payouts?limit=${limit}`),
+
+  getEarningsSummary: () =>
+    api.get<EarningsSummary>('/tutor/connect/earnings-summary'),
+
+  createConnectAccount: (country = 'US') =>
+    api.post<ConnectOnboardingLink>(`/tutor/connect/create?country=${country}`),
+
+  getOnboardingLink: () =>
+    api.get<ConnectOnboardingLink>('/tutor/connect/onboarding-link'),
+
+  getDashboardLink: () =>
+    api.get<ConnectDashboardLink>('/tutor/connect/dashboard-link'),
 };

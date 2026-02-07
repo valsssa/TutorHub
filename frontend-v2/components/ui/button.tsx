@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap',
+  'inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:ring-offset-slate-900 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap',
   {
     variants: {
       variant: {
@@ -42,23 +42,75 @@ export interface ButtonProps
   asChild?: boolean;
 }
 
+// HTML attributes that only apply to <button> elements, not to <a> or other elements
+const BUTTON_ONLY_ATTRS = new Set([
+  'type',
+  'disabled',
+  'formAction',
+  'formEncType',
+  'formMethod',
+  'formNoValidate',
+  'formTarget',
+  'name',
+  'value',
+  'form',
+  'autofocus',
+]);
+
+function filterButtonAttrs(props: Record<string, unknown>): Record<string, unknown> {
+  const filtered: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (!BUTTON_ONLY_ATTRS.has(key)) {
+      filtered[key] = value;
+    }
+  }
+  return filtered;
+}
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, loading, asChild, children, disabled, ...props }, ref) => {
-    const classes = cn(buttonVariants({ variant, size }), className);
+    const isDisabledOrLoading = disabled || loading;
 
     if (asChild && React.isValidElement(children)) {
+      const childProps = (children as React.ReactElement<{ className?: string; children?: React.ReactNode }>).props;
+      const classes = cn(
+        buttonVariants({ variant, size }),
+        isDisabledOrLoading && 'pointer-events-none opacity-50',
+        className,
+        childProps.className,
+      );
+
+      // Filter out button-only HTML attrs; pass only safe attrs
+      const safeProps = filterButtonAttrs(props);
+
+      // Build new children: prepend loader spinner if loading
+      const childChildren = childProps.children;
+      const newChildren = loading
+        ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {childChildren}
+            </>
+          )
+        : childChildren;
+
       return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
-        className: cn(classes, (children as React.ReactElement<{ className?: string }>).props.className),
+        className: classes,
         ref,
-        ...props,
+        ...(isDisabledOrLoading ? { 'aria-disabled': 'true' } : {}),
+        ...safeProps,
+        children: newChildren,
       });
     }
+
+    const classes = cn(buttonVariants({ variant, size }), className);
 
     return (
       <button
         className={classes}
         ref={ref}
-        disabled={disabled || loading}
+        disabled={isDisabledOrLoading}
+        aria-busy={loading || undefined}
         {...props}
       >
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

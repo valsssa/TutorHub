@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, Clock } from 'lucide-react';
+import { Plus, Trash2, Clock, AlertTriangle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 
 interface TimeSlot {
@@ -34,6 +34,14 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return time;
 });
 
+function slotsOverlap(a: { start_time: string; end_time: string }, b: { start_time: string; end_time: string }): boolean {
+  return a.start_time < b.end_time && b.start_time < a.end_time;
+}
+
+function getEndTimeOptions(startTime: string): string[] {
+  return TIME_OPTIONS.filter((time) => time > startTime);
+}
+
 interface DaySlotEditorProps {
   day: typeof DAYS_OF_WEEK[number];
   slots: TimeSlot[];
@@ -47,9 +55,32 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
   const [isAdding, setIsAdding] = useState(false);
   const [newStart, setNewStart] = useState('09:00');
   const [newEnd, setNewEnd] = useState('17:00');
+  const [overlapError, setOverlapError] = useState<string | null>(null);
+
+  const daySlots = slots.filter((s) => s.day_of_week === day.value);
+
+  const checkOverlap = (start: string, end: string, excludeIndex?: number): boolean => {
+    const candidate = { start_time: start, end_time: end };
+    return daySlots.some((existing, idx) => {
+      if (excludeIndex !== undefined) {
+        const globalIdx = slots.findIndex(
+          (s) => s.day_of_week === existing.day_of_week &&
+            s.start_time === existing.start_time &&
+            s.end_time === existing.end_time
+        );
+        if (globalIdx === excludeIndex) return false;
+      }
+      return slotsOverlap(candidate, existing);
+    });
+  };
 
   const handleAdd = () => {
     if (newStart && newEnd && newStart < newEnd) {
+      if (checkOverlap(newStart, newEnd)) {
+        setOverlapError('This time slot overlaps with an existing slot.');
+        return;
+      }
+      setOverlapError(null);
       onAdd({
         day_of_week: day.value,
         start_time: newStart,
@@ -61,7 +92,16 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
     }
   };
 
-  const daySlots = slots.filter((s) => s.day_of_week === day.value);
+  const handleStartChange = (value: string) => {
+    setNewStart(value);
+    setOverlapError(null);
+    if (newEnd <= value) {
+      const nextOptions = getEndTimeOptions(value);
+      if (nextOptions.length > 0) {
+        setNewEnd(nextOptions[0]);
+      }
+    }
+  };
 
   return (
     <div className="p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
@@ -122,7 +162,7 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
                 disabled={disabled}
                 className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
-                {TIME_OPTIONS.map((time) => (
+                {getEndTimeOptions(slot.start_time).map((time) => (
                   <option key={time} value={time}>
                     {time}
                   </option>
@@ -143,49 +183,57 @@ function DaySlotEditor({ day, slots, onAdd, onRemove, onUpdate, disabled }: DayS
         })}
 
         {isAdding && (
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-white dark:bg-slate-900 rounded-lg p-2 border-2 border-dashed border-primary-300 dark:border-primary-700">
-            <Clock className="h-4 w-4 text-primary-500 flex-shrink-0 hidden sm:block" />
-            <select
-              value={newStart}
-              onChange={(e) => setNewStart(e.target.value)}
-              className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              {TIME_OPTIONS.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-            <span className="text-slate-400 text-sm">to</span>
-            <select
-              value={newEnd}
-              onChange={(e) => setNewEnd(e.target.value)}
-              className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              {TIME_OPTIONS.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-            <div className="flex items-center gap-1 shrink-0">
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleAdd}
-                disabled={newStart >= newEnd}
+          <div className="space-y-2">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-white dark:bg-slate-900 rounded-lg p-2 border-2 border-dashed border-primary-300 dark:border-primary-700">
+              <Clock className="h-4 w-4 text-primary-500 flex-shrink-0 hidden sm:block" />
+              <select
+                value={newStart}
+                onChange={(e) => handleStartChange(e.target.value)}
+                className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
-                Add
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAdding(false)}
+                {TIME_OPTIONS.map((time) => (
+                  <option key={time} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </select>
+              <span className="text-slate-400 text-sm">to</span>
+              <select
+                value={newEnd}
+                onChange={(e) => { setNewEnd(e.target.value); setOverlapError(null); }}
+                className="flex-1 min-w-[70px] text-sm bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
-                Cancel
-              </Button>
+                {getEndTimeOptions(newStart).map((time) => (
+                  <option key={time} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAdd}
+                  disabled={newStart >= newEnd}
+                >
+                  Add
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setIsAdding(false); setOverlapError(null); }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
+            {overlapError && (
+              <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {overlapError}
+              </p>
+            )}
           </div>
         )}
       </div>

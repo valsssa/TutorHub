@@ -117,7 +117,7 @@ export default function TransactionsPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
             Transaction History
           </h1>
-          <p className="text-sm sm:text-base text-slate-500 truncate">
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 truncate">
             {totalCount > 0
               ? `${totalCount} transaction${totalCount !== 1 ? 's' : ''} found`
               : 'View all your wallet transactions'}
@@ -167,7 +167,7 @@ export default function TransactionsPage() {
                 onChange={(e) =>
                   handleFilterChange(setTypeFilter)(e.target.value as FilterType)
                 }
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {typeOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -187,7 +187,7 @@ export default function TransactionsPage() {
                 onChange={(e) =>
                   handleFilterChange(setStatusFilter)(e.target.value as FilterStatus)
                 }
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {statusOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>

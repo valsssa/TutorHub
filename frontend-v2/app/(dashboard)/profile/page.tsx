@@ -83,18 +83,18 @@ function TutorProfile() {
           My Profile
         </h1>
         <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-          <Link href="/profile/availability">
-            <Button variant="outline" className="whitespace-nowrap text-sm">
+          <Button asChild variant="outline" className="whitespace-nowrap text-sm">
+            <Link href="/profile/availability">
               <Clock className="h-4 w-4 mr-2" />
               Manage Availability
-            </Button>
-          </Link>
-          <Link href="/profile/edit">
-            <Button className="whitespace-nowrap text-sm">
+            </Link>
+          </Button>
+          <Button asChild className="whitespace-nowrap text-sm">
+            <Link href="/profile/edit">
               <Edit className="h-4 w-4 mr-2" />
               Edit Profile
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -206,7 +206,7 @@ function TutorProfile() {
                   <span className="text-xs sm:text-sm text-slate-500">Reviews</span>
                 </div>
                 <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
-                  {tutorProfile?.review_count || 0}
+                  {tutorProfile?.total_reviews ?? 0}
                 </p>
               </div>
               <div className="p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
@@ -227,30 +227,30 @@ function TutorProfile() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/profile/edit" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/profile/edit">
                 <Edit className="h-4 w-4 mr-3" />
                 Edit Profile
-              </Button>
-            </Link>
-            <Link href="/profile/availability" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/profile/availability">
                 <Clock className="h-4 w-4 mr-3" />
                 Manage Availability
-              </Button>
-            </Link>
-            <Link href="/bookings" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/bookings">
                 <Calendar className="h-4 w-4 mr-3" />
                 View Bookings
-              </Button>
-            </Link>
-            <Link href="/messages" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/messages">
                 <MessageSquare className="h-4 w-4 mr-3" />
                 Messages
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -267,12 +267,12 @@ function StudentProfile() {
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
           My Profile
         </h1>
-        <Link href="/profile/edit">
-          <Button>
+        <Button asChild>
+          <Link href="/profile/edit">
             <Edit className="h-4 w-4 mr-2" />
             Edit Profile
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       <Card>
@@ -299,36 +299,49 @@ function StudentProfile() {
         </CardContent>
       </Card>
 
+      {user?.bio && (
+        <Card>
+          <CardHeader>
+            <CardTitle>About Me</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-600 dark:text-slate-400 whitespace-pre-line">
+              {user.bio}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/profile/edit" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/profile/edit">
                 <Edit className="h-4 w-4 mr-3" />
                 Edit Profile
-              </Button>
-            </Link>
-            <Link href="/tutors" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/tutors">
                 <BookOpen className="h-4 w-4 mr-3" />
                 Find Tutors
-              </Button>
-            </Link>
-            <Link href="/bookings" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/bookings">
                 <Calendar className="h-4 w-4 mr-3" />
                 My Bookings
-              </Button>
-            </Link>
-            <Link href="/messages" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/messages">
                 <MessageSquare className="h-4 w-4 mr-3" />
                 Messages
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </CardContent>
         </Card>
 
@@ -337,12 +350,12 @@ function StudentProfile() {
             <CardTitle>Account Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/settings" className="block">
-              <Button variant="ghost" className="w-full justify-start">
+            <Button asChild variant="ghost" className="w-full justify-start">
+              <Link href="/settings">
                 <Settings className="h-4 w-4 mr-3" />
                 Settings
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

@@ -38,3 +38,13 @@ class Review(Base):
     student = relationship("User", foreign_keys=[student_id])
 
     __table_args__ = (CheckConstraint("rating BETWEEN 1 AND 5", name="valid_rating_value"),)
+
+    @property
+    def student_name(self) -> str | None:
+        """Return the student's display name from the related User."""
+        if self.student is None:
+            return None
+        first = self.student.first_name or ""
+        last = self.student.last_name or ""
+        full_name = f"{first} {last}".strip()
+        return full_name if full_name else None

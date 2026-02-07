@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { authApi } from '@/lib/api';
-import { Card, CardContent, Skeleton } from '@/components/ui';
+import { Card, CardContent, Button, Skeleton } from '@/components/ui';
 
 type VerificationState = 'loading' | 'success' | 'error';
 
@@ -14,6 +15,8 @@ export default function VerifyEmailPage() {
 
   const [state, setState] = useState<VerificationState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   useEffect(() => {
     const verifyEmail = async () => {
@@ -42,7 +45,7 @@ export default function VerifyEmailPage() {
   if (state === 'loading') {
     return (
       <Card>
-        <CardContent className="p-4 sm:p-6">
+        <CardContent>
           <div className="text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center mb-4">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
@@ -58,22 +61,10 @@ export default function VerifyEmailPage() {
   if (state === 'success') {
     return (
       <Card>
-        <CardContent className="p-4 sm:p-6">
+        <CardContent>
           <div className="text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
-              <svg
-                className="h-6 w-6 text-green-600 dark:text-green-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.5"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4.5 12.75l6 6 9-13.5"
-                />
-              </svg>
+              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
               Email verified!
@@ -81,12 +72,9 @@ export default function VerifyEmailPage() {
             <p className="text-sm sm:text-base text-slate-500 mb-6">
               Your email has been successfully verified. You can now sign in to your account.
             </p>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
-            >
-              Sign in
-            </Link>
+            <Button asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -95,22 +83,10 @@ export default function VerifyEmailPage() {
 
   return (
     <Card>
-      <CardContent className="p-4 sm:p-6">
+      <CardContent>
         <div className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
-            <svg
-              className="h-6 w-6 text-red-600 dark:text-red-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-              />
-            </svg>
+            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
             Verification failed
@@ -119,12 +95,45 @@ export default function VerifyEmailPage() {
             {error || 'We could not verify your email address.'}
           </p>
           <div className="space-y-3">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium w-full"
-            >
-              Sign in
-            </Link>
+            {resendState === 'sent' ? (
+              <p className="text-sm text-green-600 dark:text-green-400">
+                Verification email sent! Please check your inbox.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  className="flex w-full rounded-xl border bg-white px-3 py-2 text-base sm:text-sm border-slate-200 dark:border-slate-700 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                />
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  disabled={!resendEmail || resendState === 'sending'}
+                  onClick={async () => {
+                    setResendState('sending');
+                    try {
+                      await authApi.resendVerificationEmail(resendEmail);
+                      setResendState('sent');
+                    } catch {
+                      setResendState('error');
+                    }
+                  }}
+                >
+                  {resendState === 'sending' ? 'Sending...' : 'Resend verification email'}
+                </Button>
+                {resendState === 'error' && (
+                  <p className="text-xs text-red-500">
+                    Failed to resend. Please check your email and try again.
+                  </p>
+                )}
+              </div>
+            )}
+            <Button asChild className="w-full">
+              <Link href="/login">Sign in</Link>
+            </Button>
             <p className="text-sm text-slate-500">
               Need help?{' '}
               <a href="mailto:support@edustream.com" className="text-primary-600 hover:underline">

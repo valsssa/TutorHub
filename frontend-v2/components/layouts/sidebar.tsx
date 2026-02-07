@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/hooks';
@@ -23,6 +24,7 @@ import {
   FileText,
   Cog,
   ChevronLeft,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -74,6 +76,15 @@ export function Sidebar() {
   const { user } = useAuth();
   const { sidebarCollapsed, setSidebarCollapsed, mobileNavOpen, setMobileNavOpen } =
     useUIStore();
+  const prevPathnameRef = useRef(pathname);
+
+  // M20: Close mobile sidebar on route change
+  useEffect(() => {
+    if (prevPathnameRef.current !== pathname) {
+      setMobileNavOpen(false);
+      prevPathnameRef.current = pathname;
+    }
+  }, [pathname, setMobileNavOpen]);
 
   const role = user?.role || 'student';
   const items = navItems[role] || navItems.student;
@@ -91,7 +102,7 @@ export function Sidebar() {
         className={cn(
           'fixed left-0 top-0 z-50 h-full bg-white dark:bg-slate-900',
           'border-r border-slate-200 dark:border-slate-800',
-          'transition-all duration-300',
+          'transition-all duration-300 flex flex-col',
           'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]',
           mobileNavOpen
             ? 'w-64 max-w-[80vw] translate-x-0 pointer-events-auto'
@@ -102,7 +113,7 @@ export function Sidebar() {
               )
         )}
       >
-        <div className="flex h-16 items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
           {(mobileNavOpen || !sidebarCollapsed) && (
             <Link href="/" className="text-xl font-bold text-primary-600">
               EduStream
@@ -112,6 +123,16 @@ export function Sidebar() {
             <Link href="/" className="text-xl font-bold text-primary-600 mx-auto">
               E
             </Link>
+          )}
+          {/* M19: Close button for mobile sidebar */}
+          {mobileNavOpen && (
+            <button
+              onClick={() => setMobileNavOpen(false)}
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5 text-slate-500" />
+            </button>
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -126,7 +147,7 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {items.map((item) => {
             const isActive =
               pathname === item.href ||
@@ -134,25 +155,39 @@ export function Sidebar() {
             return (
               <Link
                 key={item.href}
-                href={item.href}
-                onClick={() => setMobileNavOpen(false)}
+                href={item.placeholder ? '#' : item.href}
+                onClick={(e) => {
+                  if (item.placeholder) e.preventDefault();
+                  setMobileNavOpen(false);
+                }}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors',
-                  isActive
-                    ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/20'
-                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
+                  item.placeholder
+                    ? 'opacity-50 cursor-default text-slate-400 dark:text-slate-500'
+                    : isActive
+                      ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/20'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
                 )}
+                aria-disabled={item.placeholder}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
                 {(mobileNavOpen || !sidebarCollapsed) && (
-                  <span className="font-medium">{item.label}</span>
+                  <span className={cn('font-medium', item.placeholder && 'italic')}>
+                    {item.label}
+                  </span>
+                )}
+                {item.placeholder && (mobileNavOpen || !sidebarCollapsed) && (
+                  <span className="ml-auto text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                    Soon
+                  </span>
                 )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="absolute bottom-4 left-0 right-0 px-3">
+        {/* M17: Settings pinned to bottom via mt-auto flex layout */}
+        <div className="mt-auto px-3 pb-4 flex-shrink-0">
           <Link
             href="/settings"
             onClick={() => setMobileNavOpen(false)}

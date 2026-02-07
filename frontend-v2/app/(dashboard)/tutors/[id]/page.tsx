@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -27,6 +27,7 @@ import {
 } from '@/components/ui';
 import { StarRating } from '@/components/reviews';
 import { cn, formatCurrency, formatRelativeTime } from '@/lib/utils';
+import type { Review } from '@/types/review';
 
 interface TutorProfilePageProps {
   params: Promise<{ id: string }>;
@@ -128,15 +129,29 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
   const router = useRouter();
   const tutorId = parseInt(id, 10);
   const [reviewsPage, setReviewsPage] = useState(1);
+  const [allReviews, setAllReviews] = useState<Review[]>([]);
+  const [showAllSubjects, setShowAllSubjects] = useState(false);
+  const loadedPagesRef = useRef<Set<number>>(new Set());
 
   const { data: tutor, isLoading: tutorLoading } = useTutor(tutorId);
   const { data: availability, isLoading: availabilityLoading } =
     useTutorAvailability(tutorId);
-  const { data: reviews, isLoading: reviewsLoading } = useTutorReviews(
+  const { data: reviewsData, isLoading: reviewsLoading } = useTutorReviews(
     tutorId,
     reviewsPage,
     REVIEWS_PAGE_SIZE
   );
+
+  useEffect(() => {
+    if (reviewsData && !loadedPagesRef.current.has(reviewsPage)) {
+      loadedPagesRef.current.add(reviewsPage);
+      setAllReviews((prev) => (reviewsPage === 1 ? reviewsData : [...prev, ...reviewsData]));
+    }
+  }, [reviewsData, reviewsPage]);
+
+  const handleLoadMore = useCallback(() => {
+    setReviewsPage((prev) => prev + 1);
+  }, []);
 
   const groupedAvailability = availability?.reduce(
     (acc, slot) => {
@@ -278,11 +293,29 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {tutor.subjects.map((subject) => (
+                    {(showAllSubjects ? tutor.subjects : tutor.subjects.slice(0, 8)).map((subject) => (
                       <Badge key={subject.id} variant="primary">
                         {subject.name}
                       </Badge>
                     ))}
+                    {!showAllSubjects && tutor.subjects.length > 8 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllSubjects(true)}
+                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        +{tutor.subjects.length - 8} more
+                      </button>
+                    )}
+                    {showAllSubjects && tutor.subjects.length > 8 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllSubjects(false)}
+                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        Show less
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -377,7 +410,7 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
               </div>
             </CardHeader>
             <CardContent>
-              {reviewsLoading ? (
+              {reviewsLoading && allReviews.length === 0 ? (
                 <div className="space-y-4">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <div
@@ -399,7 +432,7 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                     </div>
                   ))}
                 </div>
-              ) : !reviews || reviews.length === 0 ? (
+              ) : allReviews.length === 0 && !reviewsLoading ? (
                 <div className="py-8 text-center">
                   <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-500">
@@ -408,17 +441,17 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {reviews.map((review) => (
+                  {allReviews.map((review) => (
                     <div
                       key={review.id}
                       className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800"
                     >
                       <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
                         <div className="flex items-center gap-3 min-w-0">
-                          <Avatar name="Student" size="sm" className="shrink-0" />
+                          <Avatar name={review.student_name || 'Anonymous Student'} size="sm" className="shrink-0" />
                           <div className="min-w-0">
                             <p className="font-medium text-slate-900 dark:text-white truncate">
-                              Student
+                              {review.student_name || 'Anonymous Student'}
                             </p>
                             <p className="text-xs text-slate-500">
                               {formatRelativeTime(review.created_at)}
@@ -434,13 +467,14 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                       )}
                     </div>
                   ))}
-                  {reviews.length >= REVIEWS_PAGE_SIZE && (
+                  {reviewsData && reviewsData.length >= REVIEWS_PAGE_SIZE && (
                     <div className="text-center pt-2">
                       <Button
                         variant="ghost"
-                        onClick={() => setReviewsPage((prev) => prev + 1)}
+                        onClick={handleLoadMore}
+                        disabled={reviewsLoading}
                       >
-                        Load more reviews
+                        {reviewsLoading ? 'Loading...' : 'Load more reviews'}
                       </Button>
                     </div>
                   )}
@@ -488,7 +522,7 @@ export default function TutorProfilePage({ params }: TutorProfilePageProps) {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500">Sessions completed</span>
                     <span className="font-medium text-slate-900 dark:text-white">
-                      {tutor.total_sessions ?? (tutor.total_reviews ?? 0)}
+                      {tutor.total_sessions ?? 'N/A'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">

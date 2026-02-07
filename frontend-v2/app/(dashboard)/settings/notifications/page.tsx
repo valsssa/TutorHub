@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Mail, Bell, Check, AlertCircle } from 'lucide-react';
-import { z } from 'zod';
+import { Bell, Check, AlertCircle, Settings2 } from 'lucide-react';
 import { useNotificationPreferences, useUpdateNotificationPreferences } from '@/lib/hooks';
+import {
+  notificationPreferencesSchema,
+  type NotificationPreferencesFormData,
+} from '@/lib/validators/settings';
 import {
   Card,
   CardHeader,
@@ -16,18 +19,6 @@ import {
   Button,
   Skeleton,
 } from '@/components/ui';
-
-// Schema matching backend API
-const notificationPreferencesSchema = z.object({
-  email_enabled: z.boolean(),
-  push_enabled: z.boolean(),
-  session_reminders_enabled: z.boolean(),
-  booking_requests_enabled: z.boolean(),
-  review_prompts_enabled: z.boolean(),
-  marketing_enabled: z.boolean(),
-});
-
-type NotificationPreferencesFormData = z.infer<typeof notificationPreferencesSchema>;
 
 interface ToggleProps {
   id: string;
@@ -145,7 +136,8 @@ export default function NotificationSettingsPage() {
         marketing_enabled: preferences.marketing_enabled ?? false,
       });
     }
-  }, [preferences, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferences]);
 
   const onSubmit = async (data: NotificationPreferencesFormData) => {
     setSaveSuccess(false);
@@ -212,12 +204,12 @@ export default function NotificationSettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30">
-              <Mail className="h-5 w-5 text-primary-600" />
+              <Settings2 className="h-5 w-5 text-primary-600" />
             </div>
             <div>
-              <CardTitle>Email Notifications</CardTitle>
+              <CardTitle>Notification Channels</CardTitle>
               <CardDescription>
-                Choose what email notifications you want to receive
+                Enable or disable notification delivery channels
               </CardDescription>
             </div>
           </div>
@@ -226,42 +218,18 @@ export default function NotificationSettingsPage() {
           <Toggle
             id="email_enabled"
             label="Email Notifications"
-            description="Master toggle for all email notifications"
+            description="Receive notifications via email"
             checked={values.email_enabled}
             onChange={(checked) => form.setValue('email_enabled', checked)}
             disabled={updatePreferences.isPending}
           />
           <Toggle
-            id="session_reminders_email"
-            label="Session Reminders"
-            description="Receive reminder emails before your sessions"
-            checked={values.email_enabled && values.session_reminders_enabled}
-            onChange={(checked) => form.setValue('session_reminders_enabled', checked)}
-            disabled={updatePreferences.isPending || !values.email_enabled}
-          />
-          <Toggle
-            id="booking_requests_email"
-            label="Booking Requests"
-            description="Receive emails when you get new booking requests"
-            checked={values.email_enabled && values.booking_requests_enabled}
-            onChange={(checked) => form.setValue('booking_requests_enabled', checked)}
-            disabled={updatePreferences.isPending || !values.email_enabled}
-          />
-          <Toggle
-            id="review_prompts_email"
-            label="Review Prompts"
-            description="Receive emails prompting you to review completed sessions"
-            checked={values.email_enabled && values.review_prompts_enabled}
-            onChange={(checked) => form.setValue('review_prompts_enabled', checked)}
-            disabled={updatePreferences.isPending || !values.email_enabled}
-          />
-          <Toggle
-            id="marketing_enabled"
-            label="Marketing & Promotions"
-            description="Receive emails about new features and promotions"
-            checked={values.email_enabled && values.marketing_enabled}
-            onChange={(checked) => form.setValue('marketing_enabled', checked)}
-            disabled={updatePreferences.isPending || !values.email_enabled}
+            id="push_enabled"
+            label="Push Notifications"
+            description="Receive push notifications in your browser"
+            checked={values.push_enabled}
+            onChange={(checked) => form.setValue('push_enabled', checked)}
+            disabled={updatePreferences.isPending}
           />
         </CardContent>
       </Card>
@@ -273,37 +241,45 @@ export default function NotificationSettingsPage() {
               <Bell className="h-5 w-5 text-primary-600" />
             </div>
             <div>
-              <CardTitle>Push Notifications</CardTitle>
+              <CardTitle>Notification Types</CardTitle>
               <CardDescription>
-                Choose what push notifications you want to receive
+                Choose which types of notifications you want to receive
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="divide-y divide-slate-100 dark:divide-slate-800">
           <Toggle
-            id="push_enabled"
-            label="Push Notifications"
-            description="Master toggle for all push notifications"
-            checked={values.push_enabled}
-            onChange={(checked) => form.setValue('push_enabled', checked)}
+            id="session_reminders_enabled"
+            label="Session Reminders"
+            description="Get reminded before your sessions start"
+            checked={values.session_reminders_enabled}
+            onChange={(checked) => form.setValue('session_reminders_enabled', checked)}
             disabled={updatePreferences.isPending}
           />
           <Toggle
-            id="session_reminders_push"
-            label="Session Reminders"
-            description="Get reminded before your sessions start"
-            checked={values.push_enabled && values.session_reminders_enabled}
-            onChange={(checked) => form.setValue('session_reminders_enabled', checked)}
-            disabled={updatePreferences.isPending || !values.push_enabled}
-          />
-          <Toggle
-            id="booking_requests_push"
+            id="booking_requests_enabled"
             label="Booking Requests"
             description="Get notified when you receive new booking requests"
-            checked={values.push_enabled && values.booking_requests_enabled}
+            checked={values.booking_requests_enabled}
             onChange={(checked) => form.setValue('booking_requests_enabled', checked)}
-            disabled={updatePreferences.isPending || !values.push_enabled}
+            disabled={updatePreferences.isPending}
+          />
+          <Toggle
+            id="review_prompts_enabled"
+            label="Review Prompts"
+            description="Get prompted to review completed sessions"
+            checked={values.review_prompts_enabled}
+            onChange={(checked) => form.setValue('review_prompts_enabled', checked)}
+            disabled={updatePreferences.isPending}
+          />
+          <Toggle
+            id="marketing_enabled"
+            label="Marketing & Promotions"
+            description="Receive updates about new features and promotions"
+            checked={values.marketing_enabled}
+            onChange={(checked) => form.setValue('marketing_enabled', checked)}
+            disabled={updatePreferences.isPending}
           />
         </CardContent>
         <CardFooter className="justify-end">

@@ -84,11 +84,27 @@ export function useUpdateTutorPricing() {
   });
 }
 
+export function useReplaceTutorSubjects() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: tutorsApi.replaceSubjects,
+    onSuccess: (updatedProfile) => {
+      queryClient.setQueryData(tutorKeys.myProfile(), updatedProfile);
+      queryClient.invalidateQueries({ queryKey: tutorKeys.details() });
+    },
+  });
+}
+
 export function useUpdateAvailability() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: tutorsApi.updateAvailability,
+    mutationFn: (data: {
+      availability: Array<{ day_of_week: number; start_time: string; end_time: string }>;
+      timezone?: string;
+      version: number;
+    }) => tutorsApi.updateAvailability(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tutorKeys.all });
     },

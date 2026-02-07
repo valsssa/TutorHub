@@ -22,6 +22,7 @@ import {
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -260,7 +261,11 @@ function CommissionTiersChart({
               color: 'white',
             }}
           />
-          <Bar dataKey="tutors" name="Tutors" radius={[0, 4, 4, 0]} />
+          <Bar dataKey="tutors" name="Tutors" radius={[0, 4, 4, 0]}>
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.fill} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -351,6 +356,7 @@ export default function OwnerDashboard() {
           <select
             value={periodDays}
             onChange={(e) => setPeriodDays(Number(e.target.value))}
+            aria-label="Select time period"
             className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           >
             <option value={7}>Last 7 days</option>

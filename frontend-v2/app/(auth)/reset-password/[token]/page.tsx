@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { authApi } from '@/lib/api';
 import { resetPasswordSchema, type ResetPasswordFormData } from '@/lib/validators';
-import { Card, CardContent, Button, Input } from '@/components/ui';
+import { Card, CardContent, Button, Input, Skeleton } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 export default function ResetPasswordPage() {
   const params = useParams();
@@ -16,6 +17,7 @@ export default function ResetPasswordPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tokenStatus, setTokenStatus] = useState<'validating' | 'valid' | 'invalid'>('validating');
 
   const form = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
@@ -24,6 +26,23 @@ export default function ResetPasswordPage() {
       confirmPassword: '',
     },
   });
+
+  const passwordValue = form.watch('password');
+
+  // Validate token on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function verifyToken() {
+      try {
+        await authApi.verifyResetToken(token);
+        if (!cancelled) setTokenStatus('valid');
+      } catch {
+        if (!cancelled) setTokenStatus('invalid');
+      }
+    }
+    verifyToken();
+    return () => { cancelled = true; };
+  }, [token]);
 
   const onSubmit = async (data: ResetPasswordFormData) => {
     setIsSubmitting(true);
@@ -47,9 +66,59 @@ export default function ResetPasswordPage() {
     }
   };
 
+  // Show loading state while validating token
+  if (tokenStatus === 'validating') {
+    return (
+      <Card>
+        <CardContent>
+          <Skeleton className="h-7 sm:h-8 w-48 mb-2" />
+          <Skeleton className="h-5 w-56 mb-4 sm:mb-6" />
+          <div className="space-y-3 sm:space-y-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-11 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error state if token is invalid
+  if (tokenStatus === 'invalid') {
+    return (
+      <Card>
+        <CardContent>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            Invalid reset link
+          </h2>
+          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 mb-4">
+            <p className="text-sm text-red-600 dark:text-red-400">
+              This password reset link has expired or is invalid. Please request a new one.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Button asChild className="w-full">
+              <Link href="/forgot-password">
+                Request a new reset link
+              </Link>
+            </Button>
+            <div className="text-center text-sm">
+              <Link
+                href="/login"
+                className="text-primary-600 hover:underline"
+              >
+                Back to login
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
-      <CardContent className="p-4 sm:p-6">
+      <CardContent>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">
           Reset your password
         </h2>
@@ -58,19 +127,52 @@ export default function ResetPasswordPage() {
         </p>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
-          <Input
-            label="New password"
-            type="password"
-            placeholder="Enter new password"
-            hint="Min 8 characters with uppercase, lowercase, and number"
-            error={form.formState.errors.password?.message}
-            {...form.register('password')}
-          />
+          <div>
+            <Input
+              label="New password"
+              type="password"
+              placeholder="Enter new password"
+              autoComplete="new-password"
+              error={form.formState.errors.password?.message}
+              {...form.register('password')}
+            />
+            <ul className="mt-2 space-y-1 text-xs">
+              <li className={cn(
+                'flex items-center gap-1.5',
+                passwordValue.length >= 8 ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500'
+              )}>
+                <span>{passwordValue.length >= 8 ? '\u2713' : '\u2717'}</span>
+                At least 8 characters
+              </li>
+              <li className={cn(
+                'flex items-center gap-1.5',
+                /[A-Z]/.test(passwordValue) ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500'
+              )}>
+                <span>{/[A-Z]/.test(passwordValue) ? '\u2713' : '\u2717'}</span>
+                One uppercase letter
+              </li>
+              <li className={cn(
+                'flex items-center gap-1.5',
+                /[a-z]/.test(passwordValue) ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500'
+              )}>
+                <span>{/[a-z]/.test(passwordValue) ? '\u2713' : '\u2717'}</span>
+                One lowercase letter
+              </li>
+              <li className={cn(
+                'flex items-center gap-1.5',
+                /[0-9]/.test(passwordValue) ? 'text-green-600 dark:text-green-400' : 'text-slate-400 dark:text-slate-500'
+              )}>
+                <span>{/[0-9]/.test(passwordValue) ? '\u2713' : '\u2717'}</span>
+                One number
+              </li>
+            </ul>
+          </div>
 
           <Input
             label="Confirm password"
             type="password"
             placeholder="Confirm new password"
+            autoComplete="new-password"
             error={form.formState.errors.confirmPassword?.message}
             {...form.register('confirmPassword')}
           />
